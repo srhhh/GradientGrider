@@ -1,4 +1,3 @@
-
 program getCells
 use f1_parameters
 use f1_variables
@@ -14,7 +13,7 @@ real,allocatable :: coords(:),vals(:)
 character(50) :: line_data
 character(20) :: file2,file3,some_folder,descriptor1,descriptor2
 
-
+! I am not sure what this does... Could you explain this to me?
 file3 = "progress.txt"
 inquire(file=trim(path2)//trim(file3),exist=flag1)
 if (flag1) call system("rm "//trim(path2)//trim(file3))
@@ -23,15 +22,11 @@ close(70)
 call system("ls -p " // trim(path1) // " | grep '[0123456789]/' > " // file1)
 open(70,file=trim(file1),action="read")
 
-
-
-
 !coords  ---  this array keeps the coordinates and gradients of a state
 !vals    ---  this array keeps var1, var2, var3 of a state
 allocate(coords(6*Natoms))
 allocate(vals(Nvar))
 skips = Natoms+1
-
 
 !We will keep track of how many trajectories and states we encounter
 call CPU_time(t1)
@@ -53,6 +48,10 @@ close(80)
         !file)
         open(71,file=trim(path1)//trim(some_folder)//"kkk.out")
 
+! generally, you don't want too many layers of if in a code
+! I think fortran line processing is much slower than bash
+! please check and make sure
+! if so, we should write a bash script to preprocess the data
         !flag2 indicates when coordinates and gradients are NOT on the next line
         !All following lines will be in a pattern that can be read
         flag2 = .true.
@@ -73,6 +72,7 @@ close(80)
                         if (line_num == skips) then
                                 !With the fully described state, calculate the
                                 !variables wanted
+! please refer to my comments in the parameters/variables file
                                 call getVar1(coords(1:3*Natoms),Natoms,var1)
                                 call getVar2(coords(1:3*Natoms),Natoms,var2)
                                 call getVar3(coords(1:3*Natoms),Natoms,var3)
@@ -88,6 +88,7 @@ close(80)
                                 vals(2) = var2
                                 vals(3) = var3
 
+! shouldn't this be divided by 'spacing'??
                                 !Find which appropriate cell the state is in
                                 var1_int = floor(var1*spacing1)
                                 var2_int = floor(var2*spacing2)
@@ -99,8 +100,8 @@ close(80)
                                 file2 = trim(adjustl(descriptor1))//"_"//trim(adjustl(descriptor2))//".dat"
                                 inquire(file=trim(path3)//trim(file2),exist=flag1)
 
-
                                 !Write to the file the variables, coordinates,
+! give the FMT a number and staying outside the loop
                                 !and gradients
                                 if (flag1) then
                                         open(72,file=trim(path3)//trim(file2),position="append")
@@ -115,12 +116,15 @@ close(80)
                                 end if
 
                                 flag2 = .true.
+! cycle can make things hard to follow, try to avoid that
                                 cycle
                         end if
 
                         !If the state is not yet fully described, continue
                         !adding coordinates; (line_num keeps track of atom #)
                         state3 = 1
+! I suggest read_coords to be a generic subroutine to read the coord
+! then call dis, ang, dih to get whatever
                         call read_coords(coords,Natoms,line_num,state3)
 
                         !If there is a z coordinate equal to ******, skip it
@@ -130,7 +134,6 @@ close(80)
                                 flag2 = .true.
                         end if
                 end if
-                
 
                 !At the end of the file, quit
                 if (state2 /= 0) exit
@@ -149,12 +152,6 @@ t1 = t2
 
 deallocate(vals,coords)
 
-
-
-
-
-
-
 !Now we just need to organize every folder
 !Note: probably more efficient do this inside the loop
 !maybe by using the addState subroutine instead
@@ -169,28 +166,16 @@ write(70,*) "divying up   var1:", i, "var2:", j
 write(70,*) ""
 close(70)
 
+! where is this defined? what does it do?
 call divyUp(i,j,1,0,line_data)
 
-
 end do
-
 end do
-
-
-
-
-
-
 
 end program getCells
 
-
-
-
-
-
-
 !This exists because some z coordinates are ******
+!maybe keep all distance subroutine into one mod (e.g. f1_variables.f90)
 subroutine read_coords(coords,Natoms,line_num,stat)
 implicit none
 integer, intent(in) :: Natoms, line_num
@@ -198,6 +183,7 @@ integer, intent(out) :: stat
 character(11) :: cvar
 real, dimension(6*Natoms), intent(out) :: coords
 
+! again, call the dis funct. here
 read(71,FMT="(10x,2(1x,F10.6),(A11),1x,3(1x,F10.6)))") coords(3*line_num-2), &
 & coords(3*line_num-1),cvar,coords(3*Natoms+3*line_num-2), &
 & coords(3*Natoms+3*line_num-1),coords(3*Natoms+3*line_num)
@@ -207,9 +193,3 @@ if (cvar /= " **********") then
         stat = 0
 end if
 end subroutine
-
-
-
-
-
-
