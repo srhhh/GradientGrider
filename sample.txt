@@ -1,0 +1,9 @@
+Facebook said Monday it suspended some 200 apps as part of its 
+investigation and audit process in the wake of the Cambridge 
+Analytica revelations.
+
+The investigation is focusing on apps that had access to large 
+amounts of user data before Facebook applied new restrictions 
+on such practices in 2014, according to a company blog post. 
+Following the suspensions, the company will do interviews, make
+ requests for information and do audits including possible on-site visits.
