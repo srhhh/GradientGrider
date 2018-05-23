@@ -2,20 +2,19 @@ module f1_variables
 use f1_parameters
 implicit none
 
-
 !This module defines the variables we're using to 'grid' the system
 !and organize the data
-
 
 contains
 
 !Variable one is the squared distance between atom 1 (fluorine) and 2 (carbon)
+!you can make this more general by change v1 to two args, which are the index of the atoms
 subroutine getVar1(coords,Natoms,var1)
 implicit none
 integer, intent(in) :: Natoms
 real, dimension(3*Natoms), intent(in) :: coords
 real, intent(out) :: var1
-
+! to save the 'sqrt' compt. lets compare the squared value with benchmark
 var1 =sqrt( (coords(4)-coords(1))**2 + (coords(5)-coords(2))**2 + (coords(6)-coords(3))**2)
 end subroutine getVar1
 
@@ -25,11 +24,13 @@ implicit none
 integer, intent(in) :: Natoms
 real, dimension(3*Natoms), intent(in) :: coords
 real, intent(out) :: var2
-
+! to save the 'sqrt' compt. lets compare the squared value with benchmark
 var2 = sqrt((coords(16)-coords(4))**2 + (coords(17)-coords(5))**2 + (coords(18)-coords(6))**2)
 end subroutine getVar2
 
 !Variable three is the cosine of the angle between atoms 1 - 2 - 6
+!currently not used
+!again, make this more general by use 3 args
 subroutine getVar3(coords,Natoms,var3)
 implicit none
 integer, intent(in) :: Natoms
@@ -46,11 +47,4 @@ z2 = coords(3)-coords(6)
 var3 = (x1*x2+y1*y2+z1*z2)/sqrt((x1**2 + y1**2 + z1**2)*(x2**2 + y2**2 + z2**2))
 end subroutine getVar3
 
-
-
-
-
-
 end module f1_variables
-
-
