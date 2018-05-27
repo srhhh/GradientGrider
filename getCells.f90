@@ -12,12 +12,12 @@ integer, allocatable :: number_of_states(:,:)
 real :: t1,t2
 real,allocatable :: coords(:),vals(:)
 character(50) :: current_path,line_data
+! some_folder?
 character(20) :: subcell,some_folder,descriptor1,descriptor2
-
 
 !Instead of printing to the terminal, we print to the progressfile
 !First we check if it already exists and just wipe it
-!We want to start from a clean slate
+!We want to start from a clean state
 inquire(file=trim(path4)//trim(progressfile),exist=flag1)
 if (flag1) call system("rm "//trim(path4)//trim(progressfile))
 open(70,file=trim(path4)//trim(progressfile),status="new")
@@ -45,10 +45,11 @@ Nstates = 0
 do
 
         if (.not. (start_from_scratch)) exit
+! "prematurely" means "testing for reading in 20 trajs"?
 !       if (Ntraj == 20) exit       !(if we wanted to end data collection prematurely)
 
         !Fetch the name of one folder (a trajectory)
-        !Format its contents with sed into tmp.txt
+        !Format its contents with sed into tmp1.txt
         !If there are no more trajectories, iostat returns nonzero
         read(70,FMT="(A20)",iostat=state1) some_folder
         if (state1 /= 0) exit
@@ -58,14 +59,10 @@ do
         !A successful folder opening is a successful trajectory reading
         Ntraj = Ntraj+1
 
-
-
 !To track the progress, open up 80
 open(80,file=trim(path4)//trim(progressfile),position="append")
 write(80,*) "Now accessing folder:", some_folder
 close(80)
-
-
 
         !Open the now-formatted trajectory, discard the first line
         open(71,file=trim(path4)//trim(temporaryfile1))
@@ -83,6 +80,10 @@ close(80)
 
                         !With the fully described state, calculate the
                         !variables wanted
+
+! this is fine from the second frame and on
+! what would heppen at the frist frame? It seems the coords is reading in later in read_coord
+! do you always get r1 and r1 both equal zero as the first frame?
                         call getVar1(coords(1:3*Natoms),Natoms,var1)
                         call getVar2(coords(1:3*Natoms),Natoms,var2)
                         call getVar3(coords(1:3*Natoms),Natoms,var3)
@@ -93,6 +94,7 @@ close(80)
                                 cycle
                         end if
 
+! you can make vals(1) into the call getVar1, etc.
                         vals(1) = var1
                         vals(2) = var2
                         vals(3) = var3
@@ -124,25 +126,7 @@ t1 = t2
 
 deallocate(vals,coords)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 end program getCells
-
-
-
-
 
 
 !maybe keep all distance subroutine into one mod (e.g. f1_variables.f90)
@@ -160,11 +144,9 @@ real, dimension(6*Natoms), intent(out) :: coords
 !this only has the coordinates of one atom (and its gradients)
 !when line_num ==6 I can call the distance function, admittedly
 
-
 i = 3*line_num
 j = 3*Natoms
 read(71,FMT="(10x,3(1x,F10.6),1x,3(1x,F10.6))") coords(i-2), coords(i-1), &
 coords(i), coords(j+i-2), coords(j+i-1), coords(j+i)
-
 
 end subroutine

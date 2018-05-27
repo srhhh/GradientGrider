@@ -1,10 +1,7 @@
-
 module addCells
 implicit none
 
-
 contains
-
 
 !The following grids the cell into smaller cells
 !This ASSUMES the cell is NOT already divided up
@@ -67,12 +64,18 @@ allocate(indexer(Nstates,1))
 do j=1, Nstates
         read(72,FMT=FMT1,advance="no") (vals(j,i),i=1,Nvar)
         read(72,FMT=FMT2) (coords(j,i),i=1,6*Natoms)
+! what does this do?
+! again, do you have to use a two D array this way?
         indexer(j,1) = j
 end do
 close(72)
 
 !The size of the 'gaps' represents the length of the smaller subcells
 !inside the larger (current!) subcell
+
+!!!
+! Does the "order" work the way you wanted it to work??
+!!!
 gap1 = spacing1*(1.0/scaling1)**(order+1)
 gap2 = spacing2*(1.0/scaling2)**(order+1)
 gap3 = 1.0*(1.0/scaling3)**(order+1)
@@ -81,8 +84,13 @@ gap3 = 1.0*(1.0/scaling3)**(order+1)
 !This will hold all of the smaller subcells stemming from the current subcell
 call system("mkdir -p "//trim(path3)//trim(subcell1))
 
+!!!
+! I am confused by this two function
+! let's meet in person
+
 !Sort the indexed states by the first variable (into columns); then grid it
 !This sorts both vals and indexer; indexer can then be used to access coords
+! does this qsort work the way you wanted?
 call qsort(vals,indexer,Nstates,Nvar,1,Nstates,1)
 call grider(grid1,vals,gap1,var1*gap1*scaling1,scaling1,Nstates,Nvar,1,Nstates,1,scaling1,1)
  
@@ -154,9 +162,6 @@ end do
 end subroutine divyUp
 
 
-
-
-
 !addState adds a state/frame (its coordinates and gradients stored in coords)
 !to all subcells corresponding to var1, var2, var3
 !where var1, var2, var3 are stored in vals
@@ -183,6 +188,7 @@ var2_old = var2
 
 !As we go deeper in the subcells, the length of the subcell gets smaller
 !And var_new represents the index of the subcell in the grid
+! Do you have to introduce gap1 and gap2?
 gap1 = spacing1
 gap2 = spacing2
 var1_new = floor(var1/gap1)
@@ -201,7 +207,12 @@ subcell1 = trim(adjustl(descriptor1))//"_"//trim(adjustl(descriptor2))
 
 do
         !Check whether there is some subcell1 (var1,var2) in path3/
+!!!
+! Why don't we make this into some sort of an array instead of r1_r2.p?
+! I think we should probably try to avoid to many file manipulation if we can
+!!!
         !and reads the var1_var2.p file, increments it
+! this var1_var2.p file has only one number in it, right?
         !to keep tabs on the number of states in var1_var2.dat
         inquire(file=trim(path3)//trim(subcell1)//".dat",exist=flag1)
         if (flag1) then
@@ -228,8 +239,9 @@ do
         write(72,FMT="(36(1x,F11.6))")(coords(j),j=1,6*Natoms)
         close(72)
 
-        !If there are not many states, this is the 'deepest' subcell; exit
-        !If there are many states, then we can go deeper (into a subdirectory)
+        !If there are not too many states, this is the 'deepest' subcell; exit
+        !If there are too many states, then we can go deeper (into a subdirectory)
+! from what I can understand, this code will go one layer deeper?
         !If there is just the perfect number of states, we need to divy it up
         if (i < overcrowd) exit
 
@@ -241,7 +253,7 @@ do
         !In the other case where there IS a subdirectory then
         !we need to figure out what subcell the state is in
 
-        !We lop off the heading digit used in the previous subcell
+        !We loop off the heading digit used in the previous subcell
         !because we only make use of the trailing one
         !Consequently, we resolve and the subcell gap size shrinks
         var1_old = var1_old - var1_new*gap1
@@ -258,16 +270,22 @@ do
         subcell0 = subcell1
         subcell1 = trim(subcell1)//"/"//trim(adjustl(descriptor1))//"_"//&
                         trim(adjustl(descriptor2))
+!!!
+! Don't you need a write a statement to put the data into the new subcell??
+!228         write(72,FMT="(3(1x,F11.6))",advance="no") (vals(j),j=1,Nvar)
+!229         write(72,FMT="(36(1x,F11.6))")(coords(j),j=1,6*Natoms)
+!!!
  
+!!!
+! Don't you need an "exit" before this?
+! The order is just going up for the crowded subcell
+! yes you are supposed to put them into the subcell but it is still recording in the parent folder level
+!!!!
         !Order represents how "deep" we are in subdirectories
         order = order+1
  
 end do
 
-
-
 end subroutine addState
-
-
 
 end module addCells

@@ -18,13 +18,14 @@ To 'bin' a frame, it simply appends onto a file the frame data.
 The file is named to represent the bin; ex. r1,r2 -> r1_r2.dat.
 To keep track of the number of frames in a bin, a second file r1_r2.p is made; it has this number.
 When the bin has a specific number of states (it is 'overcrowded'), "divyUp" is called.
-If it has more states than this number, then it must also populate one of this bin's subcells.
+If it has more states than overcrowded, then it must also populate one of this bin's subcells.
 These are located in a folder of the same name r1_r2; each smaller subcell in this folder is indexed
 by their variable values position within the original subcell r1_r2.
+The subcells are also checked for overcrowding, and sub-subcell will be generated if necessary.
 In this way, a frame is added and to its deepest subcell.
 
 "divyUp" is a subroutine of addCells.f90
-Taking as input the values of the variables, the subcell name, path, and depth, it creates a
+Taking as input the cell/subcell name (r1 and r2), path, and depth, it creates a
 subdirectory that has smaller subcells of the original subcell and the frames belong to them.
 It does this by first collecting all of the variable values and coordinates into an array.
 Then it sorts the values, then it calculates which indexes belong to which bin/cell.
