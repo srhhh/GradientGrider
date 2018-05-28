@@ -235,7 +235,7 @@ do
         !Add this state to its designated subcell in path3/subcell1
         !subcell1 contains the parent subdirectories of subcell1 as well
         open(72,file=trim(path3)//trim(subcell1)//".dat",position="append",status=trim(descriptor1))
-        write(72,FMT="(3(1x,F11.6))",advance="no") (vals(j),j=1,Nvar)
+        write(72,FMT="(3(1x,F11.6))") (vals(j),j=1,Nvar)
         write(72,FMT="(36(1x,F11.6))")(coords(j),j=1,6*Natoms)
         close(72)
 
