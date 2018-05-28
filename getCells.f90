@@ -44,9 +44,9 @@ Ntraj = 0
 Nstates = 0
 do
 
-        if (.not. (start_from_scratch)) exit
+!        if (.not. (start_from_scratch)) exit
 ! "prematurely" means "testing for reading in 20 trajs"?
-!       if (Ntraj == 20) exit       !(if we wanted to end data collection prematurely)
+       if (Ntraj == 10) stop       !(if we wanted to end data collection prematurely)
 
         !Fetch the name of one folder (a trajectory)
         !Format its contents with sed into tmp1.txt
