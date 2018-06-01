@@ -83,7 +83,7 @@ real,parameter :: max_var2 = 80.0       !Angstroms
 integer,parameter :: counter1_max = 250*resolution
 !We need to estimate how many subcells will be overcrowded in counter1
 !Must not be greater than 999*resolution
-integer,parameter :: counter2_max = 800*resolution
+integer,parameter :: counter2_max = 999*resolution
 !We need to estimate how many subcells will be overcrowded in counter2
 !Must not be greater than 999*resolution
 integer,parameter :: counter3_max = 250*resolution
