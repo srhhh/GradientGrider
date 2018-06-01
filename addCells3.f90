@@ -10,11 +10,11 @@ contains
 !This ASSUMES the cell is NOT already divided up
 
 recursive subroutine divyUp(var1,var2,var3,order,indexN,&
-                                counterN,lengthN)
+                                counterN,lengthN,overcrowdN)
 use f1_parameters
 use f1_functions
 implicit none
-integer, intent(in) :: order,indexN,lengthN
+integer, intent(in) :: order,indexN,lengthN,overcrowdN
 integer, dimension(lengthN), intent(out) :: counterN
 integer :: i,j,k,l,index_order,index1_1,index1_2,index2_1,index2_2
 logical :: state1
@@ -65,10 +65,10 @@ end if
 !coords  ---  holds the xyz coordinates and gradients (6*Natoms)
 !indexer ---  holds the to-be-sorted indexes to access coords
 open(72,file=trim(path3)//trim(subcell)//".dat")
-allocate(vals(overcrowd,Nvar))
-allocate(coords(overcrowd,6*Natoms))
-allocate(indexer(overcrowd,1))
-do j=1, overcrowd
+allocate(vals(overcrowdN,Nvar))
+allocate(coords(overcrowdN,6*Natoms))
+allocate(indexer(overcrowdN,1))
+do j=1, overcrowdN
         read(72,FMT=FMT1,advance="no",iostat=k) (vals(j,i),i=1,Nvar)
         read(72,FMT=FMT2) (coords(j,i),i=1,6*Natoms)
         indexer(j,1) = j
@@ -81,8 +81,8 @@ gap2 = gap2/scaling2
 
 !Sort the indexed frames by the first variable (into columns); then grid it
 !This sorts both vals and indexer; indexer can then be used to access coords
-call qsort(vals,indexer,overcrowd,Nvar,1,overcrowd,1)
-call grider(grid1,vals,gap1,var1_new,scaling1,overcrowd,Nvar,1,overcrowd,1,scaling1,1)
+call qsort(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
+call grider(grid1,vals,gap1,var1_new,scaling1,overcrowdN,Nvar,1,overcrowdN,1,scaling1,1)
 
 index1_1 = grid1(1)
 do i = 1, scaling1
@@ -91,7 +91,7 @@ do i = 1, scaling1
         !For the last element (cell) the last indexed frame must be in it (Nstate)
         !For the first variable, we can think of these are "columns"
         if (i == scaling1) then
-                index1_2 = overcrowd+1
+                index1_2 = overcrowdN+1
         else
                 index1_2 = grid1(i+1)
         end if
@@ -103,8 +103,8 @@ do i = 1, scaling1
         end if
 
         !Sort the indexed states in this grid element (into cells); then grid it
-        call qsort(vals,indexer,overcrowd,Nvar,index1_1,index1_2-1,2)
-        call grider(grid2,vals,gap2,var2_new,scaling2,overcrowd,Nvar,&
+        call qsort(vals,indexer,overcrowdN,Nvar,index1_1,index1_2-1,2)
+        call grider(grid2,vals,gap2,var2_new,scaling2,overcrowdN,Nvar,&
                         index1_1,index1_2-1,1,scaling2,2)
         index2_1 = grid2(1)
         do j = 1, scaling2
@@ -161,17 +161,19 @@ end subroutine divyUp
 !to all subcells corresponding to var1, var2, var3
 !where var1, var2, var3 are stored in vals
 
-subroutine addState(vals,coords)
+subroutine addState(vals,coords,&
+                header1,header2,header3,&
+                counter0,counter1,counter2,counter3)
 use f1_parameters
 implicit none
-integer :: indexer,i,j,population,key
-integer,save :: header1 = 1
-integer,save :: header2 = 1
-integer,save :: header3 = 1
-integer,dimension(ceiling(max_var1*max_var2)),save :: counter0 = 0
-integer,dimension(resolution*250),save :: counter1 = 0
-integer,dimension(resolution*500),save :: counter2 = 0
-integer,dimension(resolution*250),save :: counter3 = 0
+integer :: indexer,i,j,population,key,overcrowd
+integer,intent(out) :: header1
+integer,intent(out) :: header2
+integer,intent(out) :: header3
+integer,dimension(ceiling(max_var1*max_var2)),intent(out) :: counter0
+integer,dimension(counter1_max),intent(out) :: counter1
+integer,dimension(counter2_max),intent(out) :: counter2
+integer,dimension(counter3_max),intent(out) :: counter3
 logical :: flag1
 real :: var1, var2
 integer :: var1_new,var2_new,order
@@ -194,6 +196,7 @@ write(descriptor4,FMT="(F9."//trim(descriptor1)//")") vals(2)-0.5
 !We name the file after these digits; assume population is zero
 subcell_new = trim(adjustl(descriptor3))//"_"//trim(adjustl(descriptor4))
 population = 0
+overcrowd = overcrowd0
 
 do
 
@@ -233,6 +236,7 @@ do
                         indexer = resolution*(key/100000) + scaling1*var2_new+var1_new
                         key = counter1(indexer) + 1
                         population = modulo(key,100000)
+                        overcrowd = overcrowd1
                         counter1(indexer) = key
 
                 !Exactly the same as above
@@ -242,6 +246,7 @@ do
                         indexer = resolution*(key/100000) + scaling1*var2_new+var1_new
                         key = counter2(indexer) + 1
                         population = modulo(key,100000)
+                        overcrowd = overcrowd2
                         counter2(indexer) = key
 
                 !Exactly the same as above
@@ -251,6 +256,7 @@ do
                         indexer = resolution*(key/100000) + scaling1*var2_new+var1_new
                         key = counter3(indexer) + 1
                         population = modulo(key,100000)
+                        overcrowd = overcrowd3
                         counter3(indexer) = key
 
                 !For now, we stop; we can go as deep as we want so long
@@ -332,20 +338,44 @@ do
                 if (order == 0) then
                         key = key + 100000*header1
                         counter0(indexer) = key
-                        call divyUp(vals(1),vals(2),0.0,order,header1,counter1,250*resolution)
+                        call divyUp(vals(1),vals(2),0.0,order,header1,&
+                                        counter1,250*resolution,overcrowd)
                         header1 = header1 + 1
+
+!If this program fails midway then we want to know approximately when
+if (modulo(header1,50) == 0) then
+open(80,file=trim(path4)//trim(progressfile),position="append")
+write(80,*) "         We will have ", header1, " overcrowded cells of order 0"
+close(80)
+end if
 
                 else if (order == 1) then 
                         key = key + 100000*header2
                         counter1(indexer) = key
-                        call divyUp(vals(1),vals(2),0.0,order,header2,counter2,500*resolution)
+                        call divyUp(vals(1),vals(2),0.0,order,header2,&
+                                        counter2,500*resolution,overcrowd)
                         header2 = header2 + 1
+
+!If this program fails midway then we want to know approximately when
+if (modulo(header2,100) == 0) then
+open(80,file=trim(path4)//trim(progressfile),position="append")
+write(80,*) "         We will have ", header2, " overcrowded subcells of order 1"
+close(80)
+end if
 
                 else if (order == 2) then
                         key = key + 100000*header3
                         counter2(indexer) = key
-                        call divyUp(vals(1),vals(2),0.0,order,header3,counter3,250*resolution)
+                        call divyUp(vals(1),vals(2),0.0,order,header3,&
+                                        counter3,250*resolution,overcrowd)
                         header3 = header3 + 1
+
+!If this program fails midway then we want to know approximately when
+if (modulo(header3,50) == 0) then
+open(80,file=trim(path4)//trim(progressfile),position="append")
+write(80,*) "         We will have ", header3, " overcrowded subcells of order 2"
+close(80)
+end if
 
                  else
  
@@ -361,7 +391,7 @@ write(80,*) "   Subcell: ", trim(subcell_new), " has gotten overcrowded; no more
 close(80)
 
                 end if
-
+                
                 !There is a rare scenario when all frames in a cell will land
                 !in a single subcell made from divyUp. In that case, we need to
                 !loop again; however, I don't forsee this happening so I simply

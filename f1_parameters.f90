@@ -19,6 +19,12 @@ character(50),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
 character(20),parameter :: trajectories = "f1_trajectories.txt" !Used to be file1
 !File that writes the progress of the program
 character(20),parameter :: progressfile = "f1_progress.txt" !Used to not exist
+!Files where, when done, we save the counters with the numbers of frames
+!inside each subcell, as well as other information
+character(20),parameter :: counter0file = "counter0.txt"
+character(20),parameter :: counter1file = "counter1.txt"
+character(20),parameter :: counter2file = "counter2.txt"
+character(20),parameter :: counter3file = "counter3.txt"
 !File to write to for system calls
 character(20),parameter :: temporaryfile1 = "tmp1.txt"
 character(20),parameter :: temporaryfile2 = "tmp2.txt"
@@ -54,8 +60,11 @@ real,parameter :: spacing1 = 1.0        !Angstroms
 real,parameter :: spacing2 = 1.0        !Angstroms
 real,parameter :: spacing3 = 0.1        !Angstroms
 
-!The threshold of "overcrowded" grid
-integer,parameter :: overcrowd = 250
+!The threshold of "overcrowded" for a cell of order N
+integer,parameter :: overcrowd0 = 2000
+integer,parameter :: overcrowd1 = 500
+integer,parameter :: overcrowd2 = 100
+integer,parameter :: overcrowd3 = 100
 
 !The scaling is the amount that is resolved for an overcrowded grid
 ! (10,10,10) = x1000 magnification
@@ -69,12 +78,23 @@ integer,parameter :: resolution = scaling1*scaling2
 real,parameter :: max_var1 = 80.0       !Angstroms
 real,parameter :: max_var2 = 80.0       !Angstroms
 
+!We need to estimate how many cells will be overcrowded in counter0
+!Must not be greater than 999*resolution
+integer,parameter :: counter1_max = 250*resolution
+!We need to estimate how many subcells will be overcrowded in counter1
+!Must not be greater than 999*resolution
+integer,parameter :: counter2_max = 800*resolution
+!We need to estimate how many subcells will be overcrowded in counter2
+!Must not be greater than 999*resolution
+integer,parameter :: counter3_max = 250*resolution
+
 !When we get to this 'order' or deepness in the subcells, we have a good enough
 !approximation; otherwise, we must calculate the gradient by hand.
 !As example, a subcell r1_r2.dat inside no subfolder has order=0
 integer,parameter :: acceptable_depth = 3
 
 !The threshold for two numbers being equal
+!Currently not in use
 real,parameter :: dx = .000006
 
 end module f1_parameters

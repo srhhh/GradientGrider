@@ -8,6 +8,13 @@ integer :: Ntraj,Nstates,state1,state2,state3,line_num,skips,i,j,k
 logical :: flag1, flag2
 real :: var1,var2,var3
 integer :: var1_int, var2_int, var3_int
+integer :: header1 = 1
+integer :: header2 = 1
+integer :: header3 = 1
+integer, dimension(ceiling(max_var1*max_var2)) :: counter0 = 0
+integer, dimension(counter1_max) :: counter1 = 0
+integer, dimension(counter2_max) :: counter2 = 0
+integer, dimension(counter3_max) :: counter3 = 0
 integer, allocatable :: number_of_states(:,:)
 real :: t1,t2
 real,allocatable :: coords(:),vals(:)
@@ -78,7 +85,10 @@ close(80)
 
                 !Read the six lines of coordinates
                 do line_num = 1, 6
-                        call read_coords(coords,Natoms,line_num)
+                        i = 3*line_num
+                        j = 3*Natoms
+                        read(71,FMT="(10x,3(1x,F10.6),1x,3(1x,F10.6))") coords(i-2), coords(i-1), &
+                                coords(i), coords(j+i-2), coords(j+i-1), coords(j+i)
                 end do
 
                         !With the fully described state, calculate the
@@ -94,7 +104,9 @@ close(80)
                         end if
 
                         !Write to the file the variables, coordinates, and gradients
-                        call addState(vals,coords)
+                        call addState(vals,coords,&
+                                header1,header2,header3,&
+                                counter0,counter1,counter2,counter3)
 
                         !And this is one successful state/frame
                         Nstates = Nstates + 1
@@ -102,9 +114,10 @@ close(80)
         end do              
         close(71)
 end do
-call CPU_time(t2)
+deallocate(vals,coords)
 close(70)
 
+call CPU_time(t2)
 open(70,file=trim(path4)//trim(progressfile),position="append")
 write(70,*), ""
 write(70,*) "The reading and collecting took:", t2-t1, "seconds"
@@ -112,49 +125,41 @@ write(70,*) "The number of states is:", Nstates
 close(70)
 t1 = t2
 
-deallocate(vals,coords)
+
+
+open(70,file=trim(path4)//trim(counter0file))
+do i = 1, ceiling(max_var1*max_var2)
+        write(70,FMT="(I8)") counter0(i)
+end do
+close(70)
+
+open(70,file=trim(path4)//trim(counter1file))
+do i = 1, 250*resolution
+        write(70,FMT="(I8)") counter1(i)
+end do
+close(70)
+
+open(70,file=trim(path4)//trim(counter2file))
+do i = 1, 500*resolution
+        write(70,FMT="(I8)") counter2(i)
+end do
+close(70)
+
+open(70,file=trim(path4)//trim(counter3file))
+do i = 1, 250*resolution
+        write(70,FMT="(I8)") counter3(i)
+end do
+close(70)
 
 
 
 
-
-
-
-
-
-
-
-
-
-
+call CPU_time(t2)
+open(70,file=trim(path4)//trim(progressfile),position="append")
+write(70,*), ""
+write(70,*) "The writing of counters took:", t2-t1, "seconds"
+close(70)
 
 end program getCells
 
 
-
-
-
-
-!maybe keep all distance subroutine into one mod (e.g. f1_variables.f90)
-subroutine read_coords(coords,Natoms,line_num)
-implicit none
-integer, intent(in) :: Natoms, line_num
-!integer, intent(out) :: stat
-integer :: i,j
-character(11) :: cvar
-real, dimension(6*Natoms), intent(out) :: coords
-
-! again, call the dis funct. here
-
-!come back to later !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!this only has the coordinates of one atom (and its gradients)
-!when line_num ==6 I can call the distance function, admittedly
-
-
-i = 3*line_num
-j = 3*Natoms
-read(71,FMT="(10x,3(1x,F10.6),1x,3(1x,F10.6))") coords(i-2), coords(i-1), &
-coords(i), coords(j+i-2), coords(j+i-1), coords(j+i)
-
-
-end subroutine
