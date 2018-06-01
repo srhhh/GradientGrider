@@ -76,6 +76,7 @@ end subroutine swapI
 
 !This is the quicksort algorithm
 !It's pretty interesting
+!It sorts matrices A and B by the column of A indicated by var
 recursive subroutine qsort(A,B,rows,cols,p,r,var)
 implicit none
 integer, intent(in) :: rows, cols, p, r, var

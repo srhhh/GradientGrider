@@ -2,7 +2,7 @@ program getCells
 use f1_parameters
 use f1_variables
 use f1_functions
-use addCells
+use addCells3
 implicit none
 integer :: Ntraj,Nstates,state1,state2,state3,line_num,skips,i,j,k
 logical :: flag1, flag2
@@ -12,12 +12,12 @@ integer, allocatable :: number_of_states(:,:)
 real :: t1,t2
 real,allocatable :: coords(:),vals(:)
 character(50) :: current_path,line_data
-! some_folder?
-character(20) :: subcell,some_folder,descriptor1,descriptor2
+character(20) :: subcell,trajectory_path,descriptor1,descriptor2
+
 
 !Instead of printing to the terminal, we print to the progressfile
 !First we check if it already exists and just wipe it
-!We want to start from a clean state
+!We want to start from a clean slate
 inquire(file=trim(path4)//trim(progressfile),exist=flag1)
 if (flag1) call system("rm "//trim(path4)//trim(progressfile))
 open(70,file=trim(path4)//trim(progressfile),status="new")
@@ -44,73 +44,61 @@ Ntraj = 0
 Nstates = 0
 do
 
-!        if (.not. (start_from_scratch)) exit
-! "prematurely" means "testing for reading in 20 trajs"?
-       if (Ntraj == 10) stop       !(if we wanted to end data collection prematurely)
+        if (.not. (start_from_scratch)) exit
+!       if (Ntraj == 20) exit       !(if we wanted to end data collection prematurely)
 
         !Fetch the name of one folder (a trajectory)
-        !Format its contents with sed into tmp1.txt
+        !Format its contents with sed into tmp.txt
         !If there are no more trajectories, iostat returns nonzero
-        read(70,FMT="(A20)",iostat=state1) some_folder
+        read(70,FMT="(A20)",iostat=state1) trajectory_path
         if (state1 /= 0) exit
         call system(trim(path2)//"trajectory_sed.sh "//trim(path1)//&
-                trim(some_folder)//"kkk.out "//trim(path4)//trim(temporaryfile1))
+                trim(trajectory_path)//"kkk.out "//trim(path4)//trim(temporaryfile1))
 
         !A successful folder opening is a successful trajectory reading
         Ntraj = Ntraj+1
 
+
+
 !To track the progress, open up 80
 open(80,file=trim(path4)//trim(progressfile),position="append")
-write(80,*) "Now accessing folder:", some_folder
+write(80,*) "Now accessing folder:", trajectory_path
 close(80)
 
-        !Open the now-formatted trajectory, discard the first line
+
+
+        !Open the now-formatted trajectory
         open(71,file=trim(path4)//trim(temporaryfile1))
-        read(71,FMT="(A50)", iostat=state2) line_data
-        line_num = 1
 
         do
-                if (line_num == skips) then
+                !Get rid of the first line (just characters)
+                !If it doesn't exists, we're at the end of the file
+                read(71,FMT="(A50)", iostat=state2) line_data
+                if (state2 /= 0) exit
 
-                        !Get rid of this line (just characters)
-                        !If it doesn't exists, we're at the end of the file
-                        read(71,FMT="(A50)", iostat=state2) line_data
-                        if (state2 /= 0) exit
-                        line_num = 1
+                !Read the six lines of coordinates
+                do line_num = 1, 6
+                        call read_coords(coords,Natoms,line_num)
+                end do
 
                         !With the fully described state, calculate the
                         !variables wanted
-
-! this is fine from the second frame and on
-! what would heppen at the frist frame? It seems the coords is reading in later in read_coord
-! do you always get r1 and r1 both equal zero as the first frame?
-                        call getVar1(coords(1:3*Natoms),Natoms,var1)
-                        call getVar2(coords(1:3*Natoms),Natoms,var2)
-                        call getVar3(coords(1:3*Natoms),Natoms,var3)
+                        call getVar1(coords(1:3*Natoms),Natoms,vals(1))
+                        call getVar2(coords(1:3*Natoms),Natoms,vals(2))
+                        call getVar3(coords(1:3*Natoms),Natoms,vals(3))
 
                         !If they are outliers, just skip this cycle
-                        if ((var1 > max_var1).or.(var2 > max_var2)) then
+                        if ((vals(1) > max_var1).or.(vals(2) > max_var2)) then
                                 Nstates = Nstates - 1
                                 cycle
                         end if
-
-! you can make vals(1) into the call getVar1, etc.
-                        vals(1) = var1
-                        vals(2) = var2
-                        vals(3) = var3
 
                         !Write to the file the variables, coordinates, and gradients
                         call addState(vals,coords)
 
                         !And this is one successful state/frame
                         Nstates = Nstates + 1
-                else
-
-                        !If the state is not yet fully described, continue
-                        !adding coordinates; (line_num keeps track of atom #)
-                        call read_coords(coords,Natoms,line_num)
-                        line_num = line_num + 1
-                end if
+ 
         end do              
         close(71)
 end do
@@ -126,7 +114,25 @@ t1 = t2
 
 deallocate(vals,coords)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 end program getCells
+
+
+
+
 
 
 !maybe keep all distance subroutine into one mod (e.g. f1_variables.f90)
@@ -144,9 +150,11 @@ real, dimension(6*Natoms), intent(out) :: coords
 !this only has the coordinates of one atom (and its gradients)
 !when line_num ==6 I can call the distance function, admittedly
 
+
 i = 3*line_num
 j = 3*Natoms
 read(71,FMT="(10x,3(1x,F10.6),1x,3(1x,F10.6))") coords(i-2), coords(i-1), &
 coords(i), coords(j+i-2), coords(j+i-1), coords(j+i)
+
 
 end subroutine
