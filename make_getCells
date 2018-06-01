@@ -1,0 +1,17 @@
+a.out : f1_parameters.o f1_variables.o f1_functions.o addCells3.o getCells.o
+	$(FC) -o a.out -O3 -fcheck="bound" f1_parameters.o f1_variables.o f1_functions.o addCells3.o getCells.o
+
+FC = gfortran
+
+f1_parameters.o : f1_parameters.f90
+	$(FC) -c f1_parameters.f90
+f1_variables.o : f1_variables.f90
+	$(FC) -c f1_variables.f90
+f1_functions.o : f1_functions.f90
+	$(FC) -c f1_functions.f90
+addCells3.o : addCells3.f90
+	$(FC) -c addCells3.f90
+getCells.o : getCells.f90
+	$(FC) -c getCells.f90
+clean :
+	rm  getCells.o f1_parameters.o f1_parameters.mod f1_variables.o f1_variables.mod f1_functions.o f1_functions.mod addCells3.o addcells3.mod
