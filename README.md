@@ -1,6 +1,6 @@
 To make the grid, enter in "make -f make_getCells" and start up the executable.
 This has one main program: getCells.f90.
-And four modules: f1_parameters.f90, f1_functions.f90, f1_variables.f90, addCells2.f90.
+And four modules: f1_parameters.f90, f1_functions.f90, f1_variables.f90, addCells3.f90.
 
 The main program goes roughly like follows:
 Go into the directory containing the trajectories and pick a trajectory, one by one.
@@ -11,7 +11,7 @@ Bin a particular frame based on these variables and the desired spacing of the g
 Add the state thoughout every cell and subcell of the grid it belongs to with "addState".
 Repeat this for every frame of the trajectory, and every trajectory in the larger directory
 
-"addState" is a subroutine of addCells2.f90
+"addState" is a subroutine of addCells3.f90
 Taking as input the values of the variables and the xyz,gradient coordinates, bin the frame.
 To 'bin' a frame, it simply appends onto a file the frame data.
 The file is named to represent the bin; ex. 14.356, 3.759 -> 14.3_3.7.dat.
