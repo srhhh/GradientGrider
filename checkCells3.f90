@@ -8,12 +8,12 @@ contains
 
 subroutine checkState(coords,closestCoords,min_rmsd)
 use ls_rmsd
-use addCells
+use addCells3
 use f1_functions
 use f1_variables
 use f1_parameters
 implicit none
-integer :: state1, i,j,k
+integer :: state1, i,j,k,frames_max,order,Nstates
 integer, dimension(1) :: j_tuple
 logical :: flag1
 real :: var1,var2,var3, var1_old, var2_old
@@ -80,11 +80,19 @@ do
                                            !do not subdivide past N = 3
                 end if
 
+open(70,file=trim(path4)//trim(progressfile),position="append")
+write(70,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+write(70,*) ""
+write(70,*) "For the closest frame, looking in"
+write(70,*) trim(subcell_old)
+write(70,*) ""
+close(70)
+
                 !Set the array to zero (because we won't traverse all of it)
                 allocate(neighbor_rmsds(frames_max,1),&
                         neighbor_coords(frames_max,Nvar+6*Natoms))
                 do i = 1, frames_max
-                        neighbor_rmsds(i,1) = 0
+                        neighbor_rmsds(i,1) = 100.0
                 end do
 
                 !Read off the states in this subcell
@@ -92,20 +100,20 @@ do
                 Nstates = 1
                 do
                         read(72,FMT=FMT1,advance="no",iostat=state1) &
-                                (neighbor_coords(j,k),k=1,Nvar)
+                                (neighbor_coords(Nstates,k),k=1,Nvar)
                         if (state1 /= 0) then
                                 Nstates = Nstates - 1
                                 exit
                         end if
                         read(72,FMT=FMT2) &
-                                (neighbor_coords(j,k),k=Nvar+1,Nvar+6*Natoms)
+                                (neighbor_coords(Nstates,k),k=Nvar+1,Nvar+6*Natoms)
 
                         !Need to make the coordinates readable for the rmsd
                         rmsd_coords2 = reshape&
-                                (neighbor_Coords(j,Nvar+1:Nvar+3*Natoms),&
+                                (neighbor_Coords(Nstates,Nvar+1:Nvar+3*Natoms),&
                                 (/3, Natoms/))
                         call rmsd(Natoms,rmsd_coords1,rmsd_coords2,0,U,&
-                                x_center,y_center,neighbor_rmsds(j,1),.false.,g)
+                                x_center,y_center,neighbor_rmsds(Nstates,1),.false.,g)
                         Nstates = Nstates + 1
                 end do
                 close(72)
@@ -114,6 +122,19 @@ do
                 j_tuple = minloc(neighbor_rmsds(:,1))
                 min_rmsd = neighbor_rmsds(j_tuple(1),1)
                 closestCoords = neighbor_coords(j_tuple(1),Nvar+1:Nvar+6*Natoms)
+
+open(70,file=trim(path4)//trim(progressfile),position="append")
+write(70,*) "RMSD:"
+write(70,*) ""
+do i = 1, Nstates
+write(70,*) neighbor_rmsds(i,1)
+end do
+write(70,*) ""
+write(70,*) "closest one is index: ", j_tuple(1)
+write(70,*) ""
+write(70,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+write(70,*) ""
+close(70)
 
                 !That is all that is required by this subroutine
                 exit
