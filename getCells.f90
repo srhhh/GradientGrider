@@ -21,7 +21,6 @@ real,allocatable :: coords(:),vals(:)
 character(50) :: current_path,line_data
 character(20) :: subcell,trajectory_path,descriptor1,descriptor2
 
-
 !Instead of printing to the terminal, we print to the progressfile
 !First we check if it already exists and just wipe it
 !We want to start from a clean slate
@@ -93,6 +92,9 @@ close(80)
 
                         !With the fully described state, calculate the
                         !variables wanted
+                        !val(1) distance between 1 and 2
+                        !val(2) distance between 2 and 6
+                        !val(3) is the angle between 1-2-6, but it is not used in griding as of now 
                         call getVar1(coords(1:3*Natoms),Natoms,vals(1))
                         call getVar2(coords(1:3*Natoms),Natoms,vals(2))
                         call getVar3(coords(1:3*Natoms),Natoms,vals(3))
@@ -100,6 +102,8 @@ close(80)
                         !If they are outliers, just skip this cycle
                         if ((vals(1) > max_var1).or.(vals(2) > max_var2)) then
                                 Nstates = Nstates - 1
+ ! Is the line above necessary? If you have "cycle", the code will just skip the rest and go to the "end do" so Nstates
+ ! won't be added
                                 cycle
                         end if
 
