@@ -8,8 +8,8 @@ character(20) :: descriptor1, descriptor2, subcell, line_data
 
 
 !How many cells are in the first-level grid
-cells_var1 = floor(max_var1/spacing1)
-cells_var2 = floor(max_var2/spacing2)
+cells_var1 = anint(max_var1/spacing1)
+cells_var2 = anint(max_var2/spacing2)
 allocate(cells(cells_var1,cells_var2))
 
 !Iterate through these cells

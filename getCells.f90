@@ -2,7 +2,7 @@ program getCells
 use f1_parameters
 use f1_variables
 use f1_functions
-use addCells3
+use addCells4
 implicit none
 integer :: Ntraj,Nstates,state1,state2,state3,line_num,skips,i,j,k
 logical :: flag1, flag2
@@ -11,7 +11,7 @@ integer :: var1_int, var2_int, var3_int
 integer :: header1 = 1
 integer :: header2 = 1
 integer :: header3 = 1
-integer, dimension(ceiling(max_var1*max_var2)) :: counter0 = 0
+integer, dimension(counter0_max) :: counter0 = 0
 integer, dimension(counter1_max) :: counter1 = 0
 integer, dimension(counter2_max) :: counter2 = 0
 integer, dimension(counter3_max) :: counter3 = 0
@@ -20,6 +20,7 @@ real :: t1,t2
 real,allocatable :: coords(:),vals(:)
 character(50) :: current_path,line_data
 character(20) :: subcell,trajectory_path,descriptor1,descriptor2
+
 
 !Instead of printing to the terminal, we print to the progressfile
 !First we check if it already exists and just wipe it
@@ -43,6 +44,7 @@ allocate(vals(Nvar))
 
 !The way the files are formatted, every seventh line is a new state
 skips = Natoms+1
+j = 3*Natoms
 
 !We will keep track of how many trajectories and states we encounter
 call CPU_time(t1)
@@ -85,25 +87,18 @@ close(80)
                 !Read the six lines of coordinates
                 do line_num = 1, 6
                         i = 3*line_num
-                        j = 3*Natoms
                         read(71,FMT="(10x,3(1x,F10.6),1x,3(1x,F10.6))") coords(i-2), coords(i-1), &
                                 coords(i), coords(j+i-2), coords(j+i-1), coords(j+i)
                 end do
 
                         !With the fully described state, calculate the
                         !variables wanted
-                        !val(1) distance between 1 and 2
-                        !val(2) distance between 2 and 6
-                        !val(3) is the angle between 1-2-6, but it is not used in griding as of now 
                         call getVar1(coords(1:3*Natoms),Natoms,vals(1))
                         call getVar2(coords(1:3*Natoms),Natoms,vals(2))
                         call getVar3(coords(1:3*Natoms),Natoms,vals(3))
 
                         !If they are outliers, just skip this cycle
                         if ((vals(1) > max_var1).or.(vals(2) > max_var2)) then
-                                Nstates = Nstates - 1
- ! Is the line above necessary? If you have "cycle", the code will just skip the rest and go to the "end do" so Nstates
- ! won't be added
                                 cycle
                         end if
 
@@ -138,19 +133,19 @@ end do
 close(70)
 
 open(70,file=trim(path4)//trim(counter1file))
-do i = 1, 250*resolution
+do i = 1, 250*resolution_1
         write(70,FMT="(I8)") counter1(i)
 end do
 close(70)
 
 open(70,file=trim(path4)//trim(counter2file))
-do i = 1, 500*resolution
+do i = 1, 500*resolution_1
         write(70,FMT="(I8)") counter2(i)
 end do
 close(70)
 
 open(70,file=trim(path4)//trim(counter3file))
-do i = 1, 250*resolution
+do i = 1, 250*resolution_1
         write(70,FMT="(I8)") counter3(i)
 end do
 close(70)

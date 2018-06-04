@@ -8,7 +8,7 @@ character(50),parameter :: path1 = "/home/ruisun/proj/ruisun/B0/"
 !Path to the f90s and bash scripts
 character(50),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
 !Path to the grid
-character(50),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid2/"
+character(50),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid/"
 !Path for the following files (see below)
 character(50),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
 
@@ -55,47 +55,56 @@ integer,parameter :: Natoms = 6
 !The number of variables in use
 integer,parameter :: Nvar = 3
 
-!The spacing is the dimension of the gridlines; currently var3 is not grided
+!The spacing is the spacing of the parent-level grid
+!Because the variables may be unbound, we define the
+!parent-level grid in terms of gridline spacing
 real,parameter :: spacing1 = 1.0        !Angstroms
 real,parameter :: spacing2 = 1.0        !Angstroms
 real,parameter :: spacing3 = 0.1        !Angstroms
 
-!The threshold of "overcrowded" for a cell of order N
-integer,parameter :: overcrowd0 = 2000
-integer,parameter :: overcrowd1 = 500
-integer,parameter :: overcrowd2 = 100
-integer,parameter :: overcrowd3 = 100
-
-!The scaling is the amount that is resolved for an overcrowded grid
-! (10,10,10) = x1000 magnification
-! This might be a little too many
-integer,parameter :: scaling1 = 10
-integer,parameter :: scaling2 = 10
-integer,parameter :: scaling3 = 10
-integer,parameter :: resolution = scaling1*scaling2
-
 !There are some outliers; making a maximum throws these away
 real,parameter :: max_var1 = 80.0       !Angstroms
 real,parameter :: max_var2 = 80.0       !Angstroms
+!Consequently, we know the maximum number of cells in the grid
+integer, parameter :: counter0_max = anint(max_var1/spacing1)&
+                                     *anint(max_var2/spacing2)
+
+!The threshold of "overcrowded" for a cell of order N
+integer,parameter :: overcrowd0 = 500
+integer,parameter :: overcrowd1 = 250
+integer,parameter :: overcrowd2 = 100
+integer,parameter :: overcrowd3 = 100
+
+!The scaling is the amount that is resolved for an overcrowded cell
+! (10,10,10) = x1000 magnification
+! For now, only two variables are used
+!For cells of order=0, the scaling_0 are used
+!For subcells of order>0, scaling_1 are used
+integer,parameter :: scaling1_0 = 4
+integer,parameter :: scaling2_0 = 4
+integer,parameter :: scaling3_0 = 4
+integer,parameter :: scaling1_1 = 10
+integer,parameter :: scaling2_1 = 10
+integer,parameter :: scaling3_1 = 10
+integer,parameter :: resolution_0 = scaling1_0*scaling2_0
+integer,parameter :: resolution_1 = scaling1_1*scaling2_1
 
 !We need to estimate how many cells will be overcrowded in counter0
 !Must not be greater than 999*resolution
-integer,parameter :: counter1_max = 250*resolution
+integer,parameter :: counter1_max = 250*resolution_1
 !We need to estimate how many subcells will be overcrowded in counter1
 !Must not be greater than 999*resolution
-integer,parameter :: counter2_max = 999*resolution
+integer,parameter :: counter2_max = 999*resolution_1
 !We need to estimate how many subcells will be overcrowded in counter2
 !Must not be greater than 999*resolution
-integer,parameter :: counter3_max = 250*resolution
+integer,parameter :: counter3_max = 250*resolution_1
 
-!When we get to this 'order' or deepness in the subcells, we have a good enough
-!approximation; otherwise, we must calculate the gradient by hand.
-!As example, a subcell r1_r2.dat inside no subfolder has order=0
-integer,parameter :: acceptable_depth = 3
-
-!The threshold for two numbers being equal
-!Currently not in use
-real,parameter :: dx = .000006
+!The counter arrays hold information on the population of the subcell
+!And the index to get to deeper subcells in the following counter
+!If the value is XXXXYYYY, then XXXX is the key to the next
+!counter and YYYY is the population of the current counter
+integer,parameter :: population_max = 9999
+integer,parameter :: key_start = population_max + 1
 
 end module f1_parameters
 

@@ -159,7 +159,7 @@ end subroutine divyUp
 
 !addState adds a state/frame (its coordinates and gradients stored in coords)
 !to all subcells corresponding to var1, var2, var3
-!where var1, var2, var3 are stored in vals(:)
+!where var1, var2, var3 are stored in vals
 
 subroutine addState(vals,coords,&
                 header1,header2,header3,&
@@ -170,7 +170,7 @@ integer :: indexer,i,j,population,key,overcrowd
 integer,intent(out) :: header1
 integer,intent(out) :: header2
 integer,intent(out) :: header3
-integer,dimension(ceiling(max_var1*max_var2)),intent(out) :: counter0
+integer,dimension(counter0_max),intent(out) :: counter0
 integer,dimension(counter1_max),intent(out) :: counter1
 integer,dimension(counter2_max),intent(out) :: counter2
 integer,dimension(counter3_max),intent(out) :: counter3
@@ -186,7 +186,6 @@ character(50) :: subcell_old, subcell_new
 !At first, we only want to look at the first order spacing
 !So we truncate values by using ANINT (implicit) after
 !subtracting by 0.5
-!the ANINT is implictly implemented in the format of floating points 
 !This hinges on the fact that the first-level spacing is 1 A
 order = 0
 write(descriptor1,FMT=FMT4) order
@@ -201,10 +200,6 @@ overcrowd = overcrowd0
 
 do
 
-! why don't we just check the counter in the first level array? 
-! it should be faster than accessing a file
-! plus checking the counter is also necessary for checking overcrowd
-
         !Check whether there is some subcell r1_r2.dat in path3/
         inquire(file=trim(path3)//trim(subcell_new)//".dat",exist=flag1)
 
@@ -214,34 +209,18 @@ do
 
                 !If this is the first time in the loop, then we need to
                 !compute the index of r1_r2 in counter0.
-! what loop are you referring to?
                 !This is simply 80*d2 + d1 (unless we change the parameters)
-! why 80? should be max_var1*spacing?
-! please be careful here ! the max_val in parameters are distance, and you can get away here before spacing = 1
                 !where d2 and d1 are the numbers .order. digits to the
                 !right of the decimal palce
-! so d1 and d2 are just order?
-
-! isn't this if statement always TRUE? can we get rid of it?
                 if (order == 0) then
                         read(descriptor3,FMT="(I8)") var1_new
                         read(descriptor4,FMT="(I8)") var2_new
-                        indexer = ceiling(max_var1)*(var2_new-1) + var1_new
+                        indexer = anint(max_var1)*(var2_new-1) + var1_new
 
                         !The number of frames is stored in counterN
                         !We increment the value to signify we are adding a frame
                         !And we measure the population as the last 5 digits
-
-! so after all key = counter0(indexer)?
-! why don't we just do counter0(indexer) = counter0(indexer)+1?
-! how about:
-! if (counter0(indexer) .ge. overcrowd) 
-!    then counter0(indexer) = counter0(indexer) + 100000*key
-!    order = order + 1
-!    key = key + 1
-! endif
                         key = counter0(indexer) + 1
-! we could also make 100000 an input variable
                         population = modulo(key,100000)
                         counter0(indexer) = key
 
@@ -254,17 +233,10 @@ do
                 else if (order == 1) then
                         read(descriptor3,FMT="(8x,(I1))") var1_new 
                         read(descriptor4,FMT="(8x,(I1))") var2_new
-! Is this working?
-! I mimic this part of the code and it did not work...
-
-! I did not see you add 100000 to key in your code so (key/100000) will be zero?
-! Shouldn't this be just resolution*key+scaling1*var2_new+var1_new in my setting?
                         indexer = resolution*(key/100000) + scaling1*var2_new+var1_new
                         key = counter1(indexer) + 1
                         population = modulo(key,100000)
-! Same comments at the previous level
                         overcrowd = overcrowd1
-! What does this overcrowd line do here?
                         counter1(indexer) = key
 
                 !Exactly the same as above
@@ -306,7 +278,7 @@ do
                 if (order == 0) then
                         read(descriptor3,FMT="(I8)") var1_new
                         read(descriptor4,FMT="(I8)") var2_new
-                        indexer = ceiling(max_var1)*(var2_new-1) + var1_new
+                        indexer = anint(max_var1)*(var2_new-1) + var1_new
                         key = 1
                         population = 1
                         counter0(indexer) = population
