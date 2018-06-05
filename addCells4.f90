@@ -236,6 +236,10 @@ indexer = anint(max_var1)*(var2_new-1) + var1_new
 !The key is incremented to signify a frame is added
 !(even though it may ultimately not be added)
 key = counter0(indexer) + 1
+!! RS: Add comment:
+!! RS: key_start in modulo(key,key_start) is defined in f1_parameters.f90
+!! RS: key_start is defined as the max number of frames that the counter array will keep track
+!! RS:   beyond which the digits are used as pointer to the children array
 population = modulo(key,key_start)
 
 !Constantly having to write to the file (which gets big!) is time-consuming
@@ -269,6 +273,8 @@ else if (population == overcrowd0) then
         !To access a subcell of higher order ('deeper subcell')
         !We grant the cell a position in counter1 for each of its
         !potential cells (100 in this particular case)
+        !! RS: Add comment:
+        !! RS: header1 = 1 from getCell.f90
         key = key + key_start*header1
         counter0(indexer) = key
 
@@ -289,7 +295,8 @@ else if (population == overcrowd0) then
         !subcell needs further subdividing (all frames in a cell were placed
         !in a single subcell); for divyUp to be called again, another
         !loop needs to go around
-
+!! RS: Don't you need a "return" after this to quit from going deeper and add to order??
+!! RS: This "else" is useless 
 else
 end if
 
@@ -299,6 +306,10 @@ end if
 
 !Now, we go deeper; the 'depth' is represented by the order
 order = order + 1
+
+!! RS: Add comment:
+!! RS: scaling1_0 = scaling2_0 = 4
+!! RS: scaling1_0*scaling2_0 are the number of subcells that is divided from their parent cell 
 
 !This recovers the variable floored to the nearby multiple of 0.25
 !    e.g.  1.2445 -> 1.00     or    1.4425 -> 1.25
@@ -310,11 +321,25 @@ var2 = anint(vals(2)*scaling2_0-0.5)/scaling2_0
 var1_new = modulo(nint(var1*scaling1_0),scaling1_0)
 var2_new = modulo(nint(var2*scaling2_0),scaling2_0)
 
+!! RS: I believe your algorithm works, but how about:
+!! RS: INT(MODULO(vals(1),spacing_0)/spacing_1)
+!! RS: If A and P are of type REAL:
+!! RS:     MODULO(A,P) has the value of A - FLOOR (A / P) * P.
+
 !Here is the unqiue indexing method of this subroutine; the index to counter1
 !comes from the key acquired through counter0; it is represented by the digits
 !larger than key_start
-indexer = resolution_0*(key/key_start) + scaling2_0*var2_new+var1_new
+!! RS: Add comment
+!! RS: resolution_0 = scaling1_0*scaling2_0
 
+!! RS: I am not sure if this indexer line will work. Please talk to me tomorrow
+indexer = resolution_0*(key/key_start) + scaling2_0*var2_new+var1_new
+!! RS: replace (key/key_start) by INT(key/key_start)
+!! RS: shouldn't "scaling2_0*var2_new+var1_new" be "scaling2_0*(var2_new-1)+var1_new"?
+!! RS: like you did for the parent cell?
+
+!! RS: the following comment is not accurate
+!! RS: it is not necessarily "making" -- I think "locating" could be a more accurate word
 !And then simply make the name of the new subcell
 write(descriptor3,FMT="(F9.2)") var1
 write(descriptor4,FMT="(F9.2)") var2
@@ -354,8 +379,9 @@ else if (population == overcrowd1) then
                     scaling1_1,scaling2_1,0,resolution_1,&
                     header2,counter2,counter2_max,overcrowd1)
         header2 = header2 + 1
-
+!! RS: I think a "return" might be necessary
 else
+!! RS: what does it make you want to keep writing to the overcrowded file (but not at the parent level)?
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
@@ -377,7 +403,11 @@ var2 = anint((scaling2_0*scaling2_1)*vals(2)-0.5)/(scaling2_0*scaling2_1)
 var1_new = modulo(nint(scaling1_0*scaling1_1*var1),scaling1_1)
 var2_new = modulo(nint(scaling2_0*scaling2_1*var2),scaling2_1)
 
+!! RS: Again, I think this can be replaced by an easier algorithm
+!! RS: Please refer to line 324 to 327
+
 indexer = resolution_1*(key/key_start) + scaling2_1*var2_new+var1_new
+!! RS: "var2_new" should be "var2_new-1"
 
 write(descriptor3,FMT="(F9.3)") var1
 write(descriptor4,FMT="(F9.3)") var2
@@ -413,12 +443,12 @@ else if (population == overcrowd2) then
 open(80,file=trim(path4)//trim(progressfile),position="append")
 write(80,*) "   Subdividing: ", trim(subcell)
 close(80)
-
+!! RS: Why is this printing statement only showing up when order=2?
         call divyUp(vals(1),vals(2),0.0,order,&
                     scaling1_1,scaling2_1,0,resolution_1,&
                     header3,counter3,counter3_max,overcrowd2)
         header3 = header3 + 1
-
+!! RS: return?
 else
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
@@ -428,7 +458,7 @@ else
 end if
 
 
-
+!! Similar comments are previous level
 
 !And we go deeper once more
 !Same as last time
