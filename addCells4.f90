@@ -59,6 +59,7 @@ else
         write(descriptor1,FMT="(I1)") order+1
 end if
 
+<<<<<<< HEAD
 !The number of decimal places for the cell depends on the order (as set above)
 write(descriptor2,FMT="(F9."//descriptor1//")") var1_new
 write(descriptor3,FMT="(F9."//descriptor1//")") var2_new
@@ -66,6 +67,16 @@ write(descriptor3,FMT="(F9."//descriptor1//")") var2_new
 !We don't know how many decimal places will be used (may be double digit or
 !single digit) so we need to adjustl (remove leading zeroes) and trim (remove
 !whitespace); this format is also followed in addState
+=======
+!The smaller the subcell, the smaller the gap between gridlines
+gap1 = 1.0/(scaling1_0*scaling1_1**(order))
+gap2 = 1.0/(scaling2_0*scaling2_1**(order))
+
+!We need to know the name of the file so we can read its
+!variables and coordinates into a local array
+write(descriptor2,FMT="(F9."//trim(adjustl(descriptor1))//")") var1_new
+write(descriptor3,FMT="(F9."//trim(adjustl(descriptor1))//")") var2_new
+>>>>>>> ef12f7cb05c8a2b10d1c33349874fd86889de891
 subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
 
 !Open up the file,read the variables, coordinates, gradients
@@ -101,17 +112,22 @@ gap2 = spacing2/(scaling2_0*scaling2_1**(order))
 !but on the parent cell, so it is initialized here
 write(descriptor2,FMT="(F9.0)") var1_new-0.5
 write(descriptor3,FMT="(F9.0)") var2_new-0.5
+descriptor2 = adjustl(descriptor2)
+descriptor3 = adjustl(descriptor3)
 
 !And remove any leading zeroes
 descriptor2 = adjustl(descriptor2)
 descriptor3 = adjustl(descriptor3)
 
 !We will needer order + 2 decimal places to represent a smaller subcell
+<<<<<<< HEAD
 !Similar to earlier.
 !   ex. 4.25 (2 decimal places, order 1) -->
 !                                   4.250, 4.275, 4.300, 4.325, 4.350,
 !                                   4.375, 4.400, 4.425, 4.450, 4.475,
 !                                   4.500 (3 decimal places, order 2)
+=======
+>>>>>>> ef12f7cb05c8a2b10d1c33349874fd86889de891
 write(descriptor1,FMT="(I1)") order+2
 
 !Essentially this stores the digits of the number---aftering flooring--
@@ -245,7 +261,7 @@ do i = 1, scaling1
                 descriptor5 = trim(descriptor3)//trim(adjustl(descriptor5))
                 subcell = trim(descriptor4)//"_"//trim(descriptor5)
 
-                !We write all of the frames onto the higher order subcell
+                !We write all of the frames onto the higher order (or deeper) subcell
                 open(72,file=trim(path3)//trim(subcell)//".dat",status="new")
                 do k = index2_1, index2_2-1
                         write(72,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)

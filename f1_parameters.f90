@@ -8,7 +8,7 @@ character(50),parameter :: path1 = "/home/ruisun/proj/ruisun/B0/"
 !Path to the f90s and bash scripts
 character(50),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
 !Path to the grid
-character(50),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid/"
+character(50),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid2/"
 !Path for the following files (see below)
 character(50),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
 
