@@ -29,14 +29,22 @@ integer, dimension(scaling2) :: grid2
 integer, allocatable :: indexer(:,:)
 character(50) :: currentsubcell
 character(50) :: subcell,line_data
-character(10) :: descriptor1,descriptor2,descriptor3,descriptor4,descriptor5
+character(1) :: descriptor1
+character(10) :: descriptor2,descriptor3,descriptor4,descriptor5
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!          FRAME RETRIEVAL
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!First, get the filename of the cell to be divided
 
 !If we are in a parent cell then we don't need any decimal places 
 !Floor to the nearby integer
 if (order == 0) then
         var1_new = anint(var1-0.5)
         var2_new = anint(var2-0.5)
+
+        !We will make use of order (or zero) decimal places
         write(descriptor1,FMT="(I1)") order
 
 !If we are in a subcell then we need decimal places
@@ -44,20 +52,21 @@ if (order == 0) then
 else
         var1_new = anint((scaling1_0*scaling1_1**(order-1))*var1-0.5)/(scaling1_0*scaling1_1**(order-1))
         var2_new = anint((scaling2_0*scaling2_1**(order-1))*var2-0.5)/(scaling2_0*scaling2_1**(order-1))
+
+        !We will make use of order+1 decimal places
+        ! ex. order=1 --> .00, .25, .50, .75, etc.
+        !     order=2 --> .025, .125, .350, .500 etc.
         write(descriptor1,FMT="(I1)") order+1
 end if
 
-!The smaller the subcell, the smaller the gap between gridline
-gap1 = 1.0/(scaling1_0*scaling1_1**(order))
-gap2 = 1.0/(scaling2_0*scaling2_1**(order))
+!The number of decimal places for the cell depends on the order (as set above)
+write(descriptor2,FMT="(F9."//descriptor1//")") var1_new
+write(descriptor3,FMT="(F9."//descriptor1//")") var2_new
 
-!We need to know the name of the file so we can read its
-!variables and coordinates into a local array
-write(descriptor2,FMT="(F9."//trim(adjustl(descriptor1))//")") var1_new
-write(descriptor3,FMT="(F9."//trim(adjustl(descriptor1))//")") var2_new
-descriptor2 = adjustl(descriptor2)
-descriptor3 = adjustl(descriptor3)
-subcell = trim(descriptor2)//"_"//trim(descriptor3)
+!We don't know how many decimal places will be used (may be double digit or
+!single digit) so we need to adjustl (remove leading zeroes) and trim (remove
+!whitespace); this format is also followed in addState
+subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
 
 !Open up the file,read the variables, coordinates, gradients
 !vals    ---  holds the to-be-sorted variables (three for now)
@@ -74,37 +83,98 @@ do j=1, overcrowdN
 end do
 close(72)
 
-!The heading digits are used to later reconstruct a subcell file name
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!          FRAME SORTING/GRIDING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!We need to know what the spacing is of the subcells
+!This is inversely proportional to the scaling
+gap1 = spacing1/(scaling1_0*scaling1_1**(order))
+gap2 = spacing2/(scaling2_0*scaling2_1**(order))
+
+!The filenames of the subcells will be split into two parts:
+!  the prefix is of form "xx." (the integer part)
+!  the suffix is of form ".yyyyy" (the decimal part)
+!Clearly, the integer part does not depend on the subcell
+!but on the parent cell, so it is initialized here
 write(descriptor2,FMT="(F9.0)") var1_new-0.5
 write(descriptor3,FMT="(F9.0)") var2_new-0.5
 
+!And remove any leading zeroes
+descriptor2 = adjustl(descriptor2)
+descriptor3 = adjustl(descriptor3)
+
 !We will needer order + 2 decimal places to represent a smaller subcell
-!write(descriptor1,FMT="(I1)") order+2
+!Similar to earlier.
+!   ex. 4.25 (2 decimal places, order 1) -->
+!                                   4.250, 4.275, 4.300, 4.325, 4.350,
+!                                   4.375, 4.400, 4.425, 4.450, 4.475,
+!                                   4.500 (3 decimal places, order 2)
 write(descriptor1,FMT="(I1)") order+2
 
 !Essentially this stores the digits of the number---aftering flooring--
 !to the right of the decimal place
-!In this PARTICULAR case, every increment along the variable axis
-!requires two decimal places for the first scaling
-!   e.g. 1. -->  1.00, 1.25, 1.50, 1.75
-!And one additional decimal place for subsequent scalings
-!   e.g. 1.00 --> 1.025, 1.050, 1.075, ... , 1.225
+! ex. 4.25 --> 250   or   4. --> 00   or 3.2275 --> 22750
 var1_NINT = nint((var1_new-floor(var1_new))*(10**(order+2)))
 var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
-descriptor2 = adjustl(descriptor2)
-descriptor3 = adjustl(descriptor3)
 
 !Sort the indexed frames by the first variable (into columns); then grid it
 !This sorts both vals and indexer; indexer can then be used to access coords
-call qsort(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
+call qsort2(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!   QSORT2 is a subroutine of F1_FUNCTIONS.F90
+!   Takes vals (1st argument) with dimensions overcrowdN, Nvar (3rd, 4th argument)
+!   And indexer (2nd argument) with dimensions overcrowdN, 1 (3rd argument)
+!   And sorts them according to the 1-th column of vals (7th argument)
+!   But only from indexes 1 to overcrowdN (5th, 6th argument)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 call grider(grid1,vals,gap1,var1_new,scaling1,overcrowdN,Nvar,1,overcrowdN,1,scaling1,1)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!   GRIDER is a subroutine of F!_FUNCTIONS.F90
+!   Takes grid1 (1st argument) with dimension scaling1 (5th argument)
+!   And vals (2nd argument) with dimensions overcrowdN, Nvar (6ht, 7th arguments)
+!   The value of the first gridline (i=1) is at var1_new (4th argument)
+!   And subsequent gridlines are multiples of gap2 (3rd argument)
+!   Ending after scaling1 (5th argument) gridlines have been made
+!   This only does gridings for indexes 1 to overcrowdN (8th, 9th arguments) of vals
+!   And only marks gridings for indexes 1 to scaling1 (10th, 11th arguments) of grid1
+!
+!   The value of position i in grid1 corresponds to the index minus one of vals
+!   with the largest value in the 1-th column (12th argument) but less than
+!   the value of the gridline i.
+!   ex.   grid1 = [ 1, 10, 12, 20, 100, 200, 201, 201, 201, 501]
+!                     for 500 frames in subcell 4.25_1.00
+!         * 4.250 would be the first gridline (i=1)
+!         * 4.475 would be the last gridline (i=10)
+!         * grid1(1) = 1 indicates that 1 - 1 = 0 is the index of the largest
+!                      value lower than 4.250; this is out-of-bounds because
+!                      no value of this cell should be less than 4.25
+!         * grid1(2) = 10 indicates that 10 - 1 = 9 is the index of the largest
+!                      value lower than 4.275; thus, 9 frames are in the first
+!                      'cell' or 'column'
+!         * grid1(9) = grid1(8) = grid1(7) = 201 indicates that index 200
+!                      of vals is the largest value of all gridlines
+!                      i=7,8,9 (or 4.400,4.425,4.450) LOWER than 4.400.
+!                      This means cells/column 8 and 9 (4.400,4.425) are empty
+!         * grid1(10) = 501 indicates that 501 - 1 = 500 is the index of the
+!                      largest value lower than 4.475. Because this is the last
+!                      frame, and it has a lower value than 4.475, cell/column
+!                      10 is thus empty.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 index1_1 = grid1(1)
 do i = 1, scaling1
-        !We always accept these grid elements (cells) in pairs of indexed frames [p1,p2)
-        !where indexed frame p2 is not in the cell i
-        !For the last element (cell) the last indexed frame must be in it (Nstate)
-        !For the first variable, we can think of these are "columns"
+        !For grid1, we can think of indexes as "columns"
+        !Column i is mapped to pair [p1,p2); p1=grid1(i), p2=grid1(i+1)
+        !where p1 and p2 are indexes to vals, and
+        !       vals(p1) is the FIRST frame in column i
+        !       vals(p2) is the LAST frame in column i
+        !       and everything between them is also in column i
+        !For the last column, p2= overcrowdN+1 to indicate that
+        !the remaining frames must be in it
+        !if they were not already placed in a column
         if (i == scaling1) then
                 index1_2 = overcrowdN+1
         else
@@ -118,12 +188,31 @@ do i = 1, scaling1
         end if
 
         !Sort the indexed states in this grid element (into cells); then grid it
-        call qsort(vals,indexer,overcrowdN,Nvar,index1_1,index1_2-1,2)
+        call qsort2(vals,indexer,overcrowdN,Nvar,index1_1,index1_2-1,2)
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !   The key difference here is that we only want to sort values of the
+        !   current column.
+        !   Values are in the same column if their indexes are in range [p1,p2)
+        !   p2 is not included in the cell so there is a minus one subtraction
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         call grider(grid2,vals,gap2,var2_new,scaling2,overcrowdN,Nvar,&
                         index1_1,index1_2-1,1,scaling2,2)
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !   The key difference here is that we only want to grid based on values
+        !   of the current column
+        !   Similar index-choosing as in QSORT2 above
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         index2_1 = grid2(1)
         do j = 1, scaling2
-                !For the second variable, we can think of these as "cells"
+                !For grid2, we can think of indexes as "cells" of the column
+                !Cell j is mapped to pair [p1,p2); p1=grid1(j),p2=grid2(j+1)
+                !where p1 and p2 are indexes to vals, and
+                !       vals(p1) is the FIRST frame in cell j, column i
+                !       vals(p2) is the LAST frame in cell j, column i
+                !       and everything between them is also in cell j
+                !For the last cell, p2 = index1_2 to indicate that
+                !the remaining frames must be in it
+                !if they were not already placed in a cell
                 if (j == scaling2) then
                         index2_2 = index1_2
                 else
@@ -136,13 +225,18 @@ do i = 1, scaling1
                         cycle
                 end if
 
+                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                !             FRAME WRITING
+                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
                 !Write these frames into their respective cell in the grid
                 !The array index needs to start at 1 so a subtraction is
                 !involved
-                !In this PARTICULAR case, scaling_0 = 4 so 100/scaling_0 = 25
-                !Each 'increment' along a variable-axis should thus increment
-                !The prospective filename by 25; other parameter choices
-                !will break this; see comment at top of do loops
+                !As consequence of having a resolution of 16 (scaling of 4)
+                !we require two decimal places so different subcells will have
+                !filenames differing by a multiple of 25
+                !Because subcells are children of the parent cell, their
+                !numbering starts from var_INT of their parent
                 write(descriptor4,FMT="(I"//trim(descriptor1)//"."//trim(descriptor1)//")") &
                         var1_NINT + (i-1)*(100)/scaling1_0
                 write(descriptor5,FMT="(I"//trim(descriptor1)//"."//trim(descriptor1)//")") &
@@ -161,21 +255,15 @@ do i = 1, scaling1
 
                 !And we also want to keep track of how many frames are in this
                 !new subcell; indexing is exactly as in addState
+                !A minus one is involved because array indexes start at 1
                 index_order = resolution*indexN + scaling1*(j-1) + i-1
                 counterN(index_order) = index2_2 - index2_1
-
-                !This is in the rare case that all frames are in one subcell
-                !We can also exit the loop if this is the last frame
-                if (index2_2 == overcrowdN+1) then
-                if (index2_1 == 1) counterN(index_order) = counterN(index_order)-1
-                exit
-                end if
 
                 !The next cell pair [p2,p3) starts at the end of [p1,p2)
                 index2_1 = index2_2
         end do
 
-        !The next cell pair [p2,p3) starts at the end of [p1,p2)
+        !The next column pair [p2,p3) starts at the end of [p1,p2)
         index1_1 = index1_2
 end do
 
@@ -210,6 +298,10 @@ real, dimension(6*Natoms), intent(in) :: coords
 character(50) :: descriptor0, descriptor1, descriptor2
 character(9) :: descriptor3, descriptor4
 character(50) :: subcell
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!               ORDER 0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !First we get the integer out of the way, this is the 
 !parent-level griding. Because this level of granularity is
@@ -272,30 +364,27 @@ else if (population == overcrowd0) then
         key = key + key_start*header1
         counter0(indexer) = key
 
+        !For more information on how this works, see the subroutine above
+        call divyUp(vals(1),vals(2),0.0,order,&
+                    scaling1_0,scaling2_0,0,resolution_0,&
+                    header1,counter1,counter1_max,overcrowd0-1)
+ 
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(72)
-
-        !For more information on how this works, see the subroutine above
-        call divyUp(vals(1),vals(2),0.0,order,&
-                    scaling1_0,scaling2_0,0,resolution_0,&
-                    header1,counter1,counter1_max,overcrowd0)
-       
+      
         !Incrementing header insures that the position granted is unique
         header1 = header1 + 1
 
-        !I do not call 'return' here because there is a small chance the 
-        !subcell needs further subdividing (all frames in a cell were placed
-        !in a single subcell); for divyUp to be called again, another
-        !loop needs to go around
-
-else
 end if
 
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!               ORDER 1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Now, we go deeper; the 'depth' is represented by the order
 order = order + 1
@@ -315,7 +404,7 @@ var2_new = modulo(nint(var2*scaling2_0),scaling2_0)
 !larger than key_start
 indexer = resolution_0*(key/key_start) + scaling2_0*var2_new+var1_new
 
-!And then simply make the name of the new subcell
+!And then make the name of the new subcell
 write(descriptor3,FMT="(F9.2)") var1
 write(descriptor4,FMT="(F9.2)") var2
 subcell = trim(adjustl(descriptor3))//"_"//trim(adjustl(descriptor4))
@@ -345,15 +434,15 @@ else if (population == overcrowd1) then
         key = key + key_start*header2
         counter1(indexer) = key
 
+        call divyUp(vals(1),vals(2),0.0,order,&
+                    scaling1_1,scaling2_1,0,resolution_1,&
+                    header2,counter2,counter2_max,overcrowd1-1)
+        header2 = header2 + 1
+
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(72)
-
-        call divyUp(vals(1),vals(2),0.0,order,&
-                    scaling1_1,scaling2_1,0,resolution_1,&
-                    header2,counter2,counter2_max,overcrowd1)
-        header2 = header2 + 1
 
 else
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
@@ -364,6 +453,9 @@ else
 end if
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!               ORDER 2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !And we go deeper once more
 !Most of the steps are the same
@@ -405,19 +497,15 @@ else if (population == overcrowd2) then
         key = key + key_start*header3
         counter2(indexer) = key
 
+        call divyUp(vals(1),vals(2),0.0,order,&
+                    scaling1_1,scaling2_1,0,resolution_1,&
+                    header3,counter3,counter3_max,overcrowd2-1)
+        header3 = header3 + 1
+
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(72)
-
-open(80,file=trim(path4)//trim(progressfile),position="append")
-write(80,*) "   Subdividing: ", trim(subcell)
-close(80)
-
-        call divyUp(vals(1),vals(2),0.0,order,&
-                    scaling1_1,scaling2_1,0,resolution_1,&
-                    header3,counter3,counter3_max,overcrowd2)
-        header3 = header3 + 1
 
 else
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
@@ -429,6 +517,9 @@ end if
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!               ORDER 3
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !And we go deeper once more
 !Same as last time
