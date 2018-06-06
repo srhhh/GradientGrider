@@ -47,7 +47,7 @@ else
         write(descriptor1,FMT="(I1)") order+1
 end if
 
-!The smaller the subcell, the smaller the gap between gridline
+!The smaller the subcell, the smaller the gap between gridlines
 gap1 = 1.0/(scaling1_0*scaling1_1**(order))
 gap2 = 1.0/(scaling2_0*scaling2_1**(order))
 
@@ -55,9 +55,7 @@ gap2 = 1.0/(scaling2_0*scaling2_1**(order))
 !variables and coordinates into a local array
 write(descriptor2,FMT="(F9."//trim(adjustl(descriptor1))//")") var1_new
 write(descriptor3,FMT="(F9."//trim(adjustl(descriptor1))//")") var2_new
-descriptor2 = adjustl(descriptor2)
-descriptor3 = adjustl(descriptor3)
-subcell = trim(descriptor2)//"_"//trim(descriptor3)
+subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
 
 !Open up the file,read the variables, coordinates, gradients
 !vals    ---  holds the to-be-sorted variables (three for now)
@@ -77,9 +75,10 @@ close(72)
 !The heading digits are used to later reconstruct a subcell file name
 write(descriptor2,FMT="(F9.0)") var1_new-0.5
 write(descriptor3,FMT="(F9.0)") var2_new-0.5
+descriptor2 = adjustl(descriptor2)
+descriptor3 = adjustl(descriptor3)
 
 !We will needer order + 2 decimal places to represent a smaller subcell
-!write(descriptor1,FMT="(I1)") order+2
 write(descriptor1,FMT="(I1)") order+2
 
 !Essentially this stores the digits of the number---aftering flooring--
@@ -91,8 +90,6 @@ write(descriptor1,FMT="(I1)") order+2
 !   e.g. 1.00 --> 1.025, 1.050, 1.075, ... , 1.225
 var1_NINT = nint((var1_new-floor(var1_new))*(10**(order+2)))
 var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
-descriptor2 = adjustl(descriptor2)
-descriptor3 = adjustl(descriptor3)
 
 !Sort the indexed frames by the first variable (into columns); then grid it
 !This sorts both vals and indexer; indexer can then be used to access coords
@@ -151,7 +148,7 @@ do i = 1, scaling1
                 descriptor5 = trim(descriptor3)//trim(adjustl(descriptor5))
                 subcell = trim(descriptor4)//"_"//trim(descriptor5)
 
-                !We write all of the frames onto the higher order subcell
+                !We write all of the frames onto the higher order (or deeper) subcell
                 open(72,file=trim(path3)//trim(subcell)//".dat",status="new")
                 do k = index2_1, index2_2-1
                         write(72,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
@@ -163,13 +160,6 @@ do i = 1, scaling1
                 !new subcell; indexing is exactly as in addState
                 index_order = resolution*indexN + scaling1*(j-1) + i-1
                 counterN(index_order) = index2_2 - index2_1
-
-                !This is in the rare case that all frames are in one subcell
-                !We can also exit the loop if this is the last frame
-                if (index2_2 == overcrowdN+1) then
-                if (index2_1 == 1) counterN(index_order) = counterN(index_order)-1
-                exit
-                end if
 
                 !The next cell pair [p2,p3) starts at the end of [p1,p2)
                 index2_1 = index2_2
@@ -211,6 +201,10 @@ character(50) :: descriptor0, descriptor1, descriptor2
 character(9) :: descriptor3, descriptor4
 character(50) :: subcell
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!               ORDER 0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !First we get the integer out of the way, this is the 
 !parent-level griding. Because this level of granularity is
 !pointless, eventually we stop writing to the parent-level
@@ -236,10 +230,6 @@ indexer = anint(max_var1)*(var2_new-1) + var1_new
 !The key is incremented to signify a frame is added
 !(even though it may ultimately not be added)
 key = counter0(indexer) + 1
-!! RS: Add comment:
-!! RS: key_start in modulo(key,key_start) is defined in f1_parameters.f90
-!! RS: key_start is defined as the max number of frames that the counter array will keep track
-!! RS:   beyond which the digits are used as pointer to the children array
 population = modulo(key,key_start)
 
 !Constantly having to write to the file (which gets big!) is time-consuming
@@ -273,43 +263,33 @@ else if (population == overcrowd0) then
         !To access a subcell of higher order ('deeper subcell')
         !We grant the cell a position in counter1 for each of its
         !potential cells (100 in this particular case)
-        !! RS: Add comment:
-        !! RS: header1 = 1 from getCell.f90
         key = key + key_start*header1
         counter0(indexer) = key
-
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
 
         !For more information on how this works, see the subroutine above
         call divyUp(vals(1),vals(2),0.0,order,&
                     scaling1_0,scaling2_0,0,resolution_0,&
-                    header1,counter1,counter1_max,overcrowd0)
-       
+                    header1,counter1,counter1_max,overcrowd0-1)
+ 
+        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(72)
+      
         !Incrementing header insures that the position granted is unique
         header1 = header1 + 1
 
-        !I do not call 'return' here because there is a small chance the 
-        !subcell needs further subdividing (all frames in a cell were placed
-        !in a single subcell); for divyUp to be called again, another
-        !loop needs to go around
-!! RS: Don't you need a "return" after this to quit from going deeper and add to order??
-!! RS: This "else" is useless 
-else
 end if
 
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!               ORDER 1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Now, we go deeper; the 'depth' is represented by the order
 order = order + 1
-
-!! RS: Add comment:
-!! RS: scaling1_0 = scaling2_0 = 4
-!! RS: scaling1_0*scaling2_0 are the number of subcells that is divided from their parent cell 
 
 !This recovers the variable floored to the nearby multiple of 0.25
 !    e.g.  1.2445 -> 1.00     or    1.4425 -> 1.25
@@ -321,26 +301,12 @@ var2 = anint(vals(2)*scaling2_0-0.5)/scaling2_0
 var1_new = modulo(nint(var1*scaling1_0),scaling1_0)
 var2_new = modulo(nint(var2*scaling2_0),scaling2_0)
 
-!! RS: I believe your algorithm works, but how about:
-!! RS: INT(MODULO(vals(1),spacing_0)/spacing_1)
-!! RS: If A and P are of type REAL:
-!! RS:     MODULO(A,P) has the value of A - FLOOR (A / P) * P.
-
 !Here is the unqiue indexing method of this subroutine; the index to counter1
 !comes from the key acquired through counter0; it is represented by the digits
 !larger than key_start
-!! RS: Add comment
-!! RS: resolution_0 = scaling1_0*scaling2_0
-
-!! RS: I am not sure if this indexer line will work. Please talk to me tomorrow
 indexer = resolution_0*(key/key_start) + scaling2_0*var2_new+var1_new
-!! RS: replace (key/key_start) by INT(key/key_start)
-!! RS: shouldn't "scaling2_0*var2_new+var1_new" be "scaling2_0*(var2_new-1)+var1_new"?
-!! RS: like you did for the parent cell?
 
-!! RS: the following comment is not accurate
-!! RS: it is not necessarily "making" -- I think "locating" could be a more accurate word
-!And then simply make the name of the new subcell
+!And then make the name of the new subcell
 write(descriptor3,FMT="(F9.2)") var1
 write(descriptor4,FMT="(F9.2)") var2
 subcell = trim(adjustl(descriptor3))//"_"//trim(adjustl(descriptor4))
@@ -370,18 +336,17 @@ else if (population == overcrowd1) then
         key = key + key_start*header2
         counter1(indexer) = key
 
+        call divyUp(vals(1),vals(2),0.0,order,&
+                    scaling1_1,scaling2_1,0,resolution_1,&
+                    header2,counter2,counter2_max,overcrowd1-1)
+        header2 = header2 + 1
+
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(72)
 
-        call divyUp(vals(1),vals(2),0.0,order,&
-                    scaling1_1,scaling2_1,0,resolution_1,&
-                    header2,counter2,counter2_max,overcrowd1)
-        header2 = header2 + 1
-!! RS: I think a "return" might be necessary
 else
-!! RS: what does it make you want to keep writing to the overcrowded file (but not at the parent level)?
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
@@ -390,6 +355,9 @@ else
 end if
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!               ORDER 2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !And we go deeper once more
 !Most of the steps are the same
@@ -403,11 +371,7 @@ var2 = anint((scaling2_0*scaling2_1)*vals(2)-0.5)/(scaling2_0*scaling2_1)
 var1_new = modulo(nint(scaling1_0*scaling1_1*var1),scaling1_1)
 var2_new = modulo(nint(scaling2_0*scaling2_1*var2),scaling2_1)
 
-!! RS: Again, I think this can be replaced by an easier algorithm
-!! RS: Please refer to line 324 to 327
-
 indexer = resolution_1*(key/key_start) + scaling2_1*var2_new+var1_new
-!! RS: "var2_new" should be "var2_new-1"
 
 write(descriptor3,FMT="(F9.3)") var1
 write(descriptor4,FMT="(F9.3)") var2
@@ -435,20 +399,16 @@ else if (population == overcrowd2) then
         key = key + key_start*header3
         counter2(indexer) = key
 
+        call divyUp(vals(1),vals(2),0.0,order,&
+                    scaling1_1,scaling2_1,0,resolution_1,&
+                    header3,counter3,counter3_max,overcrowd2-1)
+        header3 = header3 + 1
+
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(72)
 
-open(80,file=trim(path4)//trim(progressfile),position="append")
-write(80,*) "   Subdividing: ", trim(subcell)
-close(80)
-!! RS: Why is this printing statement only showing up when order=2?
-        call divyUp(vals(1),vals(2),0.0,order,&
-                    scaling1_1,scaling2_1,0,resolution_1,&
-                    header3,counter3,counter3_max,overcrowd2)
-        header3 = header3 + 1
-!! RS: return?
 else
         open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
         write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
@@ -458,7 +418,10 @@ else
 end if
 
 
-!! Similar comments are previous level
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!               ORDER 3
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !And we go deeper once more
 !Same as last time
