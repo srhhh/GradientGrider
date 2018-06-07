@@ -64,14 +64,16 @@ write(descriptor2,FMT="(F9."//descriptor1//")") var1_new
 write(descriptor3,FMT="(F9."//descriptor1//")") var2_new
 
 !We don't know how many decimal places will be used (may be double digit or
-!single digit) so we need to adjustl (remove leading zeroes) and trim (remove
-!whitespace); this format is also followed in addState
+!single digit) so we need to "adjustl" (remove trailing zeroes) and trim (remove
+!trailing whitespace); this format is also followed in addState
 subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
 
 !Open up the file,read the variables, coordinates, gradients
-!vals    ---  holds the to-be-sorted variables (three for now)
+!vals    ---  holds the criteria of sorting (three for now)
 !coords  ---  holds the xyz coordinates and gradients (6*Natoms)
-!indexer ---  holds the to-be-sorted indexes to access coords
+!        ---  coords will be sorted according to vals
+!indexer ---  holds the indexes of coords
+!        ---  indexer will be sorted according to vals
 open(72,file=trim(path3)//trim(subcell)//".dat")
 allocate(vals(overcrowdN,Nvar))
 allocate(coords(overcrowdN,6*Natoms))
@@ -99,6 +101,10 @@ gap2 = spacing2/(scaling2_0*scaling2_1**(order))
 !  the suffix is of form ".yyyyy" (the decimal part)
 !Clearly, the integer part does not depend on the subcell
 !but on the parent cell, so it is initialized here
+
+! RS: You var1_new is already rounded 
+! RS: "var1_new = anint(var1-0.5)"
+! RS: Why are you doing it again?
 write(descriptor2,FMT="(F9.0)") var1_new-0.5
 write(descriptor3,FMT="(F9.0)") var2_new-0.5
 
@@ -106,12 +112,13 @@ write(descriptor3,FMT="(F9.0)") var2_new-0.5
 descriptor2 = adjustl(descriptor2)
 descriptor3 = adjustl(descriptor3)
 
-!We will needer order + 2 decimal places to represent a smaller subcell
-!Similar to earlier.
-!   ex. 4.25 (2 decimal places, order 1) -->
-!                                   4.250, 4.275, 4.300, 4.325, 4.350,
-!                                   4.375, 4.400, 4.425, 4.450, 4.475,
-!                                   4.500 (3 decimal places, order 2)
+!We will need (order + 2) decimal places to represent the first level subcell from parent cell
+!   ex. 4. --> 4.00, 4.25, 4.50, 4.75 (decimal places 0 -> 2, order 0 -> 1)
+! RS: I hope the above is the gridding instead of 4. -->  4.25, 4.50, 4.75, 5.00
+!then decimal places encrease by 1 per level (order) of subcell
+!   ex. 4.25 --> 4.250, 4.275, 4.300, 4.325, 4.350, 4.375, 4.400, 4.425, 4.450, 4.475, 4.500
+!      (decimal places 2 -> 3, order 1 -> 2)             
+! RS: or does it actually make 11 grids instead of 10?
 write(descriptor1,FMT="(I1)") order+2
 
 !Essentially this stores the digits of the number---aftering flooring--
@@ -122,7 +129,10 @@ var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 
 !Sort the indexed frames by the first variable (into columns); then grid it
 !This sorts both vals and indexer; indexer can then be used to access coords
+! RS: do you really need to pass overcrowdN twice to qsort2????
+! RS: in what case val does not have the same number of "rows" as indexer?
 call qsort2(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
+! RS: still called qsort in f1_functions. I guess you will change it in the next push?
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !   QSORT2 is a subroutine of F1_FUNCTIONS.F90
 !   Takes vals (1st argument) with dimensions overcrowdN, Nvar (3rd, 4th argument)
