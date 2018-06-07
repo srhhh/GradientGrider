@@ -7,52 +7,81 @@ implicit none
 contains
 
 
-!This partitions A (rows by cols) and B (rows) by the first column of A
-!Used in quicksort
-subroutine partition(A,B,rows,cols,p,r,m,var)
-!The arguments are (vals,indexer,overcrowdN,Nvar,1,overcrowdN,???,1) from divyup
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      PARTITION FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      INPUT:   matrix A, dim (rows,cols)       "values for partition criteria"
+!               matrix B, dim (rows,1)          "pointers to original indexes"
+!               integer start_index             "start"
+!               integer end_index               "end"
+!               integer var                     "which column"
+!      OUTPUT:  integer pivot_index             "pivot for recursive calls"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Column "var" of matrix A is partitioned
+!       but only for the sub-matrix A(p:r).
+!       Any position changes in A are mimicked in B.
+!       The value of end_index is moved to pivot_index so that
+!       all values of A(start:pivot) are <= A(pivot) and
+!       all values of A(pivot:end) are >= A(pivot).
+!       Pivot_index is then returned
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+subroutine partition(A,B,rows,cols,start_index,end_index,var,pivot_index)
 implicit none
-integer, intent(in) :: p, r, rows, cols, var
-integer, intent(out) :: m
+integer, intent(in) :: start_index,end_index,rows,cols,var
+integer, intent(out) :: pivot_index
 real, dimension(rows,cols), intent(out) :: A
 integer, dimension(rows,1), intent(out) :: B
 ! RS: The name of the variables should be systematic
 ! RS: for example, val and var has been used in the code throughoutly for something else
 ! RS: use "_" to connect terms to make the name of the variable more intuitive
 ! RS: Even thought this is not a priority, please be mindful
-integer :: i, j, i1, i2
+!                                               KF: ongoing
+integer :: i, j
 ! RS: Did you use i1, i2, and val1 in this subroutine at all?
-real :: val1,val2,val3
+!                                       KF: resolved (they were not used...)
+real :: test_value,pivot_value
 
 ! RS: I see you are doing a bubble sort but don't you need to loop through val3 as well?
 ! RS: https://www.youtube.com/watch?v=nmhjrI-aW5o
-val3 = A(r,var)
-j = p-1
-do i = p, r-1
-        val2 = A(i,var)
-        if (val2.le.val3) then
+!                                       KF: still not 100 % sure
+!                                           but I think its slightly different
+pivot_value = A(end_index,var)
+j = start_index-1
+do i = start_index, end_index-1
+        test_value = A(i,var)
+        if (test_value.le.pivot_value) then
                 j = j + 1
                 call swapR(A,rows,cols,i,j)
                 call swapI(B,rows,1,i,j)
         end if
 end do
-m = j+1
-call swapR(A,rows,cols,m,r)
-call swapI(B,rows,1,m,r)
+pivot_index = j+1
+call swapR(A,rows,cols,pivot_index,end_index)
+call swapI(B,rows,1,pivot_index,end_index)
 
 end subroutine partition
 
-!This swaps two rows (i1 and i2) of a matrix A (rows by cols)
-!Used in partition
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      SWAP FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      IN/OUT:   matrix A, dim (rows,cols)       "values"
+!      INPUT:    integer i1                      "spot1"
+!                integer i2                      "spot2"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Spots 1 and 2 are swapped in matrix A
+!       
+!       swapR is for matrices of type real (vals)
+!       swapI is for matrices of type integer (indexer)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine swapR(A,rows,cols,i1, i2)
-!The arguments are (vals,overcrowdN,Nvar,i,j) 
-!first three args are from from divyup
-!last two args are from partition
 implicit none
 integer, intent(in) :: rows, cols, i1, i2
 real, dimension(rows,cols), intent(out) :: A
-integer :: i, j
+integer :: i
 real, dimension(cols) :: val1, val2
 
 do i = 1, cols
@@ -66,17 +95,11 @@ end do
 
 end subroutine swapR
 
-!This is the same as above but for integers
-! RS: for indexer??
-!Used in partition
 subroutine swapI(A,rows,cols,i1, i2)
-!The arguments are (indexer,overcrowdN,1,i,j) 
-!first three args are from from divyup
-!last two args are from partition
 implicit none
 integer, intent(in) :: rows, cols, i1, i2
 integer, dimension(rows,cols), intent(out) :: A
-integer :: i, j
+integer :: i
 integer, dimension(cols) :: val1, val2
 
 do i = 1, cols
@@ -90,103 +113,135 @@ end do
 
 end subroutine swapI
 
-!rename please!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!This is the quicksort algorithm
-!It's pretty interesting
-!It sorts matrices A and B by the column of A indicated by var
-recursive subroutine qsort(A,B,rows,cols,p,r,var)
-!The arguments are (vals,indexer,overcrowdN,Nvar,1,overcrowdN,1) from divyup
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      QSORT2 FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      IN/OUT:  matrix A, dim (rows,cols)       "values to be sorted"
+!               matrix B, dim (rows,1)          "pointers to orignal indexes"
+!      INPUT:   integer start_index             "start"
+!               integer end_index               "end"
+!               integer var                     "which column"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Column "var" of matrix A is sorted
+!       but only for the sub-matrix A(start:end).
+!       Any position changes in A are mimicked in B.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!  ex.  A = [ 1.45  2.39 /       B = [ 1 /
+!             0.98  7.45 /             2 /
+!             2.11  3.00   ]           3   ]
+!
+!       QSORT2(A,B,3,2,   1,3,1) produces:
+!       A = [ 0.98  7.45 /       B = [ 2 /
+!             1.45  2.39 /             1 /
+!             2.11  3.00   ]           3   ]
+!
+!       QSORT(A,B,3,2,    1,3,2) produces:
+!       A = [ 1.45  2.39 /       B = [ 1 /
+!             2.11  3.00 /             3 /
+!             0.98  7.45   ]           2   ]
+!
+!       QSORT2(A,B,3,2,   1,2,1) produces:
+!       A = [ 0.98  7.45 /       B = [ 2 /
+!             1.45  2.39 /             1 /
+!             2.11  3.00   ]           3   ]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+recursive subroutine qsort2(A,B,rows,cols,start_index,end_index,var)
 implicit none
-integer, intent(in) :: rows, cols, p, r, var
-integer :: m
+integer, intent(in) :: rows, cols, start_index, end_index, var
+integer :: pivot_index
 real, dimension(rows,cols), intent(out) :: A
 integer, dimension(rows,1), intent(out) :: B
 
-call partition(A,B,rows,cols,p,r,m,var)
-if (p /= m) call qsort(A,B,rows,cols,p,m-1,var)
-if (r /= m) call qsort(A,B,rows,cols,m+1,r,var)
+call partition(A,B,rows,cols,start_index,end_index,var,pivot_index)
+if (start_index /= pivot_index) &
+                call qsort2(A,B,rows,cols,start_index,pivot_index-1,var)
+if (end_index /= pivot_index) &
+                call qsort2(A,B,rows,cols,pivot_index+1,end_index,var)
 
-end subroutine qsort
-
-
-
-
+end subroutine qsort2
 
 
 
 
-!This goes through the values of A in column var, rows [p1, p2)
-!(A NEEDS TO BE PRE-ORDERED) and marks in grid rows [r1, r2]
-!It indicates which state p is directly following gridline r
-subroutine grider(grid,A,spacings,r0,Ngridmax,rows,cols,p1,p2,r1,r2,var)
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      GRIDER FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      INPUT:   matrix A, dim (rows,cols)       "values to be grided"
+!               real gridline_spacing           "length of grid spacing"
+!               real gridline_start             "value of first gridline"
+!               integer max_gridlines           "the number of gridlines"
+!               integer start_index             "start"
+!               integer end_index               "end"
+!               integer var                     "which column"
+!      OUTPUT:  array grid, dim(Ngridmax)       "indexes of A for gridlines"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Column var of matrix A is assumed to be sorted
+!       This functions grids submatrix A(start:end) into grid
+!       There is a plain test description in addCells4 as well
+!       
+!       As a visual example, let's grid
+!               A = [1.1, 2.7, 4.1, 4.2, 8.9, 9.6]
+!
+!       grider(grid1,A, 1.0, 0.0, 10, 6,1, 1, 6, 1)
+!       grider(grid2,A, 2.0, 0.0, 10, 6,1, 1, 6, 1)
+!       grider(grid3,A, 1.0, 2.0, 10, 6,1, 1, 6, 1)
+!       grider(grid4,A, 1.0, 0.0,  5, 6,1, 1, 6, 1)
+!       grider(grid5,A, 1.0, 0.0, 10, 6,1, 4, 6, 1)
+!
+!           A = | | 1.1 | 2.7 | | 4.1 4.2 | | | | 8.9 | 9.6 |
+!       grid1 = 1,1,    2,    3,3,        5,5,5,5     6    
+!
+!           A = | 1.1 | 2.7 | 4.1 4.2 | | 8.9 9.6 | | | | | |
+!       grid2 = 1,    2,    3,        5,5,        7,7,7,7,7
+!
+!           A = 1.1 | 2.7 | | 4.1 4.2 | | | | 8.9 | 9.6 | | |
+!       grid3 =     2,    3,3,        5,5,5,5,    6,    7,7
+!
+!           A = | | 1.1 | 2.6 | | 4.1 4.2 |
+!       grid4 = 1,1,    2,    3,3,        
+!
+!           A = | | 1.1 | 2.7 | | 4.1 4.2 | | | | 8.9 | 9.6 |
+!       grid1 = 4,4,    4,    4,4,        5,5,5,5     6    
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine grider(grid,A,gridline_spacing,gridline_start,max_gridlines,&
+                  rows,cols,start_index,end_index,var)
 implicit none
-integer, intent(in) :: rows, cols, var, Ngridmax
-integer, intent(in) :: p1, p2, r1, r2
-integer :: p, r
-real, intent(in) :: spacings, r0
+integer, intent(in) :: rows, cols, var, max_gridlines
+integer, intent(in) :: start_index, end_index
+integer :: A_index, grid_index
+real, intent(in) :: gridline_spacing, gridline_start
 real, dimension(rows,cols), intent(in) :: A
-real :: grid_line
-integer, dimension(Ngridmax), intent(out) :: grid
+real :: gridline
+integer, dimension(max_gridlines), intent(out) :: grid
 
-p = p1
-r = 0
+A_index = start_index
+grid_index = 1
 do
-        grid_line = r0 + r*spacings
-        if (grid_line < A(p,var)) then
-                grid(r1+r) = p
-                r = r + 1
-        else if (p == p2) then
+        gridline = gridline_start + (grid_index-1)*gridline_spacing
+        if (gridline < A(A_index,var)) then
+                grid(grid_index) = A_index
+                grid_index = grid_index + 1
+        else if (A_index == end_index) then
                 do
-                        if (r1+r > r2) exit
-                        grid(r1+r) = p + 1
-                        r = r + 1
+                        if (grid_index > max_gridlines) exit
+                        grid(grid_index) = A_index + 1
+                        grid_index = grid_index + 1
                 end do
                 exit
         else
-                p = p + 1
+                A_index = A_index + 1
         end if
 end do
 
 end subroutine grider
 
-
-
-
-
-
-
-
-!Used to increase the array length of a too-full array
-subroutine growI(A,B,rows1,cols1,rows2,cols2)
-implicit none
-integer, intent(in) :: rows1,cols1,rows2,cols2
-integer :: i,j
-integer, dimension(rows1,cols1), intent(in) :: A
-integer, dimension(rows2,cols2), intent(out) :: B
-
-do i = 1, rows1
-        do j = 1, cols1
-                B(i,j) = A(i,j)
-        end do
-end do
-
-end subroutine growI
-
-!Same as above but for real numbers
-subroutine growR(A,B,rows1,cols1,rows2,cols2)
-implicit none
-integer, intent(in) :: rows1,cols1,rows2,cols2
-integer :: i,j
-real, dimension(rows1,cols1),intent(in) :: A
-real, dimension(rows2,cols2), intent(out) :: B
-
-do i = 1, rows1
-        do j = 1, cols1
-                B(i,j) = A(i,j)
-        end do
-end do
-
-end subroutine growR
 
 
 

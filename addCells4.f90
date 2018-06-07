@@ -104,9 +104,9 @@ gap2 = spacing2/(scaling2_0*scaling2_1**(order))
 
 ! RS: You var1_new is already rounded 
 ! RS: "var1_new = anint(var1-0.5)"
-! RS: Why are you doing it again?
-write(descriptor2,FMT="(F9.0)") var1_new-0.5
-write(descriptor3,FMT="(F9.0)") var2_new-0.5
+! RS: Why are you doing it again?            KF: resolved (code error)
+write(descriptor2,FMT="(F9.0)") var1_new - 0.5
+write(descriptor3,FMT="(F9.0)") var2_new - 0.5
 
 !And remove any leading zeroes
 descriptor2 = adjustl(descriptor2)
@@ -116,9 +116,10 @@ descriptor3 = adjustl(descriptor3)
 !   ex. 4. --> 4.00, 4.25, 4.50, 4.75 (decimal places 0 -> 2, order 0 -> 1)
 ! RS: I hope the above is the gridding instead of 4. -->  4.25, 4.50, 4.75, 5.00
 !then decimal places encrease by 1 per level (order) of subcell
-!   ex. 4.25 --> 4.250, 4.275, 4.300, 4.325, 4.350, 4.375, 4.400, 4.425, 4.450, 4.475, 4.500
+!   ex. 4.25 --> 4.250, 4.275, 4.300, 4.325, 4.350, 4.375, 4.400, 4.425, 4.450, 4.475
 !      (decimal places 2 -> 3, order 1 -> 2)             
 ! RS: or does it actually make 11 grids instead of 10?
+!                                       KF: resolved (comment error)
 write(descriptor1,FMT="(I1)") order+2
 
 !Essentially this stores the digits of the number---aftering flooring--
@@ -131,8 +132,10 @@ var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 !This sorts both vals and indexer; indexer can then be used to access coords
 ! RS: do you really need to pass overcrowdN twice to qsort2????
 ! RS: in what case val does not have the same number of "rows" as indexer?
+!                                       KF: this is complicated
 call qsort2(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
 ! RS: still called qsort in f1_functions. I guess you will change it in the next push?
+!                                       KF : resolve (github error)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !   QSORT2 is a subroutine of F1_FUNCTIONS.F90
 !   Takes vals (1st argument) with dimensions overcrowdN, Nvar (3rd, 4th argument)
@@ -140,20 +143,19 @@ call qsort2(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
 !   And sorts them according to the 1-th column of vals (7th argument)
 !   But only from indexes 1 to overcrowdN (5th, 6th argument)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-call grider(grid1,vals,gap1,var1_new,scaling1,overcrowdN,Nvar,1,overcrowdN,1,scaling1,1)
+call grider(grid1,vals,gap1,var1_new,scaling1,overcrowdN,Nvar,1,overcrowdN,1)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !   GRIDER is a subroutine of F!_FUNCTIONS.F90
-!   Takes grid1 (1st argument) with dimension scaling1 (5th argument)
-!   And vals (2nd argument) with dimensions overcrowdN, Nvar (6ht, 7th arguments)
+!   Outputs grid1 (1st argument) with dimension scaling1 (5th argument)
+!   from vals (2nd argument) with dimensions overcrowdN, Nvar (6ht, 7th arguments)
 !   The value of the first gridline (i=1) is at var1_new (4th argument)
-!   And subsequent gridlines are multiples of gap2 (3rd argument)
-!   Ending after scaling1 (5th argument) gridlines have been made
+!   And subsequent gridlines are multiples of gap1 (3rd argument)
+!   This stops after scaling1 (5th argument) gridlines have been made
 !   This only does gridings for indexes 1 to overcrowdN (8th, 9th arguments) of vals
-!   And only marks gridings for indexes 1 to scaling1 (10th, 11th arguments) of grid1
 !
 !   The value of position i in grid1 corresponds to the index minus one of vals
-!   with the largest value in the 1-th column (12th argument) but less than
-!   the value of the gridline i.
+!   with the largest value in the 1-th column (10th argument) but less than
+!   the value of the gridline i. Let's say we get this output:
 !   ex.   grid1 = [ 1, 10, 12, 20, 100, 200, 201, 201, 201, 501]
 !                     for 500 frames in subcell 4.25_1.00
 !         * 4.250 would be the first gridline (i=1)
@@ -206,7 +208,7 @@ do i = 1, scaling1
         !   p2 is not included in the cell so there is a minus one subtraction
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         call grider(grid2,vals,gap2,var2_new,scaling2,overcrowdN,Nvar,&
-                        index1_1,index1_2-1,1,scaling2,2)
+                        index1_1,index1_2-1,2)
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !   The key difference here is that we only want to grid based on values
         !   of the current column
