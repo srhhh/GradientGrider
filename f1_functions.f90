@@ -1,6 +1,3 @@
-
-
-
 module f1_functions
 implicit none
 
@@ -8,17 +5,19 @@ contains
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!      PARTITION FUNCTION
+!      PARTITION FUNCTION (QuickSort Alogrithm by Tony Hoare)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!      INPUT:   matrix A, dim (rows,cols)       "values for partition criteria"
-!               matrix B, dim (rows,1)          "pointers to original indexes"
-!               integer start_index             "start"
-!               integer end_index               "end"
+!      INPUT:   matrix A, dim (rows,cols)       "values to be sorted"
+!               matrix B, dim (rows,1)          "pointers to orignal indexes"
+!               integer start_index             "in case of sorting only a part of the martix A, 
+!                                                the starting index (before sorting) of the to-be-sorted part"
+!               integer end_index               "in case of sorting only a part of the martix A, 
+!                                                the final index (before sorting) of the to-be-sorted part"
 !               integer var                     "which column"
-!      OUTPUT:  integer pivot_index             "pivot for recursive calls"
+!      OUTPUT:  integer pivot_index             "the index of the column of the martix A that is used as sorting criteria"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       Column "var" of matrix A is partitioned
-!       but only for the sub-matrix A(p:r).
+!       but only for the sub-matrix A (start_index:end_index)
 !       Any position changes in A are mimicked in B.
 !       The value of end_index is moved to pivot_index so that
 !       all values of A(start:pivot) are <= A(pivot) and
@@ -32,20 +31,9 @@ integer, intent(in) :: start_index,end_index,rows,cols,var
 integer, intent(out) :: pivot_index
 real, dimension(rows,cols), intent(out) :: A
 integer, dimension(rows,1), intent(out) :: B
-! RS: The name of the variables should be systematic
-! RS: for example, val and var has been used in the code throughoutly for something else
-! RS: use "_" to connect terms to make the name of the variable more intuitive
-! RS: Even thought this is not a priority, please be mindful
-!                                               KF: ongoing
 integer :: i, j
-! RS: Did you use i1, i2, and val1 in this subroutine at all?
-!                                       KF: resolved (they were not used...)
 real :: test_value,pivot_value
 
-! RS: I see you are doing a bubble sort but don't you need to loop through val3 as well?
-! RS: https://www.youtube.com/watch?v=nmhjrI-aW5o
-!                                       KF: still not 100 % sure
-!                                           but I think its slightly different
 pivot_value = A(end_index,var)
 j = start_index-1
 do i = start_index, end_index-1
@@ -62,8 +50,6 @@ call swapI(B,rows,1,pivot_index,end_index)
 
 end subroutine partition
 
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      SWAP FUNCTION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -76,7 +62,8 @@ end subroutine partition
 !       swapR is for matrices of type real (vals)
 !       swapI is for matrices of type integer (indexer)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+! RS: Could we merge these two function? 
+! RS: You are pass "cols" and "1" when calling them so I don't think it will be an issue
 subroutine swapR(A,rows,cols,i1, i2)
 implicit none
 integer, intent(in) :: rows, cols, i1, i2
@@ -113,17 +100,20 @@ end do
 
 end subroutine swapI
 
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      QSORT2 FUNCTION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      IN/OUT:  matrix A, dim (rows,cols)       "values to be sorted"
 !               matrix B, dim (rows,1)          "pointers to orignal indexes"
-!      INPUT:   integer start_index             "start"
-!               integer end_index               "end"
-!               integer var                     "which column"
+!  The following inputs control the sorting
+!      INPUT:   integer start_index             "in case of sorting only a part of the martix A, 
+!                                                the starting index (before sorting) of the to-be-sorted part"
+!               integer end_index               "in case of sorting only a part of the martix A, 
+!                                                the final index (before sorting) of the to-be-sorted part"
+!               integer var                     "the index of the column of the martix A that is used as sorting criteria"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!       Column "var" of matrix A is sorted
-!       but only for the sub-matrix A(start:end).
+!       Column "var" of matrix A is sorted but only for the sub-matrix A (start_index:end_index).
 !       Any position changes in A are mimicked in B.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  ex.  A = [ 1.45  2.39 /       B = [ 1 /
@@ -145,6 +135,7 @@ end subroutine swapI
 !             1.45  2.39 /             1 /
 !             2.11  3.00   ]           3   ]
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! RS: This is great. Thank you for commenting
 
 recursive subroutine qsort2(A,B,rows,cols,start_index,end_index,var)
 implicit none
@@ -162,16 +153,10 @@ if (end_index /= pivot_index) &
 end subroutine qsort2
 
 
-
-
-
-
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      GRIDER FUNCTION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!      INPUT:   matrix A, dim (rows,cols)       "values to be grided"
+!      INPUT:   matrix A, dim (rows,cols)       "already-sorted values to be grided"
 !               real gridline_spacing           "length of grid spacing"
 !               real gridline_start             "value of first gridline"
 !               integer max_gridlines           "the number of gridlines"
@@ -209,7 +194,7 @@ end subroutine qsort2
 !       grid1 = 4,4,    4,    4,4,        5,5,5,5     6    
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+! RS: This is a good way to store the grid
 subroutine grider(grid,A,gridline_spacing,gridline_start,max_gridlines,&
                   rows,cols,start_index,end_index,var)
 implicit none
@@ -224,6 +209,14 @@ integer, dimension(max_gridlines), intent(out) :: grid
 A_index = start_index
 grid_index = 1
 do
+! RS: Question
+! RS: gridline is the lower boundary of the grid 
+! RS: b.c. grid_index-1 = 0 at the beginning
+! RS: Is this correct? Shouldn't you use the upper boundary?
+! RS: the first round until (A_index == end_index) is pointless
+! RS: Since A is already sorted, I think we can use a much algorithm to grid
+! RS: Like the "finding the root" homework
+! RS: Let's talk about this tomorrow
         gridline = gridline_start + (grid_index-1)*gridline_spacing
         if (gridline < A(A_index,var)) then
                 grid(grid_index) = A_index
@@ -243,10 +236,5 @@ end do
 end subroutine grider
 
 
-
-
 end module f1_functions
-
-
-
 
