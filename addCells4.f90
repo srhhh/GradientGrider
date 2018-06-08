@@ -105,6 +105,9 @@ gap2 = spacing2/(scaling2_0*scaling2_1**(order))
 ! RS: You var1_new is already rounded 
 ! RS: "var1_new = anint(var1-0.5)"
 ! RS: Why are you doing it again?            KF: resolved (code error)
+
+! RS: Wait... Did you fix it? shouldn't you just delete the following two lines
+! RS: and move the "adjust1" to line 65? Am I missing something?
 write(descriptor2,FMT="(F9.0)") var1_new - 0.5
 write(descriptor3,FMT="(F9.0)") var2_new - 0.5
 
@@ -114,12 +117,10 @@ descriptor3 = adjustl(descriptor3)
 
 !We will need (order + 2) decimal places to represent the first level subcell from parent cell
 !   ex. 4. --> 4.00, 4.25, 4.50, 4.75 (decimal places 0 -> 2, order 0 -> 1)
-! RS: I hope the above is the gridding instead of 4. -->  4.25, 4.50, 4.75, 5.00
 !then decimal places encrease by 1 per level (order) of subcell
 !   ex. 4.25 --> 4.250, 4.275, 4.300, 4.325, 4.350, 4.375, 4.400, 4.425, 4.450, 4.475
 !      (decimal places 2 -> 3, order 1 -> 2)             
-! RS: or does it actually make 11 grids instead of 10?
-!                                       KF: resolved (comment error)
+
 write(descriptor1,FMT="(I1)") order+2
 
 !Essentially this stores the digits of the number---aftering flooring--
@@ -130,12 +131,9 @@ var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 
 !Sort the indexed frames by the first variable (into columns); then grid it
 !This sorts both vals and indexer; indexer can then be used to access coords
-! RS: do you really need to pass overcrowdN twice to qsort2????
-! RS: in what case val does not have the same number of "rows" as indexer?
-!                                       KF: this is complicated
+
 call qsort2(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
-! RS: still called qsort in f1_functions. I guess you will change it in the next push?
-!                                       KF : resolve (github error)
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !   QSORT2 is a subroutine of F1_FUNCTIONS.F90
 !   Takes vals (1st argument) with dimensions overcrowdN, Nvar (3rd, 4th argument)
@@ -145,7 +143,7 @@ call qsort2(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 call grider(grid1,vals,gap1,var1_new,scaling1,overcrowdN,Nvar,1,overcrowdN,1)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!   GRIDER is a subroutine of F!_FUNCTIONS.F90
+!   GRIDER is a subroutine of F1_FUNCTIONS.F90
 !   Outputs grid1 (1st argument) with dimension scaling1 (5th argument)
 !   from vals (2nd argument) with dimensions overcrowdN, Nvar (6ht, 7th arguments)
 !   The value of the first gridline (i=1) is at var1_new (4th argument)
@@ -157,7 +155,7 @@ call grider(grid1,vals,gap1,var1_new,scaling1,overcrowdN,Nvar,1,overcrowdN,1)
 !   with the largest value in the 1-th column (10th argument) but less than
 !   the value of the gridline i. Let's say we get this output:
 !   ex.   grid1 = [ 1, 10, 12, 20, 100, 200, 201, 201, 201, 501]
-!                     for 500 frames in subcell 4.25_1.00
+!                     for 500 frames in subcell 4.25_1.00 (grid spacing = 0.25)
 !         * 4.250 would be the first gridline (i=1)
 !         * 4.475 would be the last gridline (i=10)
 !         * grid1(1) = 1 indicates that 1 - 1 = 0 is the index of the largest
@@ -175,6 +173,7 @@ call grider(grid1,vals,gap1,var1_new,scaling1,overcrowdN,Nvar,1,overcrowdN,1)
 !                      frame, and it has a lower value than 4.475, cell/column
 !                      10 is thus empty.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Great, this is very clear. Thank you
 
 index1_1 = grid1(1)
 do i = 1, scaling1
