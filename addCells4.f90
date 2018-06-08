@@ -20,7 +20,7 @@ integer, dimension(lengthN), intent(out) :: counterN
 integer :: i,j,k,l,index_order,index1_1,index1_2,index2_1,index2_2
 integer :: var1_NINT,var2_NINT
 integer :: scaling1,scaling2,scaling3,resolution
-logical :: state1
+logical :: state1,flag1
 real,intent(in) :: var1,var2,var3
 real :: gap1, gap2, gap3, var1_new, var2_new
 real,allocatable :: coords(:,:),vals(:,:)
@@ -84,8 +84,6 @@ do j=1, overcrowdN
         indexer(j,1) = j
 end do
 close(72)
-
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME SORTING/GRIDING

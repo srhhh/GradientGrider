@@ -1,5 +1,5 @@
-a.out : f1_parameters.o f1_variables.o f1_functions.o addCells3.o ls_rmsd.o checkCells3.o test_checkCells.o
-	gfortran -o a.out -O3 -fcheck="bound" f1_parameters.o f1_variables.o f1_functions.o addCells3.o ls_rmsd.o checkCells3.o test_checkCells.o
+a.out : f1_parameters.o f1_variables.o f1_functions.o addCells4.o ls_rmsd.o mapCellData.o checkCells4.o test_checkCells.o
+	gfortran -o a.out -O3 -fcheck="bound" f1_parameters.o f1_variables.o f1_functions.o addCells4.o ls_rmsd.o mapCellData.o checkCells4.o test_checkCells.o
 
 
 f1_parameters.o : f1_parameters.f90
@@ -8,13 +8,15 @@ f1_variables.o : f1_variables.f90
 	gfortran -c f1_variables.f90
 f1_functions.o : f1_functions.f90
 	gfortran -c f1_functions.f90
-addCells3.o : addCells3.f90
-	gfortran -c addCells3.f90
+addCells4.o : addCells4.f90
+	gfortran -c addCells4.f90
 ls_rmsd.o : ls_rmsd.f90
 	gfortran -c ls_rmsd.f90
-checkCells3.o : checkCells3.f90
-	gfortran -c checkCells3.f90
+mapCellData.o : mapCellData.f90
+	gfortran -c mapCellData.f90
+checkCells4.o : checkCells4.f90
+	gfortran -c checkCells4.f90
 test_checkCells.o : test_checkCells.f90
 	gfortran -c test_checkCells.f90
 clean :
-	rm test_checkCells.o f1_parameters.o f1_parameters.mod f1_variables.o f1_variables.mod f1_functions.o f1_functions.mod addCells3.o addcells3.mod checkCells3.o checkcells3.mod ls_rmsd.o ls_rmsd.mod
+	rm test_checkCells.o f1_parameters.o f1_parameters.mod f1_variables.o f1_variables.mod f1_functions.o f1_functions.mod addCells4.o addcells4.mod checkCells4.o checkcells4.mod mapcelldata.mod mapCellData.o ls_rmsd.o ls_rmsd.mod
