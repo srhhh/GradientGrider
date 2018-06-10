@@ -62,8 +62,7 @@ end subroutine partition
 !       swapR is for matrices of type real (vals)
 !       swapI is for matrices of type integer (indexer)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! RS: Could we merge these two function? 
-! RS: You are pass "cols" and "1" when calling them so I don't think it will be an issue
+
 subroutine swapR(A,rows,cols,i1, i2)
 implicit none
 integer, intent(in) :: rows, cols, i1, i2
@@ -217,6 +216,8 @@ do
 ! RS: Since A is already sorted, I think we can use a much algorithm to grid
 ! RS: Like the "finding the root" homework
 ! RS: Let's talk about this tomorrow
+
+! RS: Do you plan to change this later?
         gridline = gridline_start + (grid_index-1)*gridline_spacing
         if (gridline < A(A_index,var)) then
                 grid(grid_index) = A_index
