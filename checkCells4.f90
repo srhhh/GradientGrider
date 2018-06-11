@@ -8,8 +8,8 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !              FUNCTION CHECKSTATE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!INPUT: real,dim(3*Natoms) coords                       "the frame"
-!       integer, dim(...) counters                      "so as to not re-read everytime"
+!INPUT: real,dim(3*Natoms) coords                       "the to-be-checked frame"
+!       integer, dim(...) counter'X'                    "so as to not re-read everytime"
 !OUTPUT real, dim(6*Natoms) closestCoords               "closest frame+gradient"
 !       dp min_rmsd                                     "closest frame rmsd"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -43,19 +43,23 @@ double precision, allocatable :: U(:,:), g(:,:)
 character(50) :: descriptor1, descriptor2, subcell
 character(9) ::  descriptor3, descriptor4
 
-!Need a ridiculously large number
+! Need a ridiculously large number
 min_rmsd = 100.0
 
-!Get the variables corresponding to each frame
+! Get the variables corresponding to each frame
+! RS: What do you mean by 'each'? Isn't the input only one frame?
+! RS: calculating var again so you don't have to pass them?
 call getVar1(coords,Natoms,var1)
 call getVar2(coords,Natoms,var2)
 call getVar3(coords,Natoms,var3)
 
 !The coordinates, as they are formatted in getCells and addCells, are the wrong
 !shape for ls_rmsd. Thus, we reshape them first
+
+! RS: ha! Should have read them in this format at the first place
 rmsd_coords1 = reshape(coords,(/3, Natoms/))
 
-
+! RS: I have some thoughts on the following -- Let's talk tomorrow
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -100,7 +104,7 @@ if (key0 == 0) then
                 !Call mapCell to see the heat map of all parent cells
                 call mapCell(0,counter0,counter0_max,nint(max_var1),nint(max_var2))
 
-                !getRMSD reads off the coordinates and calculated the RMSD with
+                ! getRMSD reads off the coordinates and calculated the RMSD with
                 !ls_rmsd module
                 allocate(neighbor_rmsds(population),&
                         neighbor_coords(population,Nvar+6*Natoms))
