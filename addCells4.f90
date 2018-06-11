@@ -74,16 +74,16 @@ subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
 !        ---  coords will be sorted according to vals
 !indexer ---  holds the indexes of coords
 !        ---  indexer will be sorted according to vals
-open(72,file=trim(path3)//trim(subcell)//".dat")
+open(filechannel1,file=trim(path3)//trim(subcell)//".dat")
 allocate(vals(overcrowdN,Nvar))
 allocate(coords(overcrowdN,6*Natoms))
 allocate(indexer(overcrowdN,1))
 do j=1, overcrowdN
-        read(72,FMT=FMT1,advance="no",iostat=k) (vals(j,i),i=1,Nvar)
-        read(72,FMT=FMT2) (coords(j,i),i=1,6*Natoms)
+        read(filechannel1,FMT=FMT1,advance="no",iostat=k) (vals(j,i),i=1,Nvar)
+        read(filechannel1,FMT=FMT2) (coords(j,i),i=1,6*Natoms)
         indexer(j,1) = j
 end do
-close(72)
+close(filechannel1)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME SORTING/GRIDING
@@ -255,12 +255,12 @@ do i = 1, scaling1
                 subcell = trim(descriptor4)//"_"//trim(descriptor5)
 
                 !We write all of the frames onto the higher order subcell
-                open(72,file=trim(path3)//trim(subcell)//".dat",status="new")
+                open(filechannel1,file=trim(path3)//trim(subcell)//".dat",status="new")
                 do k = index2_1, index2_2-1
-                        write(72,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
-                        write(72,FMT=FMT2)(coords(indexer(k,1),l),l=1,6*Natoms)
+                        write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
+                        write(filechannel1,FMT=FMT2)(coords(indexer(k,1),l),l=1,6*Natoms)
                 end do
-                close(72)
+                close(filechannel1)
 
                 !And we also want to keep track of how many frames are in this
                 !new subcell; indexing is exactly as in addState
@@ -353,10 +353,10 @@ if (population < overcrowd0) then
                 descriptor0 = "old"
         end if
 
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
         !Consequently, this is the end of the line. There is no deeper
         !subcell so the next frame can be added in now
@@ -378,10 +378,10 @@ else if (population == overcrowd0) then
                     scaling1_0,scaling2_0,0,resolution_0,&
                     header1,counter1,counter1_max,overcrowd0-1)
  
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
       
         !Incrementing header insures that the position granted is unique
         header1 = header1 + 1
@@ -431,10 +431,10 @@ if (population < overcrowd1) then
                 descriptor0 = "old"
         end if
 
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
         return
 
@@ -448,16 +448,16 @@ else if (population == overcrowd1) then
                     header2,counter2,counter2_max,overcrowd1-1)
         header2 = header2 + 1
 
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
 else
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
 end if
 
@@ -495,10 +495,10 @@ if (population < overcrowd2) then
                 descriptor0 = "old"
         end if
  
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
         return
 
@@ -511,16 +511,16 @@ else if (population == overcrowd2) then
                     header3,counter3,counter3_max,overcrowd2-1)
         header3 = header3 + 1
 
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
 else
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
 end if
 
@@ -556,30 +556,30 @@ if (population < overcrowd3) then
                 descriptor0 = "old"
         end if
  
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
         return
 
 !Because this is the end of the line, a notice is put up for no further divyUps
 else if (population == overcrowd3) then 
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
-        open(80,file=trim(path4)//trim(progressfile),position="append")
-        write(80,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        write(80,*) " FINAL LEVEL SUBCELL OVERCROWDED"
-        write(80,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        close(80)
+        open(progresschannel,file=trim(path4)//trim(progresschannel),position="append")
+        write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        write(progresschannel,*) " FINAL LEVEL SUBCELL OVERCROWDED"
+        write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        close(progresschannel)
 else
-        open(72,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
-        write(72,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(72,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(72)
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        close(filechannel1)
 
 end if
 

@@ -46,9 +46,10 @@ character(9) ::  descriptor3, descriptor4
 ! Need a ridiculously large number
 min_rmsd = 100.0
 
-! Get the variables corresponding to each frame
+! Get the variables corresponding to frame
 ! RS: What do you mean by 'each'? Isn't the input only one frame?
 ! RS: calculating var again so you don't have to pass them?
+!                       KF: the word 'each' is misleading, my bad
 call getVar1(coords,Natoms,var1)
 call getVar2(coords,Natoms,var2)
 call getVar3(coords,Natoms,var3)
@@ -57,6 +58,7 @@ call getVar3(coords,Natoms,var3)
 !shape for ls_rmsd. Thus, we reshape them first
 
 ! RS: ha! Should have read them in this format at the first place
+!                       KF: ohhh maaaannnnnnn
 rmsd_coords1 = reshape(coords,(/3, Natoms/))
 
 ! RS: I have some thoughts on the following -- Let's talk tomorrow
@@ -88,10 +90,10 @@ population = modulo(counter0(indexer),key_start)
 key0 = counter0(indexer)/key_start
 
 !Write to the progress file for bug-testing
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "Investigating key ", counter0(indexer), " with index ", indexer, " and order ", order
-write(70,*) ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "Investigating key ", counter0(indexer), " with index ", indexer, " and order ", order
+write(progresschannel,*) ""
+close(progresschannel)
 
 !If the key is zero, then that means divyUp was not called on it
 !So there are no children subcells, so this subcell must be examined
@@ -149,10 +151,10 @@ population = modulo(counter1(indexer),key_start)
 key1 = counter1(indexer)/key_start
 
 !Write to the progress file
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "Investigating key ", counter1(indexer), " with index ", indexer, " and order ", order
-write(70,*) ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "Investigating key ", counter1(indexer), " with index ", indexer, " and order ", order
+write(progresschannel,*) ""
+close(progresschannel)
 
 !If the key is zero, then that means divyUp was not called on it
 !So there are no children subcells, so this subcell must be examined
@@ -267,10 +269,10 @@ indexer = index_start + scaling1_1*var2_new + var1_new
 population = modulo(counter2(indexer),key_start)
 key2 = counter2(indexer)/key_start
 
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "Investigating key ", counter2(indexer), " with index ", indexer, " and order ", order
-write(70,*) ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "Investigating key ", counter2(indexer), " with index ", indexer, " and order ", order
+write(progresschannel,*) ""
+close(progresschannel)
 
 if (key2 == 0) then
 
@@ -304,9 +306,9 @@ population = 0
         else
 
 !For bug-testing
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "Fetching neighbors..."
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "Fetching neighbors..."
+close(progresschannel)
 
                 var1_old = anint(var1*scaling1_0-0.5)/(scaling1_0)
                 var2_old = anint(var2*scaling2_0-0.5)/(scaling2_0)
@@ -320,11 +322,11 @@ close(70)
                 decimals2 = modulo(nint(var2_old*1000),1000)
 
 !For bug-testing
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "   inside of cell ", trim(adjustl(descriptor3)), decimals1/10,&
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "   inside of cell ", trim(adjustl(descriptor3)), decimals1/10,&
                                   trim(adjustl(descriptor4)), decimals2/10
-write(70,*) ""
-close(70)
+write(progresschannel,*) ""
+close(progresschannel)
 
                 stop_flag = .false.
                 do i = 1, scaling1_1
@@ -378,10 +380,10 @@ indexer = index_start + scaling1_1*var2_new + var1_new
 population = modulo(counter3(indexer),key_start)
 key3 = counter3(indexer)/key_start
 
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "Investigating key ", counter3(indexer), " with index ", indexer, " and order ", order
-write(70,*) ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "Investigating key ", counter3(indexer), " with index ", indexer, " and order ", order
+write(progresschannel,*) ""
+close(progresschannel)
 
 if (key3 == 0) then
 
@@ -626,10 +628,10 @@ double precision, allocatable :: U(:,:), g(:,:)
 double precision, dimension(3) :: x_center,y_center
 
 !Read off the states in this subcell
-open(72,file=trim(path3)//trim(filename)//".dat")
+open(filechannel1,file=trim(path3)//trim(filename)//".dat")
 do i = 1, population
-        read(72,FMT=FMT1,advance="no") (coords(i,j),j=1,Nvar)
-        read(72,FMT=FMT2) (coords(i,j),j=Nvar+1,Nvar+6*Natoms)
+        read(filechannel1,FMT=FMT1,advance="no") (coords(i,j),j=1,Nvar)
+        read(filechannel1,FMT=FMT2) (coords(i,j),j=Nvar+1,Nvar+6*Natoms)
 
         !Need to make the coordinates readable for the rmsd
         rmsd_coords2 = reshape(coords(i,Nvar+1:Nvar+3*Natoms),&
@@ -637,12 +639,12 @@ do i = 1, population
         call rmsd(Natoms,coords_static,rmsd_coords2,0,U,&
                   x_center,y_center,rmsds(i),.false.,g)
         end do
-close(72)
+close(filechannel1)
 
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "Reading off subcell ", trim(filename)
-write(70,*) ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "Reading off subcell ", trim(filename)
+write(progresschannel,*) ""
+close(progresschannel)
 
 end subroutine getRMSD
 

@@ -8,6 +8,10 @@ real, dimension(Nvar) :: vals
 ! RS: I suggest we stay with the same set of data for reading and storing
 ! RS: i.e. be consistant with (3*Natoms) :: coords, gradient
 ! RS:      or (6*Natoms) :: coords (as you have in addCells)
+!                               KF: in this particular case, we may not have the
+!                               gradient for coords, so I use only 3*Natoms;
+!                               but we could easily increase it to 6*Natoms if
+!                               it may be more convenient later
 real, dimension(3*Natoms) :: coords, gradient
 real, dimension(6*Natoms) :: coords_Cells
 double precision :: min_rmsd
@@ -23,16 +27,19 @@ character(50) :: subcell
 ! RS: I think we should treat this as a two-step process
 ! RS: 1. construct the data (when there is not much data it does not make much sense to check in the database)
 ! RS: 2. checking the data and maybe write more into the data
+!                       KF: I just copy-pasted those line from getCells....
+!                       (this was when I was just starting the project)
+!                       in reality, I could replace all those lines with:
 
 !Instead of printing to the terminal, we print to the progress files
-!First we check if it exists and just wipe
-!We want to start from a clean slate
-inquire(file=trim(path4)//trim(progressfile),exist=flag1)
-if (flag1) call system("rm "//trim(path4)//trim(progressfile))
-open(70,file=trim(path4)//trim(progressfile),status="new")
-write(70,FMT="(A50)") "Let's start"
-write(70,FMT="(A50)") ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile))
+write(progresschannel,FMT="(A50)") "Let's start"
+write(progresschannel,FMT="(A50)") ""
+close(progresschannel)
+
+!                       KF: this is more compact
+!                       remark: this is just so that I don't have to print
+!                               and then look at the terminal output
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          COUNTER ARRAYS RETRIEVAL
@@ -56,30 +63,32 @@ close(70)
 !    if aaaa = 0, it indicates the ith cell (X=0) has bbbb states stored
 !    if aaaa > 0, the ith cell is overcrowded and the cell has been divided (through divyup in addCells)
 !        and the data has been stored in subcell. The counter and pointer can be found at counter1 (X=1)
+!
+!                       KF: yes, I should add something like this to the README
 
-open(70,file=trim(path4)//"counter0.txt",status="old")
+open(filechannel1,file=trim(path4)//"counter0.txt",status="old")
 do i = 1, counter0_max
-        read(70,FMT="(I8)") counter0(i)
+        read(filechannel1,FMT="(I8)") counter0(i)
 end do
-close(70)
+close(filechannel1)
 
-open(70,file=trim(path4)//"counter1.txt",status="old")
+open(filechannel1,file=trim(path4)//"counter1.txt",status="old")
 do i = 1, counter1_max
-        read(70,FMT="(I8)") counter1(i)
+        read(filechannel1,FMT="(I8)") counter1(i)
 end do
-close(70)
+close(filechannel1)
 
-open(70,file=trim(path4)//"counter2.txt",status="old")
+open(filechannel1,file=trim(path4)//"counter2.txt",status="old")
 do i = 1, counter2_max
-        read(70,FMT="(I8)") counter2(i)
+        read(filechannel1,FMT="(I8)") counter2(i)
 end do
-close(70)
+close(filechannel1)
 
-open(70,file=trim(path4)//"counter3.txt",status="old")
+open(filechannel1,file=trim(path4)//"counter3.txt",status="old")
 do i = 1, counter3_max
-        read(70,FMT="(I8)") counter3(i)
+        read(filechannel1,FMT="(I8)") counter3(i)
 end do
-close(70)
+close(filechannel1)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          RANDOM FRAME RETRIEVAL
@@ -90,118 +99,138 @@ rand_file_position = 12
 
 ! Get a list of all cells and subcells; pick a random one
 call system("ls -p "//trim(path3)//" | grep '.dat' > "//trim(path4)//trim(temporaryfile1))
-open(70,file=trim(path4)//trim(temporaryfile1))
+open(trajectorieschannel,file=trim(path4)//trim(temporaryfile1))
 ! RS: There is an option in OPEN call RECL that allows you to directly read from a specific line
 ! RS: https://docs.oracle.com/cd/E19957-01/805-4939/6j4m0vnaf/index.html
+!                               KF: I don't believe you just yet
 do i = 1, rand_subcell_position
-        read(70,FMT="(A50)") subcell
+        read(trajectorieschannel,FMT="(A50)") subcell
 end do
-close(70)
+close(trajectorieschannel)
 
 !writing the checking information into the progress file
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,FMT="(A50)") "For the random frame, looking in ", trim(subcell)
-write(70,FMT="(A50)") ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,FMT="(A50)") "For the random frame, looking in ", trim(subcell)
+write(progresschannel,FMT="(A50)") ""
+close(progresschannel)
 
 ! RS: One good practice of file I/O is to use different indexer for the file
-! RS: i.e. you keep using 70 for various files, which has two potential disadvantages:
-! RS:    a. Hard to keep track of what 70 if the operation is long
-! RS:    b. Hard to debug if you accidential forgot to close the 70 before
+! RS: i.e. you keep using progresschannel for various files, which has two potential disadvantages:
+! RS:    a. Hard to keep track of what progresschannel if the operation is long
+! RS:    b. Hard to debug if you accidential forgot to close the progresschannel before
+!                               KF: maybe set a variable. for example:
+!                               integer, parameter :: progresschannel = progresschannel
+!                               integer, parameter :: filechannel1 = 71
+!                                       etc
 
 !Open up that subcell; pick a random frame
-open(70,file=trim(path3)//trim(subcell))
+open(frameschannel,file=trim(path3)//trim(subcell))
 i = 0
 do
         i = i + 1
         if (i < rand_file_position) then
-                read(70,FMT="(A50)",iostat=state1) subcell
+                read(frameschannel,FMT="(A50)",iostat=state1) subcell
                 if (state1 /= 0) then
                         i = i - 1
 ! RS: Did you use rewind here so that you won't get an error if rand_file_position is larger
 ! RS:    than the cell/subcell that you are in?
 ! RS: I think we should be considerate about that case and just add an exit with some writing
 ! RS:    statement, e.g. "the frame that you are trying to check does not exist"
-                        rewind(70)
+!                                       KF: yes... it is inefficient but it
+!                                       doesn't seem that important (just a
+!                                       test); I wanted as little friction as
+!                                       possible from number input to frame
+!                                       output
+                        rewind(frameschannel)
                 end if
         else
-                read(70,FMT=FMT1,advance="no",iostat=state1) (vals(j),j=1,Nvar)
+                read(frameschannel,FMT=FMT1,advance="no",iostat=state1) (vals(j),j=1,Nvar)
                 if (state1 /= 0) then
                         i = i - 1
-                        close(70)
-                        open(70,file=trim(path3)//trim(subcell))
+                        close(frameschannel)
+                        open(frameschannel,file=trim(path3)//trim(subcell))
                         cycle
                 end if
-                read(70,FMT=FMT2) (coords(j),j=1,3*Natoms)
+                read(frameschannel,FMT=FMT2) (coords(j),j=1,3*Natoms)
                 exit 
         end if
 end do
-close(70)
+close(frameschannel)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !               FRAME MODIFICATION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "The original coordinates are: "
-write(70,*) coords
-write(70,*) ""
-write(70,*) "With variables: ", vals(1), " A and ", vals(2), " A"
-write(70,*) ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "The original coordinates are: "
+write(progresschannel,*) coords
+write(progresschannel,*) ""
+write(progresschannel,*) "With variables: ", vals(1), " A and ", vals(2), " A"
+write(progresschannel,*) ""
+close(progresschannel)
 
 !This is how I choose to change the coordinates
 
 ! RS: It is fine that you choose the following but why we are doing this at the first place?
 ! RS: We do we want to chagne the coord?
+!                       KF: This part is just to play with;
+!                       Because the frame is already part of the grid, if we
+!                       don't make any changes, we'll just get the same frame
+!                       back (boring). This change demonstrates a new frame will
+!                       produce a frame from the grid that approximates it
 coords(3) = coords(3) + 0.1
 coords(4) = coords(4) - 0.000
 coords(18) = coords(18) + .000
 
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,FMT="(A50)") "Making these changes to it:"
-write(70,FMT="(A50)") ""
-write(70,*) "coords(3) = coords(3) + 0.1"
-write(70,*) "coords(4) = coords(4) - 0.000"
-write(70,*) "coords(18) = coords(18) + .000"
-write(70,FMT="(A50)") ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,FMT="(A50)") "Making these changes to it:"
+write(progresschannel,FMT="(A50)") ""
+write(progresschannel,*) "coords(3) = coords(3) + 0.1"
+write(progresschannel,*) "coords(4) = coords(4) - 0.000"
+write(progresschannel,*) "coords(18) = coords(18) + .000"
+write(progresschannel,FMT="(A50)") ""
+close(progresschannel)
 
 call getVar1(coords,Natoms,vals(1))
 call getVar2(coords,Natoms,vals(2))
 
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "The modified coordinates are: "
-write(70,*) coords
-write(70,*) ""
-write(70,*) "With variables: ", vals(1), " A and ", vals(2), " A"
-write(70,*) ""
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "The modified coordinates are: "
+write(progresschannel,*) coords
+write(progresschannel,*) ""
+write(progresschannel,*) "With variables: ", vals(1), " A and ", vals(2), " A"
+write(progresschannel,*) ""
+close(progresschannel)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !               GRID CHECKING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! RS: To check weather the modified grid exsit?
+!                                       KF: Everything up until here was just to
+!                                       get a new frame;
+!                                       This subroutine call actually goes into
+!                                       the grid and checks for a frame that is
+!                                       close to it
 call checkState(coords,coords_Cells,min_rmsd,&
                 counter0,counter1,counter2,counter3)
 
 call getVar1(coords_Cells,Natoms,vals(1))
 call getVar2(coords_Cells,Natoms,vals(2))
 
-open(70,file=trim(path4)//trim(progressfile),position="append")
-write(70,*) "The closests coordinates are: "
-write(70,*) coords_Cells(1:3*Natoms)
-write(70,*) ""
-write(70,*) "With variables: ", vals(1), " A and ", vals(2), " A"
-write(70,*) ""
-write(70,*) ""
-write(70,*) "This has an rmsd of: ", min_rmsd
-write(70,*) ""
-write(70,*) ""
-write(70,*) "The closest frame has a gradient as follows: "
-write(70,*) coords_Cells(3*Natoms+1:6*Natoms)
-close(70)
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "The closests coordinates are: "
+write(progresschannel,*) coords_Cells(1:3*Natoms)
+write(progresschannel,*) ""
+write(progresschannel,*) "With variables: ", vals(1), " A and ", vals(2), " A"
+write(progresschannel,*) ""
+write(progresschannel,*) ""
+write(progresschannel,*) "This has an rmsd of: ", min_rmsd
+write(progresschannel,*) ""
+write(progresschannel,*) ""
+write(progresschannel,*) "The closest frame has a gradient as follows: "
+write(progresschannel,*) coords_Cells(3*Natoms+1:6*Natoms)
+close(progresschannel)
 
 
 

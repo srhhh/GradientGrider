@@ -218,6 +218,7 @@ do
 ! RS: Let's talk about this tomorrow
 
 ! RS: Do you plan to change this later?
+!                       KF: yes, it will be the next push, most likely
         gridline = gridline_start + (grid_index-1)*gridline_spacing
         if (gridline < A(A_index,var)) then
                 grid(grid_index) = A_index
