@@ -17,18 +17,16 @@ use f1_functions
 implicit none
 integer, intent(in) :: order,indexN,lengthN,overcrowdN
 integer, dimension(lengthN), intent(out) :: counterN
-integer :: i,j,k,l,index_order,index1_1,index1_2,index2_1,index2_2
+integer :: i,j,k,l,population,last_marker,Nmarkers,index_order,counter_index
 integer :: var1_NINT,var2_NINT
 integer :: scaling1,scaling2,scaling3,resolution
-logical :: state1,flag1
 real,intent(in) :: var1,var2,var3
 real :: gap1, gap2, gap3, var1_new, var2_new
 real,allocatable :: coords(:,:),vals(:,:)
-integer, dimension(scaling1) :: grid1
-integer, dimension(scaling2) :: grid2
+integer, dimension(scaling1-1) :: grid1
+integer, dimension(scaling2-1) :: grid2
 integer, allocatable :: indexer(:,:)
-character(50) :: currentsubcell
-character(50) :: subcell,line_data
+character(50) :: subcell
 character(1) :: descriptor1
 character(10) :: descriptor2,descriptor3,descriptor4,descriptor5
 
@@ -75,9 +73,9 @@ subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
 !indexer ---  holds the indexes of coords
 !        ---  indexer will be sorted according to vals
 open(filechannel1,file=trim(path3)//trim(subcell)//".dat")
-allocate(vals(overcrowdN,Nvar))
 allocate(coords(overcrowdN,6*Natoms))
-allocate(indexer(overcrowdN,1))
+allocate(vals(overcrowdN+resolution-1,Nvar))
+allocate(indexer(overcrowdN+resolution-1,1))
 do j=1, overcrowdN
         read(filechannel1,FMT=FMT1,advance="no",iostat=k) (vals(j,i),i=1,Nvar)
         read(filechannel1,FMT=FMT2) (coords(j,i),i=1,6*Natoms)
@@ -94,18 +92,22 @@ close(filechannel1)
 gap1 = spacing1/(scaling1_0*scaling1_1**(order))
 gap2 = spacing2/(scaling2_0*scaling2_1**(order))
 
+!Add markers to know when a subcell begins/ends
+do i = 1, resolution-1
+        counter_index = overcrowdN + i
+        indexer(counter_index,1) = counter_index
+        vals(counter_index,:) = (/ var1_new+(i/scaling2)*gap1,&
+                                   var2_new+modulo(i,scaling2)*gap2,&
+                                   0.0                                  /)
+end do
+
+
 !The filenames of the subcells will be split into two parts:
 !  the prefix is of form "xx." (the integer part)
 !  the suffix is of form ".yyyyy" (the decimal part)
 !Clearly, the integer part does not depend on the subcell
 !but on the parent cell, so it is initialized here
 
-! RS: You var1_new is already rounded 
-! RS: "var1_new = anint(var1-0.5)"
-! RS: Why are you doing it again?            KF: resolved (code error)
-
-! RS: Wait... Did you fix it? shouldn't you just delete the following two lines
-! RS: and move the "adjust1" to line 65? Am I missing something?
 write(descriptor2,FMT="(F9.0)") var1_new - 0.5
 write(descriptor3,FMT="(F9.0)") var2_new - 0.5
 
@@ -127,154 +129,116 @@ write(descriptor1,FMT="(I1)") order+2
 var1_NINT = nint((var1_new-floor(var1_new))*(10**(order+2)))
 var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 
-!Sort the indexed frames by the first variable (into columns); then grid it
-!This sorts both vals and indexer; indexer can then be used to access coords
+!Sort the indexed frames by the first variable (into columns);
+!Because we also added markers that have values corresponding to the gridlines,
+!these markers will be sorted according to whether frames are before or after
+!them. One pair of markers (p1,p2) would indicate that frames [p1,p2-1] are in
+!the same column.
+!Qsort2 sorts both vals and indexer; indexer can then be used to access coords
 
-call qsort2(vals,indexer,overcrowdN,Nvar,1,overcrowdN,1)
+call qsort2(vals,indexer,overcrowdN+resolution-1,Nvar,1,overcrowdN+resolution-1,1)
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!   QSORT2 is a subroutine of F1_FUNCTIONS.F90
-!   Takes vals (1st argument) with dimensions overcrowdN, Nvar (3rd, 4th argument)
-!   And indexer (2nd argument) with dimensions overcrowdN, 1 (3rd argument)
-!   And sorts them according to the 1-th column of vals (7th argument)
-!   But only from indexes 1 to overcrowdN (5th, 6th argument)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-call grider(grid1,vals,gap1,var1_new,scaling1,overcrowdN,Nvar,1,overcrowdN,1)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!   GRIDER is a subroutine of F1_FUNCTIONS.F90
-!   Outputs grid1 (1st argument) with dimension scaling1 (5th argument)
-!   from vals (2nd argument) with dimensions overcrowdN, Nvar (6ht, 7th arguments)
-!   The value of the first gridline (i=1) is at var1_new (4th argument)
-!   And subsequent gridlines are multiples of gap1 (3rd argument)
-!   This stops after scaling1 (5th argument) gridlines have been made
-!   This only does gridings for indexes 1 to overcrowdN (8th, 9th arguments) of vals
-!
-!   The value of position i in grid1 corresponds to the index minus one of vals
-!   with the largest value in the 1-th column (10th argument) but less than
-!   the value of the gridline i. Let's say we get this output:
-!   ex.   grid1 = [ 1, 10, 12, 20, 100, 200, 201, 201, 201, 501]
-!                     for 500 frames in subcell 4.25_1.00 (grid spacing = 0.25)
-!         * 4.250 would be the first gridline (i=1)
-!         * 4.475 would be the last gridline (i=10)
-!         * grid1(1) = 1 indicates that 1 - 1 = 0 is the index of the largest
-!                      value lower than 4.250; this is out-of-bounds because
-!                      no value of this cell should be less than 4.25
-!         * grid1(2) = 10 indicates that 10 - 1 = 9 is the index of the largest
-!                      value lower than 4.275; thus, 9 frames are in the first
-!                      'cell' or 'column'
-!         * grid1(9) = grid1(8) = grid1(7) = 201 indicates that index 200
-!                      of vals is the largest value of all gridlines
-!                      i=7,8,9 (or 4.400,4.425,4.450) LOWER than 4.400.
-!                      This means cells/column 8 and 9 (4.400,4.425) are empty
-!         * grid1(10) = 501 indicates that 501 - 1 = 500 is the index of the
-!                      largest value lower than 4.475. Because this is the last
-!                      frame, and it has a lower value than 4.475, cell/column
-!                      10 is thus empty.
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! Great, this is very clear. Thank you
-
-index1_1 = grid1(1)
-do i = 1, scaling1
-        !For grid1, we can think of indexes as "columns"
-        !Column i is mapped to pair [p1,p2); p1=grid1(i), p2=grid1(i+1)
-        !where p1 and p2 are indexes to vals, and
-        !       vals(p1) is the FIRST frame in column i
-        !       vals(p2) is the LAST frame in column i
-        !       and everything between them is also in column i
-        !For the last column, p2= overcrowdN+1 to indicate that
-        !the remaining frames must be in it
-        !if they were not already placed in a column
-        if (i == scaling1) then
-                index1_2 = overcrowdN+1
-        else
-                index1_2 = grid1(i+1)
+!A marker can be identified by checking whether indexer(p) > overcrowd
+!If so, then it is a marker. A pair of markers (p1,p2) would indicate a column
+!but these need to be sorted further by var2 into cells. These are sorted the
+!same way.
+last_marker = 1
+Nmarkers = 0
+do counter_index = 1, overcrowdN+resolution-1
+        if (indexer(counter_index,1) > overcrowdN) then
+        Nmarkers = Nmarkers + 1
+        if (Nmarkers == scaling2) then
+                call qsort2(vals,indexer,overcrowdN+resolution-1,Nvar,&
+                           last_marker,counter_index-1,2)
+                last_marker = counter_index
+                Nmarkers = 0
+        end if
         end if
 
-        !If the column is empty, don't even bother
-        if (index1_2 == index1_1) then
-                index1_1 = index1_2
-                cycle
-        end if
+end do
 
-        !Sort the indexed states in this grid element (into cells); then grid it
-        call qsort2(vals,indexer,overcrowdN,Nvar,index1_1,index1_2-1,2)
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !   The key difference here is that we only want to sort values of the
-        !   current column.
-        !   Values are in the same column if their indexes are in range [p1,p2)
-        !   p2 is not included in the cell so there is a minus one subtraction
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        call grider(grid2,vals,gap2,var2_new,scaling2,overcrowdN,Nvar,&
-                        index1_1,index1_2-1,2)
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !   The key difference here is that we only want to grid based on values
-        !   of the current column
-        !   Similar index-choosing as in QSORT2 above
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        index2_1 = grid2(1)
-        do j = 1, scaling2
-                !For grid2, we can think of indexes as "cells" of the column
-                !Cell j is mapped to pair [p1,p2); p1=grid1(j),p2=grid2(j+1)
-                !where p1 and p2 are indexes to vals, and
-                !       vals(p1) is the FIRST frame in cell j, column i
-                !       vals(p2) is the LAST frame in cell j, column i
-                !       and everything between them is also in cell j
-                !For the last cell, p2 = index1_2 to indicate that
-                !the remaining frames must be in it
-                !if they were not already placed in a cell
-                if (j == scaling2) then
-                        index2_2 = index1_2
-                else
-                        index2_2 = grid2(j+1)
-                end if                
-        
-                !If there's nothing in the cell, don't even bother
-                if (index2_1 == index2_2) then
-                        index2_1 = index2_2
-                        cycle
-                end if
+!Now that vals and indexer are fully sorted, we need to identify subcells
+!Any pair of markers (p1,p2) such that (p2-p1 > 1) is a subcell with a frame in
+!it; these pairs are ordered in such a way so that the subcell (i,j) that
+!corresponds with pair n is:
+!       i = n / scaling2
+!       j = n % scaling2
+!And, of course, i and j start at zero.
+last_marker = 1
+Nmarkers = 0
+do counter_index = 1, overcrowdN+resolution-1
+        if (indexer(counter_index,1) > overcrowdN) then
+        population = counter_index - last_marker
+        if (population > 0) then
+                i = (Nmarkers/scaling2)
+                j = modulo(Nmarkers,scaling2)
 
-                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                !             FRAME WRITING
-                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-                !Write these frames into their respective cell in the grid
-                !The array index needs to start at 1 so a subtraction is
-                !involved
-                !As consequence of having a resolution of 16 (scaling of 4)
-                !we require two decimal places so different subcells will have
-                !filenames differing by a multiple of 25
-                !Because subcells are children of the parent cell, their
-                !numbering starts from var_INT of their parent
+                !var1_INT and var2_INT are only decimal part of the PARENT cell
+                !thus, we have to add on .25*.1**order to get the decimal
+                !portion of the CHILD subcell
                 write(descriptor4,FMT="(I"//trim(descriptor1)//"."//trim(descriptor1)//")") &
-                        var1_NINT + (i-1)*(100)/scaling1_0
+                        var1_NINT + i*(100)/scaling1_0
                 write(descriptor5,FMT="(I"//trim(descriptor1)//"."//trim(descriptor1)//")") &
-                        var2_NINT + (j-1)*(100)/scaling2_0
+                        var2_NINT + j*(100)/scaling2_0
                 descriptor4 = trim(descriptor2)//trim(adjustl(descriptor4))
                 descriptor5 = trim(descriptor3)//trim(adjustl(descriptor5))
                 subcell = trim(descriptor4)//"_"//trim(descriptor5)
 
-                !We write all of the frames onto the higher order subcell
+                !We write all of the frames onto the higher order subcell;
+                !last_marker represents the first frame of the subcell
+                !whereas counter_index is the position of the marker that ends
+                !the subcell; thus, one is subctracted from it
                 open(filechannel1,file=trim(path3)//trim(subcell)//".dat",status="new")
-                do k = index2_1, index2_2-1
+                do k = last_marker, counter_index-1
                         write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
-                        write(filechannel1,FMT=FMT2)(coords(indexer(k,1),l),l=1,6*Natoms)
-                end do
+                        write(filechannel1,FMT=FMT2)(coords(indexer(k,1),l),l=1,6*Natoms)                       
+                end do 
                 close(filechannel1)
 
-                !And we also want to keep track of how many frames are in this
-                !new subcell; indexing is exactly as in addState
-                !A minus one is involved because array indexes start at 1
-                index_order = resolution*indexN + scaling1*(j-1) + i-1
-                counterN(index_order) = index2_2 - index2_1
+                !And of course, we need to add this onto counterN
+                !The indexing is exactly as in addState
+                index_order = resolution*indexN + scaling1*j + i
+                counterN(index_order) = population
+        end if
 
-                !The next cell pair [p2,p3) starts at the end of [p1,p2)
-                index2_1 = index2_2
-        end do
+        !After we finish a pair of markers (p1,p2) we save p2 so as to make
+        !the next pair (p2,p3); we add one to represent the fact that the first
+        !frame of the subcell would be the position AFTER the marker
+        last_marker = counter_index + 1
+        Nmarkers = Nmarkers + 1
 
-        !The next column pair [p2,p3) starts at the end of [p1,p2)
-        index1_1 = index1_2
+        end if
+
 end do
+
+!We do a separate write statement for the last subcell because there is no
+!marker to represent the end; this will automatically have all of the frames
+!that have not yet been written by the last_marker
+!
+!Exactly the same format as before; i,j are both at their last values
+population = overcrowdN + resolution - 1 - last_marker
+if (population > 0) then
+        i = scaling1 - 1
+        j = scaling2 - 1
+
+        write(descriptor4,FMT="(I"//trim(descriptor1)//"."//trim(descriptor1)//")") &
+                                var1_NINT + i*(100)/scaling1_0
+        write(descriptor5,FMT="(I"//trim(descriptor1)//"."//trim(descriptor1)//")") &
+                                var2_NINT + j*(100)/scaling2_0
+        descriptor4 = trim(descriptor2)//trim(adjustl(descriptor4))
+        descriptor5 = trim(descriptor3)//trim(adjustl(descriptor5))
+        subcell = trim(descriptor4)//"_"//trim(descriptor5)
+
+        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",status="new")
+        do k = last_marker, overcrowdN+resolution-1
+                write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
+                write(filechannel1,FMT=FMT2)(coords(indexer(k,1),l),l=1,6*Natoms)                       
+        end do 
+        close(filechannel1)
+
+        index_order = resolution*indexN + scaling1*j + i
+        counterN(index_order) = population    
+end if
 
 end subroutine divyUp
 
@@ -299,7 +263,6 @@ integer,dimension(counter0_max),intent(out) :: counter0
 integer,dimension(counter1_max),intent(out) :: counter1
 integer,dimension(counter2_max),intent(out) :: counter2
 integer,dimension(counter3_max),intent(out) :: counter3
-logical :: flag1
 real :: var1, var2
 integer :: var1_new,var2_new,order
 real, dimension(Nvar), intent(in) :: vals
@@ -570,7 +533,7 @@ else if (population == overcrowd3) then
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
 
-        open(progresschannel,file=trim(path4)//trim(progresschannel),position="append")
+        open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
         write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!"
         write(progresschannel,*) " FINAL LEVEL SUBCELL OVERCROWDED"
         write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!"

@@ -199,7 +199,7 @@ subroutine grider(grid,A,gridline_spacing,gridline_start,max_gridlines,&
 implicit none
 integer, intent(in) :: rows, cols, var, max_gridlines
 integer, intent(in) :: start_index, end_index
-integer :: A_index, grid_index
+integer :: A_index, grid_index, i
 real, intent(in) :: gridline_spacing, gridline_start
 real, dimension(rows,cols), intent(in) :: A
 real :: gridline
@@ -207,6 +207,7 @@ integer, dimension(max_gridlines), intent(out) :: grid
 
 A_index = start_index
 grid_index = 1
+gridline = gridline_start + gridline_spacing
 do
 ! RS: Question
 ! RS: gridline is the lower boundary of the grid 
@@ -219,15 +220,21 @@ do
 
 ! RS: Do you plan to change this later?
 !                       KF: yes, it will be the next push, most likely
-        gridline = gridline_start + (grid_index-1)*gridline_spacing
+!       gridline = gridline_start + (grid_index-1)*gridline_spacing
         if (gridline < A(A_index,var)) then
                 grid(grid_index) = A_index
                 grid_index = grid_index + 1
+                gridline = gridline + gridline_spacing
         else if (A_index == end_index) then
-                do
-                        if (grid_index > max_gridlines) exit
-                        grid(grid_index) = A_index + 1
-                        grid_index = grid_index + 1
+!               do
+!                       if (grid_index > max_gridlines) exit
+!                       grid(grid_index) = A_index + 1
+!                       grid_index = grid_index + 1
+!               end do
+!               exit
+                A_index = A_index + 1
+                do i = grid_index, max_gridlines
+                        grid(i) = A_index
                 end do
                 exit
         else
