@@ -15,6 +15,7 @@ contains
 !                                                the final index (before sorting) of the to-be-sorted part"
 !               integer var                     "which column"
 !      OUTPUT:  integer pivot_index             "the index of the column of the martix A that is used as sorting criteria"
+! RS: are you sure the comments about 'var' and 'pivot_index' are correct?? 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       Column "var" of matrix A is partitioned
 !       but only for the sub-matrix A (start_index:end_index)
