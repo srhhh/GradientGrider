@@ -13,9 +13,10 @@ contains
 !                                                the starting index (before sorting) of the to-be-sorted part"
 !               integer end_index               "in case of sorting only a part of the martix A, 
 !                                                the final index (before sorting) of the to-be-sorted part"
-!               integer var                     "which column"
-!      OUTPUT:  integer pivot_index             "the index of the column of the martix A that is used as sorting criteria"
+!               integer var                     "the index of the column of the martix A that is used as sorting criteria"
+!      OUTPUT:  integer pivot_index             "the index of the row that partitions matrix A according to var"
 ! RS: are you sure the comments about 'var' and 'pivot_index' are correct?? 
+!               KF: much more clear now
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       Column "var" of matrix A is partitioned
 !       but only for the sub-matrix A (start_index:end_index)

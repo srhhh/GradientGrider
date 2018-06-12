@@ -8,7 +8,7 @@ character(50),parameter :: path1 = "/home/ruisun/proj/ruisun/B0/"
 !Path to the f90s and bash scripts
 character(50),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
 !Path to the grid
-character(50),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid/"
+character(50),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid_test/"
 !Path for the following files (see below)
 character(50),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
 
@@ -29,6 +29,14 @@ character(20),parameter :: counter3file = "counter3.txt"
 character(20),parameter :: temporaryfile1 = "tmp1.txt"
 character(20),parameter :: temporaryfile2 = "tmp2.txt"
 character(20),parameter :: temporaryfile3 = "tmp3.txt"
+
+!FILE CHANNELS
+!Channel for the progressfile
+integer,parameter :: progresschannel = 70
+integer,parameter :: trajectorieschannel = 71
+integer,parameter :: frameschannel = 72
+integer,parameter :: filechannel1 = 73
+integer,parameter :: filechannel2 = 74
 
 
 
@@ -70,7 +78,7 @@ integer, parameter :: counter0_max = anint(max_var1/spacing1)&
                                      *anint(max_var2/spacing2)
 
 !The threshold of "overcrowded" for a cell of order N
-integer,parameter :: overcrowd0 = 500
+integer,parameter :: overcrowd0 = 250
 integer,parameter :: overcrowd1 = 250
 integer,parameter :: overcrowd2 = 100
 integer,parameter :: overcrowd3 = 100

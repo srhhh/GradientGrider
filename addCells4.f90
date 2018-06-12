@@ -29,8 +29,16 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! RS: The variable "resolution" seems redundant
+!                               KF: yes, although I don't want to have to
+!                               calculate it again each time
 ! RS: OvercrowdN really should be overcrowd(N-1)
+!                               KF: you got me!!!
+!                               ... labelling it 'overcrowdN' is a little
+!                               misleading, it is merely the size of the array
 ! RS: The trailing N in the varaible seems redundant and can be confusing
+!                               KF: I use it to stress that the counter is
+!                               dependent on the order, N, although it is
+!                               certainly ambiguous here
 
 recursive subroutine divyUp(var1,var2,var3,order,&
                             scaling1,scaling2,scaling3,resolution,&
@@ -111,6 +119,7 @@ close(filechannel1)
 ! RS: Could we avoid using filechannel'1' before filechannel is used? what does '1' refer to?
 ! RS: I noticed you used filechannel1 three times later. In this case, what differences do
 ! RS:    filechannel1 and '70' make?
+!                               KF: it is in f1_parameters (73, I believe?)
 ! RS: Let's talk about naming tomorrow
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -141,6 +150,13 @@ end do
 
 ! RS: I understand this works for order > 0, what about order = 0?
 ! RS: will the value round like ANINT or just trimed like AINT?
+!       KF: case 1: order == 0
+!               var1_new = xx.00
+!           case 2: order > 0
+!               var1_new = xx.yyyy
+!           in both cases, the decimal portion gets truncated
+!               descriptor2 = 000000xx.
+!                               I believe this works
 write(descriptor2,FMT="(F9.0)") var1_new - 0.5
 write(descriptor3,FMT="(F9.0)") var2_new - 0.5
 
@@ -171,9 +187,16 @@ var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 ! RS: By "one pair of markers", do you mean one 2D marker or two 1D markers?
 ! RS: What do you mean by "column"?
 ! RS: going to read qsort2 now, hopefully I can figure it out myself
+!               KF: the cell is traversed one-dimensionally (counter_index)
+!                   When a marker p2 is reached, we know we have reached the end
+!                   of a subcell (and consequently the beginning of the next
+!                   subcell); any frames in the range (p1,p2) are in the subcell
+!                   corresponding to marker p2
 !Qsort2 sorts both vals and indexer; indexer can then be used to access coords
 
 ! RS: I am very confused by this -- don't you add the markers in before you sort var1?
+!               KF: I add the markers in before this point
+!                       yeah... maybe we should talk about this
 call qsort2(vals,indexer,overcrowdN+resolution-1,Nvar,1,overcrowdN+resolution-1,1)
 
 !A marker can be identified by checking whether indexer(p) > overcrowd
