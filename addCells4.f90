@@ -5,9 +5,32 @@ implicit none
 
 contains
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      DIVYUP FUNCTION (QuickSort Alogrithm by Tony Hoare)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      INPUT:   real :: var1,var2,var3          "variablies used to define the 'to-be-divided' cells/subcells"
+!               integer ::  order               "the order (N-1) of the 'to-be-divided' cell/subcell"
+!               real :: scaling1                "the overcrowded cell/subcell will be divided into 'scaling1' parts along
+!                       scaling2                    var1, 'scaling2' parts along 'var2', and 'scaling3' parts along 'var3'.
+!                       scaling3                    the 'to-be-formed' cell/subcells have order N"
+!               real :: resolution              "the number of subcells that the overcrowded cell/subcell will be divided into
+!                                                resolution should be 'scaling1*scaling2*scaling3' but it is 
+!                                                   'scaling1*scaling2' for now
+!               integer :: indexN               "the index of the first 'to-be-formed' cell/subcells (order N) in 
+!                                                   the counter array (see counterN)"
+!               integer :: lengthN              "demision of array counterN (order N)"
+!               integer :: overcrowdN           "the criteria of a cell be 'overcrowded' at order (N-1)"
+!
+!      OUTPUT:  integer :: counterN             "an array of integers, which are the number of frames in the 'to-be-formed' 
+!                                                   cell/subcells (order N)"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      This function grids an overcrowded cell/subcell into higher order subcells.
+!      This function triggers only when the size of a cell/subcell reaches the overcrowd limit for the first time
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!The following grids the cell into smaller cells
-!This ASSUMES the cell is NOT already divided up
+! RS: The variable "resolution" seems redundant
+! RS: OvercrowdN really should be overcrowd(N-1)
+! RS: The trailing N in the varaible seems redundant and can be confusing
 
 recursive subroutine divyUp(var1,var2,var3,order,&
                             scaling1,scaling2,scaling3,resolution,&
@@ -36,7 +59,7 @@ character(10) :: descriptor2,descriptor3,descriptor4,descriptor5
 
 !First, get the filename of the cell to be divided
 
-!If we are in a parent cell then we don't need any decimal places 
+!If we are in a parent cell (order = 0) then we don't need any decimal places 
 !Floor to the nearby integer
 if (order == 0) then
         var1_new = anint(var1-0.5)
@@ -46,14 +69,14 @@ if (order == 0) then
         write(descriptor1,FMT="(I1)") order
 
 !If we are in a subcell then we need decimal places
-!Floor to the nearby multiple of .25*0.1**order
+!Floor to the nearby multiple of .25*0.1**(order-1)
 else
         var1_new = anint((scaling1_0*scaling1_1**(order-1))*var1-0.5)/(scaling1_0*scaling1_1**(order-1))
         var2_new = anint((scaling2_0*scaling2_1**(order-1))*var2-0.5)/(scaling2_0*scaling2_1**(order-1))
 
         !We will make use of order+1 decimal places
         ! ex. order=1 --> .00, .25, .50, .75, etc.
-        !     order=2 --> .025, .125, .350, .500 etc.
+        !     order=2 --> .025, .050, .075, 0.100, .125, etc.
         write(descriptor1,FMT="(I1)") order+1
 end if
 
@@ -62,11 +85,12 @@ write(descriptor2,FMT="(F9."//descriptor1//")") var1_new
 write(descriptor3,FMT="(F9."//descriptor1//")") var2_new
 
 !We don't know how many decimal places will be used (may be double digit or
-!single digit) so we need to "adjustl" (remove trailing zeroes) and trim (remove
+!single digit) so we need to "adjustl" (remove leading zeroes) and trim (remove
 !trailing whitespace); this format is also followed in addState
+
 subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
 
-!Open up the file,read the variables, coordinates, gradients
+!Open up the file, read the variables, coordinates, and gradients
 !vals    ---  holds the criteria of sorting (three for now)
 !coords  ---  holds the xyz coordinates and gradients (6*Natoms)
 !        ---  coords will be sorted according to vals
@@ -83,12 +107,19 @@ do j=1, overcrowdN
 end do
 close(filechannel1)
 
+! RS: Can you just use 'filechannel1' like this without defining it??
+! RS: Could we avoid using filechannel'1' before filechannel is used? what does '1' refer to?
+! RS: I noticed you used filechannel1 three times later. In this case, what differences do
+! RS:    filechannel1 and '70' make?
+! RS: Let's talk about naming tomorrow
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME SORTING/GRIDING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !We need to know what the spacing is of the subcells
 !This is inversely proportional to the scaling
+! spacing1 and spacing 2 are the spacing of the parent-level grid (order = 0)
 gap1 = spacing1/(scaling1_0*scaling1_1**(order))
 gap2 = spacing2/(scaling2_0*scaling2_1**(order))
 
@@ -108,6 +139,8 @@ end do
 !Clearly, the integer part does not depend on the subcell
 !but on the parent cell, so it is initialized here
 
+! RS: I understand this works for order > 0, what about order = 0?
+! RS: will the value round like ANINT or just trimed like AINT?
 write(descriptor2,FMT="(F9.0)") var1_new - 0.5
 write(descriptor3,FMT="(F9.0)") var2_new - 0.5
 
@@ -134,6 +167,10 @@ var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 !these markers will be sorted according to whether frames are before or after
 !them. One pair of markers (p1,p2) would indicate that frames [p1,p2-1] are in
 !the same column.
+! RS: The comments do not seem to carry the same information as what we talked
+! RS: By "one pair of markers", do you mean one 2D marker or two 1D markers?
+! RS: What do you mean by "column"?
+! RS: going to read qsort2 now, hopefully I can figure it out myself
 !Qsort2 sorts both vals and indexer; indexer can then be used to access coords
 
 call qsort2(vals,indexer,overcrowdN+resolution-1,Nvar,1,overcrowdN+resolution-1,1)
