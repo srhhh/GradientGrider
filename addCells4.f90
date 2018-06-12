@@ -173,6 +173,7 @@ var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 ! RS: going to read qsort2 now, hopefully I can figure it out myself
 !Qsort2 sorts both vals and indexer; indexer can then be used to access coords
 
+! RS: I am very confused by this -- don't you add the markers in before you sort var1?
 call qsort2(vals,indexer,overcrowdN+resolution-1,Nvar,1,overcrowdN+resolution-1,1)
 
 !A marker can be identified by checking whether indexer(p) > overcrowd
