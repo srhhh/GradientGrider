@@ -10,16 +10,13 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      INPUT:   real :: var1,var2,var3          "variablies used to define the 'to-be-divided' cells/subcells"
 !               integer ::  order               "the order (N-1) of the 'to-be-divided' cell/subcell"
-!               real :: scaling1                "the overcrowded cell/subcell will be divided into 'scaling1' parts along
-!                       scaling2                    var1, 'scaling2' parts along 'var2', and 'scaling3' parts along 'var3'.
-!                       scaling3                    the 'to-be-formed' cell/subcells have order N"
-!               real :: resolution              "the number of subcells that the overcrowded cell/subcell will be divided into
-!                                                resolution should be 'scaling1*scaling2*scaling3' but it is 
-!                                                   'scaling1*scaling2' for now
+!		real :: var1_new,var2_new	"the subcell in filename format"
+!		integer, dim(6) :: SP		"list of parameters for scaling, resolution, and scalingfactor
+!		real :: gap1,gap2		"the length of outgoing subcells"
 !               integer :: indexN               "the index of the first 'to-be-formed' cell/subcells (order N) in 
 !                                                   the counter array (see counterN)"
-!               integer :: lengthN              "demision of array counterN (order N)"
-!               integer :: overcrowdN           "the criteria of a cell be 'overcrowded' at order (N-1)"
+!               integer :: lengthN              "dimension of array counterN (order N)"
+!               integer :: frames               "the number of frames in the 'to-be-divided' cell
 !
 !      OUTPUT:  integer :: counterN             "an array of integers, which are the number of frames in the 'to-be-formed' 
 !                                                   cell/subcells (order N)"
@@ -35,31 +32,46 @@ contains
 !                               KF: you got me!!!
 !                               ... labelling it 'overcrowdN' is a little
 !                               misleading, it is merely the size of the array
+!                               KF: now changed
 ! RS: The trailing N in the varaible seems redundant and can be confusing
 !                               KF: I use it to stress that the counter is
 !                               dependent on the order, N, although it is
 !                               certainly ambiguous here
 
 recursive subroutine divyUp(var1,var2,var3,order,&
-                            scaling1,scaling2,scaling3,resolution,&
-                            indexN,counterN,lengthN,overcrowdN)
+                            var1_new,var2_new,SP,gap1,gap2,&
+                            indexN,counterN,lengthN,frames)
 use f1_parameters
 use f1_functions
 implicit none
-integer, intent(in) :: order,indexN,lengthN,overcrowdN
+integer, intent(in) :: order,indexN,lengthN,frames
+integer, dimension(6),intent(in) :: SP
+real,intent(in) :: gap1,gap2
 integer, dimension(lengthN), intent(out) :: counterN
-integer :: i,j,k,l,population,last_marker,Nmarkers,index_order,counter_index
+integer :: i,j,k,l,population,last_marker,Nmarkers,Nsortings,frames_plus_markers
+integer :: index_order,counter_index
 integer :: var1_NINT,var2_NINT
-integer :: scaling1,scaling2,scaling3,resolution
-real,intent(in) :: var1,var2,var3
-real :: gap1, gap2, gap3, var1_new, var2_new
+integer :: scaling1,scaling2,scaling3,resolution,scalingfactor1,scalingfactor2
+real,intent(in) :: var1,var2,var3,var1_new,var2_new
 real,allocatable :: coords(:,:),vals(:,:)
-integer, dimension(scaling1-1) :: grid1
-integer, dimension(scaling2-1) :: grid2
 integer, allocatable :: indexer(:,:)
 character(50) :: subcell
 character(1) :: descriptor1
 character(10) :: descriptor2,descriptor3,descriptor4,descriptor5
+integer :: c1,c2,cr,cm
+real :: system_clock_rate
+
+scaling1 = SP(1)
+scaling2 = SP(2)
+resolution = SP(4)
+scalingfactor1 = SP(5)
+scalingfactor2 = SP(6)
+
+!For timing purposes
+call system_clock(count_rate=cr)
+call system_clock(count_max=cm)
+system_clock_rate = real(cr)
+call system_clock(c1)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME RETRIEVAL
@@ -70,18 +82,12 @@ character(10) :: descriptor2,descriptor3,descriptor4,descriptor5
 !If we are in a parent cell (order = 0) then we don't need any decimal places 
 !Floor to the nearby integer
 if (order == 0) then
-        var1_new = anint(var1-0.5)
-        var2_new = anint(var2-0.5)
-
         !We will make use of order (or zero) decimal places
         write(descriptor1,FMT="(I1)") order
 
 !If we are in a subcell then we need decimal places
 !Floor to the nearby multiple of .25*0.1**(order-1)
 else
-        var1_new = anint((scaling1_0*scaling1_1**(order-1))*var1-0.5)/(scaling1_0*scaling1_1**(order-1))
-        var2_new = anint((scaling2_0*scaling2_1**(order-1))*var2-0.5)/(scaling2_0*scaling2_1**(order-1))
-
         !We will make use of order+1 decimal places
         ! ex. order=1 --> .00, .25, .50, .75, etc.
         !     order=2 --> .025, .050, .075, 0.100, .125, etc.
@@ -97,6 +103,8 @@ write(descriptor3,FMT="(F9."//descriptor1//")") var2_new
 !trailing whitespace); this format is also followed in addState
 
 subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
+open(progresschannel,file=path4//progressfile,position="append")
+write(progresschannel,FMT="(A50)",advance="no") "   DivyUp on subcell "//trim(subcell)//"    time: "
 
 !Open up the file, read the variables, coordinates, and gradients
 !vals    ---  holds the criteria of sorting (three for now)
@@ -104,64 +112,83 @@ subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
 !        ---  coords will be sorted according to vals
 !indexer ---  holds the indexes of coords
 !        ---  indexer will be sorted according to vals
-open(filechannel1,file=trim(path3)//trim(subcell)//".dat")
-allocate(coords(overcrowdN,6*Natoms))
-allocate(vals(overcrowdN+resolution-1,Nvar))
-allocate(indexer(overcrowdN+resolution-1,1))
-do j=1, overcrowdN
+frames_plus_markers = frames+resolution-1
+open(filechannel1,file=path3//trim(subcell)//".dat")
+allocate(coords(frames,6*Natoms))
+allocate(vals(frames_plus_markers,Nvar))
+allocate(indexer(frames_plus_markers,1))
+do j=1, frames
         read(filechannel1,FMT=FMT1,advance="no",iostat=k) (vals(j,i),i=1,Nvar)
         read(filechannel1,FMT=FMT2) (coords(j,i),i=1,6*Natoms)
         indexer(j,1) = j
 end do
 close(filechannel1)
 
-! RS: Can you just use 'filechannel1' like this without defining it??
-! RS: Could we avoid using filechannel'1' before filechannel is used? what does '1' refer to?
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME SORTING/GRIDING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!We need to know what the spacing is of the subcells
-!This is inversely proportional to the scaling
-! spacing1 and spacing 2 are the spacing of the parent-level grid (order = 0)
-gap1 = spacing1/(scaling1_0*scaling1_1**(order))
-gap2 = spacing2/(scaling2_0*scaling2_1**(order))
-
 !Add "markers" to know when a subcell begins/ends
-
-!A marker can be identified by checking whether indexer(p) > overcrowd
-! RS: Hmmm, really? Why does marker have anything to do with overcrowd? Isn't marker just used
-! RS:   for griding an overcrowd cell/subcell to its subcells?
-!If so, then it is a marker. A pair of markers (p1,p2) would indicate a column
-!but these need to be sorted further by var2 into cells. These are sorted the
-!same way.
-
-! RS: I will try to rewrite this part. Please make sure it is correct
-! markers are values used to divid a cell into subcells, assume a cell made of 1D array whose n elements 
-!    (represented by dots) hold values between a and b, and it ought to be divided into s parts (grids)
-!                      .  .  ..  ..   ..   .  .  ...  ..  ..
-!              -------@-------------------------------------@------>
-!                     a                                     b
-! therefore the upper bond of each grid is a + (i-1)*(a-b)/s, i from 1 to s
-! these values (markers, denoted by x) are generated and added to the 1D array, and the new array is 
-!    sorted again, i.e
-!                      .  . x..  .x.   .x.   .x  .  x...  x..  .x
-!              -------@-----------~-----~-----------------------@---->
-!                     a                                         b
-! The index of the markers after sorting indicates the number of elements in the grid
-! e.g. the index of the first marker is 3, therefore there are (3-1)=2 elements in the first grid
-
+!ex:    Let     scaling1 = scaling2 = 3
+!               resolution = 9
+!               var1 = N/3
+!               var2 = N%3
+!		var1_new = 0.0
+!		var2_new = 0.0
+!		gap1 = 1.0
+!		gap2 = 1.0
+!
+!               val1 = 0.0 + 1.0*var1
+!               val2 = 0.0 + 1.0*var2
+!
+!       index N     (var1,var2)       (val1,val2)
+!          1            0,1             0.0,1.0
+!          2            0,2             0.0,2.0
+!          3            1,0             1.0,0.0
+!         ...           ...               ...
+!          7            2,1             2.0,1.0
+!          8            2,2             2.0,2.0
+!
 do i = 1, resolution-1
-        counter_index = overcrowdN + i
+        counter_index = frames + i
         indexer(counter_index,1) = counter_index
         vals(counter_index,:) = (/ var1_new+(i/scaling2)*gap1,&
                                    var2_new+modulo(i,scaling2)*gap2,&
                                    0.0                                  /)
 end do
+!
+!Say the array vals looks something like this
+!
+!               ORIGINAL (16)
+!                       . . ..   ..   ..   .  .   ..  ..  ..
+!              -------@-------------------------------------@------> (var1)
+!                    0.0                                   3.0
+!              
+!Then after the above we have something like this:
+!
+!               ORIGINAL + MARKERS (24)
+!                       . . ..   ..   ..   .  .   ..  ..  ..xxXxxXxx
+!              -------@-------------------------------------@------>  (var1)
+!                    0.0                                   3.0
+!
+!Where x indicates a pair where var2 /= 0
+!  and X indicates a pair where var2 == 0
+!  and . indicates a frame
+!
+!A marker p can be identified by checking whether indexer(p) > overcrowd
+! RS: Hmmm, really? Why does marker have anything to do with overcrowd? Isn't marker just used
+! RS:   for griding an overcrowd cell/subcell to its subcells?
+!               KF: remark: I changed variable 'overcrowdN' to be 'frames' now
+!               KF: all non-markers have indexer(p) <= frames so this is an easy
+!               check to see if a position is a marker or not;
+!               indexer keeps track of the ORIGINAL index so this works even
+!               after sorting in the markers
+!
 ! RS: I would be a little bit more careful with i(integer) divided by scaling2(real)
 ! RS: I would add an INT or AINT function to make sure it comes out of it
 ! RS: Bc what is set to be "default" can depends on machines and compilers
+!               KF: haha... my bad... scaling is actually an integer... woops
+!               KF: fixed the comments though
 
 !The filenames of the subcells will be split into two parts:
 !  the prefix is of form "xx." (the integer part)
@@ -169,9 +196,8 @@ end do
 !Clearly, the integer part does not depend on the subcell
 !but on the parent cell, so it is initialized here
 
-! For order = 0, "(F9.0)" acts like ANINT so var1_new - 0.5 = var1_new (integer part does not change)                               
-write(descriptor2,FMT="(F9.0)") var1_new - 0.5
-write(descriptor3,FMT="(F9.0)") var2_new - 0.5
+write(descriptor2,FMT="(F9.0)") anint(var1_new - 0.5)
+write(descriptor3,FMT="(F9.0)") anint(var2_new - 0.5)
 
 !And remove any leading zeroes
 descriptor2 = adjustl(descriptor2)
@@ -205,27 +231,73 @@ var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 !                   corresponding to marker p2
 !Qsort2 sorts both vals and indexer; indexer can then be used to access coords
 
-call qsort2(vals,indexer,overcrowdN+resolution-1,Nvar,1,overcrowdN+resolution-1,1)
+call qsort2(vals,indexer,frames_plus_markers,Nvar,1,frames_plus_markers,1)
 
-! RS: I think now I understand this part of the code but I am not sure if it works the 
-! RS: way tat you designed
-! RS: Nmarkers == scaling2 means you passed 'scaling2' amount of rows according to var1
-! RS: it does not mean they should all sorted together 
+!Before quicksorting, we had something like this:
+!
+!               ORIGINAL + MARKERS
+!                       . . ..   ..   ..   .  .   ..  ..  ..xxXxxXxx
+!              -------@-------------------------------------@------> (var1)
+!                    0.0                                   3.0
+!
+!Where x indicates a pair where var2 /= 0
+!  and X indicates a pair where var2 == 0
+!  and . indicates a frame
+!
+!Now we have something like this:
+!
+!               VAR1 QSORT [1,24]
+!                     xx. . ..Xxx..   ..   .  .Xxx..  ..  ..
+!              -------@-------------------------------------@------>
+!                    0.0                                   3.0
+!
 last_marker = 1
 Nmarkers = 0
-do counter_index = 1, overcrowdN+resolution-1
-        if (indexer(counter_index,1) > overcrowdN) then
+Nsortings = 1
+do counter_index = 1, frames_plus_markers
+        if (indexer(counter_index,1) > frames) then
         Nmarkers = Nmarkers + 1
         if (Nmarkers == scaling2) then
-                call qsort2(vals,indexer,overcrowdN+resolution-1,Nvar,&
+                call qsort2(vals,indexer,frames_plus_markers,Nvar,&
                            last_marker,counter_index-1,2)
                 last_marker = counter_index
                 Nmarkers = 0
+                Nsortings = Nsortings+1
+                if (Nsortings == scaling1) exit
         end if
         end if
 
 end do
+call qsort2(vals,indexer,frames_plus_markers,Nvar,last_marker,frames_plus_markers,2)
 
+!Before this second-variable quicksorting, we had something like this:
+!
+!               VAR1 QSORT [1,24]
+!                     xx. . ..Xxx..   ..   .  .Xxx..  ..  ..
+!              -------@-------------------------------------@------>
+!                    0.0                                   3.0
+!
+!Where x indicates a pair where var2 /= 0
+!  and X indicates a pair where var2 == 0
+!  and . indicates a frame
+!
+!In the second-variable quicksort, we check whether a position corresponds to a X
+!Every third x is an X, which indicates we have reached the end of a column.
+!Then we need to sort all the . and x of that column
+!In this case, the X are at 7 and 16, so we need to sort:
+!       [1,7), [7,16), and [16,24]
+!Columns [1,7) and [7,16) are done in the do-loop whereas the last one is
+!done outside of the do-loop.
+!
+!After this second-variable quicksorting, we have something like this:
+!
+!               VAR2 QSORT [1,7), [7,16), [16,24]
+!                       .x.x..X  .. x ..   .x .X  ..x ..x ..
+!              -------@-------------------------------------@------>
+!                    0.0                                   3.0
+!
+!
+!
 !Now that vals and indexer are fully sorted, we need to identify subcells
 !Any pair of markers (p1,p2) such that (p2-p1 > 1) is a subcell with a frame in
 !it; these pairs are ordered in such a way so that the subcell (i,j) that
@@ -235,8 +307,8 @@ end do
 !And, of course, i and j start at zero.
 last_marker = 1
 Nmarkers = 0
-do counter_index = 1, overcrowdN+resolution-1
-        if (indexer(counter_index,1) > overcrowdN) then
+do counter_index = 1, frames_plus_markers
+        if (indexer(counter_index,1) > frames) then
         population = counter_index - last_marker
         if (population > 0) then
                 i = (Nmarkers/scaling2)
@@ -257,7 +329,7 @@ do counter_index = 1, overcrowdN+resolution-1
                 !last_marker represents the first frame of the subcell
                 !whereas counter_index is the position of the marker that ends
                 !the subcell; thus, one is subctracted from it
-                open(filechannel1,file=trim(path3)//trim(subcell)//".dat",status="new")
+                open(filechannel1,file=path3//trim(subcell)//".dat",status="new")
                 do k = last_marker, counter_index-1
                         write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
                         write(filechannel1,FMT=FMT2)(coords(indexer(k,1),l),l=1,6*Natoms)                       
@@ -285,7 +357,7 @@ end do
 !that have not yet been written by the last_marker
 !
 !Exactly the same format as before; i,j are both at their last values
-population = overcrowdN + resolution - 1 - last_marker
+population = frames_plus_markers - last_marker
 if (population > 0) then
         i = scaling1 - 1
         j = scaling2 - 1
@@ -298,8 +370,8 @@ if (population > 0) then
         descriptor5 = trim(descriptor3)//trim(adjustl(descriptor5))
         subcell = trim(descriptor4)//"_"//trim(descriptor5)
 
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",status="new")
-        do k = last_marker, overcrowdN+resolution-1
+        open(filechannel1,file=path3//trim(subcell)//".dat",status="new")
+        do k = last_marker, frames+resolution-1
                 write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
                 write(filechannel1,FMT=FMT2)(coords(indexer(k,1),l),l=1,6*Natoms)                       
         end do 
@@ -308,6 +380,10 @@ if (population > 0) then
         index_order = resolution*indexN + scaling1*j + i
         counterN(index_order) = population    
 end if
+
+call system_clock(c2)
+write(progresschannel,FMT="(F6.4)") (c2-c1)/system_clock_rate
+close(progresschannel)
 
 end subroutine divyUp
 
@@ -385,7 +461,7 @@ if (population < overcrowd0) then
                 descriptor0 = "old"
         end if
 
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -405,12 +481,15 @@ else if (population == overcrowd0) then
         key = key + key_start*header1
         counter0(indexer) = key
 
+        var1 = real(var1_new)
+        var2 = real(var2_new)
+
         !For more information on how this works, see the subroutine above
         call divyUp(vals(1),vals(2),0.0,order,&
-                    scaling1_0,scaling2_0,0,resolution_0,&
+                    var1,var2,SP0,gap1_0,gap2_0,&
                     header1,counter1,counter1_max,overcrowd0-1)
  
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -432,8 +511,8 @@ order = order + 1
 
 !This recovers the variable floored to the nearby multiple of 0.25
 !    e.g.  1.2445 -> 1.00     or    1.4425 -> 1.25
-var1 = anint(vals(1)*scaling1_0-0.5)/scaling1_0
-var2 = anint(vals(2)*scaling2_0-0.5)/scaling2_0
+var1 = anint(vals(1)*scaling1_0-0.5)*gap1_0
+var2 = anint(vals(2)*scaling2_0-0.5)*gap2_0
 
 !This recovers what integer var1, var2 correspond to
 !    e.g.  1.00 -> 0     or    1.75 -> 3
@@ -463,7 +542,7 @@ if (population < overcrowd1) then
                 descriptor0 = "old"
         end if
 
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -476,17 +555,17 @@ else if (population == overcrowd1) then
         counter1(indexer) = key
 
         call divyUp(vals(1),vals(2),0.0,order,&
-                    scaling1_1,scaling2_1,0,resolution_1,&
+                    var1,var2,SP1,gap1_1,gap2_1,&
                     header2,counter2,counter2_max,overcrowd1-1)
         header2 = header2 + 1
 
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
 
 else
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -504,11 +583,11 @@ end if
 !There is more than one scaling element;
 !But all variables still act the same
 order = order + 1
-var1 = anint((scaling1_0*scaling1_1)*vals(1)-0.5)/(scaling1_0*scaling1_1)
-var2 = anint((scaling2_0*scaling2_1)*vals(2)-0.5)/(scaling2_0*scaling2_1)
+var1 = anint((scalingfactor1_1)*vals(1)-0.5)*(gap1_1)
+var2 = anint((scalingfactor2_1)*vals(2)-0.5)*(gap2_1)
 
-var1_new = modulo(nint(scaling1_0*scaling1_1*var1),scaling1_1)
-var2_new = modulo(nint(scaling2_0*scaling2_1*var2),scaling2_1)
+var1_new = modulo(nint(scalingfactor1_1*var1),scaling1_1)
+var2_new = modulo(nint(scalingfactor2_1*var2),scaling2_1)
 
 indexer = resolution_1*(key/key_start) + scaling2_1*var2_new+var1_new
 
@@ -527,7 +606,7 @@ if (population < overcrowd2) then
                 descriptor0 = "old"
         end if
  
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -539,17 +618,17 @@ else if (population == overcrowd2) then
         counter2(indexer) = key
 
         call divyUp(vals(1),vals(2),0.0,order,&
-                    scaling1_1,scaling2_1,0,resolution_1,&
+                    var1,var2,SP2,gap1_2,gap2_2,&
                     header3,counter3,counter3_max,overcrowd2-1)
         header3 = header3 + 1
 
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
 
 else
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -565,13 +644,13 @@ end if
 !And we go deeper once more
 !Same as last time
 order = order + 1
-var1 = anint((scaling1_0*scaling1_1**2)*vals(1)-0.5)/(scaling1_0*scaling1_1**2)
-var2 = anint((scaling2_0*scaling2_1**2)*vals(2)-0.5)/(scaling2_0*scaling2_1**2)
+var1 = anint((scalingfactor1_2)*vals(1)-0.5)*(gap1_2)
+var2 = anint((scalingfactor2_2)*vals(2)-0.5)*(gap2_2)
 
-var1_new = modulo(nint((scaling1_0*scaling1_1**2)*var1),scaling1_1)
-var2_new = modulo(nint((scaling2_0*scaling2_1**2)*var2),scaling2_1)
+var1_new = modulo(nint((scalingfactor1_2)*var1),scaling1_2)
+var2_new = modulo(nint((scalingfactor2_2)*var2),scaling2_2)
 
-indexer = resolution_1*(key/key_start) + scaling2_1*var2_new+var1_new
+indexer = resolution_2*(key/key_start) + scaling2_2*var2_new+var1_new
 
 write(descriptor3,FMT="(F9.4)") var1
 write(descriptor4,FMT="(F9.4)") var2
@@ -588,7 +667,7 @@ if (population < overcrowd3) then
                 descriptor0 = "old"
         end if
  
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -597,18 +676,18 @@ if (population < overcrowd3) then
 
 !Because this is the end of the line, a notice is put up for no further divyUps
 else if (population == overcrowd3) then 
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
 
-        open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+        open(progresschannel,file=path4//progressfile,position="append")
         write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!"
         write(progresschannel,*) " FINAL LEVEL SUBCELL OVERCROWDED"
         write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!"
         close(progresschannel)
 else
-        open(filechannel1,file=trim(path3)//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)

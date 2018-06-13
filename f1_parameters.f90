@@ -4,31 +4,37 @@ implicit none
 
 !PATHS
 !Path to the trajectories
-character(50),parameter :: path1 = "/home/ruisun/proj/ruisun/B0/"
+!character(28),parameter :: path1 = "/home/ruisun/proj/ruisun/B0/"
+character(25),parameter :: path1 = "/home/kazuumi/Desktop/B0/"
 !Path to the f90s and bash scripts
-character(50),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
+!character(44),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
+character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
 !Path to the grid
-character(50),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid_test/"
+!character(39),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid_test/"
+character(47),parameter :: path3 = "/home/kazuumi/Desktop/GradientGrider/grid_test/"
 !Path for the following files (see below)
-character(50),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
+!character(29),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
+character(45),parameter :: path4 = "/home/kazuumi/Desktop/GradientGrider/f1_dump/"
 
 
 
 !FILES
 !File that will keep the trajectory folder names
-character(20),parameter :: trajectories = "f1_trajectories.txt" !Used to be file1
+character(19),parameter :: trajectories = "f1_trajectories.txt"
 !File that writes the progress of the program
-character(20),parameter :: progressfile = "f1_progress.txt" !Used to not exist
+character(15),parameter :: progressfile = "f1_progress.txt"
+!File that writes the progress of a trajectory
+character(17),parameter :: trajectoryfile = "f1_trajectory.xyz"
 !Files where, when done, we save the counters with the numbers of frames
 !inside each subcell, as well as other information
-character(20),parameter :: counter0file = "counter0.txt"
-character(20),parameter :: counter1file = "counter1.txt"
-character(20),parameter :: counter2file = "counter2.txt"
-character(20),parameter :: counter3file = "counter3.txt"
+character(12),parameter :: counter0file = "counter0.txt"
+character(12),parameter :: counter1file = "counter1.txt"
+character(12),parameter :: counter2file = "counter2.txt"
+character(12),parameter :: counter3file = "counter3.txt"
 !File to write to for system calls
-character(20),parameter :: temporaryfile1 = "tmp1.txt"
-character(20),parameter :: temporaryfile2 = "tmp2.txt"
-character(20),parameter :: temporaryfile3 = "tmp3.txt"
+character(8),parameter :: temporaryfile1 = "tmp1.txt"
+character(8),parameter :: temporaryfile2 = "tmp2.txt"
+character(8),parameter :: temporaryfile3 = "tmp3.txt"
 
 !FILE CHANNELS
 !Channel for the progressfile
@@ -91,11 +97,38 @@ integer,parameter :: overcrowd3 = 100
 integer,parameter :: scaling1_0 = 4
 integer,parameter :: scaling2_0 = 4
 integer,parameter :: scaling3_0 = 4
+integer,parameter :: resolution_0 = scaling1_0*scaling2_0
+integer,parameter :: scalingfactor1_0 = scaling1_0
+integer,parameter :: scalingfactor2_0 = scaling2_0
+real,parameter :: gap1_0 = spacing1/scalingfactor1_0
+real,parameter :: gap2_0 = spacing2/scalingfactor2_0
+integer,dimension(6),parameter :: SP0=(/scaling1_0,scaling2_0,scaling3_0,&
+                                        resolution_0,scalingfactor1_0,&
+                                        scalingfactor2_0/)
+
 integer,parameter :: scaling1_1 = 10
 integer,parameter :: scaling2_1 = 10
 integer,parameter :: scaling3_1 = 10
-integer,parameter :: resolution_0 = scaling1_0*scaling2_0
 integer,parameter :: resolution_1 = scaling1_1*scaling2_1
+integer,parameter :: scalingfactor1_1 = scaling1_1*scaling1_0
+integer,parameter :: scalingfactor2_1 = scaling2_1*scaling2_0
+real,parameter :: gap1_1 = spacing1/scalingfactor1_1
+real,parameter :: gap2_1 = spacing2/scalingfactor2_1
+integer,dimension(6),parameter :: SP1=(/scaling1_1,scaling2_1,scaling3_1,&
+                                        resolution_1,scalingfactor1_1,&
+                                        scalingfactor2_1/)
+
+integer,parameter :: scaling1_2 = 10
+integer,parameter :: scaling2_2 = 10
+integer,parameter :: scaling3_2 = 10
+integer,parameter :: resolution_2 = scaling1_2*scaling2_2
+integer,parameter :: scalingfactor1_2 = scaling1_2*scaling1_1*scaling1_0
+integer,parameter :: scalingfactor2_2 = scaling2_2*scaling2_1*scaling2_0
+real,parameter :: gap1_2 = spacing1/scalingfactor1_2
+real,parameter :: gap2_2 = spacing2/scalingfactor2_2
+integer,dimension(6),parameter :: SP2=(/scaling1_2,scaling2_2,scaling3_2,&
+                                        resolution_2,scalingfactor1_2,&
+                                        scalingfactor2_2/)
 
 !We need to estimate how many cells will be overcrowded in counter0
 !Must not be greater than 999*resolution
