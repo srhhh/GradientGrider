@@ -15,8 +15,6 @@ contains
 !                                                the final index (before sorting) of the to-be-sorted part"
 !               integer var                     "the index of the column of the martix A that is used as sorting criteria"
 !      OUTPUT:  integer pivot_index             "the index of the row that partitions matrix A according to var"
-! RS: are you sure the comments about 'var' and 'pivot_index' are correct?? 
-!               KF: much more clear now
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       Column "var" of matrix A is partitioned
 !       but only for the sub-matrix A (start_index:end_index)
@@ -136,7 +134,6 @@ end subroutine swapI
 !             1.45  2.39 /             1 /
 !             2.11  3.00   ]           3   ]
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! RS: This is great. Thank you for commenting
 
 recursive subroutine qsort2(A,B,rows,cols,start_index,end_index,var)
 implicit none
@@ -195,7 +192,6 @@ end subroutine qsort2
 !       grid1 = 4,4,    4,    4,4,        5,5,5,5     6    
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! RS: This is a good way to store the grid
 subroutine grider(grid,A,gridline_spacing,gridline_start,max_gridlines,&
                   rows,cols,start_index,end_index,var)
 implicit none
