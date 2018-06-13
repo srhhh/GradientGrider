@@ -117,10 +117,6 @@ close(filechannel1)
 
 ! RS: Can you just use 'filechannel1' like this without defining it??
 ! RS: Could we avoid using filechannel'1' before filechannel is used? what does '1' refer to?
-! RS: I noticed you used filechannel1 three times later. In this case, what differences do
-! RS:    filechannel1 and '70' make?
-!                               KF: it is in f1_parameters (73, I believe?)
-! RS: Let's talk about naming tomorrow
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME SORTING/GRIDING
@@ -132,7 +128,30 @@ close(filechannel1)
 gap1 = spacing1/(scaling1_0*scaling1_1**(order))
 gap2 = spacing2/(scaling2_0*scaling2_1**(order))
 
-!Add markers to know when a subcell begins/ends
+!Add "markers" to know when a subcell begins/ends
+
+!A marker can be identified by checking whether indexer(p) > overcrowd
+! RS: Hmmm, really? Why does marker have anything to do with overcrowd? Isn't marker just used
+! RS:   for griding an overcrowd cell/subcell to its subcells?
+!If so, then it is a marker. A pair of markers (p1,p2) would indicate a column
+!but these need to be sorted further by var2 into cells. These are sorted the
+!same way.
+
+! RS: I will try to rewrite this part. Please make sure it is correct
+! markers are values used to divid a cell into subcells, assume a cell made of 1D array whose n elements 
+!    (represented by dots) hold values between a and b, and it ought to be divided into s parts (grids)
+!                      .  .  ..  ..   ..   .  .  ...  ..  ..
+!              -------@-------------------------------------@------>
+!                     a                                     b
+! therefore the upper bond of each grid is a + (i-1)*(a-b)/s, i from 1 to s
+! these values (markers, denoted by x) are generated and added to the 1D array, and the new array is 
+!    sorted again, i.e
+!                      .  . x..  .x.   .x.   .x  .  x...  x..  .x
+!              -------@-----------~-----~-----------------------@---->
+!                     a                                         b
+! The index of the markers after sorting indicates the number of elements in the grid
+! e.g. the index of the first marker is 3, therefore there are (3-1)=2 elements in the first grid
+
 do i = 1, resolution-1
         counter_index = overcrowdN + i
         indexer(counter_index,1) = counter_index
@@ -140,7 +159,9 @@ do i = 1, resolution-1
                                    var2_new+modulo(i,scaling2)*gap2,&
                                    0.0                                  /)
 end do
-
+! RS: I would be a little bit more careful with i(integer) divided by scaling2(real)
+! RS: I would add an INT or AINT function to make sure it comes out of it
+! RS: Bc what is set to be "default" can depends on machines and compilers
 
 !The filenames of the subcells will be split into two parts:
 !  the prefix is of form "xx." (the integer part)
@@ -148,15 +169,7 @@ end do
 !Clearly, the integer part does not depend on the subcell
 !but on the parent cell, so it is initialized here
 
-! RS: I understand this works for order > 0, what about order = 0?
-! RS: will the value round like ANINT or just trimed like AINT?
-!       KF: case 1: order == 0
-!               var1_new = xx.00
-!           case 2: order > 0
-!               var1_new = xx.yyyy
-!           in both cases, the decimal portion gets truncated
-!               descriptor2 = 000000xx.
-!                               I believe this works
+! For order = 0, "(F9.0)" acts like ANINT so var1_new - 0.5 = var1_new (integer part does not change)                               
 write(descriptor2,FMT="(F9.0)") var1_new - 0.5
 write(descriptor3,FMT="(F9.0)") var2_new - 0.5
 
@@ -179,14 +192,12 @@ var1_NINT = nint((var1_new-floor(var1_new))*(10**(order+2)))
 var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 
 !Sort the indexed frames by the first variable (into columns);
-!Because we also added markers that have values corresponding to the gridlines,
+!Because we have added markers that have values corresponding to the gridlines,
 !these markers will be sorted according to whether frames are before or after
 !them. One pair of markers (p1,p2) would indicate that frames [p1,p2-1] are in
 !the same column.
-! RS: The comments do not seem to carry the same information as what we talked
 ! RS: By "one pair of markers", do you mean one 2D marker or two 1D markers?
 ! RS: What do you mean by "column"?
-! RS: going to read qsort2 now, hopefully I can figure it out myself
 !               KF: the cell is traversed one-dimensionally (counter_index)
 !                   When a marker p2 is reached, we know we have reached the end
 !                   of a subcell (and consequently the beginning of the next
@@ -194,15 +205,12 @@ var2_NINT = nint((var2_new-floor(var2_new))*(10**(order+2)))
 !                   corresponding to marker p2
 !Qsort2 sorts both vals and indexer; indexer can then be used to access coords
 
-! RS: I am very confused by this -- don't you add the markers in before you sort var1?
-!               KF: I add the markers in before this point
-!                       yeah... maybe we should talk about this
 call qsort2(vals,indexer,overcrowdN+resolution-1,Nvar,1,overcrowdN+resolution-1,1)
 
-!A marker can be identified by checking whether indexer(p) > overcrowd
-!If so, then it is a marker. A pair of markers (p1,p2) would indicate a column
-!but these need to be sorted further by var2 into cells. These are sorted the
-!same way.
+! RS: I think now I understand this part of the code but I am not sure if it works the 
+! RS: way tat you designed
+! RS: Nmarkers == scaling2 means you passed 'scaling2' amount of rows according to var1
+! RS: it does not mean they should all sorted together 
 last_marker = 1
 Nmarkers = 0
 do counter_index = 1, overcrowdN+resolution-1
