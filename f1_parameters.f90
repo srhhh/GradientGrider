@@ -131,20 +131,20 @@ integer,dimension(6),parameter :: SP2=(/scaling1_2,scaling2_2,scaling3_2,&
                                         scalingfactor2_2/)
 
 !We need to estimate how many cells will be overcrowded in counter0
-!Must not be greater than 999*resolution
-integer,parameter :: counter1_max = 250*resolution_1
+!Must not be greater than 9999*resolution
+integer,parameter :: counter1_max = 1000*resolution_0
 !We need to estimate how many subcells will be overcrowded in counter1
-!Must not be greater than 999*resolution
-integer,parameter :: counter2_max = 999*resolution_1
+!Must not be greater than 9999*resolution
+integer,parameter :: counter2_max = 5000*resolution_1
 !We need to estimate how many subcells will be overcrowded in counter2
-!Must not be greater than 999*resolution
-integer,parameter :: counter3_max = 250*resolution_1
+!Must not be greater than 9999*resolution
+integer,parameter :: counter3_max = 1000*resolution_2
 
 !The counter arrays hold information on the population of the subcell
 !And the index to get to deeper subcells in the following counter
 !If the value is XXXXYYYY, then XXXX is the key to the next
 !counter and YYYY is the population of the current counter
-integer,parameter :: population_max = 9999
+integer,parameter :: population_max = 999
 integer,parameter :: key_start = population_max + 1
 
 end module f1_parameters

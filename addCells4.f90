@@ -58,20 +58,12 @@ integer, allocatable :: indexer(:,:)
 character(50) :: subcell
 character(1) :: descriptor1
 character(10) :: descriptor2,descriptor3,descriptor4,descriptor5
-integer :: c1,c2,cr,cm
-real :: system_clock_rate
 
 scaling1 = SP(1)
 scaling2 = SP(2)
 resolution = SP(4)
 scalingfactor1 = SP(5)
 scalingfactor2 = SP(6)
-
-!For timing purposes
-call system_clock(count_rate=cr)
-call system_clock(count_max=cm)
-system_clock_rate = real(cr)
-call system_clock(c1)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME RETRIEVAL
@@ -103,8 +95,6 @@ write(descriptor3,FMT="(F9."//descriptor1//")") var2_new
 !trailing whitespace); this format is also followed in addState
 
 subcell = trim(adjustl(descriptor2))//"_"//trim(adjustl(descriptor3))
-open(progresschannel,file=path4//progressfile,position="append")
-write(progresschannel,FMT="(A50)",advance="no") "   DivyUp on subcell "//trim(subcell)//"    time: "
 
 !Open up the file, read the variables, coordinates, and gradients
 !vals    ---  holds the criteria of sorting (three for now)
@@ -381,10 +371,6 @@ if (population > 0) then
         counterN(index_order) = population    
 end if
 
-call system_clock(c2)
-write(progresschannel,FMT="(F6.4)") (c2-c1)/system_clock_rate
-close(progresschannel)
-
 end subroutine divyUp
 
 
@@ -415,6 +401,8 @@ real, dimension(6*Natoms), intent(in) :: coords
 character(50) :: descriptor0, descriptor1, descriptor2
 character(9) :: descriptor3, descriptor4
 character(50) :: subcell
+integer :: c1,c2,cr,cm
+real :: system_clock_rate
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !               ORDER 0
@@ -533,9 +521,10 @@ subcell = trim(adjustl(descriptor3))//"_"//trim(adjustl(descriptor4))
 !In this case, though, each frame is relevant so they are always stored
 key = counter1(indexer) + 1
 population = modulo(key,key_start)
-counter1(indexer) = key
 
 if (population < overcrowd1) then
+	counter1(indexer) = key
+
         if (population == 1) then
                 descriptor0 = "new"
         else
@@ -559,12 +548,6 @@ else if (population == overcrowd1) then
                     header2,counter2,counter2_max,overcrowd1-1)
         header2 = header2 + 1
 
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
-        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(filechannel1)
-
-else
         open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
@@ -597,9 +580,10 @@ subcell = trim(adjustl(descriptor3))//"_"//trim(adjustl(descriptor4))
 
 key = counter2(indexer) + 1
 population = modulo(key,key_start)
-counter2(indexer) = key
 
 if (population < overcrowd2) then
+	counter2(indexer) = key
+
         if (population == 1) then
                 descriptor0 = "new"
         else
@@ -617,17 +601,24 @@ else if (population == overcrowd2) then
         key = key + key_start*header3
         counter2(indexer) = key
 
+!For timing purposes
+call system_clock(count_rate=cr)
+call system_clock(count_max=cm)
+system_clock_rate = real(cr)
+call system_clock(c1)
+
         call divyUp(vals(1),vals(2),0.0,order,&
                     var1,var2,SP2,gap1_2,gap2_2,&
                     header3,counter3,counter3_max,overcrowd2-1)
         header3 = header3 + 1
 
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
-        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
-        close(filechannel1)
+call system_clock(c2)
 
-else
+open(progresschannel,file=path4//progressfile,position="append")
+write(progresschannel,*) "   DivyUp on subcell ", trim(subcell), "    time: ",&
+						(c2-c1)/system_clock_rate
+close(progresschannel)
+
         open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)

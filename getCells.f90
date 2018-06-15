@@ -16,7 +16,7 @@ integer, dimension(counter1_max) :: counter1 = 0
 integer, dimension(counter2_max) :: counter2 = 0
 integer, dimension(counter3_max) :: counter3 = 0
 integer, allocatable :: number_of_states(:,:)
-real :: t1,t2,system_clock_rate
+real :: t1,t2,system_clock_rate,formatting_time,Total_Formatting_Time
 integer :: total_time1,total_time2,c1,c2,cr,cm
 real,allocatable :: coords(:),vals(:)
 character(50) :: current_path,line_data
@@ -50,6 +50,7 @@ call system_clock(total_time1)
 !We will keep track of how many trajectories and states we encounter
 Ntraj = 0
 Total_States = 0
+Total_Formatting_Time = 0.0
 do
 
 call system_clock(c1)
@@ -70,12 +71,14 @@ call system_clock(c1)
         Nstates = 0
 
 call system_clock(c2)
+formatting_time = (c2-c1)/system_clock_rate
+
 !To track the progress, open up progresschannel
 open(progresschannel,file=path4//progressfile,position="append")
-write(progresschannel,*) "Folder:", trajectory_path, " Formatting Time: ",(c2-c1)/system_clock_rate
+write(progresschannel,*) "Folder:", trajectory_path, " Formatting Time: ",formatting_time
 close(progresschannel)
 
-
+Total_Formatting_Time = Total_Formatting_Time + formatting_time
 
         !Open the now-formatted trajectory
         open(frameschannel,file=path4//temporaryfile1)
