@@ -445,10 +445,13 @@ indexer = anint(max_var1)*(var2_new-1) + var1_new
 ! key_start = 10000
 ! (even though it may ultimately not be added)
 ! RS: It seems uncessary to have a 'key'?
+!         KF: addressed later
 
 ! RS: I think we can add an if statement to quickly jump to order = 1 if counter0(indexer) > overcrowd0)
 ! RS: As of now all frames go through modulo for order = 0 
 ! RS: Same commment for order = 1 and 2
+!                   KF: this is actually a really good idea;
+!                   KF: I don't even need to define population at all
 key = counter0(indexer) + 1
 population = modulo(key,key_start)
 
@@ -458,6 +461,7 @@ population = modulo(key,key_start)
 !after it is overcrowded
 if (population < overcrowd0) then
 ! RS: if you don't have 'key'... 
+!            KF: addressed later
         counter0(indexer) = key
 
         !If this is the first time in the cell, this file has to be made
@@ -502,6 +506,12 @@ else if (population == overcrowd0) then
         header1 = header1 + 1
 
 ! RS: Is a "return" needed here? I will need to reread divyup and see.
+!                 KF: no, this return was removed;
+!                     keeping it would have allowed for cases where
+!                     after calling divyUp, another divyUp is required
+!                     (for a subcell), but the subroutine is terminated early;
+!                     there is no 'double counting' because we divyUp BEFORE
+!                     we add the frame to the cells
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -523,6 +533,9 @@ var2 = anint(vals(2)*scaling2_0-0.5)*gap2_0
 ! RS: NINT(A) rounds its argument to the nearest whole number, right?
 ! RS: say var1 = 1.2, you want var1_new to be 0, right?
 ! RS: but this algorithm will render 1?
+!		KF: I multiply it by scaling_0 (4) so I will
+!               KF: get:     var1 = anint(1.2*4-0.5)*.25 = 1.00
+!                        var1_new =  nint(1.00 * 4) % 4  = 1
 var1_new = modulo(nint(var1*scaling1_0),scaling1_0)
 var2_new = modulo(nint(var2*scaling2_0),scaling2_0)
 
@@ -532,6 +545,12 @@ var2_new = modulo(nint(var2*scaling2_0),scaling2_0)
 ! RS: Yeah I guess I see the point of having a 'key'
 ! RS: will this leave the beginning (from 1 to resolution_0) of counter1 empty?
 ! RS: maybe resolution_0*(key/key_start-1) + ... ?
+!           KF: yeah, this is a small waste of memory, I admit
+!           KF: I was actually thinking (because var1_new, var2_new may be zero)
+!           KF: indexer= resolution*(key/key_start-1) + scaling2*var2_new +
+!                                                       var1_new          + 1
+!           KF: but then I would have to change divyUp too...
+!               so this can be in the next update
 indexer = resolution_0*(key/key_start) + scaling2_0*var2_new+var1_new
 
 ! And then make the name of the new subcell
@@ -541,8 +560,9 @@ subcell = trim(adjustl(descriptor3))//"_"//trim(adjustl(descriptor4))
 
 ! The frame will be attempted to stored in the order = 1 subcell, so the key needs to be reset
 ! And just like in the previous step, we increment by one
-!In this case, though, each frame is relevant so they are always stored
 ! RS: not sure about the previous line.
+!		KF: my bad, I forgot to delete that comment
+!                   we are no longer storing all frames in parent cells of order = 1 or 2
 key = counter1(indexer) + 1
 population = modulo(key,key_start)
 
