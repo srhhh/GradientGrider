@@ -10,9 +10,9 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      INPUT:   real :: var1,var2,var3          "variablies used to define the 'to-be-divided' cells/subcells"
 !               integer ::  order               "the order (N-1) of the 'to-be-divided' cell/subcell"
-!		real :: var1_new,var2_new	"the subcell in filename format"
-!		integer, dim(6) :: SP		"list of parameters for scaling, resolution, and scalingfactor
-!		real :: gap1,gap2		"the length of outgoing subcells"
+!		            real ::  var1_new,var2_new	    "the subcell in filename format"
+!		            integer, dim(6) :: SP		        "list of parameters for scaling, resolution, and scalingfactor
+!		            real :: gap1,gap2		            "the length of outgoing subcells"
 !               integer :: indexN               "the index of the first 'to-be-formed' cell/subcells (order N) in 
 !                                                   the counter array (see counterN)"
 !               integer :: lengthN              "dimension of array counterN (order N)"
@@ -387,13 +387,23 @@ close(progresschannel)
 
 end subroutine divyUp
 
-
-
-
-
-!addState adds a state/frame (its coordinates and gradients stored in coords)
-!to all subcells corresponding to var1, var2, var3
-!where var1, var2, var3 are stored in vals
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      ADDSTATE FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      INPUT:      real :: vals(:)               "variablies used to define cells/subcells"
+!                  real :: coords(:)             "coordinates and gradients of the system"
+!      OUTPUT:     integer :: head1              "add later"
+!                          :: head2
+!                          :: head3              
+!      IN/OUTPUT   integer :: counter0(:)        "add later"
+!                             counter1(:)
+!                             counter2(:)
+!                             counter3(:)
+!      
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      addState adds a state/frame (its coordinates and gradients stored in coords)
+!      to all subcells (stored in a file) corresponding to var1, var2, var3
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine addState(vals,coords,&
                 header1,header2,header3,&
@@ -437,21 +447,29 @@ order = 0
 var1_new = nint(vals(1)-0.5)
 var2_new = nint(vals(2)-0.5)
 
-!Subtract one to not go out of bounds (potentially)
-!And multiply by the 'grid length' to uniquely
-!order each index pair (r1,r2)
+! var2_new is subtracted by 1 (keep in bound) and multiplied by the 'total length of the grid map', 
+! and then added to var1_new to funnel the frame to the corresponding grid (vals(1),vals(2))
+! The following is only true when the parent level of grid spacing is unitry (1 Angstrom)
 indexer = anint(max_var1)*(var2_new-1) + var1_new
 
-!The key is incremented to signify a frame is added
-!(even though it may ultimately not be added)
+! counter0(indexer) is the number of frames in the grid (to which the current frame is added)
+! key_start indicates the number of digits are used in counter0(indexer) for counting the frames
+! key_start = 10000
+! (even though it may ultimately not be added)
+! RS: It seems uncessary to have a 'key'?
+
+! RS: I think we can add an if statement to quickly jump to order = 1 if counter0(indexer) > overcrowd0)
+! RS: As of now all frames go through modulo for order = 0 
+! RS: Same commment for order = 1 and 2
 key = counter0(indexer) + 1
 population = modulo(key,key_start)
 
 !Constantly having to write to the file (which gets big!) is time-consuming
 !So after it is filled, it is no longer written to
-!Additonally, counter0 could get 'overfilled' so it is not updated
+!Additonally, counter0 could get 'overfilled' (counter0(indexer)>key_start) so it is not updated
 !after it is overcrowded
 if (population < overcrowd0) then
+! RS: if you don't have 'key'... 
         counter0(indexer) = key
 
         !If this is the first time in the cell, this file has to be made
@@ -470,14 +488,12 @@ if (population < overcrowd0) then
         !subcell so the next frame can be added in now
         return
 
-!Of course, if it is overcrowded, then we need to divyUp the cell
-!This makes the smaller subcells out of the cell and additionally signals
-!that next time, a frame can be added to a deeper subcell
+! Of course, if order=0 cell is overcrowded, then we need to divyUp the cell
+! and make order=1 subcells
 else if (population == overcrowd0) then
 
-        !To access a subcell of higher order ('deeper subcell')
-        !We grant the cell a position in counter1 for each of its
-        !potential cells (100 in this particular case)
+        ! To access a subcell of order=1 from order=0, we allocate the overcrowded cell a designated 'region' in counter1 
+        ! aka. each of its subcells (4*4 in this particular case) is stored in this 'region'.
         key = key + key_start*header1
         counter0(indexer) = key
 
@@ -497,40 +513,48 @@ else if (population == overcrowd0) then
         !Incrementing header insures that the position granted is unique
         header1 = header1 + 1
 
+! RS: Is a "return" needed here? I will need to reread divyup and see.
 end if
-
-
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !               ORDER 1
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Implicitly, population > overcrowd0
 !Now, we go deeper; the 'depth' is represented by the order
 order = order + 1
 
+! The overcrowded order = 0 cell has divided into four (4*4) subcells 
 !This recovers the variable floored to the nearby multiple of 0.25
 !    e.g.  1.2445 -> 1.00     or    1.4425 -> 1.25
 var1 = anint(vals(1)*scaling1_0-0.5)*gap1_0
 var2 = anint(vals(2)*scaling2_0-0.5)*gap2_0
 
-!This recovers what integer var1, var2 correspond to
+! This recovers the index of the subcell where the incoming frame belongs to
 !    e.g.  1.00 -> 0     or    1.75 -> 3
+! RS: NINT(A) rounds its argument to the nearest whole number, right?
+! RS: say var1 = 1.2, you want var1_new to be 0, right?
+! RS: but this algorithm will render 1?
 var1_new = modulo(nint(var1*scaling1_0),scaling1_0)
 var2_new = modulo(nint(var2*scaling2_0),scaling2_0)
 
 !Here is the unqiue indexing method of this subroutine; the index to counter1
 !comes from the key acquired through counter0; it is represented by the digits
 !larger than key_start
+! RS: Yeah I guess I see the point of having a 'key'
+! RS: will this leave the beginning (from 1 to resolution_0) of counter1 empty?
+! RS: maybe resolution_0*(key/key_start-1) + ... ?
 indexer = resolution_0*(key/key_start) + scaling2_0*var2_new+var1_new
 
-!And then make the name of the new subcell
+! And then make the name of the new subcell
 write(descriptor3,FMT="(F9.2)") var1
 write(descriptor4,FMT="(F9.2)") var2
 subcell = trim(adjustl(descriptor3))//"_"//trim(adjustl(descriptor4))
 
-!And just like in the previous step, we increment by one
+! The frame will be attempted to stored in the order = 1 subcell, so the key needs to be reset
+! And just like in the previous step, we increment by one
 !In this case, though, each frame is relevant so they are always stored
+! RS: not sure about the previous line.
 key = counter1(indexer) + 1
 population = modulo(key,key_start)
 counter1(indexer) = key
