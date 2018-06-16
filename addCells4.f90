@@ -41,7 +41,7 @@ contains
 recursive subroutine divyUp(var1,var2,var3,order,&
                             var1_new,var2_new,SP,gap1,gap2,&
                             indexN,counterN,lengthN,frames)
-use f1_parameters
+use f2_parameters
 use f1_functions
 implicit none
 integer, intent(in) :: order,indexN,lengthN,frames
@@ -394,7 +394,7 @@ end subroutine divyUp
 subroutine addState(vals,coords,&
                 header1,header2,header3,&
                 counter0,counter1,counter2,counter3)
-use f1_parameters
+use f2_parameters
 implicit none
 integer :: indexer,i,j,population,key,overcrowd
 integer,intent(out) :: header1

@@ -3,6 +3,25 @@ implicit none
 
 contains
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!     CROSS PRODUCT FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!   INPUT:	real, dim (3) A			"vectorA"
+!		real, dim (3) B			"vectorB"
+!   OUTPUT:	real, dim (3) AcrossB		"the cross product"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine cross(A,B,AcrossB)
+implicit none
+real,dimension(3),intent(in) :: A, B
+real,dimension(3),intent(out) :: AcrossB
+
+AcrossB = (/ A(2)*B(3) - A(3)*B(2), &
+             A(3)*B(1) - A(1)*B(3), &
+             A(1)*B(2) - A(2)*B(1)  /)
+
+end subroutine cross
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      PARTITION FUNCTION (QuickSort Alogrithm by Tony Hoare)
