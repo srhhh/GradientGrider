@@ -378,13 +378,14 @@ end subroutine divyUp
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      INPUT:      real :: vals(:)               "variablies used to define cells/subcells"
 !                  real :: coords(:)             "coordinates and gradients of the system"
-!      OUTPUT:     integer :: head1              "add later"
+!      OUTPUT:     integer :: head1              "an integer that defines the pointer (explained later)"
 !                          :: head2
 !                          :: head3              
-!      IN/OUTPUT   integer :: counter0(:)        "add later"
-!                             counter1(:)
-!                             counter2(:)
-!                             counter3(:)
+!      IN/OUTPUT   integer :: counter0(:)        "an array holds the pointer (first four digits, explained later) 
+!                             counter1(:)            and number of frames (last four digits) stored in each grid 
+!                             counter2(:)            of the current level"
+!                             counter3(:)        "the pointer is a number indicating the position of an overcrowded 
+!                                                    (after divyup) in the next level.
 !      
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      addState adds a state/frame (its coordinates and gradients stored in coords)
@@ -444,14 +445,7 @@ indexer = anint(max_var1)*(var2_new-1) + var1_new
 ! key_start indicates the number of digits are used in counter0(indexer) for counting the frames
 ! key_start = 10000
 ! (even though it may ultimately not be added)
-! RS: It seems uncessary to have a 'key'?
-!         KF: addressed later
 
-! RS: I think we can add an if statement to quickly jump to order = 1 if counter0(indexer) > overcrowd0)
-! RS: As of now all frames go through modulo for order = 0 
-! RS: Same commment for order = 1 and 2
-!                   KF: this is actually a really good idea;
-!                   KF: I don't even need to define population at all
 key = counter0(indexer) + 1
 population = modulo(key,key_start)
 
@@ -505,13 +499,6 @@ else if (population == overcrowd0) then
         !Incrementing header insures that the position granted is unique
         header1 = header1 + 1
 
-! RS: Is a "return" needed here? I will need to reread divyup and see.
-!                 KF: no, this return was removed;
-!                     keeping it would have allowed for cases where
-!                     after calling divyUp, another divyUp is required
-!                     (for a subcell), but the subroutine is terminated early;
-!                     there is no 'double counting' because we divyUp BEFORE
-!                     we add the frame to the cells
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -530,12 +517,7 @@ var2 = anint(vals(2)*scaling2_0-0.5)*gap2_0
 
 ! This recovers the index of the subcell where the incoming frame belongs to
 !    e.g.  1.00 -> 0     or    1.75 -> 3
-! RS: NINT(A) rounds its argument to the nearest whole number, right?
-! RS: say var1 = 1.2, you want var1_new to be 0, right?
-! RS: but this algorithm will render 1?
-!		KF: I multiply it by scaling_0 (4) so I will
-!               KF: get:     var1 = anint(1.2*4-0.5)*.25 = 1.00
-!                        var1_new =  nint(1.00 * 4) % 4  = 1
+
 var1_new = modulo(nint(var1*scaling1_0),scaling1_0)
 var2_new = modulo(nint(var2*scaling2_0),scaling2_0)
 
@@ -558,13 +540,9 @@ write(descriptor3,FMT="(F9.2)") var1
 write(descriptor4,FMT="(F9.2)") var2
 subcell = trim(adjustl(descriptor3))//"_"//trim(adjustl(descriptor4))
 
-! The frame will be attempted to stored in the order = 1 subcell, so the key needs to be reset
-! And just like in the previous step, we increment by one
-! RS: not sure about the previous line.
-!		KF: my bad, I forgot to delete that comment
-!                   we are no longer storing all frames in parent cells of order = 1 or 2
 key = counter1(indexer) + 1
 population = modulo(key,key_start)
+! RS: Don't really need a population here.
 
 if (population < overcrowd1) then
 	counter1(indexer) = key
@@ -582,7 +560,7 @@ if (population < overcrowd1) then
 
         return
 
-!And if overcrowded, then call divyUp as expected
+! And if overcrowded, then call divyUp as expected
 else if (population == overcrowd1) then 
         key = key + key_start*header2
         counter1(indexer) = key
@@ -676,8 +654,8 @@ end if
 !               ORDER 3
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!And we go deeper once more
-!Same as last time
+! And we go deeper once more
+! Order = 3 is the deepest level that this version of code will go.
 order = order + 1
 var1 = anint((scalingfactor1_2)*vals(1)-0.5)*(gap1_2)
 var2 = anint((scalingfactor2_2)*vals(2)-0.5)*(gap2_2)
