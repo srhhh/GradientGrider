@@ -34,7 +34,7 @@ contains
 
 subroutine divyUp(subcellParent,FMTorder,var1_round,var2_round,SP,&
 		  multiplier1,multiplier2,indexN,counterN,lengthN,frames)
-use f1_parameters
+use f2_parameters
 use f1_functions
 implicit none
 integer, intent(in) :: indexN,lengthN,frames
@@ -55,6 +55,7 @@ character(10) :: var1_filename,var2_filename
 scaling1 = SP(1)
 scaling2 = SP(2)
 resolution = SP(3)
+ 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME RETRIEVAL
@@ -109,8 +110,7 @@ do i = 1, resolution-1
 ! 	If you want an integer, please make sure to add INT or ANIT, it would not increase the cost and it makes it safe
 !			KF: resolved	
         vals(counter_index,:) = (/ var1_round+int(i/scaling2)*multiplier1,&
-                                   var2_round+modulo(i,scaling2)*multiplier2,&
-                                   0.0                                  /)
+                                   var2_round+modulo(i,scaling2)*multiplier2 /)
 end do
 
 !Say the array vals looks something like this
@@ -306,7 +306,7 @@ end subroutine divyUp
 subroutine addState(vals,coords,&
                 header1,header2,header3,&
                 counter0,counter1,counter2,counter3)
-use f1_parameters
+use f2_parameters
 implicit none
 integer :: indexer,i,j,key
 integer,intent(out) :: header1
@@ -392,6 +392,13 @@ if (key < overcrowd0) then
 !If the cell is overcrowded (by that exact number) then we need to subdivide it
 else if (key == overcrowd0) then
 
+!For testing purposes
+if (header1 == 900) then
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+print *, "      HEADER 1 WILL BE OVERCROWDED SOON"
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+end if
+
 	!Adding by a large number (key_start) assures the portion of the integer
 	!that holds the index of the next counter (header1 value)
 	!is not incremented by an increment of key
@@ -475,6 +482,14 @@ if (key < overcrowd1) then
 
 else if (key == overcrowd1) then
 
+!For testing purposes
+if (header2 == 4900) then
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+print *, "      HEADER 2 WILL BE OVERCROWDED SOON"
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+end if
+
+
 	key = key + key_start*header2
 	counter1(indexer) = key
 
@@ -540,6 +555,14 @@ if (key < overcrowd2) then
 	return
 
 else if (key == overcrowd2) then
+
+!For testing purposes
+if (header3 == 4900) then
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+print *, "      HEADER 3 WILL BE OVERCROWDED SOON"
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+end if
+
 
 	key = key + key_start*header3
 	counter2(indexer) = key

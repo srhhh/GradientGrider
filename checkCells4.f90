@@ -52,7 +52,6 @@ min_rmsd = 100.0
 !                       KF: the word 'each' is misleading, my bad
 call getVar1(coords,Natoms,var1)
 call getVar2(coords,Natoms,var2)
-call getVar3(coords,Natoms,var3)
 
 !The coordinates, as they are formatted in getCells and addCells, are the wrong
 !shape for ls_rmsd. Thus, we reshape them first

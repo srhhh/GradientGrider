@@ -64,7 +64,7 @@ character(4),parameter :: FMT5 = "(I9)"                     !For number of subst
 !VARIABLES
 
 !The number of atoms in the system
-integer,parameter :: Natoms = 6
+integer,parameter :: Natoms = 3
 
 !The number of variables in use
 integer,parameter :: Nvar = 3
