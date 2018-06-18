@@ -1,4 +1,4 @@
-
+! RS: addCells5?
 module addCells4
 implicit none
 
@@ -8,22 +8,24 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      DIVYUP FUNCTION (QuickSort Alogrithm by Tony Hoare)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!      INPUT:   character :: subcellParent			"filename of the parent subcell"
-!               character :: FMTorder				"format (decimal places) of the childen subcell"
+!      INPUT:   character :: subcellParent			"filename of the 'to-be-divided' (parent, order N-1) cell/subcell"
+!               character :: FMTorder				"format (decimal places) of the 'to-be-formed (children, order N) subcell"
 !	  	real ::  var1_round,var2_round	    		"the number form of the subcell"
 !		integer, dim(6) :: SP				"list of parameters for scaling, resolution, and scalingfactor
+! RS: we should make a list explaining what those scaling parameters are
 !		real :: multiplier1,multiplier2	           	"the length of children subcells"
-!               integer :: indexN               "the index of the first 'to-be-formed' cell/subcells (order N) in 
-!                                                   the counter array (see counterN)"
-!               integer :: lengthN              "dimension of array counterN (order N)"
-!               integer :: frames               "the number of frames in the 'to-be-divided' cell
+! RS: can the above be part of the SP?
+!               integer :: indexN               "number of overcrowded (excluding this 'to-be-divided' cell) cells in the parent level"
+!                                               " ex. 'indexN * resolution' is the index of the first children subcell in the counter array
+!               integer :: lengthN              "dimension of array counterN"
+!               integer :: frames               "the number of frames in the parenet cell"
 !
-!      OUTPUT:  integer :: counterN             "an array of integers, which are the number of frames in the 'to-be-formed' 
-!                                                   cell/subcells (order N)"
+!      OUTPUT:  integer :: counterN             "an array of integers, which are the number of frames in the children subcells"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !      This function grids an overcrowded cell/subcell into higher order subcells.
 !      This function triggers only when the size of a cell/subcell reaches the overcrowd limit for the first time
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! RS: I like the new nomenclature! :D
 
 subroutine divyUp(subcellParent,FMTorder,var1_round,var2_round,SP,&
 		  multiplier1,multiplier2,indexN,counterN,lengthN,frames)
@@ -78,7 +80,7 @@ close(filechannel1)
 !Add "markers" to know when a subcell begins/ends
 !ex:    Let     scaling1 = scaling2 = 3
 !               resolution = 9
-!               var1 = N/3
+!               var1 = int(N/3)
 !               var2 = N%3
 !		var1_round = 0.0
 !		var2_round = 0.0
@@ -99,6 +101,7 @@ close(filechannel1)
 do i = 1, resolution-1
         counter_index = frames + i
         originalIndexes(counter_index,1) = counter_index
+	! If you want an integer, please make sure to add INT or ANIT, it would not increase the cost and it makes it safe
         vals(counter_index,:) = (/ var1_round+(i/scaling2)*multiplier1,&
                                    var2_round+modulo(i,scaling2)*multiplier2,&
                                    0.0                                  /)
@@ -122,9 +125,6 @@ end do
 !  and X indicates a pair where var2 == 0
 !  and . indicates a frame
 !
-!
-!
-!
 
 call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,1,frames_plus_markers,1)
 
@@ -139,7 +139,7 @@ call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,1,frames_plus_markers,
 !  and X indicates a pair where var2 == 0
 !  and . indicates a frame
 !
-!Now we have something like this:
+!After quicksorting, we have something like this:
 !
 !               VAR1 QSORT [1,24]
 !                     xx. . ..Xxx..   ..   .  .Xxx..  ..  ..
@@ -198,6 +198,7 @@ call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,last_marker,frames_plu
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Now that vals and indexer are fully sorted, we need to identify subcells
+! RS: What are p1 and p2, indexes of two adjacent markers?
 !Any pair of markers (p1,p2) such that (p2-p1 > 1) is a subcell with a frame in
 !it; these pairs are ordered in such a way so that the subcell (i,j) that
 !corresponds with pair n is:
@@ -336,11 +337,14 @@ var1_index = aint(var1_cell * divisor1_0)
 var2_index = aint(var2_cell * divisor2_0)
 
 !var_round is the decimal representation of var_index
+! RS: Again, this is only true if the above statement is true
 var1_round0 = multiplier1_0 * var1_index
 var2_round0 = multiplier2_0 * var2_index
 
-!indexer accesses the counter (so as to keep track of population)
-!and is uniquely determined by var_index
+!indexer accesses the counter (so as to keep track of population) and is uniquely determined by var_index
+! RS: anint(max_var1/spacing1) as a constant stored in parameter
+! RS: e.g. max_var=12 and spacing = 3.6, instead of four bins, you would like to have 3 bins?
+! RS: the minimum value of indexer is zero -- i would suggest the index of an array starts from 1
 indexer = anint(max_var1/spacing1) * var2_index + var1_index
 
 !Increment by one to signify adding a frame;
@@ -350,7 +354,7 @@ key = counter0(indexer) + 1
 !If its not overcrowded, we need to add frames
 if (key < overcrowd0) then
 
-	!And keep track of the population
+	!keep track of the population
 	counter0(indexer) = key
 
 	!The filename is the sum of the decimal portions of each order
@@ -381,7 +385,7 @@ else if (key == overcrowd0) then
 
 	!Adding by a large number (key_start) assures the portion of the integer
 	!that holds the index of the next counter (header1 value)
-	!is not incremented by an increment of population
+	!is not incremented by an increment of key
 	key = key + key_start*header1
 	counter0(indexer) = key
 
@@ -427,10 +431,12 @@ var2_index = aint(var2_cell * divisor2_1)
 var1_round1 = multiplier1_1 * var1_index
 var2_round1 = multiplier2_1 * var2_index
 
-!This time, we also need key/key_start = the unique header1 value
-!to access counter;
-!And by multiplying by resolution (scaling1*scaling2), we assure that each
-!subcell of the parent subcell gets its own unique index
+! We need int(key/key_start) = the unique header1 value to access counter;
+! And by multiplying by resolution (scaling1*scaling2), we assure that each
+! subcell of the parent subcell gets its own unique index
+! RS: I would add int to make sure it comes out an integer
+! RS: different compilers can mess things up
+! RS: Again, will this not make the beginning of the array blank?
 indexer = resolution_0*(key/key_start) + scaling1_0*var2_index + var1_index
 key = counter1(indexer) + 1
 
