@@ -70,6 +70,9 @@ call system_clock(c1)
         Ntraj = Ntraj+1
         Nstates = 0
 
+! RS: I am a little bit skeptical about the system_clock thing
+! RS: Why did you do a clock_max?
+! RS: so units of c1 and c2 are milliseconds?
 call system_clock(c2)
 formatting_time = (c2-c1)/system_clock_rate
 
@@ -97,24 +100,23 @@ Total_Formatting_Time = Total_Formatting_Time + formatting_time
                                 coords(gradient_index+i-1),coords(gradient_index+i)
                 end do
 
-                        !With the fully described state, calculate the
-                        !variables wanted
-                        call getVar1(coords(1:3*Natoms),Natoms,vals(1))
-                        call getVar2(coords(1:3*Natoms),Natoms,vals(2))
-                        call getVar3(coords(1:3*Natoms),Natoms,vals(3))
+                !With the fully described state, calculate the
+                !variables wanted
+                call getVar1(coords(1:3*Natoms),Natoms,vals(1))
+                call getVar2(coords(1:3*Natoms),Natoms,vals(2))
+                call getVar3(coords(1:3*Natoms),Natoms,vals(3))
 
-                        !If they are outliers, just skip this cycle
-                        if ((vals(1) > max_var1).or.(vals(2) > max_var2)) then
-                                cycle
-                        end if
+                !If they are outliers, just skip this cycle
+                if ((vals(1) > max_var1).or.(vals(2) > max_var2)) then
+                    cycle
+                end if
 
-                        !Write to the file the variables, coordinates, and gradients
-                        call addState(vals,coords,&
-                                header1,header2,header3,&
+                !Write to the file the variables, coordinates, and gradients
+                call addState(vals,coords,header1,header2,header3,&
                                 counter0,counter1,counter2,counter3)
 
-                        !And this is one successful state/frame
-                        Nstates = Nstates + 1
+                !And this is one successful state/frame
+                Nstates = Nstates + 1
  
         end do              
         close(frameschannel)
