@@ -72,16 +72,17 @@ integer,parameter :: Nvar = 3
 !The spacing is the spacing of the parent-level grid
 !Because the variables may be unbound, we define the
 !parent-level grid in terms of gridline spacing
-real,parameter :: spacing1 = 3.6        !Angstroms
-real,parameter :: spacing2 = 3.6        !Angstroms
+real,parameter :: spacing1 = 1.0        !Angstroms
+real,parameter :: spacing2 = 7.5        !Angstroms
 real,parameter :: spacing3 = 0.1        !Angstroms
 
 !There are some outliers; making a maximum throws these away
 real,parameter :: max_var1 = 40.0       !Angstroms
 real,parameter :: max_var2 = 40.0       !Angstroms
+integer,parameter :: bounds1 = ceiling(max_var1/spacing1)
+integer,parameter :: bounds2 = ceiling(max_var2/spacing2)
 !Consequently, we know the maximum number of cells in the grid
-integer, parameter :: counter0_max = anint(max_var1/spacing1)&
-                                     *anint(max_var2/spacing2)
+integer, parameter :: counter0_max = bounds1*bounds2
 
 !The threshold of "overcrowded" for a cell of order N
 integer,parameter :: overcrowd0 = 25
@@ -92,13 +93,13 @@ integer,parameter :: overcrowd3 = 25
 !The scaling is the amount that is resolved for an overcrowded cell
 ! (10,10,10) = x1000 magnification
 ! For now, only two variables are used
-integer,parameter :: scaling1_0 = 3
-integer,parameter :: scaling2_0 = 3
+integer,parameter :: scaling1_0 = 10
+integer,parameter :: scaling2_0 = 6
 integer,parameter :: resolution_0 = scaling1_0*scaling2_0
 integer,dimension(3),parameter :: SP0=(/scaling1_0,scaling2_0,resolution_0/)
 
 integer,parameter :: scaling1_1 = 10
-integer,parameter :: scaling2_1 = 10
+integer,parameter :: scaling2_1 = 13
 integer,parameter :: resolution_1 = scaling1_1*scaling2_1
 integer,dimension(3),parameter :: SP1=(/scaling1_1,scaling2_1,resolution_1/)
 
@@ -108,8 +109,8 @@ integer,parameter :: resolution_2 = scaling1_2*scaling2_2
 integer,dimension(3),parameter :: SP2=(/scaling1_2,scaling2_2,resolution_2/)
 
 !The formatting of the subcell of a particular order
-character(6), parameter :: FMTorder0 = "(F9.2)"
-character(6), parameter :: FMTorder1 = "(F9.3)"
+character(6), parameter :: FMTorder0 = "(F9.1)"
+character(6), parameter :: FMTorder1 = "(F9.2)"
 character(6), parameter :: FMTorder2 = "(F9.4)"
 character(6), parameter :: FMTorder3 = "(F9.5)"
 
@@ -119,11 +120,11 @@ character(6), parameter :: FMTorder3 = "(F9.5)"
 real, parameter :: multiplier1_0 = spacing1
 real, parameter :: multiplier2_0 = spacing2
 real, parameter :: multiplier1_1 = spacing1/scaling1_0
-real, parameter :: multiplier2_1 = spacing1/scaling2_0
+real, parameter :: multiplier2_1 = spacing2/scaling2_0
 real, parameter :: multiplier1_2 = spacing1/(scaling1_0*scaling1_1)
-real, parameter :: multiplier2_2 = spacing1/(scaling2_0*scaling2_1)
+real, parameter :: multiplier2_2 = spacing2/(scaling2_0*scaling2_1)
 real, parameter :: multiplier1_3 = spacing1/(scaling1_0*scaling1_1*scaling1_2)
-real, parameter :: multiplier2_3 = spacing1/(scaling2_0*scaling2_1*scaling2_2)
+real, parameter :: multiplier2_3 = spacing2/(scaling2_0*scaling2_1*scaling2_2)
 
 real, parameter :: divisor1_0  = 1.0 / multiplier1_0
 real, parameter :: divisor2_0  = 1.0 / multiplier2_0

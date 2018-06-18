@@ -2,7 +2,7 @@ program getCells
 use f1_parameters
 use f1_variables
 use f1_functions
-use addCells4
+use addCells5
 implicit none
 integer :: Ntraj,Nstates,Total_States,state1,state2,line_num,skips,i,gradient_index
 logical :: flag1, flag2
@@ -17,7 +17,7 @@ integer, dimension(counter2_max) :: counter2 = 0
 integer, dimension(counter3_max) :: counter3 = 0
 integer, allocatable :: number_of_states(:,:)
 real :: t1,t2,system_clock_rate,formatting_time,Total_Formatting_Time
-integer :: total_time1,total_time2,c1,c2,cr,cm
+integer :: total_time1,total_time2,c1,c2,cr,cm,count1
 real,allocatable :: coords(:),vals(:)
 character(50) :: current_path,line_data
 character(20) :: subcell,trajectory_path,descriptor1,descriptor2
@@ -42,12 +42,12 @@ allocate(vals(Nvar))
 gradient_index = 3*Natoms
 
 !We want to know how fast this program takes
-call system_clock(count_rate=cr)
-call system_clock(count_max=cm)
+call system_clock(count1,cm,cr)
 system_clock_rate = real(cr)
 call system_clock(total_time1)
 
-!We will keep track of how many trajectories and states we encounter
+wrITE(*,*) "count, clockrate, and clockmax: ",count1,cr, cm
+
 Ntraj = 0
 Total_States = 0
 Total_Formatting_Time = 0.0

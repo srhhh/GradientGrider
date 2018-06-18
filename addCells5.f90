@@ -1,5 +1,4 @@
-! RS: addCells5?
-module addCells4
+module addCells5
 implicit none
 
 
@@ -11,10 +10,15 @@ contains
 !      INPUT:   character :: subcellParent			"filename of the 'to-be-divided' (parent, order N-1) cell/subcell"
 !               character :: FMTorder				"format (decimal places) of the 'to-be-formed (children, order N) subcell"
 !	  	real ::  var1_round,var2_round	    		"the number form of the subcell"
-!		integer, dim(6) :: SP				"list of parameters for scaling, resolution, and scalingfactor
+!		integer, dim(3) :: SP				"list of parameters for scaling and resolution"
+!			SP(1) = scaling of variable1
+!			SP(2) = scaling of variable2
+!			SP(3) = product of SP(1),SP(2) 
 ! RS: we should make a list explaining what those scaling parameters are
+!			KF: alright
 !		real :: multiplier1,multiplier2	           	"the length of children subcells"
 ! RS: can the above be part of the SP?
+!			KF: I don't know; its a separate type so I don't think so
 !               integer :: indexN               "number of overcrowded (excluding this 'to-be-divided' cell) cells in the parent level"
 !                                               " ex. 'indexN * resolution' is the index of the first children subcell in the counter array
 !               integer :: lengthN              "dimension of array counterN"
@@ -26,6 +30,7 @@ contains
 !      This function triggers only when the size of a cell/subcell reaches the overcrowd limit for the first time
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! RS: I like the new nomenclature! :D
+!		KF: huzzahhhh
 
 subroutine divyUp(subcellParent,FMTorder,var1_round,var2_round,SP,&
 		  multiplier1,multiplier2,indexN,counterN,lengthN,frames)
@@ -101,8 +106,9 @@ close(filechannel1)
 do i = 1, resolution-1
         counter_index = frames + i
         originalIndexes(counter_index,1) = counter_index
-	! If you want an integer, please make sure to add INT or ANIT, it would not increase the cost and it makes it safe
-        vals(counter_index,:) = (/ var1_round+(i/scaling2)*multiplier1,&
+! 	If you want an integer, please make sure to add INT or ANIT, it would not increase the cost and it makes it safe
+!			KF: resolved	
+        vals(counter_index,:) = (/ var1_round+int(i/scaling2)*multiplier1,&
                                    var2_round+modulo(i,scaling2)*multiplier2,&
                                    0.0                                  /)
 end do
@@ -199,6 +205,7 @@ call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,last_marker,frames_plu
 
 !Now that vals and indexer are fully sorted, we need to identify subcells
 ! RS: What are p1 and p2, indexes of two adjacent markers?
+
 !Any pair of markers (p1,p2) such that (p2-p1 > 1) is a subcell with a frame in
 !it; these pairs are ordered in such a way so that the subcell (i,j) that
 !corresponds with pair n is:
@@ -212,7 +219,7 @@ do counter_index = 1, frames_plus_markers
         if (originalIndexes(counter_index,1) > frames) then
         population = counter_index - last_marker
         if (population > 0) then
-                i = (Nmarkers/scaling2)
+                i = int(Nmarkers/scaling2)
                 j = modulo(Nmarkers,scaling2)
 
                 !var_round are only the decimal part of the PARENT cell
@@ -235,7 +242,7 @@ do counter_index = 1, frames_plus_markers
 
                 !And of course, we need to add this onto counterN
                 !The indexing is exactly as in addState
-                indexer = resolution*indexN + scaling1*j + i
+                indexer = resolution*indexN + scaling1*j + i + 1
                 counterN(indexer) = population
 
         end if
@@ -272,7 +279,7 @@ if (population > 0) then
         end do 
         close(filechannel1)
 
-        indexer = resolution*indexN + scaling1*j + i
+        indexer = resolution*indexN + scaling1*j + i + 1
         counterN(indexer) = population    
 end if
 
@@ -333,8 +340,8 @@ var2_cell = vals(2)
 
 !var_index keeps track of the index of the child subcell
 !inside of its parent subcell
-var1_index = aint(var1_cell * divisor1_0)
-var2_index = aint(var2_cell * divisor2_0)
+var1_index = int(var1_cell * divisor1_0)
+var2_index = int(var2_cell * divisor2_0)
 
 !var_round is the decimal representation of var_index
 ! RS: Again, this is only true if the above statement is true
@@ -345,7 +352,9 @@ var2_round0 = multiplier2_0 * var2_index
 ! RS: anint(max_var1/spacing1) as a constant stored in parameter
 ! RS: e.g. max_var=12 and spacing = 3.6, instead of four bins, you would like to have 3 bins?
 ! RS: the minimum value of indexer is zero -- i would suggest the index of an array starts from 1
-indexer = anint(max_var1/spacing1) * var2_index + var1_index
+!		KF: addressed with the new parameter 'bounds' which uses ceiling instead
+!		KF: also, good point on indexer starting at zero/one
+indexer = bounds1 * var2_index + var1_index + 1
 
 !Increment by one to signify adding a frame;
 !key keeps track of population AND the index of the next counter
@@ -398,7 +407,7 @@ else if (key == overcrowd0) then
 
         !For more information on how this works, see the subroutine above
         call divyUp(subcell,FMTorder1,var1_round,var2_round,SP0,multiplier1_1,multiplier2_1,&
-                    header1,counter1,counter1_max,overcrowd0-1)
+                    header1-1,counter1,counter1_max,overcrowd0-1)
  
 	!We still need to add the frame
 	!Because we are adding the frame AFTER subdividing, we need to continue on to the
@@ -425,8 +434,8 @@ order = 1
 var1_cell = var1_cell - var1_round0
 var2_cell = var2_cell - var2_round0
 
-var1_index = aint(var1_cell * divisor1_1)
-var2_index = aint(var2_cell * divisor2_1)
+var1_index = int(var1_cell * divisor1_1)
+var2_index = int(var2_cell * divisor2_1)
 
 var1_round1 = multiplier1_1 * var1_index
 var2_round1 = multiplier2_1 * var2_index
@@ -437,7 +446,7 @@ var2_round1 = multiplier2_1 * var2_index
 ! RS: I would add int to make sure it comes out an integer
 ! RS: different compilers can mess things up
 ! RS: Again, will this not make the beginning of the array blank?
-indexer = resolution_0*(key/key_start) + scaling1_0*var2_index + var1_index
+indexer = resolution_0*int(key/key_start-1) + scaling1_0*var2_index + var1_index + 1
 key = counter1(indexer) + 1
 
 if (key < overcrowd1) then
@@ -477,7 +486,7 @@ else if (key == overcrowd1) then
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call divyUp(subcell,FMTorder2,var1_round,var2_round,SP1,multiplier1_2,multiplier2_2,&
-                    header2,counter2,counter2_max,overcrowd1-1)
+                    header2-1,counter2,counter2_max,overcrowd1-1)
  
         open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
@@ -497,13 +506,13 @@ order = 2
 var1_cell = var1_cell - var1_round1
 var2_cell = var2_cell - var2_round1
 
-var1_index = aint(var1_cell * divisor1_2)
-var2_index = aint(var2_cell * divisor2_2)
+var1_index = int(var1_cell * divisor1_2)
+var2_index = int(var2_cell * divisor2_2)
 
 var1_round2 = multiplier1_2 * var1_index
 var2_round2 = multiplier2_2 * var2_index
 
-indexer = resolution_1*(key/key_start) + scaling1_1*var2_index + var1_index
+indexer = resolution_1*int(key/key_start-1) + scaling1_1*var2_index + var1_index + 1
 key = counter2(indexer) + 1
 
 if (key < overcrowd2) then
@@ -543,7 +552,7 @@ else if (key == overcrowd2) then
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call divyUp(subcell,FMTorder3,var1_round,var2_round,SP2,multiplier1_3,multiplier2_3,&
-                    header3,counter3,counter3_max,overcrowd2-1)
+                    header3-1,counter3,counter3_max,overcrowd2-1)
  
 !Just for testing purposes
  open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
@@ -568,10 +577,10 @@ order = 3
 var1_cell = var1_cell - var1_round2
 var2_cell = var2_cell - var2_round2
 
-var1_index = aint(var1_cell * divisor1_3)
-var2_index = aint(var2_cell * divisor2_3)
+var1_index = int(var1_cell * divisor1_3)
+var2_index = int(var2_cell * divisor2_3)
 
-indexer = resolution_2*(key/key_start) + scaling1_2*var2_index + var1_index
+indexer = resolution_2*int(key/key_start-1) + scaling1_2*var2_index + var1_index + 1
 key = counter3(indexer) + 1
 
 if (key < overcrowd3) then
@@ -642,4 +651,4 @@ end subroutine addState
 
 
 
-end module addCells4
+end module addCells5
