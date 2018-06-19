@@ -179,6 +179,7 @@ close(progresschannel)
 !                       don't make any changes, we'll just get the same frame
 !                       back (boring). This change demonstrates a new frame will
 !                       produce a frame from the grid that approximates it
+
 coords(3) = coords(3) + 0.13
 coords(4) = coords(4) - 0.000
 coords(8) = coords(8) + .000
