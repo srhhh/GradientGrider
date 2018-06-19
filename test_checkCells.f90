@@ -1,7 +1,7 @@
 program test_checkCells
 use checkCells4
-use f1_variables
-use f1_parameters
+use f2_variables
+use f2_parameters
 
 implicit none
 real, dimension(Nvar) :: vals
@@ -179,21 +179,21 @@ close(progresschannel)
 !                       don't make any changes, we'll just get the same frame
 !                       back (boring). This change demonstrates a new frame will
 !                       produce a frame from the grid that approximates it
-coords(3) = coords(3) + 0.1
+coords(3) = coords(3) + 0.13
 coords(4) = coords(4) - 0.000
-coords(18) = coords(18) + .000
+coords(8) = coords(8) + .000
 
 open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
 write(progresschannel,FMT="(A50)") "Making these changes to it:"
 write(progresschannel,FMT="(A50)") ""
-write(progresschannel,*) "coords(3) = coords(3) + 0.1"
+write(progresschannel,*) "coords(3) = coords(3) + 0.13"
 write(progresschannel,*) "coords(4) = coords(4) - 0.000"
-write(progresschannel,*) "coords(18) = coords(18) + .000"
+write(progresschannel,*) "coords(8) = coords(8) + .000"
 write(progresschannel,FMT="(A50)") ""
 close(progresschannel)
 
-call getVar1(coords,Natoms,vals(1))
-call getVar2(coords,Natoms,vals(2))
+call getVar3(coords,Natoms,vals(1))
+call getVar4(coords,Natoms,vals(2))
 
 open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
 write(progresschannel,*) "The modified coordinates are: "
@@ -215,8 +215,8 @@ close(progresschannel)
 call checkState(coords,coords_Cells,min_rmsd,&
                 counter0,counter1,counter2,counter3)
 
-call getVar1(coords_Cells,Natoms,vals(1))
-call getVar2(coords_Cells,Natoms,vals(2))
+call getVar3(coords_Cells,Natoms,vals(1))
+call getVar4(coords_Cells,Natoms,vals(2))
 
 open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
 write(progresschannel,*) "The closests coordinates are: "
