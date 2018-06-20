@@ -1,5 +1,7 @@
 Gradient Grider now has 3 different programs under its wings.
 
+(((note! to see ASCII art, open README is plain-text!)))
+
 make_getCells is the makefile of getCells.f90. This program was designed specifically to extract coordinate and gradients from a folder 'B0' of trajectories involving the reaction of CH3I and F. Although the framework is for trajectories of B0, the reading in of frames is dictated by a sed command that can be altered for different trajectory formats. In any case, once a frame is read, variables are calculated that describe the frame by f1_parameters.f90. With the frame and its variable, this data is deposited into a grid; all grid additions and subdivision are supervised by addCells.f90.
 
 make_test_checkCells is the makefile of test_checkCells.f90. This program checks for a frame with a low RMSD compared to some input frame; the program is designed specifically for grids formatted by addCells.f90. The thinking is that if the gradient of some frame is unknown but a similar frame--with low RMSD compared to it--has a known frame, that frame's gradient can be used instead.
@@ -30,10 +32,10 @@ When one of the grid-creation programs starts running, the number of files it ma
 
 Let the reaction be of a hydrogen atom colliding into an H2 molecule. Let variable one be the distance of the incident hydrogen from one of the H2 hydrogen atoms, and let variable two be the distance of the incident hydrogen from the other H2 hydrogen atoms. Suppose this is what one frame of the trajectory looks like:
 
-     (1)               (2) 
-      H - - - - - - - - H
-                         \
-                          H (3)
+...     (1)               (2) 
+...      H - - - - - - - - H
+...                         \
+...                          H (3)
 
 Here variable one (var1) is the distance between H(1) and H(2) or r12, and variable two (var2) is the distance between H(1) and H(2) or r13. Suppose r12 = 2.916677 A and r13 = 3.135552 A.
 
