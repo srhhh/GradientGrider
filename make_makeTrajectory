@@ -1,0 +1,21 @@
+a.out : f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o addCells5.o makeTrajectory.o initialTrajectories.o
+	$(FC) -o a.out -O3 -fcheck="bound" f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o addCells5.o makeTrajectory.o initialTrajectories.o
+
+FC = gfortran
+
+f2_parameters.o : f2_parameters.f90
+	$(FC) -c f2_parameters.f90
+f1_functions.o : f1_functions.f90
+	$(FC) -c f1_functions.f90
+f2_variables.o : f2_variables.f90
+	$(FC) -c f2_variables.f90
+f2_physics_parameters.o : f2_physics_parameters.f90
+	$(FC) -c f2_physics_parameters.f90
+addCells5.o : addCells5.f90
+	$(FC) -c addCells5.f90
+makeTrajectory.o : makeTrajectory.f90
+	$(FC) -c makeTrajectory.f90
+initialTrajectories.o : initialTrajectories.f90
+	$(FC) -c initialTrajectories.f90
+clean :
+	rm  initialTrajectories.o makeTrajectory.o maketrajectory.mod addCells5.o addcells5.mod f2_parameters.o f2_parameters.mod f2_variables.o f2_variables.mod f1_functions.o f1_functions.mod f2_physics_parameters.o f2_physics_parameters.mod
