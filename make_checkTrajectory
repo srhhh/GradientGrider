@@ -1,0 +1,27 @@
+a.out : f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o addCells5.o checkCells4.o makeTrajectory2.o checkTrajectories.o
+	$(FC) -o a.out -O3 -fcheck="bound" f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o addCells5.o checkCells4.o makeTrajectory2.o checkTrajectories.o
+
+FC = gfortran
+
+f2_parameters.o : f2_parameters.f90
+	$(FC) -c f2_parameters.f90
+f1_functions.o : f1_functions.f90
+	$(FC) -c f1_functions.f90
+f2_variables.o : f2_variables.f90
+	$(FC) -c f2_variables.f90
+f2_physics_parameters.o : f2_physics_parameters.f90
+	$(FC) -c f2_physics_parameters.f90
+ls_rmsd.o : ls_rmsd.f90
+	$(FC) -c ls_rmsd.f90
+mapCellData.o : mapCellData.f90
+	$(FC) -c mapCellData.f90
+addCells5.o : addCells5.f90
+	$(FC) -c addCells5.f90
+checkCells4.o : checkCells4.f90
+	$(FC) -c checkCells4.f90
+makeTrajectory2.o : makeTrajectory2.f90
+	$(FC) -c makeTrajectory2.f90
+checkTrajectories.o : checkTrajectories.f90
+	$(FC) -c checkTrajectories.f90
+clean :
+	rm  checkTrajectories.o makeTrajectory2.o maketrajectory2.mod addCells5.o addcells5.mod mapCellData.o mapcelldata.mod ls_rmsd.o ls_rmsd.mod checkCells4.o checkcells4.mod f2_parameters.o f2_parameters.mod f2_variables.o f2_variables.mod f1_functions.o f1_functions.mod f2_physics_parameters.o f2_physics_parameters.mod

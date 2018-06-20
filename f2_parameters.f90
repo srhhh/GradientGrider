@@ -20,11 +20,14 @@ character(45),parameter :: path4 = "/home/kazuumi/Desktop/GradientGrider/f1_dump
 
 !FILES
 !File that will keep the trajectory folder names
-character(19),parameter :: trajectories = "f1_trajectories.txt"
+character(19),parameter :: trajectories = "f2_trajectories.txt"
 !File that writes the progress of the program
-character(15),parameter :: progressfile = "f1_progress.txt"
+character(15),parameter :: progressfile = "f2_progress.txt"
 !File that writes the progress of a trajectory
-character(17),parameter :: trajectoryfile = "f1_trajectory.xyz"
+character(17),parameter :: trajectoryfile = "f2_trajectory.xyz"
+!File that writes the rmsd retrieved from checkState every frame
+character(17),parameter :: checkstatefile = "f2_checkstate.dat"
+
 !Files where, when done, we save the counters with the numbers of frames
 !inside each subcell, as well as other information
 character(12),parameter :: counter0file = "counter0.txt"

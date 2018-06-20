@@ -105,7 +105,7 @@ if (key0 < overcrowd0) then
                 if (key0 == 0) return
 
                 !Call mapCell to see the heat map of all parent cells
-                call mapCell(0,counter0,counter0_max,bounds1,bounds2)
+!               call mapCell(0,counter0,counter0_max,bounds1,bounds2)
 
                 !Make the name of the subcell
 		var1_round = var1_round0
@@ -163,7 +163,7 @@ close(progresschannel)
 if (key1 < overcrowd1) then
 
         !Call mapCell just to see the heatmap of this subcell
-        call mapCell(int(key0/key_start)-1,counter1,counter1_max,scaling1_0,scaling2_0)
+!       call mapCell(int(key0/key_start)-1,counter1,counter1_max,scaling1_0,scaling2_0)
 
         !If there are frames in this cell, then we retrieve those frames
         if (key1 > 0) then
@@ -220,9 +220,9 @@ if (key1 < overcrowd1) then
                         !This does the nitty-gritty of checking to see
                         !If any of the indexes are out of bounds and 
                         !obtaining their rmsds and coordinates
-                        call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,&
-                                          int(key0/key_start)-1,index1_1,index1_2,index2_1,index2_2,&
-                                          var1_round,var2_round,counter2,counter2_max,&
+                        call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,FMTorder1,&
+                                          resolution_0*(int(key0/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
+                                          var1_round,var2_round,counter1,counter1_max,&
                                           rmsd_coords1,candidate_rmsd,candidateCoords)
 
                         !Even if all neighbors are empty, it still returns a
@@ -275,13 +275,14 @@ close(progresschannel)
 
 if (key2 < overcrowd2) then
 
-        call mapCell(key1/key_start-1,counter2,counter2_max,scaling1_1,scaling2_1)
+!       call mapCell(key1/key_start-1,counter2,counter2_max,scaling1_1,scaling2_1)
 
 !Force this to look at its neighbors (for testing)
 !Remark: with normals parameters, the deepest subcell for a particular frame is
 !usually of order 2 so this 
 
-        if (.false.) then !(key2 > 0) then
+!       if (.false.) then !(key2 > 0) then
+	if (key2 > 0) then
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + var1_round1 + var1_round2
@@ -312,16 +313,16 @@ close(progresschannel)
 
                 stop_flag = .false.
                 do i = 1, scaling1_1
-                do j = 0, i
-                
+                do j = 0, i                
+
                         index1_1 = var1_index + j
                         index1_2 = var1_index - j
 
                         index2_1 = var2_index + i - j
                         index2_2 = var2_index - i + j
 
-                        call getNeighbors(scaling1_1,scaling2_1,multiplier1_2,multiplier2_2,&
-                                          int(key1/key_start)-1,index1_1,index1_2,index2_1,index2_2,&
+                        call getNeighbors(scaling1_1,scaling2_1,multiplier1_2,multiplier2_2,FMTorder2,&
+                                          resolution_1*(int(key1/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
                                           var1_round,var2_round,counter2,counter2_max,&
                                           rmsd_coords1,candidate_rmsd,candidateCoords)
 
@@ -391,7 +392,7 @@ if (key3 < overcrowd3) then
 		var2_round = var2_round0 + var2_round1 + var2_round2
 
                 stop_flag = .false.
-                do i = 1, scaling1_1
+                do i = 1, scaling1_2
                 do j = 0, i
                 
                         index1_1 = var1_index + j
@@ -400,9 +401,9 @@ if (key3 < overcrowd3) then
                         index2_1 = var2_index + i - j
                         index2_2 = var2_index - i + j
 
-                        call getNeighbors(scaling1_2,scaling2_2,multiplier1_3,multiplier2_3,&
-                                          int(key2/key_start)-1,index1_1,index1_2,index2_1,index2_2,&
-                                          var1_round,var2_round,counter2,counter2_max,&
+                        call getNeighbors(scaling1_2,scaling2_2,multiplier1_3,multiplier2_3,FMTorder3,&
+                                          resolution_2*(int(key2/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
+                                          var1_round,var2_round,counter3,counter3_max,&
                                           rmsd_coords1,candidate_rmsd,candidateCoords)
 
                         if (candidate_rmsd < min_rmsd) then
@@ -439,7 +440,7 @@ end subroutine checkState
 !       real, dim(6*Natoms) closestCoords               "coords of min rmsd frame"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,&
+subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,FMTorder,&
                         index_start,index1_1,index1_2,index2_1,index2_2,&
                         var1_round0,var2_round0,counterN,counterN_max,&
                         coords_static,min_rmsd,closestCoords)
@@ -457,7 +458,7 @@ integer,intent(in) :: index_start
 integer :: indexer,population,key
 integer,intent(in) :: counterN_max
 integer,intent(in), dimension(counterN_max) :: counterN
-!character(9),intent(in) :: integer1,integer2
+character(6),intent(in) :: FMTorder
 character(9) :: var1_filename,var2_filename
 character(50) :: subcell
 double precision, intent(out) :: min_rmsd
@@ -490,8 +491,8 @@ if ((flag1) .and. (flag3)) then
                 !Make the name of the subcell
 		var1_round = var1_round0 + index1_1 * multiplier1
 		var2_round = var2_round0 + index2_1 * multiplier2
-                write(var1_filename,FMT=FMTorder3) var1_round
-                write(var2_filename,FMT=FMTorder3) var2_round
+                write(var1_filename,FMT=FMTorder) var1_round
+                write(var2_filename,FMT=FMTorder) var2_round
                 subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 !Calculate the RMSDs
@@ -517,10 +518,10 @@ if ((flag2) .and. (flag3)) then
         if (population > 0) then
 
                 !Make the name of the subcell
-		var1_round = var1_round0 + index1_1 * multiplier1
+		var1_round = var1_round0 + index1_2 * multiplier1
 		var2_round = var2_round0 + index2_1 * multiplier2
-                write(var1_filename,FMT=FMTorder3) var1_round
-                write(var2_filename,FMT=FMTorder3) var2_round
+                write(var1_filename,FMT=FMTorder) var1_round
+                write(var2_filename,FMT=FMTorder) var2_round
                 subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 allocate(rmsds(population),coords(population,Nvar+6*Natoms))
@@ -544,9 +545,9 @@ if ((flag1) .and. (flag4)) then
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + index1_1 * multiplier1
-		var2_round = var2_round0 + index2_1 * multiplier2
-                write(var1_filename,FMT=FMTorder3) var1_round
-                write(var2_filename,FMT=FMTorder3) var2_round
+		var2_round = var2_round0 + index2_2 * multiplier2
+                write(var1_filename,FMT=FMTorder) var1_round
+                write(var2_filename,FMT=FMTorder) var2_round
                 subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
 
@@ -570,10 +571,10 @@ if ((flag2) .and. (flag4)) then
         if (population > 0) then
 
                 !Make the name of the subcell
-		var1_round = var1_round0 + index1_1 * multiplier1
-		var2_round = var2_round0 + index2_1 * multiplier2
-                write(var1_filename,FMT=FMTorder3) var1_round
-                write(var2_filename,FMT=FMTorder3) var2_round
+		var1_round = var1_round0 + index1_2 * multiplier1
+		var2_round = var2_round0 + index2_2 * multiplier2
+                write(var1_filename,FMT=FMTorder) var1_round
+                write(var2_filename,FMT=FMTorder) var2_round
                 subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 allocate(rmsds(population),coords(population,Nvar+6*Natoms))
@@ -611,6 +612,11 @@ double precision, dimension(3,Natoms) :: rmsd_coords2
 double precision, allocatable :: U(:,:), g(:,:)
 double precision, dimension(3) :: x_center,y_center
 
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) "Reading off subcell ", trim(filename), " with ", population, " frames"
+write(progresschannel,*) ""
+close(progresschannel)
+
 !Read off the states in this subcell
 open(filechannel1,file=trim(path3)//trim(filename)//".dat")
 do i = 1, population
@@ -625,10 +631,6 @@ do i = 1, population
         end do
 close(filechannel1)
 
-open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-write(progresschannel,*) "Reading off subcell ", trim(filename)
-write(progresschannel,*) ""
-close(progresschannel)
 
 end subroutine getRMSD
 
