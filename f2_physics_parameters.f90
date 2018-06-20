@@ -21,19 +21,23 @@ real,parameter :: dt = (1.0e-17)/RU_time
 integer,parameter :: Nsteps = 20000
 
 !ATOMIC PARAMETERS
+! RS: why naming this "HOr0_hydrogen"? Do you mean "HHr0"?
 real,parameter :: HOr0_hydrogen = (1.0e-10)*0.7412/RU_length
-                                        !originally A
+                                        ! originally in A
+! RS: why naming this "HOke_hydrogen"? Do you mean "HHke"?
 real,parameter :: HOke_hydrogen =  (1.0e10*1.0e-8)*5.756/(RU_force/RU_length)
-                                        !originally mdyn/A= 1.0e-8 N/A
+                                        ! originally in mdyn/A= 1.0e-8 N/A
 real,parameter :: Morser0_hydrogen = (1.0e-10)*3.25/RU_length
-                                        !originally A
+                                        ! originally in A
 real,parameter :: MorseDe_hydrogen = (1.0/(Na*2.39006e-4))*0.02347/RU_energy
-                                        !originally kcal/mol
+                                        ! originally in kcal/mol
 real,parameter :: Morsealpha_hydrogen = -10.6
-                                        !unitless
+                                        ! unitless
 real,parameter :: mass_hydrogen = (.001/Na)*(1.00794)/RU_mass
                                         !originally g/mol
 !CUTOFF PARAMETERS
+! RS: This is an interesting way of defining it -- why don't just use things like 9*Morser0_hydrogen?
+! RS: and don't do the sqrt operation in the main program?
 real, parameter :: cutoff_distance_squared = 9*Morser0_hydrogen**2
 
 !TEMPERATURE PARAMETERS
