@@ -7,6 +7,8 @@ make_test_checkCells is the makefile of test_checkCells.f90. This program checks
 
 make_makeTrajectory is the makefile of initialTrajectories.f90. This program randomly initializes an md program involving the collision of H2 and H, runs it, and deposits all frames into a grid with addCells.f90. The module makeTrajectory.f90 actually runs the md where as f2_physics_parameters.f90 determines the md parameters and f2_variables.f90 determines what variables are used to describe the frame.
 
+-----------------------------------------------------------------------------------------
+
 Gradient Grider has 3 main modules/
 
 addCells.f90 includes the subroutines addState and divyUp.
@@ -21,13 +23,14 @@ getVarN takes a frame and calculates some variable of that frame. Often time, a 
 
 f1/f2_parameters.f90 include parameters controlling grid depositing and subdivision. Here, files and filepaths are written. Formats for how to describe a variable (like how many decimal places for a particular subdivision) are described. Numbers describing how many frames is too many for a spot, how many spots to subdiide a full spot into, how granular the spacing between spots should be, and so on are described.
 
+-----------------------------------------------------------------------------------------
 
 
 
 
 
 
-When one of the grid-creation programs starts running, the number of files it makes and varaibles, frames, and gradients on those files it makes may seem daunting. I will describe a simple example of a trajectory, what kinds of variables might be used, an example of a simple griding of these variables, and an example of a simple subdivision of a spot that gets too full.
+When one of the grid-creation programs starts running, the number of files it makes and variables, frames, and gradients on those files it makes may seem daunting. I will describe a simple example of a trajectory, what kinds of variables might be used, an example of a simple griding of these variables, and an example of a simple subdivision of a spot that gets too full.
 
 Let the reaction be of a hydrogen atom colliding into an H2 molecule. Let variable one be the distance of the incident hydrogen from one of the H2 hydrogen atoms, and let variable two be the distance of the incident hydrogen from the other H2 hydrogen atoms. Suppose this is what one frame of the trajectory looks like:
 ```
@@ -38,7 +41,7 @@ Let the reaction be of a hydrogen atom colliding into an H2 molecule. Let variab
 ```
 Here variable one (var1) is the distance between H(1) and H(2) or r12, and variable two (var2) is the distance between H(1) and H(2) or r13. Suppose r12 = 2.916677 A and r13 = 3.135552 A.
 
-Our grid is only interested in close-range interactions so var1 and var2 are capped at 5 A. We let the spacing of spots in the grid be 1.0 A. So our grid, without subdivisions, looks like this:
+Our grid is only interested in close-range interactions so var1 and var2 are capped at 6 A. We let the spacing of spots in the grid be 1.0 A. So our grid, without subdivisions, looks like this:
 ```
    (A)  
      #########################
