@@ -23,5 +23,6 @@ makeTrajectory2.o : makeTrajectory2.f90
 	$(FC) -c makeTrajectory2.f90
 checkTrajectories.o : checkTrajectories.f90
 	$(FC) -c checkTrajectories.f90
+
 clean :
 	rm  checkTrajectories.o makeTrajectory2.o maketrajectory2.mod addCells5.o addcells5.mod mapCellData.o mapcelldata.mod ls_rmsd.o ls_rmsd.mod checkCells4.o checkcells4.mod f2_parameters.o f2_parameters.mod f2_variables.o f2_variables.mod f1_functions.o f1_functions.mod f2_physics_parameters.o f2_physics_parameters.mod

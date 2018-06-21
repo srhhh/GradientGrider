@@ -1,4 +1,4 @@
-module makeTrajectory
+module makeTrajectory2
 implicit none
 
 contains
@@ -28,14 +28,15 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 			 initial_bond_angle1,initial_bond_angle2,&
 			 header1,header2,header3,counter0,counter1,counter2,counter3)
         use f2_physics_parameters
-	use f2_variables
 	use f2_parameters
+	use f2_variables
 	use addCells5
+	use checkCells4
         implicit none
 
 	!Coordinates, Velocities, and Variables
+        real, dimension(Ncoords*2) :: coords_gradient,closestCoords
         real, dimension(3) :: velocity1,velocity2,velocity3
-	real, dimension(6*Natoms) :: coords_gradient
 	real, dimension(Nvar) :: vals
 
 	!Grid Parameters
@@ -65,6 +66,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
 	!Various other variables
         real :: U, KE
+	double precision :: min_rmsd
         integer :: TimeA,TimeB,step
 
         !Initialize the scene
@@ -74,35 +76,36 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 			   initial_bond_angle1,initial_bond_angle2)
 
 
+        !Accelerate the velcocities for a half step (verlet)
+
 	call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
 	call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
 
-        !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords_gradient,&
              AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
-	call addState(vals,coords_gradient,header1,header2,header3,counter0,counter1,counter2,counter3)
 
-!       open(filechannel1,file=path4//trajectoryfile)
-!       write(filechannel1,'(I1)') 3
-!       write(filechannel1,*) ""
-!       write(filechannel1,'(A1,3F10.6)') 'H',&
-!             coords_gradient(1), coords_gradient(2), coords_gradient(3)
-!       write(filechannel1,'(A1,3F10.6)') 'H',&
-!             coords_gradient(4), coords_gradient(5), coords_gradient(6)
-!       write(filechannel1,'(A1,3F10.6)') 'H',&
-!             coords_gradient(7), coords_gradient(8), coords_gradient(9)
-!	close(filechannel1)
-
+        open(filechannel1,file=path4//trajectoryfile)
+        write(filechannel1,'(I1)') 3
+        write(filechannel1,*) ""
+        write(filechannel1,'(A1,3F10.6)') 'H',&
+              coords_gradient(1), coords_gradient(2), coords_gradient(3)
+        write(filechannel1,'(A1,3F10.6)') 'H',&
+              coords_gradient(4), coords_gradient(5), coords_gradient(6)
+        write(filechannel1,'(A1,3F10.6)') 'H',&
+              coords_gradient(7), coords_gradient(8), coords_gradient(9)
+ 	close(filechannel1)
+  
 	velocity1 = velocity1 + 0.5*coords_gradient(Ncoords+1:Ncoords+3)
 	velocity2 = velocity2 + 0.5*coords_gradient(Ncoords+4:Ncoords+6)
 	velocity3 = velocity3 + 0.5*coords_gradient(Ncoords+7:Ncoords+9)
 
         !Keep track of the time
         TimeA = time()
+open(filechannel2,file=path4//checkstatefile)
         do step = 1, Nsteps
 
 		!Every 50 frames, print to an xyz file for visualization
-                if (.false.) then !(modulo(step,50) == 0) then
+                if (modulo(step,50) == 0) then
                         open(filechannel1,file=path4//trajectoryfile,position="append")
                         write(filechannel1,'(I1)') 3
                         write(filechannel1,*) ""
@@ -112,87 +115,96 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
                                 coords_gradient(4), coords_gradient(5), coords_gradient(6)
                         write(filechannel1,'(A1,3F10.6)') 'H',&
                                 coords_gradient(7), coords_gradient(8), coords_gradient(9)
-			close(filechannel1)
+ 			close(filechannel1)
                 end if
+
+		!Get the variables
+		call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
+		call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
  
                 !Just to see progress, print something out every 500 steps
                 if (modulo(step,500) == 1) then      
 
- 			if ((vals(1)>max_var1) .or. (vals(2)>max_var2)) then
+ 			if ((vals(1)>max_var1) .or.&
+ 			    (vals(2)>max_var2)) then
  				exit
  			end if
 
-                	!Calculate the energies (done one-bby-one because there are few)
-!               	U = MorsePotential(coords_gradient(1:3),coords_gradient(4:6))
-!               	U = U + MorsePotential(coords_gradient(1:3),coords_gradient(7:9))
-!               	U = U + HOPotential(coords_gradient(4:6),coords_gradient(7:9),&
+!               	!Calculate the energies (done one-bby-one because there are few)
+!               	U = MorsePotential(coords1,coords2)
+!               	U = U + MorsePotential(coords1,coords3)
+!               	U = U + HOPotential(coords2,coords3,&
 !				PotentialConstant0,PotentialConstant1,PotentialConstant2)
 !               	KE = KineticEnergy(velocity1)
 !               	KE = KE + KineticEnergy(velocity2)
 !               	KE = KE + KineticEnergy(velocity3)
 
 !                       TimeB = time()
-!			open(progresschannel,file=path4//progressfile,position="append")
-!                       write(progresschannel,*) ""
-!                       write(progresschannel,*) "TIME STEP", step
-!                       write(progresschannel,*) "Time Passed: ", TimeB-TimeA
-!                       write(progresschannel,*) "Gradient: ", coords_gradient(Ncoords+1:2*Ncoords)
-!                       write(progresschannel,*) "Variables: ", vals(1), vals(2)
-!                       write(progresschannel,*) "KE: ", KE
-!                       write(progresschannel,*) "PE: ", U
-!                       write(progresschannel,*) "Total Energy: ", KE + U
-!			close(progresschannel)
+!                       print *, ""
+!                       print *, "TIME STEP", step
+!                       print *, "Time Passed: ", TimeB-TimeA
+!                       print *, "KE: ", KE
+!                       print *, "PE: ", U
+!                       print *, "Total Energy: ", KE + U
 !                       TimeA = TimeB
                 endif
 
-                !Update the coordinates with the velocities
-                coords_gradient(1:3) = coords_gradient(1:3) + dt*velocity1
-                coords_gradient(4:6) = coords_gradient(4:6) + dt*velocity2
-                coords_gradient(7:9) = coords_gradient(7:9) + dt*velocity3
+		!Upate the coordinates with the velocities
+		coords_gradient(1:3) = coords_gradient(1:3) + dt*velocity1
+		coords_gradient(4:6) = coords_gradient(4:6) + dt*velocity2
+		coords_gradient(7:9) = coords_gradient(7:9) + dt*velocity3
 
-		call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
-		call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
+		!Check for similar frames
+		call checkState(coords_gradient(1:Ncoords),closestCoords,min_rmsd,&
+				counter0,counter1,counter2,counter3)
 
-                !Accelerate and update velocities
+                !Update the gradient
                 call Acceleration(vals,coords_gradient,&
 			AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
-		call addState(vals,coords_gradient,header1,header2,header3,counter0,counter1,counter2,counter3)
 
+write(filechannel2,FMT="(I8,1x,E20.4,1x,F9.6,1x,F9.6)") step, min_rmsd, vals(1), vals(2)
+
+		!Update the velocities
 		velocity1 = velocity1 + coords_gradient(Ncoords+1:Ncoords+3)
 		velocity2 = velocity2 + coords_gradient(Ncoords+4:Ncoords+6)
 		velocity3 = velocity3 + coords_gradient(Ncoords+7:Ncoords+9)
 
         end do
+close(filechannel2)
 
 end subroutine addTrajectory
 
 
 subroutine Acceleration(vals,coords_gradient,&
 		AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
+
         use f2_physics_parameters
 	use f2_parameters
+	use f2_variables
         implicit none
-        real, dimension(3) :: coords_distance,velocity_change
-	real, dimension(2*Ncoords),intent(inout) :: coords_gradient
-	real, dimension(Nvar),intent(in) :: vals
+	real, dimension(6*Natoms), intent(inout) :: coords_gradient
+	real, dimension(6*Natoms) :: closestCoords
+	real, dimension(Nvar), intent(in) :: vals
+        real, dimension(3) :: coords_distance,velocity_change,coords_atom1_bond
 	real,intent(in) :: AccelerationConstant0,AccelerationConstant1,AccelerationConstant2
-        real :: distance, distance_squared
+        real :: distance12,distance13,distance23,distance_squared
         real :: stretch_factor, distance_constant1, distance_constant2
+
+	!Use the precalculated variables to our advantage
+	distance12 = vals(1)
+	distance13 = vals(2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! Morse Potential Derivative of Atoms 1 and 2
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-	!Calculate the distance
-        coords_distance = coords_gradient(4:6) - coords_gradient(1:3)
-	distance = vals(1)
-
 	!Save some calculation with this factor
-	stretch_factor = exp(Morsealpha_hydrogen*(distance-Morser0_hydrogen))
+	stretch_factor = exp(Morsealpha_hydrogen*(distance12-Morser0_hydrogen))
 
 	!Calculate the velocity change
+        coords_distance = coords_gradient(4:6) - coords_gradient(1:3)
         velocity_change = coords_distance * AccelerationConstant2 * ( &
-                        stretch_factor - 1.0 ) * stretch_factor / distance
+                        stretch_factor - 1.0 ) * stretch_factor / distance12
         coords_gradient(Ncoords+1:Ncoords+3) = velocity_change
         coords_gradient(Ncoords+4:Ncoords+6) = -velocity_change
 
@@ -200,16 +212,13 @@ subroutine Acceleration(vals,coords_gradient,&
 ! Morse Potential Derivative of Atoms 1 and 3
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-	!Calculate the distance
-        coords_distance = coords_gradient(7:9) - coords_gradient(1:3)
-	distance = vals(2)
-
 	!Save some calculation with this factor
-	stretch_factor = exp(Morsealpha_hydrogen*(distance-Morser0_hydrogen))
+	stretch_factor = exp(Morsealpha_hydrogen*(distance13-Morser0_hydrogen))
 
 	!Calculate the velocity change
+        coords_distance = coords_gradient(7:9) - coords_gradient(1:3)
         velocity_change = coords_distance * AccelerationConstant2 * ( &
-                        stretch_factor - 1.0 ) * stretch_factor / distance
+                        stretch_factor - 1.0 ) * stretch_factor / distance13
         coords_gradient(Ncoords+1:Ncoords+3) = coords_gradient(Ncoords+1:Ncoords+3) + velocity_change
         coords_gradient(Ncoords+7:Ncoords+9) = -velocity_change
 
@@ -221,14 +230,16 @@ subroutine Acceleration(vals,coords_gradient,&
         coords_distance = coords_gradient(7:9) - coords_gradient(4:6)
         distance_squared = coords_distance(1)**2 + coords_distance(2)**2 +&
                            coords_distance(3)**2
-        distance = sqrt(distance_squared)
+        distance23 = sqrt(distance_squared)
 
 	!Calculate the velocity change
         velocity_change = coords_distance * ( &
                         AccelerationConstant0 + &
-                        AccelerationConstant1/distance )
+                        AccelerationConstant1/distance23 )
         coords_gradient(Ncoords+4:Ncoords+6) = coords_gradient(Ncoords+4:Ncoords+6) + velocity_change
         coords_gradient(Ncoords+7:Ncoords+9) = coords_gradient(Ncoords+7:Ncoords+9) - velocity_change
+
+	return
 
 end subroutine Acceleration
 
@@ -276,17 +287,17 @@ subroutine InitialSetup3(velocity1,velocity2,velocity3,&
         velocity2 = rotation_vector
         velocity3 = -rotation_vector
 
-open(trajectorieschannel,file=path4//trajectories,position="append")
-write(trajectorieschannel,*) ""
-write(trajectorieschannel,*) "The parameters (in reduced units) are: "
-write(trajectorieschannel,*) ""
-write(trajectorieschannel,*) "Collision H - H2 Distance: ", collision_distance
-write(trajectorieschannel,*) "Initial H Velocity: ", velocity1(1)
-write(trajectorieschannel,*) ""
-write(trajectorieschannel,*) "Initial H2 Bond distance: ", initial_bond_distance
-write(trajectorieschannel,*) "Initial H2 Rotation speed: ", initial_rotational_speed
-write(trajectorieschannel,*) "Initial H2 Rotation angle: ", initial_rotation_angle
-close(trajectorieschannel)
+open(progresschannel,file=path4//progressfile,position="append")
+write(progresschannel,*) ""
+write(progresschannel,*) "The parameters (in reduced units) are: "
+write(progresschannel,*) ""
+write(progresschannel,*) "Collision H - H2 Distance: ", collision_distance
+write(progresschannel,*) "Initial H Velocity: ", velocity1(1)
+write(progresschannel,*) ""
+write(progresschannel,*) "Initial H2 Bond distance: ", initial_bond_distance
+write(progresschannel,*) "Initial H2 Rotation speed: ", initial_rotational_speed
+write(progresschannel,*) "Initial H2 Rotation angle: ", initial_rotation_angle
+close(progresschannel)
 
 end subroutine InitialSetup3
 
@@ -309,7 +320,8 @@ real function MorsePotential(coords1,coords2)
                 print *, "OVERLAP ERROR"
                 print *, "Position of 1st atom:", coords1
                 print *, "Position of 2nd atom: ", coords2
-        end if
+                call exit()
+	end if
 
 	distance = sqrt(distance_squared)
 	stretch_factor = exp(Morsealpha_hydrogen*(distance-Morser0_hydrogen))
@@ -340,7 +352,7 @@ real function HOPotential(coords1,coords2,&
                 print *, "Position of 1st atom:", coords1
                 print *, "Position of 2nd atom: ", coords2
                 call exit()
-        end if
+	end if
 
         distance = sqrt(distance_squared)
         HOpotential = PotentialConstant2*distance_squared + &
@@ -365,4 +377,4 @@ end function KineticEnergy
 
 
 
-end module makeTrajectory
+end module makeTrajectory2

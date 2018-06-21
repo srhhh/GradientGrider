@@ -91,10 +91,10 @@ indexer = bounds1 * var2_index + var1_index + 1
 key0 = counter0(indexer)
 
 !Write to the progress file for bug-testing
-open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-write(progresschannel,*) "Investigating key ", counter0(indexer), " with index ", indexer, " and order 0"
-write(progresschannel,*) ""
-close(progresschannel)
+!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+!write(progresschannel,*) "Investigating key ", counter0(indexer), " with index ", indexer, " and order 0"
+!write(progresschannel,*) ""
+!close(progresschannel)
 
 !If the key is zero, then that means divyUp was not called on it
 !So there are no children subcells, so this subcell must be examined
@@ -155,10 +155,10 @@ var2_round1 = multiplier2_1 * var2_index
 indexer = resolution_0*int(key0/key_start-1) + scaling1_0*var2_index + var1_index + 1
 key1 = counter1(indexer)
 
-open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-write(progresschannel,*) "Investigating key ", counter1(indexer), " with index ", indexer, " and order 1"
-write(progresschannel,*) ""
-close(progresschannel)
+!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+!write(progresschannel,*) "Investigating key ", counter1(indexer), " with index ", indexer, " and order 1"
+!write(progresschannel,*) ""
+!close(progresschannel)
 
 if (key1 < overcrowd1) then
 
@@ -268,10 +268,10 @@ var2_round2 = multiplier2_2 * var2_index
 indexer = resolution_1*int(key1/key_start-1) + scaling1_1*var2_index + var1_index + 1
 key2 = counter2(indexer)
 
-open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-write(progresschannel,*) "Investigating key ", counter2(indexer), " with index ", indexer, " and order 2"
-write(progresschannel,*) ""
-close(progresschannel)
+!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+!write(progresschannel,*) "Investigating key ", counter2(indexer), " with index ", indexer, " and order 2"
+!write(progresschannel,*) ""
+!close(progresschannel)
 
 if (key2 < overcrowd2) then
 
@@ -304,9 +304,9 @@ if (key2 < overcrowd2) then
         else
 
 !For bug-testing
-open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-write(progresschannel,*) "Fetching neighbors..."
-close(progresschannel)
+!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+!write(progresschannel,*) "Fetching neighbors..."
+!close(progresschannel)
 
 		var1_round = var1_round0 + var1_round1
 		var2_round = var2_round0 + var2_round1
@@ -360,10 +360,10 @@ var2_round3 = multiplier2_3 * var2_index
 indexer = resolution_2*int(key2/key_start-1) + scaling1_2*var2_index + var1_index + 1
 key3 = counter3(indexer)
 
-open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-write(progresschannel,*) "Investigating key ", counter3(indexer), " with index ", indexer, " and order 3"
-write(progresschannel,*) ""
-close(progresschannel)
+!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+!write(progresschannel,*) "Investigating key ", counter3(indexer), " with index ", indexer, " and order 3"
+!write(progresschannel,*) ""
+!close(progresschannel)
 
 if (key3 < overcrowd3) then
 
@@ -420,7 +420,16 @@ if (key3 < overcrowd3) then
         return
 end if
 
-print *, "the grid is not granular enough or the value overcrowd is too small!"
+open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+write(progresschannel,*) ""
+write(progresschannel,*) ""
+write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
+write(progresschannel,*) "THE GRID IS NOT GRANULAR ENOUGH; A THIRD LEVEL SUBCELL IS OVERCROWDED!"
+write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
+write(progresschannel,*) ""
+write(progresschannel,*) ""
+close(progresschannel)
+
 
 end subroutine checkState
 
@@ -612,10 +621,10 @@ double precision, dimension(3,Natoms) :: rmsd_coords2
 double precision, allocatable :: U(:,:), g(:,:)
 double precision, dimension(3) :: x_center,y_center
 
-open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-write(progresschannel,*) "Reading off subcell ", trim(filename), " with ", population, " frames"
-write(progresschannel,*) ""
-close(progresschannel)
+!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+!write(progresschannel,*) "Reading off subcell ", trim(filename), " with ", population, " frames"
+!write(progresschannel,*) ""
+!close(progresschannel)
 
 !Read off the states in this subcell
 open(filechannel1,file=trim(path3)//trim(filename)//".dat")

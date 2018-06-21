@@ -1,13 +1,15 @@
 module f2_physics_parameters
 implicit none
 
-!PHYSICAL CONSTANTS
+!PHYSICAL CONSTANTS (all in SI)
 real,parameter :: Na = 6.02214e23
 real,parameter :: kb = 1.38065e-23
 real,parameter :: Da = 1.66054e-27
 real,parameter :: c  = 2.99792e8
 real,parameter :: pi = 3.14159
+real,parameter :: pi2 = pi*2.0
 real,parameter :: eV = 1.60218e-19 
+real,parameter :: hbar = 1.05457e-34
 
 !REDUCED UNITS
 real,parameter :: RU_length = 1.0e-10
@@ -22,6 +24,7 @@ integer,parameter :: Nsteps = 20000
 
 !ATOMIC PARAMETERS
 ! RS: why naming this "HOr0_hydrogen"? Do you mean "HHr0"?
+!		KF: HO stands for harmonic oscillator
 real,parameter :: HOr0_hydrogen = (1.0e-10)*0.7412/RU_length
                                         ! originally in A
 ! RS: why naming this "HOke_hydrogen"? Do you mean "HHke"?
@@ -38,14 +41,18 @@ real,parameter :: mass_hydrogen = (.001/Na)*(1.00794)/RU_mass
 !CUTOFF PARAMETERS
 ! RS: This is an interesting way of defining it -- why don't just use things like 9*Morser0_hydrogen?
 ! RS: and don't do the sqrt operation in the main program?
-real, parameter :: cutoff_distance_squared = 9*Morser0_hydrogen**2
+!			KF: I no longer use a cutoff for Morse potential so I deleted this
 
 !TEMPERATURE PARAMETERS
 real, parameter :: temperature = 200.0
 					!Kelvin
-real, parameter :: temperature_constant = kb*temperature/RU_energy
-real, parameter :: temperature_scaling = sqrt((2*pi*temperature_constant/mass_hydrogen)**3)
-real, parameter :: average_KE = 1.5*temperature_constant
+real, parameter :: velocity_scaling = sqrt((kb*temperature/2*mass_hydrogen)/RU_energy)
+
+!COLLISION PARAMETERS
+real,parameter :: initial_translational_KE = (1.0)*eV/RU_energy
+real,parameter :: collision_distance = Morser0_hydrogen*5.0
+real,parameter :: collision_skew = HOr0_hydrogen*0.0
+
 
 end module f2_physics_parameters
 

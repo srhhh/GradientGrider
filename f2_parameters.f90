@@ -11,10 +11,10 @@ character(25),parameter :: path1 = "/home/kazuumi/Desktop/B0/"
 character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
 !Path to the grid
 !character(39),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid_test/"
-character(47),parameter :: path3 = "/home/kazuumi/Desktop/GradientGrider/grid_tes2/"
+character(50),parameter :: path3 = "/home/kazuumi/Desktop/GradientGrider/f2_grid_test/"
 !Path for the following files (see below)
 !character(29),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
-character(45),parameter :: path4 = "/home/kazuumi/Desktop/GradientGrider/f1_dump/"
+character(45),parameter :: path4 = "/home/kazuumi/Desktop/GradientGrider/f2_dump/"
 
 
 
