@@ -6,13 +6,16 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !	SUBROTUINE addTrajectory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!INPUT:	real :: initial_translational_KE	"how fast the H is moving"
-!		collision_distance		"how far away the H is"
+!INPUT:	real :: initial_translational_KE	"collision energy of H"
+!		collision_distance		"initial distance between H and H2"
 !
-!	real :: collision_skew			"the cross-sectional distance"
+!	real :: collision_skew			"the cross section"
 !
-!	real ::	initial_bond_distance		"the length of the H2 bond initially"
+!	real ::	initial_bond_distance		"the initial H2 bond length"
+! RS: I am still not entirely sure about what you mean by "the rotational speed of the H2".
+! RS: I assume if we want to add rotational energy, we should use angular velocity
 !		initial_rotational_speed	"the rotational speed of the H2"
+! RS: "spinning" is an odd word to discrible a diatomic
 !		initial_rotation_angle		"the direction the H2 is spinning (relative)"
 !
 !	real :: initial_bond_angle1		"the angle the H2 bond makes with the x-axis"
@@ -248,12 +251,14 @@ subroutine InitialSetup3(velocity1,velocity2,velocity3,&
         real,intent(in) :: initial_bond_distance,initial_rotational_speed,initial_rotation_angle
 	real,intent(in) :: initial_bond_angle1,initial_bond_angle2
 
+! RS: Let's at least comment the lines out that we are not using 
+
 	!Figure out which direction the bond is going
         bond_vector = (/ sin(initial_bond_angle1)*cos(initial_bond_angle2),&
 		         sin(initial_bond_angle1)*sin(initial_bond_angle2),&
 		         cos(initial_bond_angle1) /)
 
-	!And two orthogonal vectors that are both perpendicular to the bond
+	! And two orthogonal vectors that are both perpendicular to the bond vector
 	rotation0_vector =  (/ bond_vector(2), -bond_vector(1), 0.0 /) / &
                                sqrt(bond_vector(2)**2 + bond_vector(1)**2)
 	call cross(bond_vector,rotation0_vector,rotation90_vector)
@@ -264,7 +269,7 @@ subroutine InitialSetup3(velocity1,velocity2,velocity3,&
         coords2 = (/ collision_distance, collision_skew, 0.0 /) + bond_vector/2
         coords3 = (/ collision_distance, collision_skew, 0.0 /) - bond_vector/2
 
-	!Calculate the direction the bond is spinning given the two
+	!Calculate the direction that the bond is spinning given the two
 	!orthogonal vectors
 	rotation_vector = ( sin(initial_rotation_angle) * rotation0_vector + &
                             cos(initial_rotation_angle) * rotation90_vector ) * &
