@@ -12,17 +12,6 @@ use f2_variables
 implicit none
 
 !COLLISION PARAMETERS
-! RS: Move thhere stuff to f2_physics_parameters.f90 since they are parameters.
-
-! RS: please make this equal to the initial separation in reduced unit
-! optimal H-H bond length in reduced unit?
-!		KF: I believe you call is 'cross-sectional distance'
-!		    the distance from the intermolecular axis
-!
-!		KF: I changed the parametrization
-!		    these are now in f2_physics_parameters
-
-!COLLISION PARAMETERS
 real :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real :: initial_bond_angle1, initial_bond_angle2
 real :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
@@ -45,8 +34,6 @@ write(progresschannel,*) ""
 close(progresschannel)
 
 ! RS: I would use a less "psedo-" algorithm
-! RS: the following code generates 3 random numbers at the same time
-! RS: but I am sure you can make it generate one
 !		KF: note to self: make sure to use completely random
 !                                 if I want an unbiased space
 !246 ! uniform distribution random number
@@ -81,14 +68,12 @@ seed = rand(seed)
 
 !For timing purposes
 ! RS: Did you figure out the system_clock? What is it reporting?
-!		KF: I did not study it yet
 !		KF: note to self: save this comment
 call system_clock(c1,count_rate=cr)
 system_clock_rate = real(cr)
 
 
-!For 150 trajectories, for starters
-! RS: 150?   KF: right!
+!For 100 trajectories, for starters
 
 do Ntraj = 1, 100
 
@@ -98,38 +83,32 @@ do Ntraj = 1, 100
 !been picked from a normal distribution
 random_num1 = rand()
 random_num2 = rand()
-! RS: make 2*pi a constant 
-! RS: again, be MORE CAREFUL with variable type
-! RS: 2*pi -> 2.0*pi, you never want int*real unless you are certain about it!
-!		KF: very much resolved
 initial_bond_angle1 = random_num1*pi2			!theta
-! RS: why don't just generate another random angle like you did for initial_bond_angle1?
 !		KF: note: the second angle should follow an inverse trig function curve
 !		    note-to-self: do uniform distribution for now
 !                                 switch to real distribution later
 initial_bond_angle2 = random_num2*pi2		!phi
 
 !A Box-Muller calculation is setup to generate normal distribution (will use generated number later)
-! RS: What are the types of i and j?? integer?? real?? not defined?? 
-! RS: I abusoltely have no idea what the next three lines do.
-! RS: It is definitely not Box-Muller. Box-Muller generates a pair of random numbers per time.
-!		KF: we talked about this.
-!		KF: note-to-self: need Box-Muller PAIRS, not just one or the other
 i = sqrt(-2*log(rand()))
 j = 2*pi*rand()
 random_num1 = i*cos(j)
 random_num2 = i*sin(j)
 
 ! RS: the center of mass translational energy of H2 is assumed to be zero
-! RS: the average vibrational energy of H2 is assumed to be RT/2
+! RS: the collision energy is the kinetic energy of H
+! RS: the average vibrational energy of H2 is assumed to be xxx???
 ! RS: this energy is stored in the form of potential energy
 ! RS: the rotation energy of H2 is assume to be zero
 !		KF: this I still need to perfect
-!The initial energy of H2 should follow a Boltzmann distribution
+
 !First we get a Gaussian distribution by using Box-Muller and multiply the
 !number N by sqrt(kT/m) to get a velocity
 !Then simply calculate the KE as 0.5*m*v**2
 initial_energy_H2 = 0.5*temperature_constant*random_num1**2
+! RS: How about 
+! RS: initial_energy_H2 = temperature_constant*random_num1
+
 
 ! RS: this is not ture -- due to the partition function the energy is distributated
 ! RS: very unevenly
