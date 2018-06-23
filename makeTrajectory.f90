@@ -66,13 +66,17 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 	!Various other variables
         real :: U, KE
         integer :: TimeA,TimeB,step
+	real :: system_clock_rate
+	integer :: c1,c2,c3,c4,c5,cr
+
+	call system_clock(c4,count_rate=cr)
+	system_clock_rate = 1.0/real(cr)
 
         !Initialize the scene
         call InitialSetup3(velocity1,velocity2,velocity3,&
                            coords_gradient(1:3),coords_gradient(4:6),coords_gradient(7:9),&
                    	   initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2)
-
 
 	call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
 	call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
@@ -97,9 +101,9 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 	velocity2 = velocity2 + 0.5*coords_gradient(Ncoords+4:Ncoords+6)
 	velocity3 = velocity3 + 0.5*coords_gradient(Ncoords+7:Ncoords+9)
 
-        !Keep track of the time
-        TimeA = time()
         do step = 1, Nsteps
+
+        	call system_clock(c1)
 
 		!Every 50 frames, print to an xyz file for visualization
                 if (.false.) then !(modulo(step,50) == 0) then
@@ -131,19 +135,21 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 !               	KE = KE + KineticEnergy(velocity2)
 !               	KE = KE + KineticEnergy(velocity3)
 
-!                       TimeB = time()
-!			open(progresschannel,file=path4//progressfile,position="append")
-!                       write(progresschannel,*) ""
-!                       write(progresschannel,*) "TIME STEP", step
-!                       write(progresschannel,*) "Time Passed: ", TimeB-TimeA
-!                       write(progresschannel,*) "Gradient: ", coords_gradient(Ncoords+1:2*Ncoords)
-!                       write(progresschannel,*) "Variables: ", vals(1), vals(2)
+        		call system_clock(c5)
+ 			open(progresschannel,file=path4//progressfile,position="append")
+                        write(progresschannel,*) ""
+                        write(progresschannel,*) "TIME STEP", step
+                        write(progresschannel,*) "Time Passed: ", (c5-c4)*system_clock_rate
+                        write(progresschannel,*) "Gradient: ", coords_gradient(Ncoords+1:2*Ncoords)
+                        write(progresschannel,*) "Variables: ", vals(1), vals(2)
 !                       write(progresschannel,*) "KE: ", KE
 !                       write(progresschannel,*) "PE: ", U
 !                       write(progresschannel,*) "Total Energy: ", KE + U
-!			close(progresschannel)
-!                       TimeA = TimeB
+ 			close(progresschannel)
+                        c4 = c5
                 endif
+
+ 		call system_clock(c2)
 
                 !Update the coordinates with the velocities
                 coords_gradient(1:3) = coords_gradient(1:3) + dt*velocity1
@@ -153,15 +159,29 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 		call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
 		call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
 
+
                 !Accelerate and update velocities
                 call Acceleration(vals,coords_gradient,&
 			AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
+
+
 		call addState(vals,coords_gradient,header1,header2,header3,counter0,counter1,counter2,counter3)
+
 
 		velocity1 = velocity1 + coords_gradient(Ncoords+1:Ncoords+3)
 		velocity2 = velocity2 + coords_gradient(Ncoords+4:Ncoords+6)
 		velocity3 = velocity3 + coords_gradient(Ncoords+7:Ncoords+9)
 
+        	call system_clock(c3)
+
+if ((c3-c1)*system_clock_rate > 0.1) then
+ open(progresschannel,file=path4//progressfile,position="append")
+ write(progresschannel,*) ""
+ write(progresschannel,*) "Conditional time: ", (c2-c1)*system_clock_rate
+ write(progresschannel,*) "Task time: ", (c3-c2)*system_clock_rate
+ write(progresschannel,*) "Headers: ", header1,header2,header3
+ close(progresschannel)
+end if
         end do
 
 end subroutine addTrajectory

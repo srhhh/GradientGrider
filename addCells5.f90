@@ -32,14 +32,14 @@ contains
 ! RS: I like the new nomenclature! :D
 !		KF: huzzahhhh
 
-subroutine divyUp(subcellParent,FMTorder,var1_round,var2_round,SP,&
-		  multiplier1,multiplier2,indexN,counterN,lengthN,frames)
+subroutine divyUp(subcellParent,FMTorder,var1_round,var2_round,SP,MP,&
+		  indexN,counterN,lengthN,frames)
 use f2_parameters
 use f1_functions
 implicit none
 integer, intent(in) :: indexN,lengthN,frames
-integer, dimension(3),intent(in) :: SP
-real,intent(in) :: multiplier1,multiplier2
+integer, dimension(1+Nvar),intent(in) :: SP
+real,dimension(2*Nvar),intent(in) :: MP
 integer, dimension(lengthN), intent(out) :: counterN
 integer :: i,j,k,l,population,last_marker,Nmarkers,Nsortings,frames_plus_markers
 integer :: indexer,counter_index
@@ -55,7 +55,11 @@ character(10) :: var1_filename,var2_filename
 scaling1 = SP(1)
 scaling2 = SP(2)
 resolution = SP(3)
- 
+
+multiplier1 = MP(1)
+multiplier2 = MP(2)
+divisor1 = MP(3)
+divisor2 = MP(4)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME RETRIEVAL
@@ -69,12 +73,13 @@ resolution = SP(3)
 !        ---  indexer will be sorted according to vals
 frames_plus_markers = frames+resolution-1
 open(filechannel1,file=path3//trim(subcellParent)//".dat")
-allocate(coords(frames,6*Natoms))
-allocate(vals(frames_plus_markers,Nvar))
-allocate(originalIndexes(frames_plus_markers,1))
+allocate(coords(frames,6*Natoms+Nvar))
+allocate(vals(frames,Nvar))
+allocate(originalIndexes(frames,1))
 do j=1, frames
-        read(filechannel1,FMT=FMT1,advance="no",iostat=k) (vals(j,i),i=1,Nvar)
-        read(filechannel1,FMT=FMT2) (coords(j,i),i=1,6*Natoms)
+        read(filechannel1,FMT=FMT1,advance="no",iostat=k) (coords(j,i),i=1,6*Natoms+Nvar)
+	vals(j,1) = (coords(1) - var1_round) * divisor1
+	vals(j,2) = (coords(2) - var2_round) * divisor2
         originalIndexes(j,1) = j
 end do
 close(filechannel1)
@@ -104,14 +109,14 @@ close(filechannel1)
 !          7            2,1             2.0,1.0
 !          8            2,2             2.0,2.0
 
-do i = 1, resolution-1
-        counter_index = frames + i
-        originalIndexes(counter_index,1) = counter_index
+!do i = 1, resolution-1
+!        counter_index = frames + i
+!        originalIndexes(counter_index,1) = counter_index
 ! 	If you want an integer, please make sure to add INT or ANIT, it would not increase the cost and it makes it safe
 !			KF: resolved	
-        vals(counter_index,:) = (/ var1_round+int(i/scaling2)*multiplier1,&
-                                   var2_round+modulo(i,scaling2)*multiplier2 /)
-end do
+!        vals(counter_index,:) = (/ var1_round+int(i/scaling2)*multiplier1,&
+!                                   var2_round+modulo(i,scaling2)*multiplier2 /)
+!end do
 
 !Say the array vals looks something like this
 !
@@ -132,7 +137,7 @@ end do
 !  and . indicates a frame
 !
 
-call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,1,frames_plus_markers,1)
+!call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,1,frames_plus_markers,1)
 
 !Before quicksorting, we had something like this:
 !
@@ -392,13 +397,6 @@ if (key < overcrowd0) then
 !If the cell is overcrowded (by that exact number) then we need to subdivide it
 else if (key == overcrowd0) then
 
-!For testing purposes
-if (header1 == 900) then
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print *, "      HEADER 1 WILL BE OVERCROWDED SOON"
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-end if
-
 	!Adding by a large number (key_start) assures the portion of the integer
 	!that holds the index of the next counter (header1 value)
 	!is not incremented by an increment of key
@@ -413,7 +411,7 @@ end if
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         !For more information on how this works, see the subroutine above
-        call divyUp(subcell,FMTorder1,var1_round,var2_round,SP0,multiplier1_1,multiplier2_1,&
+        call divyUp(subcell,FMTorder1,var1_round,var2_round,SP0,MP1,&
                     header1-1,counter1,counter1_max,overcrowd0-1)
  
 	!We still need to add the frame
@@ -426,6 +424,13 @@ end if
       
         !Incrementing header insures that the index this subcell is granted in the next counter is unique
         header1 = header1 + 1
+
+!For testing purposes
+if (header1 == header1_max) then
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+print *, "      HEADER 1 WILL BE OVERCROWDED SOON"
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+end if
 
 end if
 
@@ -482,14 +487,6 @@ if (key < overcrowd1) then
 
 else if (key == overcrowd1) then
 
-!For testing purposes
-if (header2 == 4900) then
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print *, "      HEADER 2 WILL BE OVERCROWDED SOON"
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-end if
-
-
 	key = key + key_start*header2
 	counter1(indexer) = key
 
@@ -500,7 +497,7 @@ end if
 	write(var2_filename,FMT=FMTorder1) var2_round
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        call divyUp(subcell,FMTorder2,var1_round,var2_round,SP1,multiplier1_2,multiplier2_2,&
+        call divyUp(subcell,FMTorder2,var1_round,var2_round,SP1,MP2,&
                     header2-1,counter2,counter2_max,overcrowd1-1)
  
         open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
@@ -509,6 +506,13 @@ end if
         close(filechannel1)
       
         header2 = header2 + 1
+
+!For testing purposes
+if (header2 == header2_max) then
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+print *, "      HEADER 2 WILL BE OVERCROWDED SOON"
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+end if
 
 end if
 
@@ -556,14 +560,6 @@ if (key < overcrowd2) then
 
 else if (key == overcrowd2) then
 
-!For testing purposes
-if (header3 == 4900) then
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print *, "      HEADER 3 WILL BE OVERCROWDED SOON"
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-end if
-
-
 	key = key + key_start*header3
 	counter2(indexer) = key
 
@@ -574,7 +570,7 @@ end if
 	write(var2_filename,FMT=FMTorder2) var2_round
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        call divyUp(subcell,FMTorder3,var1_round,var2_round,SP2,multiplier1_3,multiplier2_3,&
+        call divyUp(subcell,FMTorder3,var1_round,var2_round,SP2,MP3,&
                     header3-1,counter3,counter3_max,overcrowd2-1)
  
 !Just for testing purposes
@@ -588,6 +584,13 @@ end if
         close(filechannel1)
       
         header3 = header3 + 1
+
+!For testing purposes
+if (header3 == header3_max) then
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+print *, "      HEADER 3 WILL BE OVERCROWDED SOON"
+print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+end if
 
 end if
 

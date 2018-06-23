@@ -20,7 +20,7 @@ real,parameter :: RU_energy = RU_mass*(RU_length/RU_time)**2
 
 !TIME PARAMETERS
 real,parameter :: dt = (1.0e-17)/RU_time
-integer,parameter :: Nsteps = 20000
+integer,parameter :: Nsteps = 30000
 
 !ATOMIC PARAMETERS
 ! RS: why naming this "HOr0_hydrogen"? Do you mean "HHr0"?
@@ -46,7 +46,13 @@ real,parameter :: mass_hydrogen = (.001/Na)*(1.00794)/RU_mass
 !TEMPERATURE PARAMETERS
 real, parameter :: temperature = 200.0
 					!Kelvin
-real, parameter :: velocity_scaling = sqrt((kb*temperature/2*mass_hydrogen)/RU_energy)
+real, parameter :: upsilon_max = 5.0
+real, parameter :: frequency_factor  = sqrt(HOke_hydrogen/(0.5*mass_hydrogen))/pi2
+real, parameter :: upsilon_factor1 = -pi2*(hbar/(RU_energy*RU_time))*frequency_factor/(kb*temperature/RU_energy)
+real, parameter :: upsilon_factor2 = pi2*(hbar/(RU_energy*RU_time))*frequency_factor
+real, parameter :: temperature_factor = exp(0.5*upsilon_factor1)
+!real, parameter :: temperature_scaling = (1.0-temperature_factor)*Emax/
+real, parameter :: temperature_scaling = (1.0-temperature_factor)*upsilon_max/temperature_factor
 
 !COLLISION PARAMETERS
 real,parameter :: initial_translational_KE = (1.0)*eV/RU_energy

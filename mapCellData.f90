@@ -43,7 +43,7 @@ end do
 
 
 
-open(filechannel1,file=path4//temporaryfile2)
+open(filechannel1,file=path4//temporaryfile1)
 write(filechannel1,*) 'set terminal jpeg'
 write(filechannel1,*) 'set output "heatmap_2.jpg"'
 write(filechannel1,*) 'unset key'
@@ -55,7 +55,7 @@ write(filechannel1,*) 'unset cbtics'
 write(filechannel1,*) 'set view map'
 write(filechannel1,*) 'splot "'//path4//temporaryfile3//'" matrix w image'
 close(filechannel1)
-call system("gnuplot < "//path4//temporaryfile2)
+call system("gnuplot < "//path4//temporaryfile1)
 
 
 

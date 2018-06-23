@@ -24,9 +24,9 @@ contains
 !	Makes use of a cross product which is supplied by f1_functions.f90
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
-			 initial_bond_angle1,initial_bond_angle2,&
-			 header1,header2,header3,counter0,counter1,counter2,counter3)
+subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
+			   initial_bond_angle1,initial_bond_angle2,force_Neighbors,&
+			   header1,header2,header3,counter0,counter1,counter2,counter3)
         use f2_physics_parameters
 	use f2_parameters
 	use f2_variables
@@ -45,6 +45,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 	integer,dimension(counter1_max),intent(out) :: counter1
 	integer,dimension(counter2_max),intent(out) :: counter2
 	integer,dimension(counter3_max),intent(out) :: counter3
+	logical,intent(in) :: force_Neighbors
 
 	!Collision Parameters
         real,intent(in) :: initial_bond_distance,initial_rotational_speed,initial_rotation_angle
@@ -66,7 +67,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
 	!Various other variables
         real :: U, KE
-	double precision :: min_rmsd
+	double precision :: min_rmsd,min_rmsd_prime
         integer :: TimeA,TimeB,step
 
         !Initialize the scene
@@ -118,10 +119,6 @@ open(filechannel2,file=path4//checkstatefile)
  			close(filechannel1)
                 end if
 
-		!Get the variables
-		call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
-		call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
- 
                 !Just to see progress, print something out every 500 steps
                 if (modulo(step,500) == 1) then      
 
@@ -154,15 +151,25 @@ open(filechannel2,file=path4//checkstatefile)
 		coords_gradient(4:6) = coords_gradient(4:6) + dt*velocity2
 		coords_gradient(7:9) = coords_gradient(7:9) + dt*velocity3
 
+		!Get the variables
+		call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
+		call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
+ 
 		!Check for similar frames
-		call checkState(coords_gradient(1:Ncoords),closestCoords,min_rmsd,&
+		call checkState(coords_gradient(1:Ncoords),closestCoords,min_rmsd_prime,.false.,&
 				counter0,counter1,counter2,counter3)
+		min_rmsd = min_rmsd_prime
+
+		if (force_Neighbors) then
+		call checkState(coords_gradient(1:Ncoords),closestCoords,min_rmsd,.true.,&
+				counter0,counter1,counter2,counter3)
+		end if
 
                 !Update the gradient
                 call Acceleration(vals,coords_gradient,&
 			AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
 
-write(filechannel2,FMT="(I8,1x,E20.4,1x,F9.6,1x,F9.6)") step, min_rmsd, vals(1), vals(2)
+write(filechannel2,FMT="(I8,1x,E20.4,1x,E20.4,1x,F9.6,1x,F9.6)") step, min_rmsd, min_rmsd_prime, vals(1), vals(2)
 
 		!Update the velocities
 		velocity1 = velocity1 + coords_gradient(Ncoords+1:Ncoords+3)
@@ -172,7 +179,7 @@ write(filechannel2,FMT="(I8,1x,E20.4,1x,F9.6,1x,F9.6)") step, min_rmsd, vals(1),
         end do
 close(filechannel2)
 
-end subroutine addTrajectory
+end subroutine checkTrajectory
 
 
 subroutine Acceleration(vals,coords_gradient,&

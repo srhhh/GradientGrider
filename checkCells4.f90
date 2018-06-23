@@ -14,13 +14,14 @@ contains
 !       dp min_rmsd                                     "closest frame rmsd"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkState(coords,closestCoords,min_rmsd,&
+subroutine checkState(coords,closestCoords,min_rmsd,force_Neighbors,&
                       counter0,counter1,counter2,counter3)
 use f2_variables
 use f2_parameters
 use mapCellData
 implicit none
 integer :: i,j,k
+integer :: order,number_of_frames,neighbor_check
 integer :: var1_index,var2_index,indexer,index1_1,index1_2,index2_1,index2_2
 integer :: key0,key1,key2,key3
 integer :: min_position
@@ -29,6 +30,7 @@ integer, dimension(counter1_max) :: counter1
 integer, dimension(counter2_max) :: counter2
 integer, dimension(counter3_max) :: counter3
 logical :: stop_flag,flag1,flag2,flag3,flag4
+logical,intent(in) :: force_Neighbors
 real :: var1,var2,var1_cell,var2_cell,var1_round,var2_round
 real :: var1_round0,var2_round0,var1_round1,var2_round1,var1_round2,var2_round2,var1_round3,var2_round3
 real, dimension(Ncoords), intent(in) :: coords
@@ -46,6 +48,8 @@ character(9) ::  var1_filename, var2_filename
 
 ! Need a ridiculously large number
 min_rmsd = 100.0
+
+number_of_frames = 0
 
 ! Get the variables corresponding to frame
 ! RS: What do you mean by 'each'? Isn't the input only one frame?
@@ -130,6 +134,12 @@ if (key0 < overcrowd0) then
                 closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
 
                 deallocate(neighbor_rmsds,neighbor_coords)
+
+		!Write to the file our startling discoveries
+		number_of_frames = key0
+		order = 0
+		neighbor_check = 0
+		write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
                 return
 end if
 
@@ -167,6 +177,8 @@ if (key1 < overcrowd1) then
 
         !If there are frames in this cell, then we retrieve those frames
         if (key1 > 0) then
+		neighbor_check = 0
+		number_of_frames = key1
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + var1_round1
@@ -187,10 +199,12 @@ if (key1 < overcrowd1) then
                 closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
 
                 deallocate(neighbor_rmsds,neighbor_coords)
+	end if
 
         !If there are no frames in this cell, we can look at one of its
         !neighbors (better than having to look at the parent)
-        else
+        if ((key1 == 0) .or. (force_Neighbors)) then
+		neighbor_check = 1
 
 		!We need to know the filename of the parent to get the filename of a child                
 		var1_round = var1_round0
@@ -223,7 +237,7 @@ if (key1 < overcrowd1) then
                         call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,FMTorder1,&
                                           resolution_0*(int(key0/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
                                           var1_round,var2_round,counter1,counter1_max,&
-                                          rmsd_coords1,candidate_rmsd,candidateCoords)
+                                          rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
 
                         !Even if all neighbors are empty, it still returns a
                         !minimum rmsd (default is 100.0)
@@ -244,6 +258,10 @@ if (key1 < overcrowd1) then
                 end do
 
         end if
+
+	!Write to the file our startling discoveries
+	order = 1
+	write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
 
         return
 end if
@@ -283,6 +301,8 @@ if (key2 < overcrowd2) then
 
 !       if (.false.) then !(key2 > 0) then
 	if (key2 > 0) then
+		neighbor_check = 0
+		number_of_frames = key2
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + var1_round1 + var1_round2
@@ -301,7 +321,10 @@ if (key2 < overcrowd2) then
                 closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
 
                 deallocate(neighbor_rmsds,neighbor_coords)
-        else
+	end if
+
+        if ((key2 == 0) .or. (force_Neighbors)) then
+		neighbor_check = 1
 
 !For bug-testing
 !open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
@@ -324,7 +347,7 @@ if (key2 < overcrowd2) then
                         call getNeighbors(scaling1_1,scaling2_1,multiplier1_2,multiplier2_2,FMTorder2,&
                                           resolution_1*(int(key1/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
                                           var1_round,var2_round,counter2,counter2_max,&
-                                          rmsd_coords1,candidate_rmsd,candidateCoords)
+                                          rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
 
                         if (candidate_rmsd < min_rmsd) then
                                 min_rmsd = candidate_rmsd
@@ -337,6 +360,10 @@ if (key2 < overcrowd2) then
                 end do
 
         end if
+
+	!Write to the file our startling discoveries
+	order = 2
+	write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
 
         return
 end if
@@ -368,6 +395,8 @@ key3 = counter3(indexer)
 if (key3 < overcrowd3) then
 
         if (key3 > 0) then
+		neighbor_check = 0
+		number_of_frames = key3
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + var1_round1 + var1_round2 + var1_round3
@@ -386,7 +415,10 @@ if (key3 < overcrowd3) then
                 closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
 
                 deallocate(neighbor_rmsds,neighbor_coords)
-        else
+	end if
+
+        if ((key3 == 0) .or. (force_Neighbors)) then
+		neighbor_check = 1
 
 		var1_round = var1_round0 + var1_round1 + var1_round2
 		var2_round = var2_round0 + var2_round1 + var2_round2
@@ -404,7 +436,7 @@ if (key3 < overcrowd3) then
                         call getNeighbors(scaling1_2,scaling2_2,multiplier1_3,multiplier2_3,FMTorder3,&
                                           resolution_2*(int(key2/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
                                           var1_round,var2_round,counter3,counter3_max,&
-                                          rmsd_coords1,candidate_rmsd,candidateCoords)
+                                          rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
 
                         if (candidate_rmsd < min_rmsd) then
                                 min_rmsd = candidate_rmsd
@@ -416,6 +448,10 @@ if (key3 < overcrowd3) then
                 end do
 
         end if
+
+	!Write to the file our startling discoveries
+	order = 3
+	write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
 
         return
 end if
@@ -452,7 +488,7 @@ end subroutine checkState
 subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,FMTorder,&
                         index_start,index1_1,index1_2,index2_1,index2_2,&
                         var1_round0,var2_round0,counterN,counterN_max,&
-                        coords_static,min_rmsd,closestCoords)
+                        coords_static,min_rmsd,closestCoords,number_of_frames)
 
 use f2_parameters
 implicit none
@@ -467,6 +503,7 @@ integer,intent(in) :: index_start
 integer :: indexer,population,key
 integer,intent(in) :: counterN_max
 integer,intent(in), dimension(counterN_max) :: counterN
+integer,intent(inout) :: number_of_frames
 character(6),intent(in) :: FMTorder
 character(9) :: var1_filename,var2_filename
 character(50) :: subcell
@@ -496,6 +533,7 @@ if ((flag1) .and. (flag3)) then
 
         !Only read off coordinates if there are any
         if (population > 0) then
+		number_of_frames = number_of_frames + population
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + index1_1 * multiplier1
@@ -525,6 +563,7 @@ if ((flag2) .and. (flag3)) then
 	population = modulo(key,key_start)
 
         if (population > 0) then
+		number_of_frames = number_of_frames + population
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + index1_2 * multiplier1
@@ -551,6 +590,7 @@ if ((flag1) .and. (flag4)) then
 	population = modulo(key,key_start)
 
         if (population > 0) then
+		number_of_frames = number_of_frames + population
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + index1_1 * multiplier1
@@ -578,6 +618,7 @@ if ((flag2) .and. (flag4)) then
 	population = modulo(key,key_start)
 
         if (population > 0) then
+		number_of_frames = number_of_frames + population
 
                 !Make the name of the subcell
 		var1_round = var1_round0 + index1_2 * multiplier1
