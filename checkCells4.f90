@@ -38,16 +38,13 @@ real, dimension(6*Natoms), intent(out) :: closestCoords
 real, dimension(6*Natoms) :: candidateCoords
 double precision, dimension(3,Natoms) :: rmsd_coords1,rmsd_coords2
 double precision, dimension(3) :: x_center,y_center
-double precision, intent(out) :: min_rmsd
+double precision, intent(inout) :: min_rmsd
 double precision  :: candidate_rmsd
 double precision, allocatable :: neighbor_rmsds(:)
 real, allocatable :: neighbor_coords(:,:)
 double precision, allocatable :: U(:,:), g(:,:)
 character(50) :: subcell
 character(9) ::  var1_filename, var2_filename
-
-! Need a ridiculously large number
-min_rmsd = 100.0
 
 number_of_frames = 0
 

@@ -29,6 +29,7 @@ real :: initial_bond_angle1, initial_bond_angle2
 real :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
 integer :: seed,n,Ntraj,c1,c2,cr
 real :: random_num1,random_num2,i,j,system_clock_rate
+real :: r1, r2
 
 integer :: header1 = 1
 integer :: header2 = 1
@@ -187,7 +188,7 @@ write(filechannel1,*) 'set style line 5 lc rgb "yellow" pt 11'
 write(filechannel1,*) 'set style line 6 lc rgb "pink" pt 20'
 write(filechannel1,*) 'unset xtics'
 
-if (.true.) then
+if (.false.) then
 write(filechannel1,*) 'set tmargin 0'
 write(filechannel1,*) 'set bmargin 0'
 write(filechannel1,*) 'set lmargin 1'
@@ -255,7 +256,7 @@ write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:5 w lines, '//&
                            '"'//path4//checkstatefile//'" u 4:($1==1?$5:4/0) w p ls 4, '//&
                            '"'//path4//checkstatefile//'" u 4:($1==2?$5:4/0) w p ls 5'
 else
- write(filechannel1,*) 'set multiplot layout 2,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory ',Ntraj,'of '//&
+ write(filechannel1,*) 'set multiplot layout 4,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory ',Ntraj,'of '//&
  			trim(adjustl(checkstateDescriptor))//' RMSD checks vs RMSD"'
 write(filechannel1,*) 'unset key'
 write(angle1descriptor,FMT="(F6.4)") initial_bond_angle1
@@ -264,10 +265,14 @@ write(bond1descriptor,FMT="(F6.4)") initial_bond_distance
 write(filechannel1,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//' radians" at screen 0.7, 0.975'
 write(filechannel1,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//' A" at screen 0.7, 0.955'
 write(filechannel1,*) 'unset xtics'
-write(filechannel1,*) 'set ylabel "Minimum RMSD Deviance of CheckState Method (CM) vs. Force Neighbor Check Method (FNCM) (A)"'
+write(filechannel1,*) 'set style fill solid 1.0 noborder'
+write(filechannel1,*) 'bin_width = 1;'
+write(filechannel1,*) 'bin_number(x) = floor(x/bin_width)'
+write(filechannel1,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
+write(filechannel1,*) 'set ylabel "Minimum RMSD Deviance of CM vs. FNCM (A)"'
 write(filechannel1,*) 'unset xlabel'
 write(filechannel1,*) 'set autoscale y'
-write(filechannel1,*) 'set xrange [0:250]'
+write(filechannel1,*) 'set xrange [0:75]'
 write(filechannel1,*) 'unset key'
 write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 1:($5-$6) w points'
 !                          '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2<2)?$5:4/0) w p ls 1, '//&
@@ -277,10 +282,8 @@ write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 1:($5-$6) w points'
 !                          '"'//path4//checkstatefile//'" u 4:($1==1?$5:4/0) w p ls 4, '//&
 !                          '"'//path4//checkstatefile//'" u 4:($1==2?$5:4/0) w p ls 5'
 write(filechannel1,*) 'set ylabel "Minimum RMSD of FNCM (A)"'
-write(filechannel1,*) 'set xtics'
 write(filechannel1,*) 'unset label 1'
 write(filechannel1,*) 'unset label 2'
-write(filechannel1,*) 'set xlabel "Frames Checked"'
 write(filechannel1,*) 'set yrange [0:2.0e-1]'
 write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 1:($5) w points'
 !                          '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2<2)?$5:4/0) w p ls 1, '//&
@@ -289,6 +292,17 @@ write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 1:($5) w points'
 !                          '"'//path4//checkstatefile//'" u 4:(($5>0.05)&&($3==1)?$5:4/0) w p ls 5'
 !                          '"'//path4//checkstatefile//'" u 4:($1==1?$5:4/0) w p ls 4, '//&
 !                          '"'//path4//checkstatefile//'" u 4:($1==2?$5:4/0) w p ls 5'
+write(filechannel1,*) 'set ylabel "Frames Checked Frequency"'
+write(filechannel1,*) 'set xlabel "Frames Checked"'
+write(filechannel1,*) 'set autoscale y'
+write(filechannel1,*) 'set xtics'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u (rounded($1)):(1) smooth frequency with boxes'
+write(filechannel1,*) 'set ylabel "RMSD Frequency"'
+write(filechannel1,*) 'set xrange [0:2.0e-1]'
+write(filechannel1,*) 'set autoscale y'
+write(filechannel1,*) 'bin_width = 0.01;'
+write(filechannel1,*) 'set xlabel "RMSD (A)"'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u (rounded($5)):(5) smooth frequency with boxes'
 end if
 
 
@@ -299,14 +313,17 @@ call system("rm "//path4//temporaryfile2)
 end if
 
 call system_clock(c1)
+call cpu_time(r1)
 call addTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 		   initial_bond_angle1,initial_bond_angle2,&
 		   header1,header2,header3,counter0,counter1,counter2,counter3)
 
 call system_clock(c2)
+call cpu_time(r2)
 open(progresschannel,file=path4//progressfile,position="append")
 write(progresschannel,*) ""
 write(progresschannel,*) "Trajectory ", Ntraj, " finished in ", (c2-c1)/system_clock_rate
+write(progresschannel,*) "                               or: ", (r2-r1), " CPU time"
 close(progresschannel)
 
 end do

@@ -103,7 +103,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
         do step = 1, Nsteps
 
-        	call system_clock(c1)
+!       	call system_clock(c1)
 
 		!Every 50 frames, print to an xyz file for visualization
                 if (.false.) then !(modulo(step,50) == 0) then
@@ -135,21 +135,21 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 !               	KE = KE + KineticEnergy(velocity2)
 !               	KE = KE + KineticEnergy(velocity3)
 
-        		call system_clock(c5)
- 			open(progresschannel,file=path4//progressfile,position="append")
-                        write(progresschannel,*) ""
-                        write(progresschannel,*) "TIME STEP", step
-                        write(progresschannel,*) "Time Passed: ", (c5-c4)*system_clock_rate
-                        write(progresschannel,*) "Gradient: ", coords_gradient(Ncoords+1:2*Ncoords)
-                        write(progresschannel,*) "Variables: ", vals(1), vals(2)
+!       		call system_clock(c5)
+!			open(progresschannel,file=path4//progressfile,position="append")
+!                       write(progresschannel,*) ""
+!                       write(progresschannel,*) "TIME STEP", step
+!                       write(progresschannel,*) "Time Passed: ", (c5-c4)*system_clock_rate
+!                       write(progresschannel,*) "Gradient: ", coords_gradient(Ncoords+1:2*Ncoords)
+!                       write(progresschannel,*) "Variables: ", vals(1), vals(2)
 !                       write(progresschannel,*) "KE: ", KE
 !                       write(progresschannel,*) "PE: ", U
 !                       write(progresschannel,*) "Total Energy: ", KE + U
- 			close(progresschannel)
-                        c4 = c5
+!			close(progresschannel)
+!                       c4 = c5
                 endif
 
- 		call system_clock(c2)
+!		call system_clock(c2)
 
                 !Update the coordinates with the velocities
                 coords_gradient(1:3) = coords_gradient(1:3) + dt*velocity1
@@ -172,16 +172,17 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 		velocity2 = velocity2 + coords_gradient(Ncoords+4:Ncoords+6)
 		velocity3 = velocity3 + coords_gradient(Ncoords+7:Ncoords+9)
 
-        	call system_clock(c3)
+!       	call system_clock(c3)
 
-if ((c3-c1)*system_clock_rate > 0.1) then
- open(progresschannel,file=path4//progressfile,position="append")
- write(progresschannel,*) ""
- write(progresschannel,*) "Conditional time: ", (c2-c1)*system_clock_rate
- write(progresschannel,*) "Task time: ", (c3-c2)*system_clock_rate
- write(progresschannel,*) "Headers: ", header1,header2,header3
- close(progresschannel)
-end if
+!if ((c3-c1) > 100) then
+!open(progresschannel,file=path4//progressfile,position="append")
+!write(progresschannel,*) ""
+!write(progresschannel,*) "There was a trouble spot for vals: ", vals(1), vals(2)
+!write(progresschannel,*) "Conditional time: ", (c2-c1)*system_clock_rate, 
+!write(progresschannel,*) "Task time: ", (c3-c2)*system_clock_rate
+!write(progresschannel,*) "Headers: ", header1,header2,header3
+!close(progresschannel)
+!end if
         end do
 
 end subroutine addTrajectory

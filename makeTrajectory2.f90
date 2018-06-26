@@ -106,7 +106,7 @@ open(filechannel2,file=path4//checkstatefile)
         do step = 1, Nsteps
 
 		!Every 50 frames, print to an xyz file for visualization
-                if (modulo(step,50) == 0) then
+                if (modulo(step,10) == 0) then
                         open(filechannel1,file=path4//trajectoryfile,position="append")
                         write(filechannel1,'(I1)') 3
                         write(filechannel1,*) ""
@@ -156,6 +156,7 @@ open(filechannel2,file=path4//checkstatefile)
 		call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
  
 		!Check for similar frames
+		min_rmsd = 100.0
 		call checkState(coords_gradient(1:Ncoords),closestCoords,min_rmsd_prime,.false.,&
 				counter0,counter1,counter2,counter3)
 		min_rmsd = min_rmsd_prime

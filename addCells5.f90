@@ -40,17 +40,22 @@ implicit none
 integer, intent(in) :: indexN,lengthN,frames
 integer, dimension(1+Nvar),intent(in) :: SP
 real,dimension(2*Nvar),intent(in) :: MP
+real :: multiplier1,multiplier2,divisor1,divisor2
 integer, dimension(lengthN), intent(out) :: counterN
 integer :: i,j,k,l,population,last_marker,Nmarkers,Nsortings,frames_plus_markers
-integer :: indexer,counter_index
+integer :: indexer,counter_index,recent_vals_index,sorting_index
+integer :: index1,index2,recent_index1,recent_index2
 integer :: scaling1,scaling2,resolution
 real,intent(in) :: var1_round,var2_round
-real,allocatable :: coords(:,:),vals(:,:)
+real,allocatable :: coords(:,:)
+integer,allocatable :: vals(:,:)
 integer, allocatable :: originalIndexes(:,:)
 character(50) :: subcellChild
 character(50),intent(in) :: subcellParent
 character(6) :: FMTorder
 character(10) :: var1_filename,var2_filename
+integer :: c1,c2,cr
+real :: system_clock_rate
 
 scaling1 = SP(1)
 scaling2 = SP(2)
@@ -60,6 +65,12 @@ multiplier1 = MP(1)
 multiplier2 = MP(2)
 divisor1 = MP(3)
 divisor2 = MP(4)
+
+
+
+call system_clock(c1,count_rate=cr)
+system_clock_rate = 1.0/real(cr)
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !          FRAME RETRIEVAL
@@ -76,11 +87,12 @@ open(filechannel1,file=path3//trim(subcellParent)//".dat")
 allocate(coords(frames,6*Natoms+Nvar))
 allocate(vals(frames,Nvar))
 allocate(originalIndexes(frames,1))
-do j=1, frames
-        read(filechannel1,FMT=FMT1,advance="no",iostat=k) (coords(j,i),i=1,6*Natoms+Nvar)
-	vals(j,1) = (coords(1) - var1_round) * divisor1
-	vals(j,2) = (coords(2) - var2_round) * divisor2
-        originalIndexes(j,1) = j
+do i=1, frames
+        read(filechannel1,FMT=FMT1,advance="no") (coords(i,l),l=1,Nvar)
+        read(filechannel1,FMT=FMT2)(coords(i,Nvar+l),l=1,6*Natoms)                       
+	vals(i,1) = int((coords(i,1) - var1_round) * divisor1)
+	vals(i,2) = int((coords(i,2) - var2_round) * divisor2)
+        originalIndexes(i,1) = i
 end do
 close(filechannel1)
 
@@ -157,26 +169,26 @@ close(filechannel1)
 !              -------@-------------------------------------@------>
 !                    0.0                                   3.0
 !
-
-last_marker = 1
-Nmarkers = 0
-Nsortings = 1
-do counter_index = 1, frames_plus_markers
-        if (originalIndexes(counter_index,1) > frames) then
-        Nmarkers = Nmarkers + 1
-        if (Nmarkers == scaling2) then
-                call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,&
-                           last_marker,counter_index-1,2)
-                last_marker = counter_index
-                Nmarkers = 0
-                Nsortings = Nsortings+1
-                if (Nsortings == scaling1) exit
-        end if
-        end if
-
-end do
-call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,last_marker,frames_plus_markers,2)
-
+!
+!last_marker = 1
+!Nmarkers = 0
+!Nsortings = 1
+!do counter_index = 1, frames_plus_markers
+!        if (originalIndexes(counter_index,1) > frames) then
+!        Nmarkers = Nmarkers + 1
+!        if (Nmarkers == scaling2) then
+!                call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,&
+!                           last_marker,counter_index-1,2)
+!                last_marker = counter_index
+!                Nmarkers = 0
+!                Nsortings = Nsortings+1
+!                if (Nsortings == scaling1) exit
+!        end if
+!        end if
+!
+!end do
+!call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,last_marker,frames_plus_markers,2)
+!
 !Before this second-variable quicksorting, we had something like this:
 !
 !               VAR1 QSORT [1,24]
@@ -217,76 +229,150 @@ call qsort2(vals,originalIndexes,frames_plus_markers,Nvar,last_marker,frames_plu
 !       i = n / scaling2
 !       j = n % scaling2
 !And, of course, i and j start at zero.
-
-last_marker = 1
-Nmarkers = 0
-do counter_index = 1, frames_plus_markers
-        if (originalIndexes(counter_index,1) > frames) then
-        population = counter_index - last_marker
-        if (population > 0) then
-                i = int(Nmarkers/scaling2)
-                j = modulo(Nmarkers,scaling2)
-
-                !var_round are only the decimal part of the PARENT cell
-                !thus, we have to add on multiplier*var_index to get the decimal
-                !portion of the CHILD subcell
-                write(var1_filename,FMT=FMTorder) var1_round + i*multiplier1
-                write(var2_filename,FMT=FMTorder) var2_round + j*multiplier2
-                subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
-
-                !We write all of the frames onto the higher order subcell;
-                !last_marker represents the first frame of the subcell
-                !whereas counter_index is the position of the marker that ends
-                !the subcell; thus, one is subctracted from it
-                open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
-                do k = last_marker, counter_index-1
-                        write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
-                        write(filechannel1,FMT=FMT2)(coords(originalIndexes(k,1),l),l=1,6*Natoms)                       
-                end do 
-                close(filechannel1)
-
-                !And of course, we need to add this onto counterN
-                !The indexing is exactly as in addState
-                indexer = resolution*indexN + scaling1*j + i + 1
-                counterN(indexer) = population
-
-        end if
-
-        !After we finish a pair of markers (p1,p2) we save p2 so as to make
-        !the next pair (p2,p3); we add one to represent the fact that the first
-        !frame of the subcell would be the position AFTER the marker
-        last_marker = counter_index + 1
-        Nmarkers = Nmarkers + 1
-
-        end if
-
-end do
-
-!We do a separate write statement for the last subcell because there is no
-!marker to represent the end; this will automatically have all of the frames
-!that have not yet been written by the last_marker
 !
-!Exactly the same format as before; i,j are both at their last values
-population = frames_plus_markers - last_marker
-if (population > 0) then
-        i = scaling1 - 1
-        j = scaling2 - 1
+!last_marker = 1
+!Nmarkers = 0
+!do counter_index = 1, frames_plus_markers
+!        if (originalIndexes(counter_index,1) > frames) then
+!        population = counter_index - last_marker
+!        if (population > 0) then
+!                i = int(Nmarkers/scaling2)
+!                j = modulo(Nmarkers,scaling2)
+!
+!                !var_round are only the decimal part of the PARENT cell
+!                !thus, we have to add on multiplier*var_index to get the decimal
+!                !portion of the CHILD subcell
+!                write(var1_filename,FMT=FMTorder) var1_round + i*multiplier1
+!                write(var2_filename,FMT=FMTorder) var2_round + j*multiplier2
+!                subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+!
+!                !We write all of the frames onto the higher order subcell;
+!                !last_marker represents the first frame of the subcell
+!                !whereas counter_index is the position of the marker that ends
+!                !the subcell; thus, one is subctracted from it
+!                open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
+!                do k = last_marker, counter_index-1
+!                        write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
+!                        write(filechannel1,FMT=FMT2)(coords(originalIndexes(k,1),l),l=1,6*Natoms)                       
+!                end do 
+!                close(filechannel1)
+!
+!                !And of course, we need to add this onto counterN
+!                !The indexing is exactly as in addState
+!                indexer = resolution*indexN + scaling1*j + i + 1
+!                counterN(indexer) = population
+!
+!        end if
+!
+!        !After we finish a pair of markers (p1,p2) we save p2 so as to make
+!        !the next pair (p2,p3); we add one to represent the fact that the first
+!        !frame of the subcell would be the position AFTER the marker
+!        last_marker = counter_index + 1
+!        Nmarkers = Nmarkers + 1
+!
+!        end if
+!
+!end do
+!
+!!We do a separate write statement for the last subcell because there is no
+!!marker to represent the end; this will automatically have all of the frames
+!!that have not yet been written by the last_marker
+!!
+!!Exactly the same format as before; i,j are both at their last values
+!population = frames_plus_markers - last_marker
+!if (population > 0) then
+!        i = scaling1 - 1
+!        j = scaling2 - 1
+!
+!        write(var1_filename,FMT=FMTorder) var1_round + i*multiplier1
+!        write(var2_filename,FMT=FMTorder) var2_round + j*multiplier2
+!        subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+!
+!
+!        open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
+!        do k = last_marker, frames+resolution-1
+!                write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
+!                write(filechannel1,FMT=FMT2)(coords(originalIndexes(k,1),l),l=1,6*Natoms)                       
+!        end do 
+!        close(filechannel1)
+!
+!        indexer = resolution*indexN + scaling1*j + i + 1
+!        counterN(indexer) = population    
+!end if
+!
 
-        write(var1_filename,FMT=FMTorder) var1_round + i*multiplier1
-        write(var2_filename,FMT=FMTorder) var2_round + j*multiplier2
+call qsort2(vals,originalIndexes,frames,Nvar,1,frames,1)
+
+recent_vals_index = 1
+sorting_index = 0
+do i = 1, frames
+	if (vals(i,1) > sorting_index) then
+		if (i > recent_vals_index) then
+			call qsort2(vals,originalIndexes,frames,Nvar,recent_vals_index,i-1,2)
+		end if
+		sorting_index = vals(i,1)
+		recent_vals_index = i
+	end if
+end do
+call qsort2(vals,originalIndexes,frames,Nvar,recent_vals_index,frames,2)
+
+
+
+sorting_index = 1
+recent_vals_index = 1
+recent_index1 = vals(1,1)
+recent_index2 = vals(1,2)
+
+do sorting_index = 2, frames
+index1 = vals(sorting_index,1)
+index2 = vals(sorting_index,2)
+
+if ((index1/=recent_index1) .or. (index2/=recent_index2)) then
+    	write(var1_filename,FMT=FMTorder) var1_round + recent_index1*multiplier1
+        write(var2_filename,FMT=FMTorder) var2_round + recent_index2*multiplier2
         subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-
         open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
-        do k = last_marker, frames+resolution-1
-                write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
-                write(filechannel1,FMT=FMT2)(coords(originalIndexes(k,1),l),l=1,6*Natoms)                       
-        end do 
+	do i = recent_vals_index, sorting_index-1
+                 write(filechannel1,FMT=FMT1,advance="no") (coords(originalIndexes(i,1),l),l=1,Nvar)
+                 write(filechannel1,FMT=FMT2)(coords(originalIndexes(i,1),l),l=1+Nvar,Nvar+6*Natoms)                       
+	end do
         close(filechannel1)
 
-        indexer = resolution*indexN + scaling1*j + i + 1
-        counterN(indexer) = population    
+        indexer = resolution*indexN + scaling1*recent_index2 + recent_index1 + 1
+        counterN(indexer) = sorting_index-recent_vals_index
+	recent_vals_index = sorting_index
+
+	recent_index1 = index1
+	recent_index2 = index2
 end if
+end do
+
+write(var1_filename,FMT=FMTorder) var1_round + recent_index1*multiplier1
+write(var2_filename,FMT=FMTorder) var2_round + recent_index2*multiplier2
+subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+
+open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
+do i = recent_vals_index, frames
+	write(filechannel1,FMT=FMT1,advance="no") (coords(originalIndexes(i,1),l),l=1,Nvar)
+	write(filechannel1,FMT=FMT2)(coords(originalIndexes(i,1),l),l=1+Nvar,Nvar+6*Natoms)                       
+end do
+close(filechannel1)
+
+indexer = resolution*indexN + scaling1*recent_index2 + recent_index1 + 1
+counterN(indexer) = frames-recent_vals_index+1
+
+
+
+
+
+
+call system_clock(c2)
+open(progresschannel,file=path4//progressfile,position="append")
+write(progresschannel,*) ""
+write(progresschannel,*) "   DivyUp called on: ", subcellParent
+write(progresschannel,*) "         Time Taken: ", (c2-c1)*system_clock_rate
+close(progresschannel)
 
 end subroutine divyUp
 

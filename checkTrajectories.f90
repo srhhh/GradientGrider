@@ -44,18 +44,8 @@ do n = 1, counter0_max
 end do
 close(filechannel1)
 
-open(filechanneannel1,*) 'set xtics'
-write(filechannel1,*) 'set ylabel "Minimum RMSD (A)"'
-write(filechannel1,*) 'set xlabel "Timestep"'
-write(filechannel1,*) 'set yrange [0:2.0e-1]'
-write(filechannel1,*) 'unset key'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:5 w lines'
-close(filechannel1)
-call system("gnuplot < "//path4//temporaryfile2)
-call system("rm "//path4//temporaryfile2)
-
-1,file=trim(path4)//counter1file,status="old")
-do i = 1, counter1_max
+open(filechannel1,file=trim(path4)//counter1file,status="old")
+do n = 1, counter1_max
         read(filechannel1,FMT="(I8)") counter1(n)
 end do
 close(filechannel1)
@@ -120,7 +110,7 @@ initial_rotation_angle = random_num1*pi2
 !	 add a state to the grid or counters, so does not mess with the grid;
 !	 it also produces a graph that tracks the closest frame's rmsd over time
 call checkTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
-		     initial_bond_angle1,initial_bond_angle2,&
+		     initial_bond_angle1,initial_bond_angle2,.false.,&
 		     header1,header2,header3,counter0,counter1,counter2,counter3)
 
 write(checkstateDescriptor,FMT="(A50)") path3(len(path2)+1:len(path3)-1)
@@ -153,6 +143,7 @@ write(filechannel1,*) 'unset label 2'
 write(filechannel1,*) 'set ylabel "Var2 (A)"'
 write(filechannel1,*) 'set yrange [0:40]'
 write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:7 w lines'
+if (.false.) then
 write(filechannel1,*) 'set ylabel "Neighbor Check?"'
 write(filechannel1,*) 'unset ytics'
 write(filechannel1,*) 'set yrange [-0.2:1.2]'
@@ -167,13 +158,14 @@ write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:2 w lines, '//&
                            '"'//path4//checkstatefile//'" u 4:($2==0?$2:4/0) w p ls 3, '//&
                            '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2<2)?$2:4/0) w p ls 1, '//&
                            '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2>1)?$2:4/0) w p ls 2'
+end if
 write(filechannel1,*) 'set ylabel "Frames Checked"'
 write(filechannel1,*) 'set ytics auto'
 write(filechannel1,*) 'set yrange [0:300]'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:1 w lines, '//&
-                           '"'//path4//checkstatefile//'" u 4:($2==0?$1:4/0) w p ls 3, '//&
-                           '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2<2)?$1:4/0) w p ls 1, '//&
-                           '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2>1)?$1:4/0) w p ls 2'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:1 w lines'!//', '//&
+!                           '"'//path4//checkstatefile//'" u 4:($2==0?$1:4/0) w p ls 3, '//&
+!                           '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2<2)?$1:4/0) w p ls 1, '//&
+!                           '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2>1)?$1:4/0) w p ls 2'
 write(filechannel1,*) 'set xtics'
 write(filechannel1,*) 'set ylabel "Minimum RMSD (A)"'
 write(filechannel1,*) 'set xlabel "Timestep"'
