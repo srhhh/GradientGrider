@@ -5,16 +5,18 @@ implicit none
 !PATHS
 !Path to the trajectories
 !character(28),parameter :: path1 = "/home/ruisun/proj/ruisun/B0/"
-character(25),parameter :: path1 = "/home/kazuumi/Desktop/B0/"
+ character(25),parameter :: path1 = "/home/kazuumi/Desktop/B0/"
 !Path to the f90s and bash scripts
 !character(44),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
-character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
+ character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
 !Path to the grid
 !character(39),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid_test/"
-character(51),parameter :: path3 = "/home/kazuumi/Desktop/GradientGrider/f2_grid_test5/"
+ character(51),parameter :: path3 = "/home/kazuumi/Desktop/GradientGrider/f2_grid_test5/"
 !Path for the following files (see below)
 !character(29),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
-character(45),parameter :: path4 = "/home/kazuumi/Desktop/GradientGrider/f2_dump/"
+ character(45),parameter :: path4 = "/home/kazuumi/Desktop/GradientGrider/f2_dump/"
+!Path for special constructMultipleTrajectories program
+character(len(path2)),parameter :: path5 = path2
 
 
 
@@ -27,6 +29,12 @@ character(15),parameter :: progressfile = "f2_progress.txt"
 character(17),parameter :: trajectoryfile = "f2_trajectory.xyz"
 !File that writes the rmsd retrieved from checkState every frame
 character(17),parameter :: checkstatefile = "f2_checkstate.dat"
+!File that writes the progress of multiple trajectories
+character(19),parameter :: trajectoriesfile = "f2_trajectories.dat"
+!File that has the parameters (self)
+character(17),parameter :: parametersfile = "f2_parameters.f90"
+!File for any gnuplot scripting
+character(11),parameter :: gnuplotfile = "gnuplotfile"
 
 !Files where, when done, we save the counters with the numbers of frames
 !inside each subcell, as well as other information
@@ -46,6 +54,8 @@ integer,parameter :: trajectorieschannel = 71
 integer,parameter :: frameschannel = 72
 integer,parameter :: filechannel1 = 73
 integer,parameter :: filechannel2 = 74
+integer,parameter :: filechannel3 = 75
+integer,parameter :: gnuplotchannel = 77
 
 
 
@@ -77,8 +87,8 @@ integer,parameter :: Ncoordsvals = Nvar+Ncoords
 !The spacing is the spacing of the parent-level grid
 !Because the variables may be unbound, we define the
 !parent-level grid in terms of gridline spacing
-real,parameter :: spacing1 = 0.001        !Angstroms
-real,parameter :: spacing2 = 0.001        !Cosine
+real,parameter :: spacing1 = 0.01        !Angstroms
+real,parameter :: spacing2 = 0.01        !Cosine
 real,parameter :: spacing3 = 0.1         !Not in use
 
 !There are some outliers; making a maximum throws these away
@@ -90,16 +100,16 @@ integer,parameter :: bounds2 = ceiling(max_var2/spacing2)+800 !if var > max_var 
 integer, parameter :: counter0_max = bounds1*bounds2
 
 !The threshold of "overcrowded" for a cell of order N
-integer,parameter :: overcrowd0 = 50
-integer,parameter :: overcrowd1 = 50
+integer,parameter :: overcrowd0 = 100
+integer,parameter :: overcrowd1 = 10001
 integer,parameter :: overcrowd2 = 50
 integer,parameter :: overcrowd3 = 50
 
 !The scaling is the amount that is resolved for an overcrowded cell
 ! (10,10,10) = x1000 magnification
 ! For now, only two variables are used
-integer,parameter :: scaling1_0 = 10
-integer,parameter :: scaling2_0 = 10
+integer,parameter :: scaling1_0 = 4
+integer,parameter :: scaling2_0 = 4
 integer,parameter :: resolution_0 = scaling1_0*scaling2_0
 integer,dimension(1+Nvar),parameter :: SP0=(/scaling1_0,scaling2_0,resolution_0/)
 
@@ -114,10 +124,11 @@ integer,parameter :: resolution_2 = scaling1_2*scaling2_2
 integer,dimension(1+Nvar),parameter :: SP2=(/scaling1_2,scaling2_2,resolution_2/)
 
 !The formatting of the subcell of a particular order
-character(6), parameter :: FMTorder0 = "(F9.4)"
-character(6), parameter :: FMTorder1 = "(F9.5)"
-character(6), parameter :: FMTorder2 = "(F9.6)"
-character(6), parameter :: FMTorder3 = "(F9.7)"
+character(6), parameter :: FMTorder0 = "(F9.2)"
+character(6), parameter :: FMTorder1 = "(F9.4)"
+character(6), parameter :: FMTorder2 = "(F9.5)"
+character(6), parameter :: FMTorder3 = "(F9.6)"
+integer,parameter :: FMTlength = 9
 
 
 !Some useful constants to have calculated beforehand
@@ -151,7 +162,7 @@ real,dimension(2*Nvar),parameter :: MP3=(/multiplier1_3,multiplier2_3,&
 
 !We need to estimate how many cells will be overcrowded in counter0
 !Must not be greater than 99999*resolution
-integer,parameter :: header1_max = 10000
+integer,parameter :: header1_max = 50000
 integer,parameter :: counter1_max = header1_max*resolution_0
 !We need to estimate how many subcells will be overcrowded in counter1
 !Must not be greater than 99999*resolution

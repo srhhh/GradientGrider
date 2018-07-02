@@ -26,7 +26,7 @@ contains
 
 subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2,force_Neighbors,&
-			   header1,header2,header3,counter0,counter1,counter2,counter3)
+			   header1,header2,header3,counter0,counter1,counter2,counter3,path_to_grid)
         use f2_physics_parameters
 	use f2_parameters
 	use f2_variables
@@ -46,6 +46,7 @@ subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initia
 	integer,dimension(counter2_max),intent(out) :: counter2
 	integer,dimension(counter3_max),intent(out) :: counter3
 	logical,intent(in) :: force_Neighbors
+        character(*),intent(in) :: path_to_grid
 
 	!Collision Parameters
         real,intent(in) :: initial_bond_distance,initial_rotational_speed,initial_rotation_angle
@@ -69,6 +70,7 @@ subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initia
         real :: U, KE
 	double precision :: min_rmsd,min_rmsd_prime
         integer :: TimeA,TimeB,step
+	integer :: number_of_frames,order,neighbor_check
 
         !Initialize the scene
         call InitialSetup3(velocity1,velocity2,velocity3,&
@@ -158,18 +160,20 @@ open(filechannel2,file=path4//checkstatefile)
 		!Check for similar frames
 		min_rmsd = 100.0
 		call checkState(coords_gradient(1:Ncoords),closestCoords,min_rmsd_prime,.false.,&
-				counter0,counter1,counter2,counter3)
+				counter0,counter1,counter2,counter3,path_to_grid,&
+				number_of_frames,order,neighbor_check)
 		min_rmsd = min_rmsd_prime
 
 		if (force_Neighbors) then
 		call checkState(coords_gradient(1:Ncoords),closestCoords,min_rmsd,.true.,&
-				counter0,counter1,counter2,counter3)
+				counter0,counter1,counter2,counter3,path_to_grid)
 		end if
 
                 !Update the gradient
                 call Acceleration(vals,coords_gradient,&
 			AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
 
+write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
 write(filechannel2,FMT="(I8,1x,E20.4,1x,E20.4,1x,F9.6,1x,F9.6)") step, min_rmsd, min_rmsd_prime, vals(1), vals(2)
 
 		!Update the velocities

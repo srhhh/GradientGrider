@@ -15,13 +15,14 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine checkState(coords,closestCoords,min_rmsd,force_Neighbors,&
-                      counter0,counter1,counter2,counter3)
+                      counter0,counter1,counter2,counter3,path_to_grid,&
+                      number_of_frames,order,neighbor_check)
 use f2_variables
 use f2_parameters
 use mapCellData
 implicit none
 integer :: i,j,k
-integer :: order,number_of_frames,neighbor_check
+integer,intent(out),optional :: order,number_of_frames,neighbor_check
 integer :: var1_index,var2_index,indexer,index1_1,index1_2,index2_1,index2_2
 integer :: key0,key1,key2,key3
 integer :: min_position
@@ -43,8 +44,10 @@ double precision  :: candidate_rmsd
 double precision, allocatable :: neighbor_rmsds(:)
 real, allocatable :: neighbor_coords(:,:)
 double precision, allocatable :: U(:,:), g(:,:)
-character(50) :: subcell
+character(100) :: subcell
 character(9) ::  var1_filename, var2_filename
+character(*),intent(in) :: path_to_grid
+
 
 number_of_frames = 0
 
@@ -63,7 +66,6 @@ call getVar4(coords,Natoms,var2)
 rmsd_coords1 = reshape(coords,(/3, Natoms/))
 
 ! RS: I have some thoughts on the following -- Let's talk tomorrow
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 ORDER 0
@@ -113,7 +115,7 @@ if (key0 < overcrowd0) then
 		var2_round = var2_round0
                 write(var1_filename,FMT=FMTorder0) var1_round
                 write(var2_filename,FMT=FMTorder0) var2_round
-                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 ! getRMSD reads off the coordinates and calculated the RMSD with
                 !ls_rmsd module
@@ -125,18 +127,18 @@ if (key0 < overcrowd0) then
                 !Using minloc locates the position in the array
                 !with the lowest value rmsd
                 min_position = minloc(neighbor_rmsds,1)
-                min_rmsd = neighbor_rmsds(min_position)
-
-                !The frame with the closest coordinates has this position
-                closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+                candidate_rmsd = neighbor_rmsds(min_position)
+		if (candidate_rmsd < min_rmsd) then
+			min_rmsd = candidate_rmsd
+                	!The frame with the closest coordinates has this position
+                	closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+		end if
 
                 deallocate(neighbor_rmsds,neighbor_coords)
 
-		!Write to the file our startling discoveries
 		number_of_frames = key0
 		order = 0
 		neighbor_check = 0
-		write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
                 return
 end if
 
@@ -182,7 +184,7 @@ if (key1 < overcrowd1) then
 		var2_round = var2_round0 + var2_round1
                 write(var1_filename,FMT=FMTorder1) var1_round
                 write(var2_filename,FMT=FMTorder1) var2_round
-                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 !Get the RMSDs of the frames inside of it
                 allocate(neighbor_rmsds(key1),&
@@ -192,8 +194,11 @@ if (key1 < overcrowd1) then
 
                 !Obtain the rmsd and coordinates of the closest frame
                 min_position = minloc(neighbor_rmsds,1)
-                min_rmsd = neighbor_rmsds(min_position)
-                closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+                candidate_rmsd = neighbor_rmsds(min_position)
+		if (candidate_rmsd < min_rmsd) then
+			min_rmsd = candidate_rmsd
+                	closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+		end if
 
                 deallocate(neighbor_rmsds,neighbor_coords)
 	end if
@@ -233,7 +238,7 @@ if (key1 < overcrowd1) then
                         !obtaining their rmsds and coordinates
                         call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,FMTorder1,&
                                           resolution_0*(int(key0/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
-                                          var1_round,var2_round,counter1,counter1_max,&
+                                          var1_round,var2_round,counter1,counter1_max,path_to_grid,&
                                           rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
 
                         !Even if all neighbors are empty, it still returns a
@@ -256,10 +261,7 @@ if (key1 < overcrowd1) then
 
         end if
 
-	!Write to the file our startling discoveries
 	order = 1
-	write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
-
         return
 end if
 
@@ -306,7 +308,7 @@ if (key2 < overcrowd2) then
 		var2_round = var2_round0 + var2_round1 + var2_round2
                 write(var1_filename,FMT=FMTorder2) var1_round
                 write(var2_filename,FMT=FMTorder2) var2_round
-                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 allocate(neighbor_rmsds(key2),&
                         neighbor_coords(key2,Nvar+6*Natoms))
@@ -314,8 +316,11 @@ if (key2 < overcrowd2) then
                                 neighbor_rmsds,neighbor_coords)
 
                 min_position = minloc(neighbor_rmsds,1)
-                min_rmsd = neighbor_rmsds(min_position)
-                closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+                candidate_rmsd = neighbor_rmsds(min_position)
+		if (candidate_rmsd < min_rmsd) then
+			min_rmsd = candidate_rmsd
+                	closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+		end if
 
                 deallocate(neighbor_rmsds,neighbor_coords)
 	end if
@@ -343,7 +348,7 @@ if (key2 < overcrowd2) then
 
                         call getNeighbors(scaling1_1,scaling2_1,multiplier1_2,multiplier2_2,FMTorder2,&
                                           resolution_1*(int(key1/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
-                                          var1_round,var2_round,counter2,counter2_max,&
+                                          var1_round,var2_round,counter2,counter2_max,path_to_grid,&
                                           rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
 
                         if (candidate_rmsd < min_rmsd) then
@@ -358,10 +363,7 @@ if (key2 < overcrowd2) then
 
         end if
 
-	!Write to the file our startling discoveries
 	order = 2
-	write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
-
         return
 end if
 
@@ -400,7 +402,7 @@ if (key3 < overcrowd3) then
 		var2_round = var2_round0 + var2_round1 + var2_round2 + var2_round3
                 write(var1_filename,FMT=FMTorder3) var1_round
                 write(var2_filename,FMT=FMTorder3) var2_round
-                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 allocate(neighbor_rmsds(key3),&
                         neighbor_coords(key3,Nvar+6*Natoms))
@@ -408,8 +410,11 @@ if (key3 < overcrowd3) then
                                 neighbor_rmsds,neighbor_coords)
 
                 min_position = minloc(neighbor_rmsds,1)
-                min_rmsd = neighbor_rmsds(min_position)
-                closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+                candidate_rmsd = neighbor_rmsds(min_position)
+		if (candidate_rmsd < min_rmsd) then
+			min_rmsd = candidate_rmsd
+                	closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+		end if
 
                 deallocate(neighbor_rmsds,neighbor_coords)
 	end if
@@ -432,7 +437,7 @@ if (key3 < overcrowd3) then
 
                         call getNeighbors(scaling1_2,scaling2_2,multiplier1_3,multiplier2_3,FMTorder3,&
                                           resolution_2*(int(key2/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
-                                          var1_round,var2_round,counter3,counter3_max,&
+                                          var1_round,var2_round,counter3,counter3_max,path_to_grid,&
                                           rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
 
                         if (candidate_rmsd < min_rmsd) then
@@ -446,23 +451,21 @@ if (key3 < overcrowd3) then
 
         end if
 
-	!Write to the file our startling discoveries
 	order = 3
-	write(filechannel2,FMT="(I8,1x,I1,1x,I1,1x)",advance="no") number_of_frames, order, neighbor_check
-
         return
 end if
 
-open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-write(progresschannel,*) ""
-write(progresschannel,*) ""
-write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
-write(progresschannel,*) "THE GRID IS NOT GRANULAR ENOUGH; A THIRD LEVEL SUBCELL IS OVERCROWDED!"
-write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
-write(progresschannel,*) ""
-write(progresschannel,*) ""
-close(progresschannel)
+!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
+!write(progresschannel,*) ""
+!write(progresschannel,*) ""
+!write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
+!write(progresschannel,*) "THE GRID IS NOT GRANULAR ENOUGH; A THIRD LEVEL SUBCELL IS OVERCROWDED!"
+!write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
+!write(progresschannel,*) ""
+!write(progresschannel,*) ""
+!close(progresschannel)
 
+print *, "there is a problem"
 
 end subroutine checkState
 
@@ -484,7 +487,7 @@ end subroutine checkState
 
 subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,FMTorder,&
                         index_start,index1_1,index1_2,index2_1,index2_2,&
-                        var1_round0,var2_round0,counterN,counterN_max,&
+                        var1_round0,var2_round0,counterN,counterN_max,path_to_grid,&
                         coords_static,min_rmsd,closestCoords,number_of_frames)
 
 use f2_parameters
@@ -503,7 +506,8 @@ integer,intent(in), dimension(counterN_max) :: counterN
 integer,intent(inout) :: number_of_frames
 character(6),intent(in) :: FMTorder
 character(9) :: var1_filename,var2_filename
-character(50) :: subcell
+character(100) :: subcell
+character(*),intent(in) :: path_to_grid
 double precision, intent(out) :: min_rmsd
 double precision, allocatable :: rmsds(:)
 real, allocatable :: coords(:,:)
@@ -537,7 +541,7 @@ if ((flag1) .and. (flag3)) then
 		var2_round = var2_round0 + index2_1 * multiplier2
                 write(var1_filename,FMT=FMTorder) var1_round
                 write(var2_filename,FMT=FMTorder) var2_round
-                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 !Calculate the RMSDs
                 allocate(rmsds(population),coords(population,Nvar+6*Natoms))
@@ -567,7 +571,7 @@ if ((flag2) .and. (flag3)) then
 		var2_round = var2_round0 + index2_1 * multiplier2
                 write(var1_filename,FMT=FMTorder) var1_round
                 write(var2_filename,FMT=FMTorder) var2_round
-                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 allocate(rmsds(population),coords(population,Nvar+6*Natoms))
                 call getRMSD(subcell,population,coords_static,rmsds,coords)
@@ -594,7 +598,7 @@ if ((flag1) .and. (flag4)) then
 		var2_round = var2_round0 + index2_2 * multiplier2
                 write(var1_filename,FMT=FMTorder) var1_round
                 write(var2_filename,FMT=FMTorder) var2_round
-                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
 
                 allocate(rmsds(population),coords(population,Nvar+6*Natoms))
@@ -622,7 +626,7 @@ if ((flag2) .and. (flag4)) then
 		var2_round = var2_round0 + index2_2 * multiplier2
                 write(var1_filename,FMT=FMTorder) var1_round
                 write(var2_filename,FMT=FMTorder) var2_round
-                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 allocate(rmsds(population),coords(population,Nvar+6*Natoms))
                 call getRMSD(subcell,population,coords_static,rmsds,coords)
@@ -653,7 +657,7 @@ integer,intent(in) :: population
 real,intent(out), dimension(population,Nvar+6*Natoms) :: coords
 double precision,intent(out), dimension(population) :: rmsds
 integer :: i,j
-character(50),intent(in) :: filename
+character(*),intent(in) :: filename
 double precision,intent(in), dimension(3,Natoms) :: coords_static
 double precision, dimension(3,Natoms) :: rmsd_coords2
 double precision, allocatable :: U(:,:), g(:,:)
@@ -665,7 +669,7 @@ double precision, dimension(3) :: x_center,y_center
 !close(progresschannel)
 
 !Read off the states in this subcell
-open(filechannel1,file=trim(path3)//trim(filename)//".dat")
+open(filechannel1,file=trim(filename)//".dat")
 do i = 1, population
         read(filechannel1,FMT=FMT1,advance="no") (coords(i,j),j=1,Nvar)
         read(filechannel1,FMT=FMT2) (coords(i,j),j=Nvar+1,Nvar+6*Natoms)

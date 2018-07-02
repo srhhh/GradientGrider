@@ -33,11 +33,12 @@ contains
 !		KF: huzzahhhh
 
 subroutine divyUp(subcellParent,FMTorder,var1_round,var2_round,SP,MP,&
-		  indexN,counterN,lengthN,frames)
+		  indexN,counterN,lengthN,frames,Nfile,path_to_grid)
 use f2_parameters
 use f1_functions
 implicit none
 integer, intent(in) :: indexN,lengthN,frames
+integer, intent(inout) :: Nfile
 integer, dimension(1+Nvar),intent(in) :: SP
 real,dimension(2*Nvar),intent(in) :: MP
 real :: multiplier1,multiplier2,divisor1,divisor2
@@ -53,6 +54,7 @@ integer, allocatable :: originalIndexes(:,:)
 character(50) :: subcellChild
 character(50),intent(in) :: subcellParent
 character(6) :: FMTorder
+character(*) :: path_to_grid
 character(10) :: var1_filename,var2_filename
 integer :: c1,c2,cr
 real :: system_clock_rate
@@ -83,7 +85,7 @@ system_clock_rate = 1.0/real(cr)
 !indexer ---  holds the indexes of coords
 !        ---  indexer will be sorted according to vals
 frames_plus_markers = frames+resolution-1
-open(filechannel1,file=path3//trim(subcellParent)//".dat")
+open(filechannel1,file=path_to_grid//trim(subcellParent)//".dat")
 allocate(coords(frames,6*Natoms+Nvar))
 allocate(vals(frames,Nvar))
 allocate(originalIndexes(frames,1))
@@ -250,7 +252,7 @@ close(filechannel1)
 !                !last_marker represents the first frame of the subcell
 !                !whereas counter_index is the position of the marker that ends
 !                !the subcell; thus, one is subctracted from it
-!                open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
+!                open(filechannel1,file=path_to_grid//trim(subcellChild)//".dat",status="new")
 !                do k = last_marker, counter_index-1
 !                        write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
 !                        write(filechannel1,FMT=FMT2)(coords(originalIndexes(k,1),l),l=1,6*Natoms)                       
@@ -289,7 +291,7 @@ close(filechannel1)
 !        subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 !
 !
-!        open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
+!        open(filechannel1,file=path_to_grid//trim(subcellChild)//".dat",status="new")
 !        do k = last_marker, frames+resolution-1
 !                write(filechannel1,FMT=FMT1,advance="no") (vals(k,l),l=1,Nvar)
 !                write(filechannel1,FMT=FMT2)(coords(originalIndexes(k,1),l),l=1,6*Natoms)                       
@@ -332,13 +334,14 @@ if ((index1/=recent_index1) .or. (index2/=recent_index2)) then
         write(var2_filename,FMT=FMTorder) var2_round + recent_index2*multiplier2
         subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
+        open(filechannel1,file=path_to_grid//trim(subcellChild)//".dat",status="new")
 	do i = recent_vals_index, sorting_index-1
                  write(filechannel1,FMT=FMT1,advance="no") (coords(originalIndexes(i,1),l),l=1,Nvar)
                  write(filechannel1,FMT=FMT2)(coords(originalIndexes(i,1),l),l=1+Nvar,Nvar+6*Natoms)                       
 	end do
         close(filechannel1)
 
+	Nfile = Nfile + 1
         indexer = resolution*indexN + scaling1*recent_index2 + recent_index1 + 1
         counterN(indexer) = sorting_index-recent_vals_index
 	recent_vals_index = sorting_index
@@ -352,7 +355,7 @@ write(var1_filename,FMT=FMTorder) var1_round + recent_index1*multiplier1
 write(var2_filename,FMT=FMTorder) var2_round + recent_index2*multiplier2
 subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-open(filechannel1,file=path3//trim(subcellChild)//".dat",status="new")
+open(filechannel1,file=path_to_grid//trim(subcellChild)//".dat",status="new")
 do i = recent_vals_index, frames
 	write(filechannel1,FMT=FMT1,advance="no") (coords(originalIndexes(i,1),l),l=1,Nvar)
 	write(filechannel1,FMT=FMT2)(coords(originalIndexes(i,1),l),l=1+Nvar,Nvar+6*Natoms)                       
@@ -361,6 +364,7 @@ close(filechannel1)
 
 indexer = resolution*indexN + scaling1*recent_index2 + recent_index1 + 1
 counterN(indexer) = frames-recent_vals_index+1
+Nfile = Nfile + 1
 
 
 
@@ -368,11 +372,11 @@ counterN(indexer) = frames-recent_vals_index+1
 
 
 call system_clock(c2)
-open(progresschannel,file=path4//progressfile,position="append")
-write(progresschannel,*) ""
-write(progresschannel,*) "   DivyUp called on: ", subcellParent
-write(progresschannel,*) "         Time Taken: ", (c2-c1)*system_clock_rate
-close(progresschannel)
+!open(progresschannel,file=path4//progressfile,position="append")
+!write(progresschannel,*) ""
+!write(progresschannel,*) "   DivyUp called on: ", subcellParent
+!write(progresschannel,*) "         Time Taken: ", (c2-c1)*system_clock_rate
+!close(progresschannel)
 
 end subroutine divyUp
 
@@ -396,10 +400,12 @@ end subroutine divyUp
 
 subroutine addState(vals,coords,&
                 header1,header2,header3,&
-                counter0,counter1,counter2,counter3)
+                counter0,counter1,counter2,counter3,&
+                Nfile,header_max_flag,path_to_grid,order)
 use f2_parameters
 implicit none
 integer :: indexer,i,j,key
+integer, intent(inout) :: Nfile
 integer,intent(out) :: header1
 integer,intent(out) :: header2
 integer,intent(out) :: header3
@@ -410,13 +416,18 @@ integer,dimension(counter3_max),intent(out) :: counter3
 real :: var1_cell, var2_cell
 real :: var1_round0, var1_round1, var1_round2, var1_round3, var1_round
 real :: var2_round0, var2_round1, var2_round2, var2_round3, var2_round
-integer :: var1_index,var2_index,order
+integer :: var1_index,var2_index
+integer,intent(out) :: order
 real, dimension(Nvar), intent(in) :: vals
 real, dimension(6*Natoms), intent(in) :: coords
 character(9) :: descriptor0,var1_filename,var2_filename
 character(50) :: subcell
 integer :: c1,c2,cr,cm
 real :: system_clock_rate
+logical,intent(out) :: header_max_flag
+character(*),intent(in) :: path_to_grid
+
+header_max_flag = .false.
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !               ORDER 0
@@ -467,12 +478,13 @@ if (key < overcrowd0) then
         !If this is the first time in the cell, this file has to be made
         if (key == 1) then
                 descriptor0 = "new"
+		Nfile = Nfile + 1
         else
                 descriptor0 = "old"
         end if
 
 	!Add the frame
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -498,12 +510,12 @@ else if (key == overcrowd0) then
 
         !For more information on how this works, see the subroutine above
         call divyUp(subcell,FMTorder1,var1_round,var2_round,SP0,MP1,&
-                    header1-1,counter1,counter1_max,overcrowd0-1)
+                    header1-1,counter1,counter1_max,overcrowd0-1,Nfile,path_to_grid)
  
 	!We still need to add the frame
 	!Because we are adding the frame AFTER subdividing, we need to continue on to the
 	!next order; that is why there is no return at the end of this conditional
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -513,9 +525,10 @@ else if (key == overcrowd0) then
 
 !For testing purposes
 if (header1 == header1_max) then
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print *, "      HEADER 1 WILL BE OVERCROWDED SOON"
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+!print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+!print *, "      HEADER 1 WILL BE OVERCROWDED SOON"
+!print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+header_max_flag = .true.
 end if
 
 end if
@@ -560,11 +573,12 @@ if (key < overcrowd1) then
 
         if (key == 1) then
                 descriptor0 = "new"
+		Nfile = Nfile + 1
         else
                 descriptor0 = "old"
         end if
 
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -584,9 +598,9 @@ else if (key == overcrowd1) then
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call divyUp(subcell,FMTorder2,var1_round,var2_round,SP1,MP2,&
-                    header2-1,counter2,counter2_max,overcrowd1-1)
+                    header2-1,counter2,counter2_max,overcrowd1-1,Nfile,path_to_grid)
  
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -595,9 +609,10 @@ else if (key == overcrowd1) then
 
 !For testing purposes
 if (header2 == header2_max) then
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print *, "      HEADER 2 WILL BE OVERCROWDED SOON"
-print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+!print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+!print *, "      HEADER 2 WILL BE OVERCROWDED SOON"
+!print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+header_max_flag = .true.
 end if
 
 end if
@@ -633,11 +648,12 @@ if (key < overcrowd2) then
 
         if (key == 1) then
                 descriptor0 = "new"
+		Nfile = Nfile + 1
         else
                 descriptor0 = "old"
         end if
 
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -657,14 +673,14 @@ else if (key == overcrowd2) then
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call divyUp(subcell,FMTorder3,var1_round,var2_round,SP2,MP3,&
-                    header3-1,counter3,counter3_max,overcrowd2-1)
+                    header3-1,counter3,counter3_max,overcrowd2-1,Nfile,path_to_grid)
  
 !Just for testing purposes
  open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
  write(progresschannel,*) "divyUp on subcell: ", trim(subcell)
  close(progresschannel)
 
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status="old")
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -677,7 +693,7 @@ print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 print *, "      HEADER 3 WILL BE OVERCROWDED SOON"
 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 end if
-
+header_max_flag = .true.
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -711,11 +727,12 @@ if (key < overcrowd3) then
 
         if (key == 1) then
                 descriptor0 = "new"
+		Nfile = Nfile + 1
         else
                 descriptor0 = "old"
         end if
 
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append",status=trim(descriptor0))
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -731,7 +748,7 @@ else if (key == overcrowd3) then
 	write(var2_filename,FMT=FMTorder3) var2_round
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append")
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)
@@ -748,7 +765,7 @@ else
 	write(var2_filename,FMT=FMTorder3) var2_round
 	subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        open(filechannel1,file=path3//trim(subcell)//".dat",position="append")
+        open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
         write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
         close(filechannel1)

@@ -4,7 +4,7 @@ program initialTrajectories
 
 !I call all the modules here just to keep track of them for the makefile
 use makeTrajectory
-use makeTrajectory2
+use makeTrajectory3
 use addCells5
 use f2_parameters
 use f1_functions
@@ -27,7 +27,7 @@ implicit none
 real :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real :: initial_bond_angle1, initial_bond_angle2
 real :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
-integer :: seed,n,Ntraj,c1,c2,cr
+integer :: seed,n,Ntraj,c1,c2,cr,Nfile
 real :: random_num1,random_num2,i,j,system_clock_rate
 real :: r1, r2
 
@@ -93,8 +93,8 @@ seed = rand(seed)
 call system_clock(c1,count_rate=cr)
 system_clock_rate = real(cr)
 
-
-do Ntraj = 1, 1000
+Nfile = 0
+do Ntraj = 1, 150
 
 !The orientation of the H2 bond relative to center of mass vector* (CMV) follows a uniform distribution
 ! * CMV is the vector connectiong the center of mass of both molecules
@@ -170,9 +170,9 @@ initial_rotation_angle = random_num1*2*pi
 
 if (modulo(Ntraj,10)==0) then
 
-call checkTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
-		     initial_bond_angle1,initial_bond_angle2,.false.,&
-		     header1,header2,header3,counter0,counter1,counter2,counter3)
+call monitorTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
+		       initial_bond_angle1,initial_bond_angle2,.false.,&
+		       header1,header2,header3,counter0,counter1,counter2,counter3)
 
 write(checkstateDescriptor,FMT="(A50)") path3(len(path2)+1:len(path3)-1)
 write(checkstateTrajectory,FMT="(I0.3)") Ntraj
@@ -188,7 +188,49 @@ write(filechannel1,*) 'set style line 5 lc rgb "yellow" pt 11'
 write(filechannel1,*) 'set style line 6 lc rgb "pink" pt 20'
 write(filechannel1,*) 'unset xtics'
 
-if (.false.) then
+if (.true.) then
+write(filechannel1,*) 'set tmargin 0'
+write(filechannel1,*) 'set bmargin 0'
+write(filechannel1,*) 'set lmargin 1'
+write(filechannel1,*) 'set rmargin 1'
+write(filechannel1,*) 'set multiplot layout 6,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory ',Ntraj,'of '//&
+			trim(adjustl(checkstateDescriptor))//'"'
+write(filechannel1,*) 'unset key'
+write(filechannel1,*) 'unset xlabel'
+write(angle1descriptor,FMT="(F6.4)") initial_bond_angle1
+write(angle2descriptor,FMT="(F6.4)") initial_bond_angle2
+write(bond1descriptor,FMT="(F6.4)") initial_bond_distance
+write(filechannel1,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//' radians" at screen 0.7, 0.975'
+write(filechannel1,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//' A" at screen 0.7, 0.955'
+write(filechannel1,*) 'set ylabel "True Var1 (A)"'
+write(filechannel1,*) 'set yrange [0:21]'
+write(filechannel1,*) 'set ytics 5'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:7 w lines'
+write(filechannel1,*) 'unset label 1'
+write(filechannel1,*) 'unset label 2'
+write(filechannel1,*) 'set ylabel "Var1 Deviance (A)"'
+write(filechannel1,*) 'set yrange [0:21]'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:($11-$7) w lines'
+write(filechannel1,*) 'set ylabel "True Var2 (A)"'
+write(filechannel1,*) 'set yrange [0:21]'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:8 w lines'
+write(filechannel1,*) 'set ylabel "Var2 Deviance (A)"'
+write(filechannel1,*) 'set yrange [0:21]'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:($12-$8) w lines'
+write(filechannel1,*) 'set ylabel "Total RMSD (A)"'
+write(filechannel1,*) 'set yrange [0:1.0e0]'
+write(filechannel1,*) 'set ytics .2'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:13 w lines'
+write(filechannel1,*) 'set xtics'
+write(filechannel1,*) 'set ylabel "Timestep RMSD (A)"'
+write(filechannel1,*) 'set xlabel "Timestep"'
+write(filechannel1,*) 'set yrange [0:1.0e-4]'
+write(filechannel1,*) 'set ytics .00002'
+write(filechannel1,*) 'unset key'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:14 w lines'
+
+
+else if (.false.) then
 write(filechannel1,*) 'set tmargin 0'
 write(filechannel1,*) 'set bmargin 0'
 write(filechannel1,*) 'set lmargin 1'
@@ -316,7 +358,7 @@ call system_clock(c1)
 call cpu_time(r1)
 call addTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 		   initial_bond_angle1,initial_bond_angle2,&
-		   header1,header2,header3,counter0,counter1,counter2,counter3)
+		   header1,header2,header3,counter0,counter1,counter2,counter3,Nfile)
 
 call system_clock(c2)
 call cpu_time(r2)
@@ -324,9 +366,66 @@ open(progresschannel,file=path4//progressfile,position="append")
 write(progresschannel,*) ""
 write(progresschannel,*) "Trajectory ", Ntraj, " finished in ", (c2-c1)/system_clock_rate
 write(progresschannel,*) "                               or: ", (r2-r1), " CPU time"
+write(progresschannel,*) "      with this number of overcrowded cells: ",&
+			header1-1, " + ", header2-1, " + ", header3-1
+write(progresschannel,*) "      with this number of files: ", Nfile
 close(progresschannel)
 
+open(filechannel1,file=path4//trajectoriesfile)
+write(filechannel1,*) Ntraj, Nfile, (c2-c1)/system_clock_rate, (r2-r1), header1-1, header2-1, header3-1
+close(filechannel1)
+
 end do
+
+
+
+
+
+
+
+
+write(checkstateDescriptor,FMT="(A50)") path3(len(path2)+1:len(path3)-1)
+write(checkstateTrajectory,FMT="(I0.4)") overcrowd0
+open(filechannel1,file=path4//temporaryfile2)
+write(filechannel1,*) 'set term jpeg size 1200,1200'
+write(filechannel1,*) 'set output "'//path4//'overallTrajectories_'//&
+			trim(adjustl(checkstateDescriptor))//'_'//checkstateTrajectory//'.jpg"'
+write(filechannel1,*) 'set style line 1 lc rgb "red" pt 5'
+write(filechannel1,*) 'set style line 2 lc rgb "green" pt 7'
+write(filechannel1,*) 'set style line 3 lc rgb "blue" pt 13'
+write(filechannel1,*) 'set style line 4 lc rgb "orange" pt 9'
+write(filechannel1,*) 'set style line 5 lc rgb "yellow" pt 11'
+write(filechannel1,*) 'set style line 6 lc rgb "pink" pt 20'
+write(filechannel1,*) 'unset xtics'
+write(filechannel1,*) 'set tmargin 0'
+write(filechannel1,*) 'set bmargin 0'
+write(filechannel1,*) 'set lmargin 1'
+write(filechannel1,*) 'set rmargin 1'
+write(filechannel1,*) 'set multiplot layout 2,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory ',Ntraj,'of '//&
+			trim(adjustl(checkstateDescriptor))//'"'
+write(filechannel1,*) 'unset key'
+write(filechannel1,*) 'unset xlabel'
+write(filechannel1,*) 'set ylabel "Number of Files"'
+write(filechannel1,*) 'set yrange autoscale'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 1:2 w lines'
+write(filechannel1,*) 'set ylabel "CPU time"'
+write(filechannel1,*) 'set yrange autoscale'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 1:4 w lines'
+write(filechannel1,*) 'set ylabel "Headers"'
+write(filechannel1,*) 'unset ytics'
+write(filechannel1,*) 'set yrange autoscale'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 1:5 w lines ls 1, '//&
+                           '"'//path4//checkstatefile//'" u 1:6 w liens ls 2, '//&
+                           '"'//path4//checkstatefile//'" u 1:7 w lines ls 3'
+
+close(filechannel1)
+call system("gnuplot < "//path4//temporaryfile2)
+call system("rm "//path4//temporaryfile2)
+
+
+
+
+
 
 
 !Finally, write the counters to a text file

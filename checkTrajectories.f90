@@ -143,7 +143,6 @@ write(filechannel1,*) 'unset label 2'
 write(filechannel1,*) 'set ylabel "Var2 (A)"'
 write(filechannel1,*) 'set yrange [0:40]'
 write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:7 w lines'
-if (.false.) then
 write(filechannel1,*) 'set ylabel "Neighbor Check?"'
 write(filechannel1,*) 'unset ytics'
 write(filechannel1,*) 'set yrange [-0.2:1.2]'
@@ -158,14 +157,13 @@ write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:2 w lines, '//&
                            '"'//path4//checkstatefile//'" u 4:($2==0?$2:4/0) w p ls 3, '//&
                            '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2<2)?$2:4/0) w p ls 1, '//&
                            '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2>1)?$2:4/0) w p ls 2'
-end if
 write(filechannel1,*) 'set ylabel "Frames Checked"'
 write(filechannel1,*) 'set ytics auto'
 write(filechannel1,*) 'set yrange [0:300]'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:1 w lines'!//', '//&
-!                           '"'//path4//checkstatefile//'" u 4:($2==0?$1:4/0) w p ls 3, '//&
-!                           '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2<2)?$1:4/0) w p ls 1, '//&
-!                           '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2>1)?$1:4/0) w p ls 2'
+write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:1 w lines, '//&
+                           '"'//path4//checkstatefile//'" u 4:($2==0?$1:4/0) w p ls 3, '//&
+                           '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2<2)?$1:4/0) w p ls 1, '//&
+                           '"'//path4//checkstatefile//'" u 4:(($3==1)&&($2>1)?$1:4/0) w p ls 2'
 write(filechannel1,*) 'set xtics'
 write(filechannel1,*) 'set ylabel "Minimum RMSD (A)"'
 write(filechannel1,*) 'set xlabel "Timestep"'
