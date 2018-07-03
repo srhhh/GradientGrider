@@ -6,17 +6,24 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !	SUBROTUINE addTrajectory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!INPUT:	real :: initial_translational_KE	"how fast the H is moving"
-!		collision_distance		"how far away the H is"
-!
-!	real :: collision_skew			"the cross-sectional distance"
-!
-!	real ::	initial_bond_distance		"the length of the H2 bond initially"
+!INPUT	real ::	initial_bond_distance		"the length of the H2 bond initially"
 !		initial_rotational_speed	"the rotational speed of the H2"
 !		initial_rotation_angle		"the direction the H2 is spinning (relative)"
 !
 !	real :: initial_bond_angle1		"the angle the H2 bond makes with the x-axis"
 !		initial_bond_angle2		"the angle the H2 bond makes with the y-z plane"
+!
+!	integer	     :: headerN			"for grid creation and maintenance"
+!	int,dim(...) ::	counterN		"for grid creation and miantenance"
+!
+!	character(*) :: path_to_grid		"the path to the grid"
+!
+!OUTPUT integer :: Nfile			"the number of files created"
+!		   Norder1			"the number of times order1 subcells were added to"
+!
+!	real    :: velocityH			"the velocity of the incoming H (principal axis)"
+!		   velocityH2			"the velocity of the departing H2"
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !	Simulates a H --> H2 collision with the above parameters
 !	Uses physical constants and parameters as supplied by f2_physics_parameters.f90
@@ -86,6 +93,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
                    	   initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2)
 
+	!velocityH is just the velocity from the get-go
 	velocityH = velocity1
 
 	call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
@@ -179,8 +187,12 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
 		call addState(vals,coords_gradient,header1,header2,header3,&
                               counter0,counter1,counter2,counter3,Nfile,header_max_flag,path_to_grid,order)
+
+		!If we were in an order1 subcell, then this will increment Norder1
 		Norder1 = Norder1 + order
 
+		!If there are too many subdivisions and counter0 will get out-of-bounds
+		!We call this to exit
                 if (header_max_flag) exit
 
 		velocity1 = velocity1 + coords_gradient(Ncoords+1:Ncoords+3)

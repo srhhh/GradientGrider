@@ -4,23 +4,24 @@ implicit none
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!	SUBROTUINE addTrajectory
+!	SUBROTUINE checkMultipleTrajectories
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!INPUT:	real :: initial_translational_KE	"how fast the H is moving"
-!		collision_distance		"how far away the H is"
-!
-!	real :: collision_skew			"the cross-sectional distance"
-!
-!	real ::	initial_bond_distance		"the length of the H2 bond initially"
+!INPUT: real ::	initial_bond_distance		"the length of the H2 bond initially"
 !		initial_rotational_speed	"the rotational speed of the H2"
 !		initial_rotation_angle		"the direction the H2 is spinning (relative)"
 !
 !	real :: initial_bond_angle1		"the angle the H2 bond makes with the x-axis"
 !		initial_bond_angle2		"the angle the H2 bond makes with the y-z plane"
+!
+!	logical            :: force_Neighbors		"the choice to check adjacent cells"
+!	integer            :: Ngrid_max			"the number of grids to check"
+!	int,dim(Ngrid_max) :: filechannels		"the files that we write RMSD calls to"
+!	character(*)       :: path_to_directory		"the path to the directory with the grids"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !	Simulates a H --> H2 collision with the above parameters
 !	Uses physical constants and parameters as supplied by f2_physics_parameters.f90
-!	Adds this data to a grid of files according to addState.f90
+!	Checks a folder full of grids of files formatted by f2_parameters.f90
+!	Checks each individual frame according to subroutines in checkCells5.f90
 !	Makes use of a cross product which is supplied by f1_functions.f90
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -30,7 +31,6 @@ subroutine checkMultipleTrajectories(initial_bond_distance,initial_rotational_sp
         use f2_physics_parameters
 	use f2_parameters
 	use f2_variables
-	use addCells5
 	use checkCells5
         implicit none
 
@@ -76,12 +76,11 @@ subroutine checkMultipleTrajectories(initial_bond_distance,initial_rotational_sp
                    	   initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2)
 
-
-        !Accelerate the velcocities for a half step (verlet)
-
+	!Calculate the variables for use in acceleration
 	call getVar3(coords_gradient(1:Ncoords),Natoms,vals(1))
 	call getVar4(coords_gradient(1:Ncoords),Natoms,vals(2))
 
+        !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords_gradient,&
              AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
 
@@ -94,6 +93,7 @@ subroutine checkMultipleTrajectories(initial_bond_distance,initial_rotational_sp
         do step = 1, Nsteps
 
                 !Just to see progress, print something out every 500 steps
+		!If we are too far out, stop the simulation
                 if (modulo(step,500) == 1) then      
  			if ((vals(1)>max_var1) .or.&
  			    (vals(2)>max_var2)) then

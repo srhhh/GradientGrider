@@ -8,17 +8,18 @@ use makeTrajectory5
 use makeTrajectory
 implicit none
 
-character(4) :: resolution_text
-character(5) :: overcrowd0_text
-character(5) :: overcrowd1_text
-character(4) :: Ngrid_text
-character(len(path5)+4+5+5+3) :: gridpath0 
-character(23),parameter :: cumulativefile = "cumulative_trajectories"
-integer, parameter :: trajectories_text_length = len(path5)+4+5+5+3 +&
-					         4 + len(trajectoriesfile) + 1
+!Variables used to name the new directory uniquely
+character(resolution_text_length) :: resolution_text
+character(overcrowd0_text_length) :: overcrowd0_text
+character(trajectory_text_length) :: trajectory_text
+character(5) :: variable_length_text
+character(Ngrid_text_length) :: Ngrid_text
+character(Ngrid_text_length+1) :: folder_text
+character(gridpath_length) :: gridpath0
 character(trajectories_text_length*100) :: trajectories_text
 character(6) :: Ntraj_text
 
+!New Trajectory Parameters
 integer,parameter :: Ntesttraj = 100
 real,dimension(Ntesttraj) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real,dimension(Ntesttraj) :: initial_bond_angle1, initial_bond_angle2
@@ -26,42 +27,58 @@ real,dimension(Ntesttraj) :: initial_energy_H2,initial_vibrational_energy,initia
 real :: random_num1,random_num2,i,j
 integer :: seed,n,m,n_testtraj
 
-integer :: Ngrid,iostate,Ngrid_max
-integer,allocatable :: grid_numbers(:)
-integer :: Ntraj_max = 200
+!Variables
+integer :: Ngrid,iostate,Ngrid_total
 integer,allocatable :: filechannels(:)
-real,allocatable :: min_rmsds(:),percent_threshold_rmsd(:)
+real,allocatable :: percent_threshold_rmsd(:)
 real :: min_rmsd
 integer :: frames, step, total_threshold_rmsd
 real,parameter :: threshold_rmsd = 1.0e-5
 
-write(resolution_text,FMT="(I0.4)") resolution_0
-write(overcrowd0_text,FMT="(I0.5)") overcrowd0
-write(overcrowd1_text,FMT="(I0.5)") overcrowd1
-gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//overcrowd1_text//"/"
+!We identify which grid we are working with by what parameters were used to build it
+!In this case, the grid is uniquely determined by resolution0, overcrowd0, and overcrowd1
+write(variable_length_text,FMT="(I5)") resolution_text_length
+write(resolution_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") resolution_0
+write(variable_length_text,FMT="(I5)") overcrowd0_text_length
+write(overcrowd0_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") overcrowd0
+write(variable_length_text,FMT="(I5)") trajectory_text_length
+write(trajectory_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") trajectory
+gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//trajectory_text//"/"
 
-!All trajectory folders are formatted as a number
+!All trajectory folders are formatted as I0.3 (3-digit integer)
 !So search for these numbered folders and read them
 call system("ls -p "//gridpath0//" | grep '[0123456789]/' > "//gridpath0//trajectories)
 
+!This is a slight 'hack'; for the 'true' scattering angle plots based on
+!the trajectories FROM THE GRID, we only need to concatenate
+!all the trajectories and read off a specific column
+!To do this, we make a long string " file1 file2 file3 ... fileN"
+!And only take whatever portion out we want (ex. " file1 file2")
 open(trajectorieschannel,file=gridpath0//trajectories,action="read")
 trajectories_text = ""
-do Ngrid_max = 1, 100
-	read(trajectorieschannel,FMT="(A4)",iostat=iostate) Ngrid_text
+do Ngrid_total = 1, Ngrid_max
+	read(trajectorieschannel,FMT="(A4)",iostat=iostate) folder_text
 	if (iostate /= 0) exit
-	trajectories_text = trim(trajectories_text)//" "//gridpath0//Ngrid_text//&
+	trajectories_text = trim(trajectories_text)//" "//gridpath0//folder_text//&
 			    trajectoriesfile
 end do
 close(trajectorieschannel)
 
-if (Ngrid_max < 3) return
-Ngrid_max = Ngrid_max - 2
+!This subtraction by two is for two reasons:
+!  1. We increment before we read, so we need to subtract out one increment here
+!  2. The last folder may have a problem (it does in this case) so we subtract one out here
+if (Ngrid_total < 3) return
+Ngrid_total = Ngrid_total - 2
 
-!Get Ntesttraj number of random initial conditions
+!We print the seed in case there's some bug that we need to reproduce
 call system_clock(seed)
 print *, "Working with system_clock seed: ", seed
 print *, ""
 seed = rand(seed)
+
+!We are testing Ntesttraj = 100 random trajectories so we make
+!that many random initial conditions
+!This initialization is exactly as in the other modules
 do n_testtraj = 1, Ntesttraj
         random_num1 = rand()
         random_num2 = rand()
@@ -82,19 +99,28 @@ do n_testtraj = 1, Ntesttraj
         initial_rotation_angle(n_testtraj) = random_num1*2*pi
 end do
 
-
+!This part does not take long
 print *, "Finished Initialization Part 1..."
 
-do Ngrid = 1, Ngrid_max
-	write(Ngrid_text,FMT="(I0.3)") Ngrid
-	Ngrid_text = trim(adjustl(Ngrid_text))//"/"
-	write(Ntraj_text,FMT="(I0.6)") Ngrid * Ntraj_max
-
+!First, we do the 'true' scattering angle plots
+!This data was made during creation (or should have been!) so all we need to do
+!is merge, read, and plot them
+write(variable_length_text,FMT="(I5)") Ngrid_text_length
+do Ngrid = 1, Ngrid_total
 print *, " Working on trajectories: ", Ntraj_text
 
-	call system("cat"//trajectories_text(1:Ngrid*trajectories_text_length)//" >> "//&
-		    gridpath0//Ngrid_text//cumulativefile//Ntraj_text//".dat")
+	!The folders are named starting from 001 by increments of 1
+	write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 
+	!The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
+	write(Ntraj_text,FMT="(I0.6)") Ngrid * Ntraj_max
+
+	!This system call concatenates all the data files from that previously made 'hack'
+	!By doing that, we merge all the scattering angle data together
+	call system("cat"//trajectories_text(1:Ngrid*trajectories_text_length)//" >> "//&
+		    gridpath0//Ngrid_text//"/"//cumulativefile//Ntraj_text//".dat")
+
+	!This is the gnuplot code to make the plots
 	open(gnuplotchannel,file=gridpath0//gnuplotfile)
 	write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
         write(gnuplotchannel,*) 'set output "'//gridpath0//'ScatteringAngle'//Ntraj_text//'"'
@@ -109,69 +135,89 @@ print *, " Working on trajectories: ", Ntraj_text
 				'.dat" u (rounded($7)):(7) smooth frequency with boxes'
 	close(gnuplotchannel)
 
+	!And then we just input it into gnuplot.exe
 	call system("gnuplot < "//gridpath0//gnuplotfile)
 
 end do
 
+!This part does not take long
 print *, "Finished Initialization Part 2..."
 
-Ngrid_max = min(10, Ngrid_max)
-allocate(filechannels(Ngrid_max))
+!For now, we are putting a soft cap on how many trajectories we are using
+!Each grid has Ntraj_max trajectories so we will use a maximum of 10 * Ntraj_max trajectories
+Ngrid_total = min(10, Ngrid_total)
+allocate(filechannels(Ngrid_total))
+
+!Now here we actually make and check these new trajectories
 do n_testtraj = 1, Ntesttraj
+
+	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
+	!The trajectory number will uniquely identify one trajectory from another
 	write(Ntraj_text,FMT="(I0.6)") n_testtraj
 
-	do Ngrid = 1, Ngrid_max
-		write(Ngrid_text,FMT="(I0.3)") Ngrid
-		Ngrid_text = trim(adjustl(Ngrid_text))//"/"
+	!The grid number will uniquely identify one trajectory
+	!Open all these files under filechannels
+	do Ngrid = 1, Ngrid_total
+		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 		filechannels(Ngrid) = 1000 + 69 * Ngrid
-		open(filechannels(Ngrid),file=gridpath0//Ngrid_text//Ntraj_text//".dat")
+		open(filechannels(Ngrid),file=gridpath0//Ngrid_text//"/"//Ntraj_text//".dat")
 	end do
 
 print *, " Working on trajectories: ", Ntraj_text
 
-	!Remark: checkCells5 uses filechannel1 to open files in the gri
-	open(filechannel2,file=gridpath0//Ntraj_text//".dat")
+	!The write the outputted RMSDS of each trajectory onto those filechannels
+	!Remark: checkCells5 uses filechannel1 to open files in the grid
 	call checkMultipleTrajectories(initial_bond_distance(n_testtraj),&
 		    initial_rotational_speed(n_testtraj),initial_rotation_angle(n_testtraj),&
                     initial_bond_angle1(n_testtraj),initial_bond_angle2(n_testtraj),.false.,&
-                    Ngrid_max,filechannels(1:Ngrid_max),gridpath0)
-	close(filechannel2)
+                    Ngrid_total,filechannels(1:Ngrid_max),gridpath0)
 
-	do Ngrid = 1, Ngrid_max
+	!Finally, close them
+	do Ngrid = 1, Ngrid_total
 		close(filechannels(Ngrid))
 	end do
 end do
 
+!This part has not yet finished yet
 print *, "Finished Initialization Part 3..."
 print *, ""
 
-do Ngrid = 1, Ngrid_max
-write(Ngrid_text,FMT="(I0.3)") Ngrid
-Ngrid_text = trim(adjustl(Ngrid_text))//"/"
+!Now, all we need to do is read the RMSDs obtained from each
+!With some processing to get valuable data
+do Ngrid = 1, Ngrid_total
+write(Ngrid_text,FMT="(I0."//variable_length_text//")") Ngrid
 print *, " Working on trajectories: ", Ngrid_text
 
+!We will bin data by GRID, not by trajectory
+!So we uniquely name each output .dat and graph by the grid number
 open(filechannel1,file=gridpath0//"percent_rmsd"//Ngrid_text//".dat")
 do n_testtraj = 1, Ntesttraj
 	write(Ntraj_text,FMT="(I0.6)") n_testtraj
+
 	!Read the trajectory (which has the rmsd) across all grids line-by-line
 	iostate = 0
 	frames = 0
 	total_threshold_rmsd = 0
-	open(filechannel2,file=gridpath0//Ngrid_text//Ntraj_text//".dat")
+	open(filechannel2,file=gridpath0//Ngrid_text//"/"//Ntraj_text//".dat")
+
 	do
-		read(filechannel2,FMT="(F12.8)",iostat=iostate) min_rmsds(n)
+		read(filechannel2,FMT=FMT6,iostat=iostate) min_rmsd
 		if (iostate /= 0) exit
 		frames = frames + 1
 
+	!If the RMSD is below the threshhold we consider tally that
 		if (min_rmsd < threshold_rmsd) total_threshold_rmsd = total_threshold_rmsd + 1
 	end do
 	close(filechannel2)
 
+	!We want the percentage of frames that has an RMSD below the threshhold
+	!So we keep track of the number of frames and divide by that
 	percent_threshold_rmsd(n_testtraj) = total_threshold_rmsd * 1.0 / frames
 	write(filechannel1,FMT="(I6,1x,F7.4,1x,I8)") n_testtraj, percent_threshold_rmsd(n_testtraj), frames
 end do
 close(filechannel1)
 
+!Finally, plot the data
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//'PercentRMSDThreshold'//Ngrid_text//'"'

@@ -33,30 +33,21 @@ integer, dimension(counter3_max) :: counter3 = 0
 
 !Grid Naming Parameters
 integer :: Ngrid
-integer,parameter :: Ngrid_max = 5
-integer,parameter :: resolution_text_length = 4
-integer,parameter :: overcrowd0_text_length = 5
-integer,parameter :: overcrowd1_text_length = 5
-integer,parameter :: Ngrid_text_length = 3
-integer,parameter :: gridpath_length = resolution_text_length +&
-                                       overcrowd0_text_length +&
-                                       overcrowd1_text_length + len(path5) + 3
-character(10) :: variable_length_text
+character(5) :: variable_length_text
 character(resolution_text_length) :: resolution_text
 character(overcrowd0_text_length) :: overcrowd0_text
-character(overcrowd1_text_length) :: overcrowd1_text
+character(trajectory_text_length) :: trajectory_text
 character(Ngrid_text_length) :: Ngrid_text
 character(gridpath_length) :: gridpath0
 character(gridpath_length+len(Ngrid_text)+1) :: gridpath1
 character(gridpath_length+len(Ngrid_text)+1+5) :: gridpath2
 
+!Plot Naming Parameters
 character(3) :: checkstateTrajectory
 character(6) :: angle1descriptor,angle2descriptor,bond1descriptor
 
 !Trajectory Parameters
-real :: trajectory_CPU_time_max = 60.0
 real :: trajectory_CPU_time,trajectory_wall_time
-integer,parameter :: Ntraj_max = 500
 integer :: Ntraj,Nfile,Norder1
 real :: speedH,speedH2,scattering_angle
 real,dimension(3) :: velocityH,velocityH2
@@ -66,16 +57,24 @@ real :: r1,r2
 integer :: c1,c2,cr
 real :: system_clock_rate
 
-!Initialize some stuff
-seed = 669
- call system_clock(seed)
+!Get a random seed and print it in case there's a problem
+call system_clock(seed)
+print *, ""
+print *, "System clock seed: ", seed
 seed = rand(seed)
+
+!Initialize the clock
 call system_clock(count_rate=cr)
 system_clock_rate = 1.0/real(cr)
-write(resolution_text,FMT="(I0.4)") resolution_0
-write(overcrowd0_text,FMT="(I0.5)") overcrowd0
-write(overcrowd1_text,FMT="(I0.5)") overcrowd1
-gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//overcrowd1_text//"/"
+
+!Make the multi-grid folder!
+write(variable_length_text,FMT="(I5)") resolution_text_length
+write(resolution_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") resolution_0
+write(variable_length_text,FMT="(I5)") overcrowd0_text_length
+write(overcrowd0_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") overcrowd0
+write(variable_length_text,FMT="(I5)") trajectory_text_length
+write(trajectory_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj_max
+gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//trajectory_text//"/"
 call system("mkdir "//gridpath0)
 call system("cp "//path2//"f2_parameters.f90 "//gridpath0//parametersfile)
 
@@ -89,8 +88,10 @@ call system("cp "//path2//"f2_parameters.f90 "//gridpath0//parametersfile)
 !write(filechannel1,*) "character(gridpath_length),parameter :: gridpath0 = "//gridpath0
 !close(filechannel1)
 
+!We start off with zero files
 Nfile = 0
 
+!For each grid, just spit out Ntraj_max trajectories into it
 do Ngrid = 1, Ngrid_max
 
 !Counter Parameters
@@ -110,10 +111,13 @@ do m = 1, counter3_max
 counter3(m) = 0
 end do
 
-        write(Ngrid_text,FMT="(I0.3)") Ngrid
+	!The grids will be named 001 with increments of 1
+	write(variable_length_text,FMT="(I5)") Ngrid_text_length
+        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
         gridpath1 = gridpath0//Ngrid_text//"/"
         gridpath2 = gridpath1//"grid/"
 
+	!This will create a folder for the grid files and for its outputs
         call system("mkdir "//gridpath1)
         call system("mkdir "//gridpath2)
 
@@ -127,6 +131,7 @@ print *, gridpath2
         write(progresschannel,*) ""
         close(progresschannel)
 
+	!We start off with zero trajectories
         Ntraj = 0
         do n = 1, Ntraj_max
 
@@ -149,6 +154,9 @@ random_num1 = rand()
 initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
 initial_rotation_angle = random_num1*2*pi
 
+!This big if-statement is if we want to monitor our grid creation
+!I accidentally deleted makeTrajectory3 (with the monitorTrajectory subroutine)
+!so I am decommisioning this
                 if (.false.) then !(modulo(Ntraj,10) == 9) then
 
 !                       call monitorTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
@@ -215,6 +223,7 @@ call system("rm "//path4//temporaryfile2)
 
                 end if
 
+		!We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
                 call addTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
@@ -227,9 +236,12 @@ call system("rm "//path4//temporaryfile2)
                 trajectory_CPU_time = r2 - r1
                 trajectory_wall_time = (c2 -c1) * system_clock_rate
 
+		!If there have been a large number of subdivisions (so many that our array will go
+		!out of bounds) then we stop; we also stop if it is taking too long
                 if ((header1 == header1_max).or.&
                    (trajectory_CPU_time > trajectory_CPU_time_max)) exit
 
+		!Otherwise, we consider this a successful trajectory addition
                 Ntraj = Ntraj + 1
                 open(progresschannel,file=gridpath1//progressfile,position="append")
                 write(progresschannel,*) ""
@@ -241,11 +253,13 @@ call system("rm "//path4//temporaryfile2)
                                                 trajectory_CPU_time
                 close(progresschannel)
 
+		!We also record the scattering angle of the trajectory
 		speedH = sqrt(velocityH(1)**2 + velocityH(2)**2 + velocityH(3)**2)
 		speedH2 = sqrt(velocityH2(1)**2 + velocityH2(2)**2 + velocityH2(3)**2)
 		scattering_angle = acos(dot_product(velocityH,velocityH2) / &
 					           (speedH * speedH2))
 
+		!This is all recorded in the trajectoriesfile of the grid
                 open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
                 write(filechannel1,*) Ntraj, header1, header2, Nfile,&
                                       trajectory_CPU_time,Norder1*1.0/real(Nsteps),&
@@ -264,7 +278,8 @@ write(progresschannel,*) ""
 close(progresschannel)
 
 
-
+!Here, we can see how much time the grid creation took
+!There is also some other interesting data
 open(filechannel1,file=gridpath1//temporaryfile2)
 write(filechannel1,*) 'set term jpeg size 1200,1200'
 write(filechannel1,*) 'set output "'//gridpath0//'CPUTime_'//Ngrid_text//'.jpg"'
@@ -300,6 +315,8 @@ close(filechannel1)
 call system("gnuplot < "//gridpath1//temporaryfile2)
 call system("rm "//gridpath1//temporaryfile2)
 
+!We also make a histogram of the scattering angles observed
+!Because each grid is not too big, these plots may not be fine enough
 open(filechannel1,file=gridpath1//temporaryfile2)
 write(filechannel1,*) 'set term jpeg size 1200,1200'
 write(filechannel1,*) 'set output "'//gridpath0//'ScatteringAngles_'//Ngrid_text//'.jpg"'

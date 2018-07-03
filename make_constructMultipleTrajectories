@@ -1,5 +1,5 @@
-a.out : f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o decompose_velocities.o checkCells4.o addCells5.o makeTrajectory.o makeTrajectory3.o constructMultipleTrajectories.o
-	$(FC) -o a.out -O3 -fcheck="bound" f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o decompose_velocities.o checkCells4.o addCells5.o makeTrajectory.o makeTrajectory3.o constructMultipleTrajectories.o
+a.out : f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o decompose_velocities.o checkCells4.o addCells5.o makeTrajectory.o constructMultipleTrajectories.o
+	$(FC) -o a.out -O3 -fcheck="bound" f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o decompose_velocities.o checkCells4.o addCells5.o makeTrajectory.o constructMultipleTrajectories.o
 
 FC = gfortran
 
@@ -21,11 +21,9 @@ checkCells4.o : checkCells4.f90
 	$(FC) -c checkCells4.f90
 makeTrajectory.o : makeTrajectory.f90
 	$(FC) -c makeTrajectory.f90
-makeTrajectory3.o : makeTrajectory3.f90
-	$(FC) -c makeTrajectory3.f90
 constructMultipleTrajectories.o : constructMultipleTrajectories.f90
 	$(FC) -c constructMultipleTrajectories.f90
 mapCellData.o : mapCellData.f90
 	$(FC) -c mapCellData.f90
 clean :
-	rm  constructMultipleTrajectories.o decompose_velocities.o decompose_velocities.mod ls_rmsd.o ls_rmsd.mod mapCellData.o mapcelldata.mod makeTrajectory3.o maketrajectory3.mod makeTrajectory.o maketrajectory.mod checkCells4.o checkcells4.mod addCells5.o addcells5.mod f2_parameters.o f2_parameters.mod f2_variables.o f2_variables.mod f1_functions.o f1_functions.mod f2_physics_parameters.o f2_physics_parameters.mod
+	rm  constructMultipleTrajectories.o decompose_velocities.o decompose_velocities.mod ls_rmsd.o ls_rmsd.mod mapCellData.o mapcelldata.mod makeTrajectory.o maketrajectory.mod checkCells4.o checkcells4.mod addCells5.o addcells5.mod f2_parameters.o f2_parameters.mod f2_variables.o f2_variables.mod f1_functions.o f1_functions.mod f2_physics_parameters.o f2_physics_parameters.mod

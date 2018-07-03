@@ -71,7 +71,7 @@ character(14),parameter :: FMT2 = "(36(1x,F11.6))"          !For six atoms, full
 character(14),parameter :: FMT3 = "(18(1x,F11.6))"          !For six atoms, coords
 character(4),parameter :: FMT4 = "(I4)"                     !For subcell names
 character(4),parameter :: FMT5 = "(I9)"                     !For number of substates
-
+character(7),parameter :: FMT6 = "(F12.8)"                  !For RMSD
 
 
 !VARIABLES
@@ -100,7 +100,7 @@ integer,parameter :: bounds2 = ceiling(max_var2/spacing2)+800 !if var > max_var 
 integer, parameter :: counter0_max = bounds1*bounds2
 
 !The threshold of "overcrowded" for a cell of order N
-integer,parameter :: overcrowd0 = 100
+integer,parameter :: overcrowd0 = 50
 integer,parameter :: overcrowd1 = 10001
 integer,parameter :: overcrowd2 = 50
 integer,parameter :: overcrowd3 = 50
@@ -179,6 +179,26 @@ integer,parameter :: counter3_max = header3_max*resolution_2
 !counter and YYYY is the population of the current counter
 integer,parameter :: population_max = 999
 integer,parameter :: key_start = population_max + 1
+
+
+!Multi-Grid Parameters
+integer,parameter :: Ntraj_max = 100
+real,parameter :: trajectory_CPU_time_max = 60.0
+integer,parameter :: Ngrid_max = 10
+integer,parameter :: trajectory_text_length = 4
+integer,parameter :: resolution_text_length = 4
+integer,parameter :: overcrowd0_text_length = 5
+integer,parameter :: Ngrid_text_length = 3
+integer,parameter :: gridpath_length = trajectory_text_length +&
+                                       resolution_text_length +&
+                                       overcrowd0_text_length + len(path5) + 3
+character(23),parameter :: cumulativefile = "cumulative_trajectories"
+integer, parameter :: trajectories_text_length = gridpath_length +&
+                                                 4 + len(trajectoriesfile) + 1
+
+
+
+
 
 end module f2_parameters
 
