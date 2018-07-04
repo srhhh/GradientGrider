@@ -59,6 +59,7 @@ real :: system_clock_rate
 
 !Get a random seed and print it in case there's a problem
 call system_clock(seed)
+!seed = 96967942
 print *, ""
 print *, "System clock seed: ", seed
 seed = rand(seed)
@@ -154,6 +155,17 @@ random_num1 = rand()
 initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
 initial_rotation_angle = random_num1*2*pi
 
+                open(progresschannel,file=gridpath1//progressfile,position="append")
+                write(progresschannel,*) ""
+                write(progresschannel,*) ""
+                write(progresschannel,*) "Starting trajectory ", Ntraj+1
+                write(progresschannel,*) "  Initial Conditions: "
+                write(progresschannel,*) "  		Bond Distance: ", initial_bond_distance
+                write(progresschannel,*) "  		 Bond Angle 1: ", initial_bond_angle1
+                write(progresschannel,*) "  		 Bond Angle 2: ", initial_bond_angle2
+                close(progresschannel)
+
+
 !This big if-statement is if we want to monitor our grid creation
 !I accidentally deleted makeTrajectory3 (with the monitorTrajectory subroutine)
 !so I am decommisioning this
@@ -244,7 +256,6 @@ call system("rm "//path4//temporaryfile2)
 		!Otherwise, we consider this a successful trajectory addition
                 Ntraj = Ntraj + 1
                 open(progresschannel,file=gridpath1//progressfile,position="append")
-                write(progresschannel,*) ""
                 write(progresschannel,*) "Finished trajectory ", Ntraj
                 write(progresschannel,*) "        Now we have ", Nfile, " files"
                 write(progresschannel,*) "                      Wall Time: ",&
@@ -259,10 +270,15 @@ call system("rm "//path4//temporaryfile2)
 		scattering_angle = acos(dot_product(velocityH,velocityH2) / &
 					           (speedH * speedH2))
 
+!print *, ""
+!print *, "total wall time: ", trajectory_wall_time
+!print *, "total cpu time: ", trajectory_cpu_time
+!print *, ""
+
 		!This is all recorded in the trajectoriesfile of the grid
                 open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
                 write(filechannel1,*) Ntraj, header1, header2, Nfile,&
-                                      trajectory_CPU_time,Norder1*1.0/real(Nsteps),&
+                                      trajectory_CPU_time,trajectory_wall_time,Norder1*1.0/real(Nsteps),&
 				      scattering_angle
                 close(filechannel1)
         end do
@@ -294,7 +310,7 @@ write(filechannel1,*) 'set tmargin 0'
 write(filechannel1,*) 'set bmargin 0'
 write(filechannel1,*) 'set lmargin 1'
 write(filechannel1,*) 'set rmargin 1'
-write(filechannel1,*) 'set multiplot layout 4,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory '//Ngrid_text//'"'
+write(filechannel1,*) 'set multiplot layout 5,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory '//Ngrid_text//'"'
 write(filechannel1,*) 'unset key'
 write(filechannel1,*) 'unset xlabel'
 write(filechannel1,*) 'set ylabel "Number of Files"'
@@ -302,13 +318,16 @@ write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:4 w lines'
 write(filechannel1,*) 'set ylabel "Number of Overcrowded Cells"'
 write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:2 w lines, '//&
                            '"'//gridpath1//trajectoriesfile//'" u 1:3 w lines'
-write(filechannel1,*) 'set ylabel "Percent of Frames added to Order 1"'
+write(filechannel1,*) 'set ylabel "Fraction of Frames added to Order 1"'
 write(filechannel1,*) 'set yrange [0:1.0]'
+write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:7 w lines'
+write(filechannel1,*) 'set autoscale y'
+write(filechannel1,*) 'set ylabel "Wall Time (sec)"'
 write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:6 w lines'
 write(filechannel1,*) 'set xtics'
 write(filechannel1,*) 'set xlabel "timestep"'
-write(filechannel1,*) 'set yrange autoscale'
-write(filechannel1,*) 'set ylabel "CPU_time (sec)"'
+write(filechannel1,*) 'set yrange [0:1.5]'
+write(filechannel1,*) 'set ylabel "CPU Time (sec)"'
 write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:5 w lines'
 close(filechannel1)
 

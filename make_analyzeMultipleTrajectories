@@ -2,7 +2,7 @@ a.out : f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls
 	$(FC) -o a.out -O3 -fcheck="bound" f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o decompose_velocities.o checkCells5.o addCells5.o makeTrajectory.o makeTrajectory5.o analyzeMultipleTrajectories.o
 
 FC = gfortran
-PARAMETERFOLDER = /home/kazuumi/Desktop/GradientGrider/0016_00100_10011/
+PARAMETERFOLDER = /home/kazuumi/Desktop/GradientGrider/0016_00050_0250/
 
 f2_parameters.o : $(PARAMETERFOLDER)/f2_parameters.f90
 	$(FC) -c $(PARAMETERFOLDER)/f2_parameters.f90

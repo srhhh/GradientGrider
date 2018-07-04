@@ -93,7 +93,11 @@ do i=1, frames
         read(filechannel1,FMT=FMT1,advance="no") (coords(i,l),l=1,Nvar)
         read(filechannel1,FMT=FMT2)(coords(i,Nvar+l),l=1,6*Natoms)                       
 	vals(i,1) = int((coords(i,1) - var1_round) * divisor1)
+	if (vals(i,1) < 0) vals(i,1) = 0
+	if (vals(i,1) .ge. scaling1_0 ) vals(i,1) = scaling1_0 - 1
 	vals(i,2) = int((coords(i,2) - var2_round) * divisor2)
+	if (vals(i,2) < 0) vals(i,2) = 0
+	if (vals(i,2) .ge. scaling2_0 ) vals(i,2) = scaling2_0 - 1
         originalIndexes(i,1) = i
 end do
 close(filechannel1)
@@ -546,7 +550,11 @@ var1_cell = var1_cell - var1_round0
 var2_cell = var2_cell - var2_round0
 
 var1_index = int(var1_cell * divisor1_1)
+if (var1_index < 0) var1_index = 0
+if (var1_index .ge. scaling1_0) var1_index = scaling1_0 - 1
 var2_index = int(var2_cell * divisor2_1)
+if (var2_index < 0) var2_index = 0
+if (var2_index .ge. scaling2_0) var2_index = scaling2_0 - 1
 
 var1_round1 = multiplier1_1 * var1_index
 var2_round1 = multiplier2_1 * var2_index

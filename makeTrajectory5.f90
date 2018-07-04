@@ -14,8 +14,8 @@ contains
 !		initial_bond_angle2		"the angle the H2 bond makes with the y-z plane"
 !
 !	logical            :: force_Neighbors		"the choice to check adjacent cells"
-!	integer            :: Ngrid_max			"the number of grids to check"
-!	int,dim(Ngrid_max) :: filechannels		"the files that we write RMSD calls to"
+!	integer            :: Ngrid_total			"the number of grids to check"
+!	int,dim(Ngrid_total) :: filechannels		"the files that we write RMSD calls to"
 !	character(*)       :: path_to_directory		"the path to the directory with the grids"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !	Simulates a H --> H2 collision with the above parameters
@@ -27,7 +27,7 @@ contains
 
 subroutine checkMultipleTrajectories(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 				     initial_bond_angle1,initial_bond_angle2,force_Neighbors,&
-				     Ngrid_max,filechannels,path_to_directory)
+				     Ngrid_total,filechannels,path_to_directory)
         use f2_physics_parameters
 	use f2_parameters
 	use f2_variables
@@ -42,8 +42,8 @@ subroutine checkMultipleTrajectories(initial_bond_distance,initial_rotational_sp
 	!Grid Parameters
 	logical,intent(in) :: force_Neighbors
         character(*),intent(in) :: path_to_directory
-	integer,intent(in) :: Ngrid_max
-	integer,dimension(Ngrid_max),intent(in) :: filechannels
+	integer,intent(in) :: Ngrid_total
+	integer,dimension(Ngrid_total),intent(in) :: filechannels
 	character(4) :: Ngrid_text
 
 	!Collision Parameters
@@ -112,7 +112,7 @@ subroutine checkMultipleTrajectories(initial_bond_distance,initial_rotational_sp
  
 		!Check for similar frames
 		call checkState(coords_gradient(1:Ncoords),closestCoords,min_rmsd,&
-				force_Neighbors,path_to_directory,Ngrid_max,filechannels,&
+				force_Neighbors,path_to_directory,Ngrid_total,filechannels,&
 				number_of_frames,order,neighbor_check)
 
                 !Update the gradient

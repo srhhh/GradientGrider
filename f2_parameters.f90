@@ -101,7 +101,7 @@ integer, parameter :: counter0_max = bounds1*bounds2
 
 !The threshold of "overcrowded" for a cell of order N
 integer,parameter :: overcrowd0 = 50
-integer,parameter :: overcrowd1 = 10001
+integer,parameter :: overcrowd1 = 10000
 integer,parameter :: overcrowd2 = 50
 integer,parameter :: overcrowd3 = 50
 
@@ -182,7 +182,7 @@ integer,parameter :: key_start = population_max + 1
 
 
 !Multi-Grid Parameters
-integer,parameter :: Ntraj_max = 100
+integer,parameter :: Ntraj_max = 250
 real,parameter :: trajectory_CPU_time_max = 60.0
 integer,parameter :: Ngrid_max = 10
 integer,parameter :: trajectory_text_length = 4

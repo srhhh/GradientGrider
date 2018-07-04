@@ -21,11 +21,11 @@ character(6) :: Ntraj_text
 
 !New Trajectory Parameters
 integer,parameter :: Ntesttraj = 100
-real,dimension(Ntesttraj) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
-real,dimension(Ntesttraj) :: initial_bond_angle1, initial_bond_angle2
-real,dimension(Ntesttraj) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
+real :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
+real :: initial_bond_angle1, initial_bond_angle2
+real :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
 real :: random_num1,random_num2,i,j
-integer :: seed,n,m,n_testtraj
+integer :: seed,n,m,n_testtraj,initial_n_testtraj
 
 !Variables
 integer :: Ngrid,iostate,Ngrid_total
@@ -42,7 +42,7 @@ write(resolution_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") reso
 write(variable_length_text,FMT="(I5)") overcrowd0_text_length
 write(overcrowd0_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") overcrowd0
 write(variable_length_text,FMT="(I5)") trajectory_text_length
-write(trajectory_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") trajectory
+write(trajectory_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj_max
 gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//trajectory_text//"/"
 
 !All trajectory folders are formatted as I0.3 (3-digit integer)
@@ -76,44 +76,26 @@ print *, "Working with system_clock seed: ", seed
 print *, ""
 seed = rand(seed)
 
-!We are testing Ntesttraj = 100 random trajectories so we make
-!that many random initial conditions
-!This initialization is exactly as in the other modules
-do n_testtraj = 1, Ntesttraj
-        random_num1 = rand()
-        random_num2 = rand()
-        initial_bond_angle1(n_testtraj) = random_num1*pi2           !theta
-        initial_bond_angle2(n_testtraj) = random_num2*pi2           !phi
-        do
-        random_num1 = rand()
-        random_num2 = rand()
-        initial_energy_H2(n_testtraj) = (upsilon_max*random_num1 + 0.5)*upsilon_factor2
-        if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
-        end do
-        random_num2 = 1.0
-        initial_vibrational_energy(n_testtraj) = random_num2*initial_energy_H2(n_testtraj)
-        initial_rotational_energy(n_testtraj) = initial_energy_H2(n_testtraj) - initial_vibrational_energy(n_testtraj)
-        initial_bond_distance(n_testtraj) = HOr0_hydrogen + sqrt(initial_vibrational_energy(n_testtraj)*2/HOke_hydrogen)
-        random_num1 = rand()
-        initial_rotational_speed(n_testtraj) = sqrt(initial_rotational_energy(n_testtraj)/mass_hydrogen)
-        initial_rotation_angle(n_testtraj) = random_num1*2*pi
-end do
-
 !This part does not take long
 print *, "Finished Initialization Part 1..."
+
+!For now, we are putting a soft cap on how many trajectories we are using
+!Each grid has Ntraj_max trajectories so we will use a maximum of 10 * Ntraj_max trajectories
+Ngrid_total = min(10, Ngrid_total)
+allocate(filechannels(Ngrid_total))
 
 !First, we do the 'true' scattering angle plots
 !This data was made during creation (or should have been!) so all we need to do
 !is merge, read, and plot them
 write(variable_length_text,FMT="(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_total
-print *, " Working on trajectories: ", Ntraj_text
 
 	!The folders are named starting from 001 by increments of 1
 	write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 
 	!The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
 	write(Ntraj_text,FMT="(I0.6)") Ngrid * Ntraj_max
+	print *, " Working with this many trajectories: ", Ntraj_text
 
 	!This system call concatenates all the data files from that previously made 'hack'
 	!By doing that, we merge all the scattering angle data together
@@ -131,7 +113,7 @@ print *, " Working on trajectories: ", Ntraj_text
         write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
         write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
         write(gnuplotchannel,*) 'set ylabel "Occurence"'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//cumulativefile//Ntraj_text//&
+        write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//Ntraj_text//&
 				'.dat" u (rounded($7)):(7) smooth frequency with boxes'
 	close(gnuplotchannel)
 
@@ -143,17 +125,46 @@ end do
 !This part does not take long
 print *, "Finished Initialization Part 2..."
 
-!For now, we are putting a soft cap on how many trajectories we are using
-!Each grid has Ntraj_max trajectories so we will use a maximum of 10 * Ntraj_max trajectories
-Ngrid_total = min(10, Ngrid_total)
-allocate(filechannels(Ngrid_total))
+!I want this program to be a "pick up where we left off last time" program
+!so I figure out how many new trajectories I already checked for RMSD
+!All grids should have the same number of trajectories so I just look in grid 1
+call system("ls "//gridpath0//"001/ | grep -E '^[0123456789]{6}.dat' > "//gridpath0//trajectories)
+open(trajectorieschannel,file=gridpath0//trajectories,action="read")
+initial_n_testtraj = 1
+do Ngrid_total = 1, Ngrid_max
+	read(trajectorieschannel,FMT="(A50)",iostat=iostate) trajectories_text
+	if (iostate /= 0) exit
+	initial_n_testtraj = initial_n_testtraj + 1
+	print *, "     Already have trajectory: ", trim(adjustl(trajectories_text))
+end do
+close(trajectorieschannel)
 
 !Now here we actually make and check these new trajectories
-do n_testtraj = 1, Ntesttraj
+do n_testtraj = initial_n_testtraj, Ntesttraj
+
+	!This is just the creation of the random initial trajectory
+        random_num1 = rand()
+        random_num2 = rand()
+        initial_bond_angle1 = random_num1*pi2           !theta
+        initial_bond_angle2 = random_num2*pi2           !phi
+        do
+        random_num1 = rand()
+        random_num2 = rand()
+        initial_energy_H2 = (upsilon_max*random_num1 + 0.5)*upsilon_factor2
+        if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
+        end do
+        random_num2 = 1.0
+        initial_vibrational_energy = random_num2*initial_energy_H2
+        initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
+        initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
+        random_num1 = rand()
+        initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
+        initial_rotation_angle = random_num1*2*pi
 
 	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
 	!The trajectory number will uniquely identify one trajectory from another
 	write(Ntraj_text,FMT="(I0.6)") n_testtraj
+	print *, " Working on random new trajectory number: ", Ntraj_text
 
 	!The grid number will uniquely identify one trajectory
 	!Open all these files under filechannels
@@ -163,13 +174,11 @@ do n_testtraj = 1, Ntesttraj
 		open(filechannels(Ngrid),file=gridpath0//Ngrid_text//"/"//Ntraj_text//".dat")
 	end do
 
-print *, " Working on trajectories: ", Ntraj_text
-
 	!The write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkCells5 uses filechannel1 to open files in the grid
-	call checkMultipleTrajectories(initial_bond_distance(n_testtraj),&
-		    initial_rotational_speed(n_testtraj),initial_rotation_angle(n_testtraj),&
-                    initial_bond_angle1(n_testtraj),initial_bond_angle2(n_testtraj),.false.,&
+	call checkMultipleTrajectories(initial_bond_distance,&
+		    initial_rotational_speed,initial_rotation_angle,&
+                    initial_bond_angle1,initial_bond_angle2,.false.,&
                     Ngrid_total,filechannels(1:Ngrid_max),gridpath0)
 
 	!Finally, close them
@@ -186,7 +195,7 @@ print *, ""
 !With some processing to get valuable data
 do Ngrid = 1, Ngrid_total
 write(Ngrid_text,FMT="(I0."//variable_length_text//")") Ngrid
-print *, " Working on trajectories: ", Ngrid_text
+print *, " Working on all grids up until grid number: ", Ngrid_text
 
 !We will bin data by GRID, not by trajectory
 !So we uniquely name each output .dat and graph by the grid number

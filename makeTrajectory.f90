@@ -59,6 +59,13 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 	integer,dimension(counter2_max),intent(out) :: counter2
 	integer,dimension(counter3_max),intent(out) :: counter3
 
+	!Various other variables
+        real :: U, KE
+        integer :: TimeA,TimeB,step,order
+	real :: system_clock_rate,r1,r2
+	integer :: c1,c2,c3,c4,c5,cr
+        logical :: header_max_flag
+
 	!Collision Parameters
         real,intent(in) :: initial_bond_distance,initial_rotational_speed,initial_rotation_angle
 	real,intent(in) :: initial_bond_angle1,initial_bond_angle2
@@ -77,14 +84,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
         real, parameter :: AccelerationConstant2 =&
                 2*MorseDe_hydrogen*Morsealpha_hydrogen*dt/mass_hydrogen
 
-	!Various other variables
-        real :: U, KE
-        integer :: TimeA,TimeB,step,order
-	real :: system_clock_rate
-	integer :: c1,c2,c3,c4,c5,cr
-        logical :: header_max_flag
-
-	call system_clock(c4,count_rate=cr)
+	call system_clock(c1,count_rate=cr)
 	system_clock_rate = 1.0/real(cr)
 
         !Initialize the scene
@@ -92,6 +92,15 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
                            coords_gradient(1:3),coords_gradient(4:6),coords_gradient(7:9),&
                    	   initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2)
+
+ open(progresschannel,file=path_to_grid(1:len(path_to_grid)-5)//progressfile,position="append")
+ write(progresschannel,*) ""
+ write(progresschannel,*) "   Initial Coordinates:"
+ write(progresschannel,*) "               Coords1:", coords_gradient(1:3)
+ write(progresschannel,*) "               Coords2:", coords_gradient(4:6)
+ write(progresschannel,*) "               Coords3:", coords_gradient(7:9)
+ write(progresschannel,*) ""
+ close(progresschannel)
 
 	!velocityH is just the velocity from the get-go
 	velocityH = velocity1
@@ -123,7 +132,6 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
         do step = 1, Nsteps
 
-!       	call system_clock(c1)
 
 		!Every 50 frames, print to an xyz file for visualization
                 if (.false.) then !(modulo(step,50) == 0) then
@@ -145,6 +153,11 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
  			if ((vals(1)>max_var1) .or. (vals(2)>max_var2)) then
  				exit
  			end if
+
+!call system_clock(c2)
+!print *, "    step ", step, "  wall time: "
+!write(6,FMT="(30x,F9.6)") (c2-c1) * system_clock_rate
+!c1 = c2
 
                 	!Calculate the energies (done one-bby-one because there are few)
 !               	U = MorsePotential(coords_gradient(1:3),coords_gradient(4:6))
@@ -184,8 +197,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
                 call Acceleration(vals,coords_gradient,&
 			AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
 
-
-		call addState(vals,coords_gradient,header1,header2,header3,&
+        	call addState(vals,coords_gradient,header1,header2,header3,&
                               counter0,counter1,counter2,counter3,Nfile,header_max_flag,path_to_grid,order)
 
 		!If we were in an order1 subcell, then this will increment Norder1

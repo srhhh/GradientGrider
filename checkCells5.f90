@@ -12,8 +12,8 @@ contains
 !	logical 		force_Neighbors		"do we force it to check adjacent cells?"
 !
 !	character(*) 		path_to_directory	"the path to the directory containing the grids"
-!	integer 		Ngrid_max		"the number of grids to check"
-!	integer,dim(Ngrid_max) 	filechannels		"the files we write to for data on each grid"
+!	integer 		Ngrid_total		"the number of grids to check"
+!	integer,dim(Ngrid_total) 	filechannels		"the files we write to for data on each grid"
 !
 !OUTPUT real, dim(6*Natoms) 	closestCoords           "closest frame+gradient"
 !       dp 			min_rmsd                "closest frame rmsd"
@@ -28,7 +28,7 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine checkState(coords,closestCoords,min_rmsd_prime,force_Neighbors,&
-                      path_to_directory,Ngrid_max,filechannels,&
+                      path_to_directory,Ngrid_total,filechannels,&
                       number_of_frames,order,neighbor_check)
 use f2_variables
 use f2_parameters
@@ -59,10 +59,10 @@ character(FMTlength) ::  var1_filename0, var2_filename0, var1_filename1, var2_fi
 character(*),intent(in) :: path_to_directory
 character(len(path_to_directory)+9) :: path_to_grid
 integer :: Ngrid
-integer, intent(in) :: Ngrid_max
+integer, intent(in) :: Ngrid_total
 character(3) :: Ngrid_text
 double precision :: min_rmsd
-integer, dimension(Ngrid_max),intent(in) :: filechannels
+integer, dimension(Ngrid_total),intent(in) :: filechannels
 integer :: subcell0search_max,subcell1search_max
 
 !New feature
@@ -130,7 +130,7 @@ write(var2_filename0,FMT=FMTorder0) var2_round0
 !First, we set min_rmsd_prime to be 100.0 by default
 !This will be our pick for the lowest RMSD frame
 min_rmsd_prime = 100.0
-do Ngrid = 1, Ngrid_max
+do Ngrid = 1, Ngrid_total
 
 !For each grid, we set min_rmsd to be 100.0 by default
 !If it becomes lower than min_rmsd_prime, then we set
