@@ -32,7 +32,7 @@ logical,parameter :: testtraj_flag = .true.
 
    !Set how many trajectories will be generated for the test
    !If old data is being used, this number will be decreased internally
-   integer,parameter :: Ntesttraj = 5
+   integer,parameter :: Ntesttraj = 100
 
    !Set .true. to generate the RMSD frequency plots for each
    !trajectory tested for each grid

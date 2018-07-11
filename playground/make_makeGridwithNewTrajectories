@@ -1,0 +1,29 @@
+a.out : parameters.o functions.o physics.o variables.o ls_rmsd.o mapCellData.o physicsfunctions.o checkCells4.o addCells5.o makeTrajectory.o constructMultipleTrajectories.o
+	$(FC) -o a.out -O3 -fcheck="bound" parameters.o functions.o physics.o variables.o ls_rmsd.o mapCellData.o physicsfunctions.o checkCells4.o addCells5.o makeTrajectory.o constructMultipleTrajectories.o
+
+FC = gfortran
+
+parameters.o : f2_parameters.f90
+	$(FC) -c parameters.f90
+functions.o : f1_functions.f90
+	$(FC) -c functions.f90
+variables.o : f2_variables.f90
+	$(FC) -c variables.f90
+physics.o : f2_physics_parameters.f90
+	$(FC) -c physics.f90
+ls_rmsd.o : ls_rmsd.f90
+	$(FC) -c ls_rmsd.f90
+physicsfunctions.o : decompose_velocities.f90
+	$(FC) -c physicsfunctions.f90
+addCells5.o : addCells5.f90
+	$(FC) -c addCells5.f90
+checkCells4.o : checkCells4.f90
+	$(FC) -c checkCells4.f90
+makeTrajectory.o : makeTrajectory.f90
+	$(FC) -c makeTrajectory.f90
+constructMultipleTrajectories.o : constructMultipleTrajectories.f90
+	$(FC) -c constructMultipleTrajectories.f90
+mapCellData.o : mapCellData.f90
+	$(FC) -c mapCellData.f90
+clean :
+	rm  constructMultipleTrajectories.o physicsfunctions.o decompose_velocities.mod ls_rmsd.o ls_rmsd.mod mapCellData.o mapcelldata.mod makeTrajectory.o addnewtrajectorytogrid.mod checkCells4.o checkgrid.mod addCells5.o addframetogrid.mod parameters.o f2_parameters.mod variables.o f2_variables.mod functions.o f1_functions.mod physics.o f2_physics_parameters.mod

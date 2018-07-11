@@ -1,0 +1,45 @@
+a.out : PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o checkMultipleGrids.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithMultipleGrids.o analyzeHeatMapswithMultipleGrids.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
+	$(FC) -o a.out -O3 -fcheck="bound" PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o checkMultipleGrids.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithMultipleGrids.o analyzeHeatMapswithMultipleGrids.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
+
+FC = gfortran
+PARAMETERFOLDER = /home/kazuumi/Desktop/GradientGrider/playground/0016_00050_0250/
+
+PARAMETERS.o : $(PARAMETERFOLDER)PARAMETERS.f90
+	$(FC) -c $(PARAMETERFOLDER)PARAMETERS.f90
+FUNCTIONS.o : FUNCTIONS.f90
+	$(FC) -c FUNCTIONS.f90
+VARIABLES.o : VARIABLES.f90
+	$(FC) -c VARIABLES.f90
+PHYSICS.o : PHYSICS.f90
+	$(FC) -c PHYSICS.f90
+ANALYSIS.o : ANALYSIS.f90
+	$(FC) -c ANALYSIS.f90
+ls_rmsd.o : ls_rmsd.f90
+	$(FC) -c ls_rmsd.f90
+ls_rmsd_original.o : ls_rmsd_original.f90
+	$(FC) -c ls_rmsd_original.f90
+PHYSICSFUNCTIONS.o : PHYSICSFUNCTIONS.f90
+	$(FC) -c PHYSICSFUNCTIONS.f90
+addFrametoGrid.o : addFrametoGrid.f90
+	$(FC) -c addFrametoGrid.f90
+checkGrid.o : checkGrid.f90
+	$(FC) -c checkGrid.f90
+checkMultipleGrids.o : checkMultipleGrids.f90
+	$(FC) -c checkMultipleGrids.f90
+addNewTrajectorytoGrid.o : addNewTrajectorytoGrid.f90
+	$(FC) -c addNewTrajectorytoGrid.f90
+checkNewTrajectorywithMultipleGrids.o : checkNewTrajectorywithMultipleGrids.f90
+	$(FC) -c checkNewTrajectorywithMultipleGrids.f90
+mapCellData.o : mapCellData.f90
+	$(FC) -c mapCellData.f90
+analyzeHeatMapswithMultipleGrids.o : analyzeHeatMapswithMultipleGrids.f90
+	$(FC) -c analyzeHeatMapswithMultipleGrids.f90
+analyzeRMSDThresholdwithMultipleGrids.o : analyzeRMSDThresholdwithMultipleGrids.f90
+	$(FC) -c analyzeRMSDThresholdwithMultipleGrids.f90
+analyzeScatteringAngleswithMultipleGrids.o : analyzeScatteringAngleswithMultipleGrids.f90
+	$(FC) -c analyzeScatteringAngleswithMultipleGrids.f90
+checkNewTrajectorieswithMultipleGrids.o : checkNewTrajectorieswithMultipleGrids.f90
+	$(FC) -c checkNewTrajectorieswithMultipleGrids.f90
+
+clean :
+	rm *.mod *.o
