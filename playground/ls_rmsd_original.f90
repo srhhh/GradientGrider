@@ -21,17 +21,17 @@
 ! Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA!----------------------------------------------------------------------------
 !-----------------------------------------------------------------------
 !-----------------------------------------------------------------------
-MODULE ls_rmsd
+MODULE ls_rmsd_original
 !-----------------------------------------------------------------------
 
   implicit none
-!  integer, parameter :: dp = kind(1.d0)
+  integer, parameter :: dp = kind(1.d0)
 
 !-----------------------------------------------------------------------
 CONTAINS
 !-----------------------------------------------------------------------
-!subroutine rmsd(n, coord1, coord2, option, U, x_center, y_center, error, calc_g, g)
-subroutine rmsd(n, coord1, coord2, error)
+subroutine rmsd_dp(n, coord1, coord2, option, U, x_center, y_center, & 
+     error)!, calc_g, g)
 !-----------------------------------------------------------------------
 !  This subroutine calculates the least square rmsd of two coordinate
 !  sets coord1(3,n) and coord2(3,n) using a method based on quaternion.
@@ -42,34 +42,31 @@ subroutine rmsd(n, coord1, coord2, error)
 ! is returned
 !-----------------------------------------------------------------------
 
-  integer, intent(in) :: n
-  real, dimension(:,:), intent(in) :: coord1, coord2
-!  real(dp), dimension(:,:), intent(out) :: U
-!  real(dp), dimension(3), intent(out) :: x_center, y_center
-  real, dimension(3) :: x_center, y_center
-  real, intent(out) :: error
-  !logical, intent(in) :: calc_g
-  logical :: calc_g
-  !real(dp), intent(out) :: g(:,:)
-  integer :: i, j, option
-  real, dimension(3,n) :: x, y
-  real, dimension(n) :: xi, yi
-  real :: x_norm, y_norm, lambda, y1, y2, y3
-  real, dimension(3,3) :: Rmatrix
-  real, dimension(4,4) :: S, dS
-  real, dimension(4) :: q
-  real :: tmp(3)
-
-  option = 0
-  calc_g = .false.
+  integer, intent(in) :: n, option
+  real(dp), dimension(:,:), intent(in) :: coord1, coord2
+  real(dp), dimension(:,:), intent(out) :: U
+  real(dp), dimension(3), intent(out) :: x_center, y_center
+  real(dp), intent(out) :: error
+! logical, intent(in) :: calc_g
+! real(dp), intent(out) :: g(:,:)
+         logical :: calc_g = .false.
+         real(dp) :: g(3,3)
+  integer :: i, j
+  real(dp), dimension(3,n) :: x, y
+  real(dp), dimension(n) :: xi, yi
+  real(dp) :: x_norm, y_norm, lambda, y1, y2, y3
+  real(dp), dimension(3,3) :: Rmatrix
+  real(dp), dimension(4,4) :: S, dS
+  real(dp), dimension(4) :: q
+  real(dp) :: tmp(3)
 
   ! make copies of the original coordinates
   x(:,1:n) = coord1(:,1:n)
   y(:,1:n) = coord2(:,1:n)
 
   ! calculate the barycenters, centroidal coordinates, and the norms
-  x_norm = 0.0e0
-  y_norm = 0.0e0
+  x_norm = 0.0d0
+  y_norm = 0.0d0
   do i = 1, 3
      xi(:) = x(i,:)
      yi(:) = y(i,:)
@@ -113,47 +110,47 @@ subroutine rmsd(n, coord1, coord2, error)
 
   ! Calculate eigenvalues and eigenvectors, and 
   ! take the maximum eigenvalue lambda and the corresponding eigenvector q.
-  call dstmev(S, lambda, q)
+  call dstmev_dp(S, lambda, q)
 
-!  if (option == 1) then
-!     ! convert quaternion q to rotation matrix U
-!     call rotation_matrix(q, U)
-!  end if
+  if (option == 1) then
+     ! convert quaternion q to rotation matrix U
+     call rotation_matrix_dp(q, U)
+  end if
 
   ! RMS Deviation
-  error = sqrt(max(0.0e0,((x_norm+y_norm)-2.0e0*lambda))/dble(n))
+  error = sqrt(max(0.0d0,((x_norm+y_norm)-2.0d0*lambda))/dble(n))
 
-!  if (calc_g) then
-!     do i = 1, n
-!        do j = 1, 3
-!           tmp(:) = matmul(transpose(U(:,:)), y(:,i))
-!           g(j,i) = (x(j,i) - tmp(j))/(error*dble(n))
-!        end do
-!     end do
-!  end if
+  if (calc_g) then
+     do i = 1, n
+        do j = 1, 3
+           tmp(:) = matmul(transpose(U(:,:)), y(:,i))
+           g(j,i) = (x(j,i) - tmp(j))/(error*dble(n))
+        end do
+     end do
+  end if
 
-end subroutine rmsd
+end subroutine rmsd_dp
 !-----------------------------------------------------------------------
-subroutine rotation_matrix(q, U)
+subroutine rotation_matrix_dp(q, U)
 !-----------------------------------------------------------------------
 ! This subroutine constructs rotation matrix U from quaternion q.
 !-----------------------------------------------------------------------
 
-  real, dimension(:), intent(in) :: q
-  real, dimension(:,:), intent(out) :: U
-  real :: q0,q1,q2,q3,b0,b1,b2,b3,q00,q01,q02,q03,q11,q12,q13,q22,q23,q33
+  real(dp), dimension(:), intent(in) :: q
+  real(dp), dimension(:,:), intent(out) :: U
+  real(dp)::q0,q1,q2,q3,b0,b1,b2,b3,q00,q01,q02,q03,q11,q12,q13,q22,q23,q33
 
   q0 = q(1)
   q1 = q(2)
   q2 = q(3)
   q3 = q(4)
 
-  b0 = 2.0e0*q0
-  b1 = 2.0e0*q1
-  b2 = 2.0e0*q2
-  b3 = 2.0e0*q3
+  b0 = 2.0d0*q0
+  b1 = 2.0d0*q1
+  b2 = 2.0d0*q2
+  b3 = 2.0d0*q3
 
-  q00 = b0*q0-1.0e0
+  q00 = b0*q0-1.0d0
   q01 = b0*q1
   q02 = b0*q2
   q03 = b0*q3
@@ -179,9 +176,9 @@ subroutine rotation_matrix(q, U)
   U(3,2) = q23+q01
   U(3,3) = q00+q33
 
-end subroutine rotation_matrix
+end subroutine rotation_matrix_dp
 !-----------------------------------------------------------------------
-subroutine DSTMEV(A,lambda,evec)
+subroutine DSTMEV_dp(A,lambda,evec)
 !-----------------------------------------------------------------------
 ! a simple subroutine to compute the leading eigenvalue and eigenvector
 ! of a symmetric, traceless 4x4 matrix A by an inverse power iteration:
@@ -194,24 +191,24 @@ subroutine DSTMEV(A,lambda,evec)
 ! where tij=abs(Tij)
 ! (3) Form the positive definite matrix 
 !     B = T-gI
-! (4) Use svd (algorithm svdcmp from "Numerical Recipes")
+! (4) Use svd (algorithm svdcmp_dp from "Numerical Recipes")
 !     to compute eigenvalues and eigenvectors for SPD matrix B
 ! (5) Shift spectrum back and keep leading singular vector
 !     and largest eigenvalue.
 ! (6) Convert eigenvector to original matrix A, through 
 !     multiplication by V'.  
 !-----------------------------------------------------------------------
-  real, dimension(4,4) :: A, T, V, SV
+  real(dp), dimension(4,4) :: A, T, V, SV
   integer :: i
   integer, dimension(1) :: max_loc ! must be an array
-  real, dimension(4) :: evec, SW
-  real, dimension(8) :: rv1
-  real :: lambda
+  real(dp), dimension(4) :: evec, SW
+  real(dp), dimension(8) :: rv1
+  real(dp) :: lambda
 
   !-----------------------------------------------------------------------
   !(I).   Convert to tridiagonal form, keeping similarity transform
   ! (a product of 3 Givens rotations)
-  call givens4(A,T,V)
+  call givens4_dp(A,T,V)
 
   !-----------------------------------------------------------------------
   !(II)Estimate lower bound of smallest eigenvalue by Gershgorin's theorem
@@ -224,7 +221,7 @@ subroutine DSTMEV(A,lambda,evec)
   enddo
   !-----------------------------------------------------------------------
   !(IV). Compute singular values/vectors of SPD matrix B
-  call svdcmp(4,T,4,4,SW,SV,rv1)
+  call svdcmp_dp(4,T,4,4,SW,SV,rv1)
   !-----------------------------------------------------------------------
   !(V). Shift spectrum back
   max_loc = maxloc(SW) 
@@ -240,21 +237,21 @@ subroutine DSTMEV(A,lambda,evec)
   !-----------------------------------------------------------------------
   !99 format(1x,4(d19.13,1x))
 
-end subroutine dstmev
+end subroutine dstmev_dp
 !-----------------------------------------------------------------------
-subroutine givens4(S,T,V)
+subroutine givens4_dp(S,T,V)
 !-----------------------------------------------------------------------
-  real, dimension(4,4), intent(in)  :: S
-  real, dimension(4,4), intent(out) :: T,V
-  real :: c1,c2,c3, s1,s2,s3, r1,r2,r3, c1c2, s1c2
-  !double precision :: pythag
-  ! external        pythag
+  real(dp), dimension(4,4), intent(in)  :: S
+  real(dp), dimension(4,4), intent(out) :: T,V
+  real(dp)  :: c1,c2,c3, s1,s2,s3, r1,r2,r3, c1c2, s1c2
+  !double precision :: pythag_dp
+  ! external        pythag_dp
   !performs givens rotations to reduce symmetric 4x4 matrix to tridiagonal
   T=S; V = 0.d0
   !-----------------------------------------------------------------------
   !Zero out entries T(4,1) and T(1,4)
   ! compute cos and sin of rotation angle in the 3-4 plane
-  r1 = pythag(T(3,1),T(4,1))
+  r1 = pythag_dp(T(3,1),T(4,1))
   if(r1 .ne. 0.d0) then
      c1 = T(3,1)/r1; s1 = T(4,1)/r1
      V(3,3) = c1  ; V(3,4) = s1
@@ -269,7 +266,7 @@ subroutine givens4(S,T,V)
   !-----------------------------------------------------------------------
   !Zero out entries T(3,1) and T(1,3)
   ! compute cos and sin of rotation angle in the 2-3 plane
-  r2 = pythag(T(3,1), T(2,1))
+  r2 = pythag_dp(T(3,1), T(2,1))
   if(r2 .ne. 0.d0) then
      c2 = T(2,1)/r2; s2 = T(3,1)/r2
      V(2,2) = c2  ; V(2,3) = s2
@@ -284,7 +281,7 @@ subroutine givens4(S,T,V)
   !-----------------------------------------------------------------------
   !Zero out entries T(4,2) and T(2,4)
   ! compute cos and sin of rotation angle in the 3-4 plane
-  r3 = pythag(T(4,2), T(3,2))
+  r3 = pythag_dp(T(4,2), T(3,2))
   if(r3 .ne. 0.d0) then
      c3 = T(3,2)/r3; s3 = T(4,2)/r3
      V(3,3) = c3  ; V(3,4) = s3
@@ -305,33 +302,30 @@ subroutine givens4(S,T,V)
   V(2,4) =  s2*s3 ; V(3,4) =-c1c2*s3-s1*c3 ; V(4,4) = -s1c2*s3+c1*c3
   !-----------------------------------------------------------------------
   !write(*,*) (V(1:4,i) - W(1:4,i),i=1,4)
-end subroutine givens4
+end subroutine givens4_dp
 !-----------------------------------------------------------------------
-SUBROUTINE svdcmp(mmax,a,m,n,w,v,rv1)
+SUBROUTINE svdcmp_dp(mmax,a,m,n,w,v,rv1)
 !-----------------------------------------------------------------------
   integer :: mmax
   INTEGER :: m,n
-  real :: a(mmax,*),v(mmax,*),w(*),rv1(*)
+  real(dp) :: a(mmax,*),v(mmax,*),w(*),rv1(*)
   INTEGER :: i,its,j,jj,k,l,nm
-  real :: anorm,c,f,g,h,s,scale,x,y,z!,pythag
-  logical :: bugflag
+  real(dp) :: anorm,c,f,g,h,s,scale,x,y,z!,pythag_dp
 
-bugflag = .false.
-
-  g = 0.0e0
-  scale = 0.0e0
-  anorm = 0.0e0
+  g = 0.0d0
+  scale = 0.0d0
+  anorm = 0.0d0
   do i = 1, n
      l=i+1
      rv1(i)=scale*g
-     g=0.0e0
-     s=0.0e0
-     scale=0.0e0
+     g=0.0d0
+     s=0.0d0
+     scale=0.0d0
      if(i.le.m)then
         do k=i,m
            scale=scale+abs(a(k,i))
         end do
-        if(scale.ne.0.0e0)then
+        if(scale.ne.0.0d0)then
            do k=i,m
               a(k,i)=a(k,i)/scale
               s=s+a(k,i)*a(k,i)
@@ -341,7 +335,7 @@ bugflag = .false.
            h=f*g-s
            a(i,i)=f-g
            do j=l,n 
-              s=0.0e0
+              s=0.0d0
               do k=i,m
                  s=s+a(k,i)*a(k,j)
               end do
@@ -356,14 +350,14 @@ bugflag = .false.
         endif
      endif
      w(i)=scale *g
-     g=0.0e0
-     s=0.0e0
-     scale=0.0e0
+     g=0.0d0
+     s=0.0d0
+     scale=0.0d0
      if((i.le.m).and.(i.ne.n))then
         do k=l,n
            scale=scale+abs(a(i,k))
         end do
-        if(scale.ne.0.0e0)then
+        if(scale.ne.0.0d0)then
            do k=l,n
               a(i,k)=a(i,k)/scale
               s=s+a(i,k)*a(i,k)
@@ -376,7 +370,7 @@ bugflag = .false.
               rv1(k)=a(i,k)/h
            end do
            do j=l,m
-              s=0.0e0
+              s=0.0d0
               do k=l,n
                  s=s+a(j,k)*a(i,k)
               end do
@@ -394,12 +388,12 @@ bugflag = .false.
 
   do i = n, 1, -1
      if(i .lt. n) then
-        if(g.ne.0.0e0)then
+        if(g.ne.0.0d0)then
            do j=l,n
               v(j,i)=(a(i,j)/a(i,l))/g
            end do
            do j=l,n
-              s=0.0e0
+              s=0.0d0
               do k=l,n
                  s=s+a(i,k)*v(k,j)
               end do
@@ -409,11 +403,11 @@ bugflag = .false.
            end do
         endif
         do j=l,n
-           v(i,j)=0.0e0
-           v(j,i)=0.0e0
+           v(i,j)=0.0d0
+           v(j,i)=0.0d0
         end do
      endif
-     v(i,i)=1.0e0
+     v(i,i)=1.0d0
      g=rv1(i)
      l=i
   end do
@@ -422,12 +416,12 @@ bugflag = .false.
      l=i+1
      g=w(i)
      do j=l,n
-        a(i,j)=0.0e0
+        a(i,j)=0.0d0
      end do
-     if(g.ne.0.0e0)then
-        g=1.0e0/g
+     if(g.ne.0.0d0)then
+        g=1.0d0/g
         do j=l,n
-           s=0.0e0
+           s=0.0d0
            do k=l,m
               s=s+a(k,i)*a(k,j)
            end do
@@ -441,10 +435,10 @@ bugflag = .false.
         end do
      else
         do j= i,m
-           a(j,i)=0.0e0
+           a(j,i)=0.0d0
         end do
      endif
-     a(i,i)=a(i,i)+1.0e0
+     a(i,i)=a(i,i)+1.0d0
   end do
 !-----------------------------------------------------------------------
   do k=n,1,-1
@@ -454,16 +448,16 @@ bugflag = .false.
            if((abs(rv1(l))+anorm).eq.anorm)  goto 2
            if((abs(w(nm))+anorm).eq.anorm)  goto 1
         end do
-1       c=0.0e0
-        s=1.0e0
+1       c=0.0d0
+        s=1.0d0
         do i=l,k
            f=s*rv1(i)
            rv1(i)=c*rv1(i)
            if((abs(f)+anorm).eq.anorm) goto 2
            g=w(i)
-           h=pythag(f,g)
+           h=pythag_dp(f,g)
            w(i)=h
-           h=1.0e0/h
+           h=1.0d0/h
            c= (g*h)
            s=-(f*h)
            do j=1,m     
@@ -475,7 +469,7 @@ bugflag = .false.
         end do
 2       z=w(k)
         if(l .eq. k)then
-           if(z.lt.0.0e0)then
+           if(z.lt.0.0d0)then
               w(k)=-z
               do j=1,n
                  v(j,k)=-v(j,k)
@@ -484,10 +478,7 @@ bugflag = .false.
            goto 3
         endif
         if(its.eq.30) then
-           write(*,*) 'no convergence in svdcmp'
-print *, "we've got a problem, Houston"
-print *, "attempting to sideline it... goto 3"
-goto 3
+           write(*,*) 'no convergence in svdcmp_dp'
            stop
         endif
         x=w(l)
@@ -495,18 +486,18 @@ goto 3
         y=w(nm)
         g=rv1(nm)
         h=rv1(k)
-        f=((y-z)*(y+z)+(g-h)*(g+h))/(2.0*h*y)
-        g=pythag(f,1.0)
+        f=((y-z)*(y+z)+(g-h)*(g+h))/(2.0d0*h*y)
+        g=pythag_dp(f,1.0d0)
         f=((x-z)*(x+z)+h*((y/(f+sign(g,f)))-h))/x
-        c=1.0
-        s=1.0
+        c=1.0d0
+        s=1.0d0
         do j=l,nm
            i=j+1
            g=rv1(i)
            y=w(i)
            h=s*g
            g=c*g    
-           z=pythag(f,h)
+           z=pythag_dp(f,h)
            rv1(j)=z
            c=f/z
            s=h/z
@@ -520,10 +511,10 @@ goto 3
               v(jj,j)= (x*c)+(z*s)
               v(jj,i)=-(x*s)+(z*c)
            end do
-           z=pythag(f,h)
+           z=pythag_dp(f,h)
            w(j)=z
-           if(z.ne.0.0e0)then
-              z=1.0e0/z
+           if(z.ne.0.0d0)then
+              z=1.0d0/z
               c=f*z
               s=h*z
            endif
@@ -536,7 +527,7 @@ goto 3
               a(jj,i)=-(y*s)+(z*c)
            end do
         end do
-        rv1(l)=0.0e0
+        rv1(l)=0.0d0
         rv1(k)=f       
         w(k)=x
      end do
@@ -544,27 +535,27 @@ goto 3
   end do
 !-----------------------------------------------------------------------
 
-END subroutine svdcmp
+END subroutine svdcmp_dp
 !-----------------------------------------------------------------------
-FUNCTION pythag(a,b)
+FUNCTION pythag_dp(a,b)
 !-----------------------------------------------------------------------
 
-  real :: pythag, a, b
-  real :: absa,absb
+  real(dp) :: pythag_dp, a, b
+  real(dp) :: absa,absb
 
   absa=abs(a)
   absb=abs(b)
   if(absa.gt.absb)then
-     pythag=absa*sqrt(1.0e0+(absb/absa)**2)
+     pythag_dp=absa*dsqrt(1.0d0+(absb/absa)**2)
   else
-     if(absb.eq.0.0e0)then
-        pythag=0.0e0
+     if(absb.eq.0.0d0)then
+        pythag_dp=0.0d0
      else
-        pythag=absb*sqrt(1.0e0+(absa/absb)**2)
+        pythag_dp=absb*dsqrt(1.0d0+(absa/absb)**2)
      endif
   endif
 
-END function pythag
+END function pythag_dp
 !-----------------------------------------------------------------------
-END MODULE ls_rmsd
+END MODULE ls_rmsd_original
 !-----------------------------------------------------------------------

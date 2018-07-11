@@ -1,8 +1,8 @@
-a.out : f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o decompose_velocities.o checkCells5.o addCells5.o makeTrajectory.o makeTrajectory5.o analyzeMultipleTrajectories.o
-	$(FC) -o a.out -O3 -fcheck="bound" f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o mapCellData.o decompose_velocities.o checkCells5.o addCells5.o makeTrajectory.o makeTrajectory5.o analyzeMultipleTrajectories.o
+a.out : f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o lr_rmsd_original.o mapCellData.o decompose_velocities.o checkCells5.o addCells5.o makeTrajectory.o makeTrajectory5.o analyzeMultipleTrajectories.o
+	$(FC) -o a.out -O3 -fcheck="bound" f2_parameters.o f1_functions.o f2_physics_parameters.o f2_variables.o ls_rmsd.o lr_rmsd_original.o mapCellData.o decompose_velocities.o checkCells5.o addCells5.o makeTrajectory.o makeTrajectory5.o analyzeMultipleTrajectories.o
 
 FC = gfortran
-PARAMETERFOLDER = /home/kazuumi/Desktop/GradientGrider/0016_00050_0250/
+PARAMETERFOLDER = /home/kazuumi/Desktop/GradientGrider/0016_00050_0400/
 
 f2_parameters.o : $(PARAMETERFOLDER)/f2_parameters.f90
 	$(FC) -c $(PARAMETERFOLDER)/f2_parameters.f90
@@ -14,6 +14,8 @@ f2_physics_parameters.o : f2_physics_parameters.f90
 	$(FC) -c f2_physics_parameters.f90
 ls_rmsd.o : ls_rmsd.f90
 	$(FC) -c ls_rmsd.f90
+ls_rmsd_original.o : ls_rmsd_original.f90
+	$(FC) -c ls_rmsd_original.f90
 decompose_velocities.o : decompose_velocities.f90
 	$(FC) -c decompose_velocities.f90
 addCells5.o : addCells5.f90
@@ -29,4 +31,4 @@ analyzeMultipleTrajectories.o : analyzeMultipleTrajectories.f90
 mapCellData.o : mapCellData.f90
 	$(FC) -c mapCellData.f90
 clean :
-	rm  analyzeMultipleTrajectories.o decompose_velocities.o decompose_velocities.mod ls_rmsd.o ls_rmsd.mod mapCellData.o mapcelldata.mod makeTrajectory5.o maketrajectory5.mod makeTrajectory.o maketrajectory.mod checkCells5.o checkcells5.mod addCells5.o addcells5.mod f2_parameters.o f2_parameters.mod f2_variables.o f2_variables.mod f1_functions.o f1_functions.mod f2_physics_parameters.o f2_physics_parameters.mod
+	rm  analyzeMultipleTrajectories.o decompose_velocities.o decompose_velocities.mod lsd_rmsd.o ls_rmsd_original.o ls_rmsd.mod ls_rmsd_original.mod mapCellData.o mapcelldata.mod makeTrajectory5.o maketrajectory5.mod makeTrajectory.o maketrajectory.mod checkCells5.o checkcells5.mod addCells5.o addcells5.mod f2_parameters.o f2_parameters.mod f2_variables.o f2_variables.mod f1_functions.o f1_functions.mod f2_physics_parameters.o f2_physics_parameters.mod

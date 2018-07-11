@@ -56,7 +56,8 @@ real, parameter :: temperature_scaling = (1.0-temperature_factor)*upsilon_max/te
 
 !COLLISION PARAMETERS
 real,parameter :: initial_translational_KE = (1.0)*eV/RU_energy
-real,parameter :: collision_distance = Morser0_hydrogen*5.0
+!real,parameter :: collision_distance = Morser0_hydrogen*5.0
+ real,parameter :: collision_distance = 9.5
 real,parameter :: collision_skew = HOr0_hydrogen*0.0
 
 

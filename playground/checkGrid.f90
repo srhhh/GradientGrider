@@ -1,5 +1,5 @@
 
-module checkCells4
+module checkGrid
 implicit none
 
 
@@ -10,15 +10,15 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !INPUT: real,dim(3*Natoms) coords                       "the to-be-checked frame"
 !       integer, dim(...) counter'X'                    "input counters so as to not re-read everytime"
-!OUTPUT real, dim(6*Natoms) closestCoords               "closest frame+gradient"
+!OUTPUT real, dim(6*Natoms) approx_gradient               "closest frame+gradient"
 !       dp min_rmsd                                     "closest frame rmsd"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkState(coords,closestCoords,min_rmsd,force_Neighbors,&
+subroutine checkState(coords,approx_gradient,min_rmsd,force_Neighbors,&
                       counter0,counter1,counter2,counter3,path_to_grid,&
                       number_of_frames,order,neighbor_check)
-use f2_variables
-use f2_parameters
+use VARIABLES
+use PARAMETERS
 use mapCellData
 implicit none
 integer :: i,j,k
@@ -32,16 +32,16 @@ integer, dimension(counter2_max) :: counter2
 integer, dimension(counter3_max) :: counter3
 logical :: stop_flag,flag1,flag2,flag3,flag4
 logical,intent(in) :: force_Neighbors
-real :: var1,var2,var1_cell,var2_cell,var1_round,var2_round
+real(dp) :: var1,var2
+real :: var1_cell,var2_cell,var1_round,var2_round
 real :: var1_round0,var2_round0,var1_round1,var2_round1,var1_round2,var2_round2,var1_round3,var2_round3
-real, dimension(Ncoords), intent(in) :: coords
-real, dimension(6*Natoms), intent(out) :: closestCoords
-real, dimension(6*Natoms) :: candidateCoords
-real, dimension(3,Natoms) :: rmsd_coords1,rmsd_coords2
-real, intent(inout) :: min_rmsd
-real  :: candidate_rmsd
-real, allocatable :: neighbor_rmsds(:)
-real, allocatable :: neighbor_coords(:,:)
+real(dp), dimension(Ncoords), intent(in) :: coords
+real(dp), dimension(3,Natoms), intent(out) :: approx_gradient
+real(dp), dimension(3,Natoms) :: candidate_gradient
+real(dp), intent(inout) :: min_rmsd
+real(dp)  :: candidate_rmsd
+real(dp), allocatable :: neighbor_rmsds(:)
+real(dp), allocatable :: neighbor_gradients(:,:,:), U(:,:,:)
 character(100) :: subcell
 character(9) ::  var1_filename, var2_filename
 character(*),intent(in) :: path_to_grid
@@ -50,20 +50,11 @@ character(*),intent(in) :: path_to_grid
 number_of_frames = 0
 
 ! Get the variables corresponding to frame
-! RS: What do you mean by 'each'? Isn't the input only one frame?
-! RS: calculating var again so you don't have to pass them?
-!                       KF: the word 'each' is misleading, my bad
 call getVar3(coords,Natoms,var1)
 call getVar4(coords,Natoms,var2)
 
 !The coordinates, as they are formatted in getCells and addCells, are the wrong
 !shape for ls_rmsd. Thus, we reshape them first
-
-! RS: ha! Should have read them in this format at the first place
-!                       KF: ohhh maaaannnnnnn
-rmsd_coords1 = reshape(coords,(/3, Natoms/))
-
-! RS: I have some thoughts on the following -- Let's talk tomorrow
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 ORDER 0
@@ -91,12 +82,6 @@ indexer = bounds1 * var2_index + var1_index + 1
 !The 'key' or index to the next counter are the remaining digits
 key0 = counter0(indexer)
 
-!Write to the progress file for bug-testing
-!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-!write(progresschannel,*) "Investigating key ", counter0(indexer), " with index ", indexer, " and order 0"
-!write(progresschannel,*) ""
-!close(progresschannel)
-
 !If the key is zero, then that means divyUp was not called on it
 !So there are no children subcells, so this subcell must be examined
 if (key0 < overcrowd0) then
@@ -104,9 +89,6 @@ if (key0 < overcrowd0) then
                 !If the population of the parent cell is empty, we should just
                 !give up really
                 if (key0 == 0) return
-
-                !Call mapCell to see the heat map of all parent cells
-!               call mapCell(0,counter0,counter0_max,bounds1,bounds2)
 
                 !Make the name of the subcell
 		var1_round = var1_round0
@@ -118,9 +100,9 @@ if (key0 < overcrowd0) then
                 ! getRMSD reads off the coordinates and calculated the RMSD with
                 !ls_rmsd module
                 allocate(neighbor_rmsds(key0),&
-                        neighbor_coords(key0,Nvar+6*Natoms))
-                call getRMSD(subcell,key0,rmsd_coords1,&
-                                neighbor_rmsds,neighbor_coords)
+                        neighbor_gradients(3,Natoms,key0),U(3,3,key0))
+                call getRMSD(subcell,key0,coords,&
+                                neighbor_rmsds,neighbor_gradients,U)
 
                 !Using minloc locates the position in the array
                 !with the lowest value rmsd
@@ -129,10 +111,10 @@ if (key0 < overcrowd0) then
 		if (candidate_rmsd < min_rmsd) then
 			min_rmsd = candidate_rmsd
                 	!The frame with the closest coordinates has this position
-                	closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+                	approx_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
 		end if
 
-                deallocate(neighbor_rmsds,neighbor_coords)
+                deallocate(neighbor_rmsds,neighbor_gradients,U)
 
 		number_of_frames = key0
 		order = 0
@@ -162,15 +144,7 @@ var2_round1 = multiplier2_1 * var2_index
 indexer = resolution_0*int(key0/key_start-1) + scaling1_0*var2_index + var1_index + 1
 key1 = counter1(indexer)
 
-!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-!write(progresschannel,*) "Investigating key ", counter1(indexer), " with index ", indexer, " and order 1"
-!write(progresschannel,*) ""
-!close(progresschannel)
-
 if (key1 < overcrowd1) then
-
-        !Call mapCell just to see the heatmap of this subcell
-!       call mapCell(int(key0/key_start)-1,counter1,counter1_max,scaling1_0,scaling2_0)
 
         !If there are frames in this cell, then we retrieve those frames
         if (key1 > 0) then
@@ -186,19 +160,19 @@ if (key1 < overcrowd1) then
 
                 !Get the RMSDs of the frames inside of it
                 allocate(neighbor_rmsds(key1),&
-                        neighbor_coords(key1,Nvar+6*Natoms))
-                call getRMSD(subcell,key1,rmsd_coords1,&
-                                neighbor_rmsds,neighbor_coords)
+                        neighbor_gradients(3,Natoms,key1),U(3,3,key1))
+                call getRMSD(subcell,key1,coords,&
+                                neighbor_rmsds,neighbor_gradients,U)
 
                 !Obtain the rmsd and coordinates of the closest frame
                 min_position = minloc(neighbor_rmsds,1)
                 candidate_rmsd = neighbor_rmsds(min_position)
 		if (candidate_rmsd < min_rmsd) then
 			min_rmsd = candidate_rmsd
-                	closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+                	approx_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
 		end if
 
-                deallocate(neighbor_rmsds,neighbor_coords)
+                deallocate(neighbor_rmsds,neighbor_gradients,U)
 	end if
 
         !If there are no frames in this cell, we can look at one of its
@@ -237,7 +211,7 @@ if (key1 < overcrowd1) then
                         call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,FMTorder1,&
                                           resolution_0*(int(key0/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
                                           var1_round,var2_round,counter1,counter1_max,path_to_grid,&
-                                          rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
+                                          coords,candidate_rmsd,candidate_gradient,number_of_frames)
 
                         !Even if all neighbors are empty, it still returns a
                         !minimum rmsd (default is 100.0)
@@ -245,7 +219,7 @@ if (key1 < overcrowd1) then
                         !finds one
                         if (candidate_rmsd < min_rmsd) then
                                 min_rmsd = candidate_rmsd
-                                closestCoords = candidateCoords
+                                approx_gradient = candidate_gradient
                                 stop_flag = .true.
                         end if
                 end do
@@ -283,20 +257,8 @@ var2_round2 = multiplier2_2 * var2_index
 indexer = resolution_1*int(key1/key_start-1) + scaling1_1*var2_index + var1_index + 1
 key2 = counter2(indexer)
 
-!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-!write(progresschannel,*) "Investigating key ", counter2(indexer), " with index ", indexer, " and order 2"
-!write(progresschannel,*) ""
-!close(progresschannel)
-
 if (key2 < overcrowd2) then
 
-!       call mapCell(key1/key_start-1,counter2,counter2_max,scaling1_1,scaling2_1)
-
-!Force this to look at its neighbors (for testing)
-!Remark: with normals parameters, the deepest subcell for a particular frame is
-!usually of order 2 so this 
-
-!       if (.false.) then !(key2 > 0) then
 	if (key2 > 0) then
 		neighbor_check = 0
 		number_of_frames = key2
@@ -309,27 +271,22 @@ if (key2 < overcrowd2) then
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 allocate(neighbor_rmsds(key2),&
-                        neighbor_coords(key2,Nvar+6*Natoms))
-                call getRMSD(subcell,key2,rmsd_coords1,&
-                                neighbor_rmsds,neighbor_coords)
+                        neighbor_gradients(3,Natoms,key2),U(3,3,key2))
+                call getRMSD(subcell,key2,coords,&
+                                neighbor_rmsds,neighbor_gradients,U)
 
                 min_position = minloc(neighbor_rmsds,1)
                 candidate_rmsd = neighbor_rmsds(min_position)
 		if (candidate_rmsd < min_rmsd) then
 			min_rmsd = candidate_rmsd
-                	closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+                	approx_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
 		end if
 
-                deallocate(neighbor_rmsds,neighbor_coords)
+                deallocate(neighbor_rmsds,neighbor_gradients,U)
 	end if
 
         if ((key2 == 0) .or. (force_Neighbors)) then
 		neighbor_check = 1
-
-!For bug-testing
-!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-!write(progresschannel,*) "Fetching neighbors..."
-!close(progresschannel)
 
 		var1_round = var1_round0 + var1_round1
 		var2_round = var2_round0 + var2_round1
@@ -347,11 +304,11 @@ if (key2 < overcrowd2) then
                         call getNeighbors(scaling1_1,scaling2_1,multiplier1_2,multiplier2_2,FMTorder2,&
                                           resolution_1*(int(key1/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
                                           var1_round,var2_round,counter2,counter2_max,path_to_grid,&
-                                          rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
+                                          coords,candidate_rmsd,candidate_gradient,number_of_frames)
 
                         if (candidate_rmsd < min_rmsd) then
                                 min_rmsd = candidate_rmsd
-                                closestCoords = candidateCoords
+                                approx_gradient = candidate_gradient
                                 stop_flag = .true.
                         end if
 
@@ -384,11 +341,6 @@ var2_round3 = multiplier2_3 * var2_index
 indexer = resolution_2*int(key2/key_start-1) + scaling1_2*var2_index + var1_index + 1
 key3 = counter3(indexer)
 
-!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-!write(progresschannel,*) "Investigating key ", counter3(indexer), " with index ", indexer, " and order 3"
-!write(progresschannel,*) ""
-!close(progresschannel)
-
 if (key3 < overcrowd3) then
 
         if (key3 > 0) then
@@ -403,18 +355,18 @@ if (key3 < overcrowd3) then
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 allocate(neighbor_rmsds(key3),&
-                        neighbor_coords(key3,Nvar+6*Natoms))
-                call getRMSD(subcell,key3,rmsd_coords1,&
-                                neighbor_rmsds,neighbor_coords)
+                        neighbor_gradients(3,Natoms,key3), U(3,3,key3))
+                call getRMSD(subcell,key3,coords,&
+                                neighbor_rmsds,neighbor_gradients,U)
 
                 min_position = minloc(neighbor_rmsds,1)
                 candidate_rmsd = neighbor_rmsds(min_position)
 		if (candidate_rmsd < min_rmsd) then
 			min_rmsd = candidate_rmsd
-                	closestCoords = neighbor_coords(min_position,Nvar+1:Nvar+6*Natoms)
+                	approx_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
 		end if
 
-                deallocate(neighbor_rmsds,neighbor_coords)
+                deallocate(neighbor_rmsds,neighbor_gradients,U)
 	end if
 
         if ((key3 == 0) .or. (force_Neighbors)) then
@@ -436,11 +388,11 @@ if (key3 < overcrowd3) then
                         call getNeighbors(scaling1_2,scaling2_2,multiplier1_3,multiplier2_3,FMTorder3,&
                                           resolution_2*(int(key2/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
                                           var1_round,var2_round,counter3,counter3_max,path_to_grid,&
-                                          rmsd_coords1,candidate_rmsd,candidateCoords,number_of_frames)
+                                          coords,candidate_rmsd,candidate_gradient,number_of_frames)
 
                         if (candidate_rmsd < min_rmsd) then
                                 min_rmsd = candidate_rmsd
-                                closestCoords = candidateCoords
+                                approx_gradient = candidate_gradient
                                 stop_flag = .true.
                         end if
                 end do
@@ -452,16 +404,6 @@ if (key3 < overcrowd3) then
 	order = 3
         return
 end if
-
-!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-!write(progresschannel,*) ""
-!write(progresschannel,*) ""
-!write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
-!write(progresschannel,*) "THE GRID IS NOT GRANULAR ENOUGH; A THIRD LEVEL SUBCELL IS OVERCROWDED!"
-!write(progresschannel,*) "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11"
-!write(progresschannel,*) ""
-!write(progresschannel,*) ""
-!close(progresschannel)
 
 print *, "there is a problem"
 
@@ -480,23 +422,23 @@ end subroutine checkState
 !       integer, dim(counterN_max) counterN             "counter"
 !       dp, dim(3,Natoms) coords_static                 "comparison frame"
 !OUTPUT dp min_rmsd                                     "min rmsd of subcells"
-!       real, dim(6*Natoms) closestCoords               "coords of min rmsd frame"
+!       real, dim(6*Natoms) approx_gradient               "coords of min rmsd frame"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,FMTorder,&
                         index_start,index1_1,index1_2,index2_1,index2_2,&
                         var1_round0,var2_round0,counterN,counterN_max,path_to_grid,&
-                        coords_static,min_rmsd,closestCoords,number_of_frames)
+                        coords,min_rmsd,candidate_gradient,number_of_frames)
 
-use f2_parameters
+use PARAMETERS
 implicit none
+integer,parameter :: dp = kind(1.0d0)
 logical :: flag1,flag2,flag3,flag4
 integer,intent(in) :: scaling1, scaling2
 integer,intent(in) :: index1_1,index1_2,index2_1,index2_2
 real,intent(in) :: multiplier1,multiplier2
 real,intent(in) :: var1_round0,var2_round0
 real :: var1_round,var2_round
-!integer,intent(in) :: decimals1, decimals2
 integer,intent(in) :: index_start
 integer :: indexer,population,key
 integer,intent(in) :: counterN_max
@@ -506,15 +448,15 @@ character(6),intent(in) :: FMTorder
 character(9) :: var1_filename,var2_filename
 character(100) :: subcell
 character(*),intent(in) :: path_to_grid
-real, intent(out) :: min_rmsd
-real, allocatable :: rmsds(:)
-real, allocatable :: coords(:,:)
+real(dp), intent(out) :: min_rmsd
+real(dp), allocatable :: rmsds(:)
+real(dp), allocatable :: neighbor_gradients(:,:,:), U(:,:,:)
 integer :: min_position
-real, dimension(6*Natoms), intent(out) :: closestCoords
-real,intent(in), dimension(3,Natoms) :: coords_static
+real(dp), dimension(3,Natoms), intent(out) :: candidate_gradient
+real(dp),intent(in), dimension(3,Natoms) :: coords
 
 !Default to 100.0 rmsd
-min_rmsd = 100.0
+min_rmsd = .200100d0
 
 !We need to check if any of the indexes (neighbors!) are out of bounds
 flag1 = index1_1 < scaling1
@@ -542,15 +484,15 @@ if ((flag1) .and. (flag3)) then
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 !Calculate the RMSDs
-                allocate(rmsds(population),coords(population,Nvar+6*Natoms))
-                call getRMSD(subcell,population,coords_static,rmsds,coords)
+                allocate(rmsds(population),neighbor_gradients(3,Natoms,population),U(3,3,population))
+                call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
 
                 !Now, we want the state that is closest in terms of rmsd
                 min_position = minloc(rmsds,1)
                 min_rmsd = rmsds(min_position)
-                closestCoords = coords(min_position,Nvar+1:Nvar+6*Natoms)
+                candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
 
-                deallocate(rmsds,coords)
+                deallocate(rmsds,neighbor_gradients,U)
         end if
 end if
 
@@ -571,14 +513,14 @@ if ((flag2) .and. (flag3)) then
                 write(var2_filename,FMT=FMTorder) var2_round
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-                allocate(rmsds(population),coords(population,Nvar+6*Natoms))
-                call getRMSD(subcell,population,coords_static,rmsds,coords)
+                allocate(rmsds(population),neighbor_gradients(3,Natoms,population),U(3,3,population))
+                call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
 
                 min_position = minloc(rmsds,1)
                 min_rmsd = rmsds(min_position)
-                closestCoords = coords(min_position,Nvar+1:Nvar+6*Natoms)
+                candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
 
-                deallocate(rmsds,coords)
+                deallocate(rmsds,neighbor_gradients,U)
         end if
 end if
 
@@ -599,14 +541,14 @@ if ((flag1) .and. (flag4)) then
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
 
-                allocate(rmsds(population),coords(population,Nvar+6*Natoms))
-                call getRMSD(subcell,population,coords_static,rmsds,coords)
+                allocate(rmsds(population),neighbor_gradients(3,Natoms,population),U(3,3,population))
+                call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
 
                 min_position = minloc(rmsds,1)
                 min_rmsd = rmsds(min_position)
-                closestCoords = coords(min_position,Nvar+1:Nvar+6*Natoms)
+                candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
 
-                deallocate(rmsds,coords)
+                deallocate(rmsds,neighbor_gradients,U)
         end if
 end if
 
@@ -626,14 +568,14 @@ if ((flag2) .and. (flag4)) then
                 write(var2_filename,FMT=FMTorder) var2_round
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-                allocate(rmsds(population),coords(population,Nvar+6*Natoms))
-                call getRMSD(subcell,population,coords_static,rmsds,coords)
+                allocate(rmsds(population),neighbor_gradients(3,Natoms,population),U(3,3,population))
+                call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
 
                 min_position = minloc(rmsds,1)
                 min_rmsd = rmsds(min_position)
-                closestCoords = coords(min_position,Nvar+1:Nvar+6*Natoms)
+                candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
 
-                deallocate(rmsds,coords)
+                deallocate(rmsds,neighbor_gradients,U)
         end if
 end if
 
@@ -646,35 +588,29 @@ end subroutine getNeighbors
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  actually pretty self-explanatory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine getRMSD(filename,population,coords_static,rmsds,coords)
+subroutine getRMSD(filename,population,coords,rmsds,neighbor_gradients,U)
 
-use ls_rmsd
-use f2_parameters
+use ls_rmsd_original
+use PARAMETERS
 implicit none
 integer,intent(in) :: population
-real,intent(out), dimension(population,Nvar+6*Natoms) :: coords
-real,intent(out), dimension(population) :: rmsds
-integer :: i,j
+real(dp),intent(out), dimension(3,Natoms,population) :: neighbor_gradients
+real(dp),intent(out), dimension(3,3,population) :: U
+real(dp),intent(out), dimension(population) :: rmsds
+real(dp),dimension(3) :: x_center,y_center
+integer :: i,j,k
 character(*),intent(in) :: filename
-real,intent(in), dimension(3,Natoms) :: coords_static
-real, dimension(3,Natoms) :: rmsd_coords2
-
-!open(progresschannel,file=trim(path4)//trim(progressfile),position="append")
-!write(progresschannel,*) "Reading off subcell ", trim(filename), " with ", population, " frames"
-!write(progresschannel,*) ""
-!close(progresschannel)
+real(dp),intent(in), dimension(3,Natoms) :: coords
+real(dp), dimension(3,Natoms) :: coords2
 
 !Read off the states in this subcell
 open(filechannel1,file=trim(filename)//".dat")
 do i = 1, population
-        read(filechannel1,FMT=FMT1,advance="no") (coords(i,j),j=1,Nvar)
-        read(filechannel1,FMT=FMT2) (coords(i,j),j=Nvar+1,Nvar+6*Natoms)
+	read(filechannel1,FMT=FMT7,advance="no") ((coords2(j,k),j=1,3),k=1,Natoms)
+        read(filechannel1,FMT=FMT3) ((neighbor_gradients(j,k,i),j=1,3),k=1,Natoms)
 
-        !Need to make the coordinates readable for the rmsd
-        rmsd_coords2 = reshape(coords(i,Nvar+1:Nvar+3*Natoms),&
-                                (/3, Natoms/))
-        call rmsd(Natoms,coords_static,rmsd_coords2,rmsds(i))
-        end do
+        call rmsd_dp(Natoms,coords2,coords,1,U(:,:,i),x_center,y_center,rmsds(i))
+end do
 close(filechannel1)
 
 
@@ -683,4 +619,4 @@ end subroutine getRMSD
 
 
 
-end module checkCells4
+end module checkGrid

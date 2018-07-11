@@ -1,18 +1,18 @@
 
-program constructMultipleTrajectories
+program makeGridwithNewTrajectories
 
 !I call all the modules here just to keep track of them for the makefile
-use makeTrajectory
-!use makeTrajectory3
-!use checkCells4
+use addNewTrajectorytoGrid
+!use addNewTrajectorytoGrid3
+!use checkGrid
 !use ls_rmsd
 !use mapCellData
-use addCells5
-use f2_parameters
-use f1_functions
-use f2_physics_parameters
-use f2_variables
-use decompose_velocities
+use addFrametoGrid
+use PARAMETERS
+use FUNCTIONS
+use PHYSICS
+use VARIABLES
+use PHYSICSFUNCTIONS
 implicit none
 
 !COLLISION PARAMETERS
@@ -400,4 +400,4 @@ close(filechannel1)
 
 end do
 
-end program constructMultipleTrajectories
+end program makeGridwithNewTrajectories

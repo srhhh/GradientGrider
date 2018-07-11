@@ -1,5 +1,5 @@
 
-module checkCells5
+module checkMultipleGridsDP
 implicit none
 
 
@@ -30,8 +30,8 @@ contains
 subroutine checkState(coords,closestCoords,min_rmsd_prime,force_Neighbors,&
                       path_to_directory,Ngrid_total,filechannels,&
                       number_of_frames,order,neighbor_check)
-use f2_variables
-use f2_parameters
+use VARIABLES
+use PARAMETERS
 use mapCellData
 implicit none
 integer :: i,j,k
@@ -165,9 +165,9 @@ end if
 
 !If the subcell exists, we will look in here for a closeby frame
 if (subcell_existence) then
-        !getRMSD reads off the coordinates and calculated the RMSD with
+        !getRMSD_dp reads off the coordinates and calculated the RMSD with
         !ls_rmsd module
-        call getRMSD(subcell,overcrowd1,rmsd_coords1,population,neighbor_rmsds,neighbor_coords)
+        call getRMSD_dp(subcell,overcrowd1,rmsd_coords1,population,neighbor_rmsds,neighbor_coords)
         
         !Using minloc locates the position in the array
         !with the lowest value rmsd
@@ -290,7 +290,7 @@ print *, ""
 end if
 
 if (subcell_existence) then
-        call getRMSD(subcell,overcrowd0,rmsd_coords1,population,&
+        call getRMSD_dp(subcell,overcrowd0,rmsd_coords1,population,&
                         neighbor_rmsds,neighbor_coords)
 
         min_position = minloc(neighbor_rmsds(1:population),1)
@@ -368,7 +368,7 @@ subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,FMTorder,&
                         var1_round0,var2_round0,path_to_grid,overcrowd,&
                         coords_static,min_rmsd,closestCoords,number_of_frames)
 
-use f2_parameters
+use PARAMETERS
 implicit none
 logical :: flag1,flag2,flag3,flag4,subcell_existence
 integer,intent(in) :: scaling1, scaling2
@@ -419,7 +419,7 @@ if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
 
                 !Calculate the RMSDs
-                call getRMSD(subcell,overcrowd,coords_static,population,rmsds,coords)
+                call getRMSD_dp(subcell,overcrowd,coords_static,population,rmsds,coords)
 
                 !Now, we want the state that is closest in terms of rmsd
                 min_position = minloc(rmsds(1:population),1)
@@ -448,7 +448,7 @@ if ((flag1) .and. (flag4)) then
 if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
 
-                call getRMSD(subcell,overcrowd,coords_static,population,rmsds,coords)
+                call getRMSD_dp(subcell,overcrowd,coords_static,population,rmsds,coords)
 
                 min_position = minloc(rmsds(1:population),1)
 		if (rmsds(min_position) < min_rmsd) then
@@ -473,7 +473,7 @@ if ((flag2) .and. (flag3)) then
 if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
 
-                call getRMSD(subcell,overcrowd,coords_static,population,rmsds,coords)
+                call getRMSD_dp(subcell,overcrowd,coords_static,population,rmsds,coords)
 
                 min_position = minloc(rmsds(1:population),1)
 		if (rmsds(min_position) < min_rmsd) then
@@ -498,7 +498,7 @@ if ((flag2) .and. (flag4)) then
 if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
 
-                call getRMSD(subcell,overcrowd,coords_static,population,rmsds,coords)
+                call getRMSD_dp(subcell,overcrowd,coords_static,population,rmsds,coords)
 
                 min_position = minloc(rmsds(1:population),1)
 		if (rmsds(min_position) < min_rmsd) then
@@ -524,7 +524,7 @@ end subroutine getNeighbors
 subroutine getRMSD(subcell,overcrowd,coords_static,population,rmsds,coords)
 
 use ls_rmsd
-use f2_parameters
+use PARAMETERS
 implicit none
 integer,intent(in) :: overcrowd
 integer,intent(out) :: population
@@ -572,7 +572,7 @@ end subroutine getRMSD
 subroutine getRMSD_dp(subcell,overcrowd,coords_static,population,rmsds,coords)
 
 use ls_rmsd_original
-use f2_parameters
+use PARAMETERS
 implicit none
 integer,intent(in) :: overcrowd
 integer,intent(out) :: population
@@ -619,4 +619,4 @@ end subroutine getRMSD_dp
 
 
 
-end module checkCells5
+end module checkMultipleGridsDP

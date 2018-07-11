@@ -5,7 +5,7 @@ contains
 
 subroutine mapCell(indexN,counterN,counterN_max,overcrowd,&
                    scaling1,scaling2,multiplier1,multiplier2,path_to_grid)
-use f2_parameters
+use PARAMETERS
 implicit none
 logical :: flag1
 integer,intent(in) :: indexN,counterN_max,overcrowd

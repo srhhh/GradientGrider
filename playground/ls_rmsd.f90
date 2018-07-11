@@ -31,7 +31,7 @@ MODULE ls_rmsd
 CONTAINS
 !-----------------------------------------------------------------------
 !subroutine rmsd(n, coord1, coord2, option, U, x_center, y_center, error, calc_g, g)
-subroutine rmsd(n, coord1, coord2, error)
+subroutine rmsd(n, coord1, coord2, error, U)
 !-----------------------------------------------------------------------
 !  This subroutine calculates the least square rmsd of two coordinate
 !  sets coord1(3,n) and coord2(3,n) using a method based on quaternion.
@@ -44,7 +44,7 @@ subroutine rmsd(n, coord1, coord2, error)
 
   integer, intent(in) :: n
   real, dimension(:,:), intent(in) :: coord1, coord2
-!  real(dp), dimension(:,:), intent(out) :: U
+  real, dimension(3,3), intent(out) :: U
 !  real(dp), dimension(3), intent(out) :: x_center, y_center
   real, dimension(3) :: x_center, y_center
   real, intent(out) :: error
@@ -115,10 +115,10 @@ subroutine rmsd(n, coord1, coord2, error)
   ! take the maximum eigenvalue lambda and the corresponding eigenvector q.
   call dstmev(S, lambda, q)
 
-!  if (option == 1) then
-!     ! convert quaternion q to rotation matrix U
-!     call rotation_matrix(q, U)
-!  end if
+  if (option == 1) then
+     ! convert quaternion q to rotation matrix U
+     call rotation_matrix(q, U)
+  end if
 
   ! RMS Deviation
   error = sqrt(max(0.0e0,((x_norm+y_norm)-2.0e0*lambda))/dble(n))
@@ -140,7 +140,7 @@ subroutine rotation_matrix(q, U)
 !-----------------------------------------------------------------------
 
   real, dimension(:), intent(in) :: q
-  real, dimension(:,:), intent(out) :: U
+  real, dimension(3,3), intent(out) :: U
   real :: q0,q1,q2,q3,b0,b1,b2,b3,q00,q01,q02,q03,q11,q12,q13,q22,q23,q33
 
   q0 = q(1)

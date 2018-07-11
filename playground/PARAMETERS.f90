@@ -1,4 +1,4 @@
-module f2_parameters
+module PARAMETERS
 implicit none
 
 
@@ -8,7 +8,8 @@ implicit none
  character(25),parameter :: path1 = "/home/kazuumi/Desktop/B0/"
 !Path to the f90s and bash scripts
 !character(44),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
- character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
+!character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
+ character(48),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/playground/"
 !Path to the grid
 !character(39),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid_test/"
  character(51),parameter :: path3 = "/home/kazuumi/Desktop/GradientGrider/f2_grid_test5/"
@@ -22,17 +23,17 @@ character(len(path2)),parameter :: path5 = path2
 
 !FILES
 !File that will keep the trajectory folder names
-character(19),parameter :: trajectories = "f2_trajectories.txt"
+character(16),parameter :: trajectories = "trajectories.txt"
 !File that writes the progress of the program
-character(15),parameter :: progressfile = "f2_progress.txt"
+character(12),parameter :: progressfile = "progress.txt"
 !File that writes the progress of a trajectory
-character(17),parameter :: trajectoryfile = "f2_trajectory.xyz"
+character(14),parameter :: trajectoryfile = "trajectory.xyz"
 !File that writes the rmsd retrieved from checkState every frame
-character(17),parameter :: checkstatefile = "f2_checkstate.dat"
+character(14),parameter :: checkstatefile = "checkstate.dat"
 !File that writes the progress of multiple trajectories
-character(19),parameter :: trajectoriesfile = "f2_trajectories.dat"
+character(16),parameter :: trajectoriesfile = "trajectories.dat"
 !File that has the parameters (self)
-character(17),parameter :: parametersfile = "f2_parameters.f90"
+character(14),parameter :: parametersfile = "parameters.f90"
 !File for any gnuplot scripting
 character(11),parameter :: gnuplotfile = "gnuplotfile"
 
@@ -66,12 +67,13 @@ logical :: start_from_scratch = .true.
 
 
 !FORMATS
-character(13),parameter :: FMT1 = "(3(1x,F11.6))"           !For three variables
+character(13),parameter :: FMT1 = "(2(1x,F11.6))"           !For three variables
 character(14),parameter :: FMT2 = "(36(1x,F11.6))"          !For six atoms, full state
 character(14),parameter :: FMT3 = "(18(1x,F11.6))"          !For six atoms, coords
 character(4),parameter :: FMT4 = "(I4)"                     !For subcell names
 character(4),parameter :: FMT5 = "(I9)"                     !For number of substates
 character(7),parameter :: FMT6 = "(F12.8)"                  !For RMSD
+character(18),parameter :: FMT7 = "(24x,18(1x,F11.6))"		    !For skipping the variables
 
 
 !VARIABLES
@@ -199,8 +201,7 @@ integer, parameter :: trajectories_text_length = gridpath_length +&
 
 
 
-
-end module f2_parameters
+end module PARAMETERS
 
 
 
