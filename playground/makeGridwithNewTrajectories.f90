@@ -12,6 +12,7 @@ use FUNCTIONS
 use VARIABLES
 use ANALYSIS
 use PHYSICSFUNCTIONS
+use analyzeScatteringAngleswithMultipleGrids
 implicit none
 
 !COLLISION PARAMETERS
@@ -249,7 +250,7 @@ call system("gnuplot < "//gridpath1//gnuplotfile)
                 call addTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 		   initial_bond_angle1,initial_bond_angle2,&
 		   header1,header2,header3,counter0,counter1,counter2,counter3,&
-		   step,Nfile,gridpath2,Norder1,velocityH,velocityH2)
+		   steps,Nfile,gridpath2,Norder1,velocityH,velocityH2)
 
                 call CPU_time(r2)
                 call system_clock(c2)
@@ -282,7 +283,7 @@ call system("gnuplot < "//gridpath1//gnuplotfile)
                 open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
                 write(filechannel1,*) Ntraj, header1, header2, Nfile,&
                                       trajectory_CPU_time,trajectory_wall_time,Norder1*1.0/real(steps),&
-				      scattering_angle
+				      scattering_angle,initial_bond_angle1,initial_bond_angle2+pi/2
                 close(filechannel1)
         end do
 
@@ -334,30 +335,10 @@ write(gnuplotchannel,*) 'set ylabel "CPU Time (sec)"'
 write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:5 w lines'
 close(gnuplotchannel)
 
-call system("gnuplot < "//gridpath1//gnuplotfile)
-
-!We also make a histogram of the scattering angles observed
-!Because each grid is not too big, these plots may not be fine enough
-open(gnuplotchannel,file=gridpath1//gnuplotfile)
-write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath1//'ScatteringAngles.jpg"'
-write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'bin_width = 0.001'
-write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
-write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
-write(gnuplotchannel,*) 'set ylabel "Occurence"'
-write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u (rounded($8)):(1.0) smooth frequency with boxes'
-close(gnuplotchannel)
-
-call system("gnuplot < "//gridpath1//gnuplotfile)
-
-
-
-
-
-
+write(variable_length_text,FMT="(I5)") Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+call getScatteringAngles2(gridpath1,trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"&
+                          //Ngrid_text//reject_text//Nthreshold_text)
 
 
 

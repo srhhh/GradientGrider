@@ -217,7 +217,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
         !This is all recorded in the trajectoriesfile of the grid
         open(filechannel1,file=gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile,position="append")
-        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2
+        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2+pi/2
         close(filechannel1)
 
 

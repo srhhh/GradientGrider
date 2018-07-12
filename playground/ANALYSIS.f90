@@ -12,7 +12,7 @@ implicit none
 integer,parameter :: Ngrid_cap = 1
 
 !Set .true. to generate top-level heat maps for each grid
-logical,parameter :: heatmap_flag = .false.
+logical,parameter :: heatmap_flag = .true.
 
 !Set .true. to generate the scattering angle plots of the trajectories
 !that were generated with molecular dynamics for each grid
@@ -32,7 +32,7 @@ logical,parameter :: testtraj_flag = .true.
 
    !Set how many trajectories will be generated for the test
    !If old data is being used, this number will be decreased internally
-   integer,parameter :: Ntesttraj = 100
+   integer,parameter :: Ntesttraj = 1000
 
    !Set .true. to generate the RMSD frequency plots for each
    !trajectory tested for each grid
