@@ -1,5 +1,5 @@
-a.out : PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithGrid.o makeGridwithNewTrajectories.o
-	$(FC) -o a.out -O3 -fcheck="bound" PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithGrid.o makeGridwithNewTrajectories.o
+a.out : PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithGrid.o analyzeScatteringAngleswithMultipleGrids.o makeGridwithNewTrajectories.o
+	$(FC) -o a.out -O3 -fcheck="bound" PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithGrid.o analyzeScatteringAngleswithMultipleGrids.o makeGridwithNewTrajectories.o
 
 FC = gfortran
 
@@ -31,5 +31,7 @@ makeGridwithNewTrajectories.o : makeGridwithNewTrajectories.f90
 	$(FC) -c makeGridwithNewTrajectories.f90
 mapCellData.o : mapCellData.f90
 	$(FC) -c mapCellData.f90
+analyzeScatteringAngleswithMultipleGrids.o : analyzeScatteringAngleswithMultipleGrids.f90
+	$(FC) -c analyzeScatteringAngleswithMultipleGrids.f90
 clean :
 	rm *.o *.mod
