@@ -1,29 +1,35 @@
-a.out : parameters.o functions.o physics.o variables.o ls_rmsd.o mapCellData.o physicsfunctions.o checkCells4.o addCells5.o makeTrajectory.o constructMultipleTrajectories.o
-	$(FC) -o a.out -O3 -fcheck="bound" parameters.o functions.o physics.o variables.o ls_rmsd.o mapCellData.o physicsfunctions.o checkCells4.o addCells5.o makeTrajectory.o constructMultipleTrajectories.o
+a.out : PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithGrid.o makeGridwithNewTrajectories.o
+	$(FC) -o a.out -O3 -fcheck="bound" PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithGrid.o makeGridwithNewTrajectories.o
 
 FC = gfortran
 
-parameters.o : f2_parameters.f90
-	$(FC) -c parameters.f90
-functions.o : f1_functions.f90
-	$(FC) -c functions.f90
-variables.o : f2_variables.f90
-	$(FC) -c variables.f90
-physics.o : f2_physics_parameters.f90
-	$(FC) -c physics.f90
+PARAMETERS.o : PARAMETERS.f90
+	$(FC) -c PARAMETERS.f90
+FUNCTIONS.o : FUNCTIONS.f90
+	$(FC) -c FUNCTIONS.f90
+VARIABLES.o : VARIABLES.f90
+	$(FC) -c VARIABLES.f90
+PHYSICS.o : PHYSICS.f90
+	$(FC) -c PHYSICS.f90
+ANALYSIS.o : ANALYSIS.f90
+	$(FC) -c ANALYSIS.f90
 ls_rmsd.o : ls_rmsd.f90
 	$(FC) -c ls_rmsd.f90
-physicsfunctions.o : decompose_velocities.f90
-	$(FC) -c physicsfunctions.f90
-addCells5.o : addCells5.f90
-	$(FC) -c addCells5.f90
-checkCells4.o : checkCells4.f90
-	$(FC) -c checkCells4.f90
-makeTrajectory.o : makeTrajectory.f90
-	$(FC) -c makeTrajectory.f90
-constructMultipleTrajectories.o : constructMultipleTrajectories.f90
-	$(FC) -c constructMultipleTrajectories.f90
+ls_rmsd_original.o : ls_rmsd_original.f90
+	$(FC) -c ls_rmsd_original.f90
+PHYSICSFUNCTIONS.o : PHYSICSFUNCTIONS.f90
+	$(FC) -c PHYSICSFUNCTIONS.f90
+addFrametoGrid.o : addFrametoGrid.f90
+	$(FC) -c addFrametoGrid.f90
+checkGrid.o : checkGrid.f90
+	$(FC) -c checkGrid.f90
+addNewTrajectorytoGrid.o : addNewTrajectorytoGrid.f90
+	$(FC) -c addNewTrajectorytoGrid.f90
+checkNewTrajectorywithGrid.o : checkNewTrajectorywithGrid.f90
+	$(FC) -c checkNewTrajectorywithGrid.f90
+makeGridwithNewTrajectories.o : makeGridwithNewTrajectories.f90
+	$(FC) -c makeGridwithNewTrajectories.f90
 mapCellData.o : mapCellData.f90
 	$(FC) -c mapCellData.f90
 clean :
-	rm  constructMultipleTrajectories.o physicsfunctions.o decompose_velocities.mod ls_rmsd.o ls_rmsd.mod mapCellData.o mapcelldata.mod makeTrajectory.o addnewtrajectorytogrid.mod checkCells4.o checkgrid.mod addCells5.o addframetogrid.mod parameters.o f2_parameters.mod variables.o f2_variables.mod functions.o f1_functions.mod physics.o f2_physics_parameters.mod
+	rm *.o *.mod

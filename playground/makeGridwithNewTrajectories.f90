@@ -3,23 +3,22 @@ program makeGridwithNewTrajectories
 
 !I call all the modules here just to keep track of them for the makefile
 use addNewTrajectorytoGrid
-!use addNewTrajectorytoGrid3
-!use checkGrid
-!use ls_rmsd
-!use mapCellData
+use checkNewTrajectorywithGrid
+use checkGrid
+use mapCellData
 use addFrametoGrid
 use PARAMETERS
 use FUNCTIONS
-use PHYSICS
 use VARIABLES
+use ANALYSIS
 use PHYSICSFUNCTIONS
 implicit none
 
 !COLLISION PARAMETERS
-real :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
-real :: initial_bond_angle1, initial_bond_angle2
-real :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
-real :: random_num1,random_num2,i,j
+real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
+real(dp) :: initial_bond_angle1, initial_bond_angle2
+real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
+real(dp) :: random_num1,random_num2,i,j
 integer :: seed,n,m
 
 !Counter Parameters
@@ -41,16 +40,18 @@ character(Ngrid_text_length) :: Ngrid_text
 character(gridpath_length) :: gridpath0
 character(gridpath_length+len(Ngrid_text)+1) :: gridpath1
 character(gridpath_length+len(Ngrid_text)+1+5) :: gridpath2
+character(6) :: reject_text
+character(6) :: Nthreshold_text
 
 !Plot Naming Parameters
-character(3) :: checkstateTrajectory
+character(6) :: checkstateTrajectory
 character(6) :: angle1descriptor,angle2descriptor,bond1descriptor
 
 !Trajectory Parameters
-real :: trajectory_CPU_time,trajectory_wall_time
+real(dp) :: trajectory_CPU_time,trajectory_wall_time
 integer :: Ntraj,Nfile,Norder1
-real :: speedH,speedH2,scattering_angle
-real,dimension(3) :: velocityH,velocityH2
+real(dp) :: speedH,speedH2,scattering_angle
+real(dp),dimension(3) :: velocityH,velocityH2
 
 !Timing Parameters
 real :: r1,r2
@@ -68,6 +69,13 @@ seed = rand(seed)
 call system_clock(count_rate=cr)
 system_clock_rate = 1.0/real(cr)
 
+write(Nthreshold_text,FMT="(F6.5)") threshold_rmsd
+if (reject_flag) then
+	reject_text = "reject"
+else
+	reject_text = "accept"
+end if
+
 !Make the multi-grid folder!
 write(variable_length_text,FMT="(I5)") resolution_text_length
 write(resolution_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") resolution_0
@@ -77,17 +85,7 @@ write(variable_length_text,FMT="(I5)") trajectory_text_length
 write(trajectory_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj_max
 gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//trajectory_text//"/"
 call system("mkdir "//gridpath0)
-call system("cp "//path2//"f2_parameters.f90 "//gridpath0//parametersfile)
-
-!open(filechannel1,file=gridpath0//parametersfile,position="append")
-!write(variable_length_text,FMT="(I10)") Ngrid_max
-!write(filechannel1,*) "integer,parameter :: Ngrid_max = "//trim(adjustl(variable_length_text))
-!write(variable_length_text,FMT="(I10)") Ngrid_text_length
-!write(filechannel1,*) "integer,parameter :: Ngrid_text_length = "//trim(adjustl(variable_length_text))
-!write(variable_length_text,FMT="(I10)") gridpath_length
-!write(filechannel1,*) "integer,parameter :: gridpath_length = "//trim(adjustl(variable_length_text))
-!write(filechannel1,*) "character(gridpath_length),parameter :: gridpath0 = "//gridpath0
-!close(filechannel1)
+call system("cp "//path5//parametersfile//gridpath0//parametersfile)
 
 !We start off with zero files
 Nfile = 0
@@ -144,16 +142,16 @@ initial_bond_angle2 = random_num2*pi2           !phi
 do
 random_num1 = rand()
 random_num2 = rand()
-initial_energy_H2 = (upsilon_max*random_num1 + 0.5)*upsilon_factor2
+initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
 if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
 end do
-random_num2 = 1.0
+random_num2 = 1.0d0
 initial_vibrational_energy = random_num2*initial_energy_H2
 initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
 initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
 random_num1 = rand()
 initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
-initial_rotation_angle = random_num1*2*pi
+initial_rotation_angle = random_num1*pi2
 
                 open(progresschannel,file=gridpath1//progressfile,position="append")
                 write(progresschannel,*) ""
@@ -166,72 +164,71 @@ initial_rotation_angle = random_num1*2*pi
                 close(progresschannel)
 
 
-!This big if-statement is if we want to monitor our grid creation
-!I accidentally deleted makeTrajectory3 (with the monitorTrajectory subroutine)
-!so I am decommisioning this
-                if (.false.) then !(modulo(Ntraj,10) == 9) then
+		!This big if-statement is if we want to monitor our grid creation
+                if (modulo(n,Ntraj_max/10) == 0) then
 
-!                       call monitorTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
-!                                  initial_bond_angle1,initial_bond_angle2,.false.,&
-!                                  header1,header2,header3,counter0,counter1,counter2,counter3,gridpath2)
+			call checkTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
+                           		     initial_bond_angle1,initial_bond_angle2,.false.,&
+                           		     header1,header2,header3,counter0,counter1,counter2,counter3,gridpath2)
 
-write(checkstateTrajectory,FMT="(I0.3)") Ntraj
-open(filechannel1,file=path4//temporaryfile2)
-write(filechannel1,*) 'set term jpeg size 1200,1200'
-write(filechannel1,*) 'set output "'//gridpath1//'monitorTrajectory_'//checkstateTrajectory//'.jpg"'
-write(filechannel1,*) 'set style line 1 lc rgb "red" pt 5'
-write(filechannel1,*) 'set style line 2 lc rgb "green" pt 7'
-write(filechannel1,*) 'set style line 3 lc rgb "blue" pt 13'
-write(filechannel1,*) 'set style line 4 lc rgb "orange" pt 9'
-write(filechannel1,*) 'set style line 5 lc rgb "yellow" pt 11'
-write(filechannel1,*) 'set style line 6 lc rgb "pink" pt 20'
-write(filechannel1,*) 'unset xtics'
-
-if (.true.) then
-write(filechannel1,*) 'set tmargin 0'
-write(filechannel1,*) 'set bmargin 0'
-write(filechannel1,*) 'set lmargin 1'
-write(filechannel1,*) 'set rmargin 1'
-write(filechannel1,*) 'set multiplot layout 6,1 margins 0.15,0.95,.1,.99 spacing 0,0 title '//&
-			'"Trajectory '//checkstateTrajectory//'of '//gridpath0(len(path3)+1:len(gridpath0))//'"'
-write(filechannel1,*) 'unset key'
-write(filechannel1,*) 'unset xlabel'
+write(checkstateTrajectory,FMT="(I0.6)") Ntraj
+open(gnuplotchannel,file=gridpath1//gnuplotfile)
+write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath1//'checkTrajectory_'//reject_text//Nthreshold_text//&
+                         checkstateTrajectory//'.jpg"'
+write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
+write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
+write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
+write(gnuplotchannel,*) 'set style line 4 lc rgb "orange" pt 9'
+write(gnuplotchannel,*) 'set style line 5 lc rgb "yellow" pt 11'
+write(gnuplotchannel,*) 'set style line 6 lc rgb "pink" pt 20'
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,*) 'set multiplot layout 4,1 margins 0.15,0.95,.1,.95 spacing 0,0 title '//&
+			'"Trajectory '//checkstateTrajectory//'of '//gridpath0//'"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'unset xlabel'
 write(angle1descriptor,FMT="(F6.4)") initial_bond_angle1
 write(angle2descriptor,FMT="(F6.4)") initial_bond_angle2
 write(bond1descriptor,FMT="(F6.4)") initial_bond_distance
-write(filechannel1,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//' radians" at screen 0.7, 0.975'
-write(filechannel1,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//' A" at screen 0.7, 0.955'
-write(filechannel1,*) 'set ylabel "True Var1 (A)"'
-write(filechannel1,*) 'set yrange [0:21]'
-write(filechannel1,*) 'set ytics 5'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:7 w lines'
-write(filechannel1,*) 'unset label 1'
-write(filechannel1,*) 'unset label 2'
-write(filechannel1,*) 'set ylabel "Var1 Deviance (A)"'
-write(filechannel1,*) 'set yrange [0:1.0]'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:($11-$7) w lines'
-write(filechannel1,*) 'set ylabel "True Var2 (A)"'
-write(filechannel1,*) 'set yrange [0:21]'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:8 w lines'
-write(filechannel1,*) 'set ylabel "Var2 Deviance (A)"'
-write(filechannel1,*) 'set yrange [0:1.0]'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:($12-$8) w lines'
-write(filechannel1,*) 'set ylabel "Total RMSD (A)"'
-write(filechannel1,*) 'set yrange [0:1.0e0]'
-write(filechannel1,*) 'set ytics .2'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:13 w lines'
-write(filechannel1,*) 'set xtics'
-write(filechannel1,*) 'set ylabel "Timestep RMSD (A)"'
-write(filechannel1,*) 'set xlabel "Timestep"'
-write(filechannel1,*) 'set yrange [0:1.0e-4]'
-write(filechannel1,*) 'set ytics .00002'
-write(filechannel1,*) 'unset key'
-write(filechannel1,*) 'plot "'//path4//checkstatefile//'" u 4:14 w lines'
-end if
-
-close(filechannel1)
-call system("gnuplot < "//path4//temporaryfile2)
-call system("rm "//path4//temporaryfile2)
+write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//' radians" at screen 0.7, 0.955'
+write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//' A" at screen 0.7, 0.94'
+write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
+write(gnuplotchannel,*) 'set yrange [0:11]'
+write(gnuplotchannel,*) 'set ytics 2'
+write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:7 w lines'
+write(gnuplotchannel,*) 'unset label 1'
+write(gnuplotchannel,*) 'unset label 2'
+!write(gnuplotchannel,*) 'set ylabel "Var1 Deviance (A)"'
+!write(gnuplotchannel,*) 'set yrange [0:1.0]'
+!write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:($11-$7) w lines'
+write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
+write(gnuplotchannel,*) 'set yrange [0:11]'
+write(gnuplotchannel,*) 'set ytics 2'
+write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:8 w lines'
+!write(gnuplotchannel,*) 'set ylabel "Var2 Deviance (A)"'
+!write(gnuplotchannel,*) 'set yrange [0:1.0]'
+!write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:($12-$8) w lines'
+!write(gnuplotchannel,*) 'set ylabel "Total RMSD (A)"'
+!write(gnuplotchannel,*) 'set yrange [0:1.0e0]'
+!write(gnuplotchannel,*) 'set ytics .2'
+!write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:13 w lines'
+write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
+write(gnuplotchannel,*) 'set yrange [0:0.02]'
+write(gnuplotchannel,*) 'set ytics 0.005'
+write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:($9+$10) w lines'
+write(gnuplotchannel,*) 'set xtics'
+write(gnuplotchannel,*) 'set ylabel "Timestep RMSD (A)"'
+write(gnuplotchannel,*) 'set xlabel "Timestep"'
+write(gnuplotchannel,*) 'set yrange [0:.2002]'
+write(gnuplotchannel,*) 'set ytics .02'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:5 w lines'
+close(gnuplotchannel)
+call system("gnuplot < "//gridpath1//gnuplotfile)
 
                 end if
 
@@ -270,11 +267,6 @@ call system("rm "//path4//temporaryfile2)
 		scattering_angle = acos(dot_product(velocityH,velocityH2) / &
 					           (speedH * speedH2))
 
-!print *, ""
-!print *, "total wall time: ", trajectory_wall_time
-!print *, "total cpu time: ", trajectory_cpu_time
-!print *, ""
-
 		!This is all recorded in the trajectoriesfile of the grid
                 open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
                 write(filechannel1,*) Ntraj, header1, header2, Nfile,&
@@ -296,61 +288,59 @@ close(progresschannel)
 
 !Here, we can see how much time the grid creation took
 !There is also some other interesting data
-open(filechannel1,file=gridpath1//temporaryfile2)
-write(filechannel1,*) 'set term jpeg size 1200,1200'
-write(filechannel1,*) 'set output "'//gridpath1//'CPUTime.jpg"'
-write(filechannel1,*) 'set style line 1 lc rgb "red" pt 5'
-write(filechannel1,*) 'set style line 2 lc rgb "green" pt 7'
-write(filechannel1,*) 'set style line 3 lc rgb "blue" pt 13'
-write(filechannel1,*) 'set style line 4 lc rgb "orange" pt 9'
-write(filechannel1,*) 'set style line 5 lc rgb "yellow" pt 11'
-write(filechannel1,*) 'set style line 6 lc rgb "pink" pt 20'
-write(filechannel1,*) 'unset xtics'
-write(filechannel1,*) 'set tmargin 0'
-write(filechannel1,*) 'set bmargin 0'
-write(filechannel1,*) 'set lmargin 1'
-write(filechannel1,*) 'set rmargin 1'
-write(filechannel1,*) 'set multiplot layout 5,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory '//Ngrid_text//'"'
-write(filechannel1,*) 'unset key'
-write(filechannel1,*) 'unset xlabel'
-write(filechannel1,*) 'set ylabel "Number of Files"'
-write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:4 w lines'
-write(filechannel1,*) 'set ylabel "Number of Overcrowded Cells"'
-write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:2 w lines, '//&
+open(gnuplotchannel,file=gridpath1//gnuplotfile)
+write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath1//'CPUTime.jpg"'
+write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
+write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
+write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
+write(gnuplotchannel,*) 'set style line 4 lc rgb "orange" pt 9'
+write(gnuplotchannel,*) 'set style line 5 lc rgb "yellow" pt 11'
+write(gnuplotchannel,*) 'set style line 6 lc rgb "pink" pt 20'
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,*) 'set multiplot layout 5,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory '//Ngrid_text//'"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,*) 'set ylabel "Number of Files"'
+write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:4 w lines'
+write(gnuplotchannel,*) 'set ylabel "Number of Overcrowded Cells"'
+write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:2 w lines, '//&
                            '"'//gridpath1//trajectoriesfile//'" u 1:3 w lines'
-write(filechannel1,*) 'set ylabel "Fraction of Frames added to Order 1"'
-write(filechannel1,*) 'set yrange [0:1.0]'
-write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:7 w lines'
-write(filechannel1,*) 'set autoscale y'
-write(filechannel1,*) 'set ylabel "Wall Time (sec)"'
-write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:6 w lines'
-write(filechannel1,*) 'set xtics'
-write(filechannel1,*) 'set xlabel "Trajectories"'
-write(filechannel1,*) 'set autoscale y'
-write(filechannel1,*) 'set ylabel "CPU Time (sec)"'
-write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:5 w lines'
-close(filechannel1)
+write(gnuplotchannel,*) 'set ylabel "Fraction of Frames added to Order 1"'
+write(gnuplotchannel,*) 'set yrange [0:1.0]'
+write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:7 w lines'
+write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set ylabel "Wall Time (sec)"'
+write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:6 w lines'
+write(gnuplotchannel,*) 'set xtics'
+write(gnuplotchannel,*) 'set xlabel "Trajectories"'
+write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set ylabel "CPU Time (sec)"'
+write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:5 w lines'
+close(gnuplotchannel)
 
-call system("gnuplot < "//gridpath1//temporaryfile2)
-call system("rm "//gridpath1//temporaryfile2)
+call system("gnuplot < "//gridpath1//gnuplotfile)
 
 !We also make a histogram of the scattering angles observed
 !Because each grid is not too big, these plots may not be fine enough
-open(filechannel1,file=gridpath1//temporaryfile2)
-write(filechannel1,*) 'set term jpeg size 1200,1200'
-write(filechannel1,*) 'set output "'//gridpath1//'ScatteringAngles.jpg"'
-write(filechannel1,*) 'set style fill solid 1.0 noborder'
-write(filechannel1,*) 'unset key'
-write(filechannel1,*) 'bin_width = 0.001'
-write(filechannel1,*) 'bin_number(x) = floor(x/bin_width)'
-write(filechannel1,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
-write(filechannel1,*) 'set xlabel "Scattering Angle"'
-write(filechannel1,*) 'set ylabel "Occurence"'
-write(filechannel1,*) 'plot "'//gridpath1//trajectoriesfile//'" u (rounded($7)):(7) smooth frequency with boxes'
-close(filechannel1)
+open(gnuplotchannel,file=gridpath1//gnuplotfile)
+write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath1//'ScatteringAngles.jpg"'
+write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'bin_width = 0.001'
+write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
+write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
+write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
+write(gnuplotchannel,*) 'set ylabel "Occurence"'
+write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u (rounded($8)):(1.0) smooth frequency with boxes'
+close(gnuplotchannel)
 
-call system("gnuplot < "//gridpath1//temporaryfile2)
-call system("rm "//gridpath1//temporaryfile2)
+call system("gnuplot < "//gridpath1//gnuplotfile)
 
 
 

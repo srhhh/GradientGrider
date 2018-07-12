@@ -224,7 +224,7 @@ end subroutine divyUp
 !			filechannel1 - file reading and writing
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine addState(vals,coords,&
+subroutine addState(vals,coords,gradient,&
                 header1,header2,header3,&
                 counter0,counter1,counter2,counter3,&
                 Nfile,header_max_flag,path_to_grid,order)
@@ -266,7 +266,7 @@ integer,intent(out) :: order
 real(dp), dimension(Nvar), intent(in) :: vals
 
 !COORDINATES AND GRADIENT OF THE GRAME
-real(dp), dimension(6*Natoms), intent(in) :: coords
+real(dp), dimension(3,Natoms), intent(in) :: coords,gradient
 
 !SUBCELL FILENAMING
 character(9) :: descriptor0,var1_filename,var2_filename
@@ -331,7 +331,8 @@ if (key < overcrowd0) then
 	!Add the frame
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
 	!Return because we have not yet overcrowded the cell
@@ -362,7 +363,8 @@ else if (key == overcrowd0) then
 	!next order; that is why there is no return at the end of this conditional
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
       
         !Incrementing header insures that the index this subcell is granted in the next counter is unique
@@ -426,7 +428,8 @@ if (key < overcrowd1) then
 
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
 	return
@@ -448,7 +451,8 @@ else if (key == overcrowd1) then
  
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
       
         header2 = header2 + 1
@@ -501,7 +505,8 @@ if (key < overcrowd2) then
 
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
 	return
@@ -528,7 +533,8 @@ else if (key == overcrowd2) then
 
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status="old")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
       
         header3 = header3 + 1
@@ -580,7 +586,8 @@ if (key < overcrowd3) then
 
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append",status=trim(descriptor0))
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
 else if (key == overcrowd3) then
@@ -596,7 +603,8 @@ else if (key == overcrowd3) then
 
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
 !This means the current griding is probably not granular enough
@@ -613,7 +621,8 @@ else
 
         open(filechannel1,file=path_to_grid//trim(subcell)//".dat",position="append")
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(j),j=1,6*Natoms)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
 end if

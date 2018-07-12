@@ -46,7 +46,7 @@ character(100) :: subcell
 character(9) ::  var1_filename, var2_filename
 character(*),intent(in) :: path_to_grid
 
-
+neighbor_check = 0
 number_of_frames = 0
 
 ! Get the variables corresponding to frame
@@ -88,7 +88,7 @@ if (key0 < overcrowd0) then
 
                 !If the population of the parent cell is empty, we should just
                 !give up really
-                if (key0 == 0) return
+                if (key0 == 0)  return
 
                 !Make the name of the subcell
 		var1_round = var1_round0
@@ -448,6 +448,7 @@ character(6),intent(in) :: FMTorder
 character(9) :: var1_filename,var2_filename
 character(100) :: subcell
 character(*),intent(in) :: path_to_grid
+real(dp) :: candidate_rmsd
 real(dp), intent(out) :: min_rmsd
 real(dp), allocatable :: rmsds(:)
 real(dp), allocatable :: neighbor_gradients(:,:,:), U(:,:,:)
@@ -489,8 +490,11 @@ if ((flag1) .and. (flag3)) then
 
                 !Now, we want the state that is closest in terms of rmsd
                 min_position = minloc(rmsds,1)
-                min_rmsd = rmsds(min_position)
-                candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
+                candidate_rmsd = rmsds(min_position)
+		if (candidate_rmsd < min_rmsd) then
+			min_rmsd = candidate_rmsd
+                	candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
+		end if
 
                 deallocate(rmsds,neighbor_gradients,U)
         end if
@@ -517,8 +521,11 @@ if ((flag2) .and. (flag3)) then
                 call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
 
                 min_position = minloc(rmsds,1)
-                min_rmsd = rmsds(min_position)
-                candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
+                candidate_rmsd = rmsds(min_position)
+		if (candidate_rmsd < min_rmsd) then
+			min_rmsd = candidate_rmsd
+                	candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
+		end if
 
                 deallocate(rmsds,neighbor_gradients,U)
         end if
@@ -545,8 +552,11 @@ if ((flag1) .and. (flag4)) then
                 call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
 
                 min_position = minloc(rmsds,1)
-                min_rmsd = rmsds(min_position)
-                candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
+                candidate_rmsd = rmsds(min_position)
+		if (candidate_rmsd < min_rmsd) then
+			min_rmsd = candidate_rmsd
+                	candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
+		end if
 
                 deallocate(rmsds,neighbor_gradients,U)
         end if
@@ -572,8 +582,11 @@ if ((flag2) .and. (flag4)) then
                 call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
 
                 min_position = minloc(rmsds,1)
-                min_rmsd = rmsds(min_position)
-                candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
+                candidate_rmsd = rmsds(min_position)
+		if (candidate_rmsd < min_rmsd) then
+			min_rmsd = candidate_rmsd
+                	candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
+		end if
 
                 deallocate(rmsds,neighbor_gradients,U)
         end if

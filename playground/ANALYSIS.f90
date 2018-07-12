@@ -45,12 +45,13 @@ logical,parameter :: testtraj_flag = .true.
    logical,parameter :: percentthreshold_flag = .true.
 
       !Set the threshold RMSD to be used for any rejection method
-      real(dp),parameter :: threshold_rmsd = .200100d0
+      !real(dp),parameter :: threshold_rmsd = .200100d0
+      real(dp),parameter :: threshold_rmsd = .00100d0
 
       !Set .true. to generate trajectories using md-calculated gradients
       !Otherwise, the program will use the above threshold as a rejection
       !method
-      logical,parameter :: reject_flag = .false.
+      logical,parameter :: reject_flag = .true.
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

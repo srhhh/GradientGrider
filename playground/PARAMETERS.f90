@@ -33,7 +33,7 @@ character(14),parameter :: checkstatefile = "checkstate.dat"
 !File that writes the progress of multiple trajectories
 character(16),parameter :: trajectoriesfile = "trajectories.dat"
 !File that has the parameters (self)
-character(14),parameter :: parametersfile = "parameters.f90"
+character(14),parameter :: parametersfile = "PARAMETERS.f90"
 !File for any gnuplot scripting
 character(11),parameter :: gnuplotfile = "gnuplotfile"
 
@@ -67,13 +67,13 @@ logical :: start_from_scratch = .true.
 
 
 !FORMATS
-character(13),parameter :: FMT1 = "(2(1x,F11.6))"           !For three variables
-character(14),parameter :: FMT2 = "(36(1x,F11.6))"          !For six atoms, full state
-character(14),parameter :: FMT3 = "(18(1x,F11.6))"          !For six atoms, coords
+character(14),parameter :: FMT1 = "(2(1x,F14.10))"           !For three variables
+character(15),parameter :: FMT2 = "(36(1x,F14.10))"          !For six atoms, full state
+character(15),parameter :: FMT3 = "(18(1x,F14.10))"          !For six atoms, coords
 character(4),parameter :: FMT4 = "(I4)"                     !For subcell names
 character(4),parameter :: FMT5 = "(I9)"                     !For number of substates
 character(7),parameter :: FMT6 = "(F12.8)"                  !For RMSD
-character(18),parameter :: FMT7 = "(24x,18(1x,F11.6))"		    !For skipping the variables
+character(19),parameter :: FMT7 = "(30x,18(1x,F14.10))"		    !For skipping the variables
 
 
 !VARIABLES
@@ -164,15 +164,15 @@ real,dimension(2*Nvar),parameter :: MP3=(/multiplier1_3,multiplier2_3,&
 
 !We need to estimate how many cells will be overcrowded in counter0
 !Must not be greater than 99999*resolution
-integer,parameter :: header1_max = 50000
+integer,parameter :: header1_max = 90000
 integer,parameter :: counter1_max = header1_max*resolution_0
 !We need to estimate how many subcells will be overcrowded in counter1
 !Must not be greater than 99999*resolution
-integer,parameter :: header2_max = 10000
+integer,parameter :: header2_max = 10
 integer,parameter :: counter2_max = header2_max*resolution_1
 !We need to estimate how many subcells will be overcrowded in counter2
 !Must not be greater than 99999*resolution
-integer,parameter :: header3_max = 5000
+integer,parameter :: header3_max = 10
 integer,parameter :: counter3_max = header3_max*resolution_2
 
 !The counter arrays hold information on the population of the subcell
@@ -184,9 +184,9 @@ integer,parameter :: key_start = population_max + 1
 
 
 !Multi-Grid Parameters
-integer,parameter :: Ntraj_max = 500
+integer,parameter :: Ntraj_max = 1000
 real,parameter :: trajectory_CPU_time_max = 60.0
-integer,parameter :: Ngrid_max = 10
+integer,parameter :: Ngrid_max = 1
 integer,parameter :: trajectory_text_length = 4
 integer,parameter :: resolution_text_length = 4
 integer,parameter :: overcrowd0_text_length = 5
