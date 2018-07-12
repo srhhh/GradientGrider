@@ -34,7 +34,7 @@ contains
 subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			 initial_bond_angle1,initial_bond_angle2,&
 			 header1,header2,header3,counter0,counter1,counter2,counter3,&
-			 Nfile,path_to_grid,Norder1,velocityH,velocityH2)
+			 steps,Nfile,path_to_grid,Norder1,velocityH,velocityH2)
 	use VARIABLES
 	use PARAMETERS
 	use addFrametoGrid
@@ -48,7 +48,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
 	!Grid Parameters
 	integer,intent(inout) :: header1,header2,header3,Nfile
-	integer,intent(out) :: Norder1
+	integer,intent(out) :: Norder1,steps
         character(*) :: path_to_grid
 	integer,dimension(counter0_max),intent(out) :: counter0
 	integer,dimension(counter1_max),intent(out) :: counter1
@@ -57,7 +57,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
 	!Various other variables
         real(dp) :: U, KE
-        integer :: TimeA,TimeB,step,order
+        integer :: TimeA,TimeB,order
 	real :: system_clock_rate,r1,r2
 	integer :: c1,c2,c3,c4,c5,cr
         logical :: header_max_flag
@@ -103,11 +103,11 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
 	velocities = velocities + 0.5d0 * gradient
 
-        do step = 1, Nsteps
+        do steps = 1, Nsteps
 
 
 		!Every 50 frames, print to an xyz file for visualization
-                if (.false.) then !(modulo(step,50) == 0) then
+                if (.false.) then !(modulo(steps,50) == 0) then
                         open(filechannel1,file=path4//trajectoryfile,position="append")
                         write(filechannel1,'(I1)') 3
                         write(filechannel1,*) ""
@@ -121,7 +121,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
                 end if
  
                 !Just to see progress, print something out every 500 steps
-                if (modulo(step,500) == 1) then      
+                if (modulo(steps,500) == 1) then      
  			if ((vals(1)>max_var1) .or. (vals(2)>max_var2)) then
  				exit
  			end if
@@ -152,10 +152,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
         end do
 
-	call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),&
-		velocity_translation,velocity_rotation,velocity_vibration)
-
-	velocityH2 = velocity_translation
+	velocityH2 = velocities(:,1)
 
 end subroutine addTrajectory
 

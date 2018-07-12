@@ -27,7 +27,7 @@ character(6) :: reject_text
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
-real(dp) :: random_num1,random_num2,i,j
+real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
 real(dp) :: speedH, speedH2, scattering_angle
 real(dp),dimension(3) :: velocityH,velocityH2
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
@@ -145,10 +145,20 @@ write(Nthreshold_text,FMT="(F6.5)") threshold_rmsd
 do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!This is just the creation of the random initial trajectory
-        random_num1 = rand()
-        random_num2 = rand()
-        initial_bond_angle1 = random_num1*pi2           !theta
-        initial_bond_angle2 = random_num2*pi2           !phi
+	!The orientation of the H2
+	do
+	random_num1 = rand() - 0.5d0
+	random_num2 = rand() - 0.5d0
+	random_num3 = rand() - 0.5d0
+	random_r2 = random_num1**2 + random_num2**2
+	random_r3 = random_r2 + random_num3**2
+	if (random_r3 > 1) cycle
+	random_r2 = sqrt(random_r2)
+	initial_bond_angle1 = acos(random_num1 / random_r2)
+	initial_bond_angle2 = atan(random_r2 / random_num3)
+	exit
+	end do
+	!The energy of the H2
         do
         random_num1 = rand()
         random_num2 = rand()
@@ -207,7 +217,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
         !This is all recorded in the trajectoriesfile of the grid
         open(filechannel1,file=gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile,position="append")
-        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle
+        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2
         close(filechannel1)
 
 
@@ -246,7 +256,7 @@ print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//N
 print *, ""
 
 if (testtrajSA_flag) call getScatteringAngles2(gridpath0,Ngrid_text//reject_text//Ntraj_text//&
-                                               trajectoriesfile,3,"TestScatteringAngleDistribution_"//&
+                                               trajectoriesfile,3,4,5,"TestScatteringAngleDistribution_"//&
                                                Ngrid_text//reject_text//Ntraj_text)
 print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""

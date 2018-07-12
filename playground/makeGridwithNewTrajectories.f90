@@ -18,7 +18,7 @@ implicit none
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
-real(dp) :: random_num1,random_num2,i,j
+real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
 integer :: seed,n,m
 
 !Counter Parameters
@@ -49,7 +49,7 @@ character(6) :: angle1descriptor,angle2descriptor,bond1descriptor
 
 !Trajectory Parameters
 real(dp) :: trajectory_CPU_time,trajectory_wall_time
-integer :: Ntraj,Nfile,Norder1
+integer :: Ntraj,Nfile,steps,Norder1
 real(dp) :: speedH,speedH2,scattering_angle
 real(dp),dimension(3) :: velocityH,velocityH2
 
@@ -85,7 +85,7 @@ write(variable_length_text,FMT="(I5)") trajectory_text_length
 write(trajectory_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj_max
 gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//trajectory_text//"/"
 call system("mkdir "//gridpath0)
-call system("cp "//path5//parametersfile//gridpath0//parametersfile)
+call system("cp "//path5//parametersfile//" "//gridpath0//parametersfile)
 
 !We start off with zero files
 Nfile = 0
@@ -135,16 +135,27 @@ print *, gridpath2
         do n = 1, Ntraj_max
 
 !Get some random initial conditions for the trajectory
-random_num1 = rand()
-random_num2 = rand()
-initial_bond_angle1 = random_num1*pi2           !theta
-initial_bond_angle2 = random_num2*pi2           !phi
+!The orientation of the H2
+do
+random_num1 = rand() - 0.5d0
+random_num2 = rand() - 0.5d0
+random_num3 = rand() - 0.5d0
+random_r2 = random_num1**2 + random_num2**2
+random_r3 = random_r2 + random_num3**2
+if (random_r3 > 1) cycle
+random_r2 = sqrt(random_r2)
+initial_bond_angle1 = acos(random_num1 / random_r2)
+initial_bond_angle2 = atan(random_r2 / random_num3)
+exit
+end do
+!The energy of the H2
 do
 random_num1 = rand()
 random_num2 = rand()
 initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
 if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
 end do
+!The ratio of vib:rot energy of H2
 random_num2 = 1.0d0
 initial_vibrational_energy = random_num2*initial_energy_H2
 initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
@@ -238,7 +249,7 @@ call system("gnuplot < "//gridpath1//gnuplotfile)
                 call addTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 		   initial_bond_angle1,initial_bond_angle2,&
 		   header1,header2,header3,counter0,counter1,counter2,counter3,&
-		   Nfile,gridpath2,Norder1,velocityH,velocityH2)
+		   step,Nfile,gridpath2,Norder1,velocityH,velocityH2)
 
                 call CPU_time(r2)
                 call system_clock(c2)
@@ -270,7 +281,7 @@ call system("gnuplot < "//gridpath1//gnuplotfile)
 		!This is all recorded in the trajectoriesfile of the grid
                 open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
                 write(filechannel1,*) Ntraj, header1, header2, Nfile,&
-                                      trajectory_CPU_time,trajectory_wall_time,Norder1*1.0/real(Nsteps),&
+                                      trajectory_CPU_time,trajectory_wall_time,Norder1*1.0/real(steps),&
 				      scattering_angle
                 close(filechannel1)
         end do

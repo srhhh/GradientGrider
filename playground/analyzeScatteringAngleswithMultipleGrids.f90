@@ -95,6 +95,7 @@ do Ngrid = 1, Ngrid_total
         write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
         write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
         write(gnuplotchannel,*) 'set ylabel "Occurence"'
+        write(gnuplotchannel,*) 'set yrange [0:3.14159]'
 	write(variable_length_text,FMT="(I5)") scattering_angle_column
         write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//Ntraj_text//&
                                 '.dat" u (rounded($'//trim(adjustl(variable_length_text))//&
@@ -113,7 +114,7 @@ end do
 end subroutine getScatteringAngles1
 
 
-subroutine getScatteringAngles2(gridpath0,DATfilename,scattering_angle_column,JPGfilename)
+subroutine getScatteringAngles2(gridpath0,DATfilename,scattering_angle_column,theta_column,phi_column,JPGfilename)
 use PARAMETERS
 use ANALYSIS
 implicit none
@@ -125,7 +126,7 @@ character(*), intent(in) :: gridpath0
 character(*), intent(in) :: DATfilename
 
 !COLUMN OF DAT FILE WITH SCATTERING ANGLES
-integer, intent(in) :: scattering_angle_column
+integer, intent(in) :: scattering_angle_column,theta_column,phi_column
 
 !FORMAT OF JPG FILES TO BE MADE
 character(*), intent(in) :: JPGfilename
@@ -136,23 +137,52 @@ character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(trajectories_text_length*100) :: trajectories_text
 character(6) :: Ntraj_text
+character(6) :: boxwidth_text
 
 
 !This is the gnuplot code to make the plots
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'"'
-write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'bin_width = 0.001'
+write(gnuplotchannel,*) 'set xrange [0:3.14159]'
+write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(boxwidth_text,FMT="(F6.5)") 3.14159 * 2 / real(Ntesttraj)
+write(Ntraj_text,FMT="(I6)") Ntesttraj
+write(gnuplotchannel,*) 'set multiplot layout 3,1 margins 0.15,0.95,.1,.9 spacing 0,0 title '//&
+                        '"Angle Distribution of '//trim(adjustl(Ntraj_text))//'trajectories of '//gridpath0//'"'
+write(Ntraj_text,FMT="(I6)") Ntesttraj * 2 / 10
+write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+write(gnuplotchannel,*) 'set boxwidth '//boxwidth_text
+write(gnuplotchannel,*) 'bin_width = '//boxwidth_text
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
 write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
-write(gnuplotchannel,*) 'set ylabel "Occurence"'
+write(gnuplotchannel,*) 'set ylabel "Scattering Angle Occurence"'
+write(gnuplotchannel,*) 'set yrange [O:]'
 write(variable_length_text,FMT="(I5)") scattering_angle_column
 write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
                         '" u (rounded($'//trim(adjustl(variable_length_text))//&
 			')):(1.0) smooth frequency with boxes'
+write(gnuplotchannel,*) 'set xlabel "Initial H2 Theta Occurence"'
+write(gnuplotchannel,*) 'set yrange [O:]'
+write(variable_length_text,FMT="(I5)") theta_column
+write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
+                        '" u (rounded($'//trim(adjustl(variable_length_text))//&
+			')):(1.0) smooth frequency with boxes'
+write(gnuplotchannel,*) 'set xlabel "Angle (rad)"'
+write(gnuplotchannel,*) 'set xtics'
+write(gnuplotchannel,*) 'set ylabel "Initial H2 Phi Occurence"'
+write(gnuplotchannel,*) 'set yrange [O:]'
+write(variable_length_text,FMT="(I5)") phi_column
+write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
+			'" u (rounded($'//trim(adjustl(variable_length_text))//&
+			')):(1.0) smooth frequency with boxes'
+
 close(gnuplotchannel)
 
 !And then we just input it into gnuplot.exe

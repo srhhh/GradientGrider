@@ -9,7 +9,7 @@ implicit none
 !Set the number of grids to be analyzed; will start at 001 and increment
 !If this number is larger than the number of grids in the folder,
 !then it will default to the number of grids in the folder
-integer,parameter :: Ngrid_cap = 4
+integer,parameter :: Ngrid_cap = 1
 
 !Set .true. to generate top-level heat maps for each grid
 logical,parameter :: heatmap_flag = .false.

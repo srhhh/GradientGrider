@@ -2,7 +2,7 @@ a.out : PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd.o ls_r
 	$(FC) -o a.out -O3 -fcheck="bound" PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd.o ls_rmsd_original.o mapCellData.o PHYSICSFUNCTIONS.o checkGrid.o checkMultipleGrids.o addFrametoGrid.o addNewTrajectorytoGrid.o checkNewTrajectorywithMultipleGrids.o analyzeHeatMapswithMultipleGrids.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
 
 FC = gfortran
-PARAMETERFOLDER = /home/kazuumi/Desktop/GradientGrider/playground/0016_00050_0250/
+PARAMETERFOLDER = /home/kazuumi/Desktop/GradientGrider/playground/0016_00050_1000/
 
 PARAMETERS.o : $(PARAMETERFOLDER)PARAMETERS.f90
 	$(FC) -c $(PARAMETERFOLDER)PARAMETERS.f90

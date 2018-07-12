@@ -157,10 +157,7 @@ end if
 
         end do
 
-        call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),&
-                velocity_translation,velocity_rotation,velocity_vibration)
-
-        velocityH2 = velocity_translation
+        velocityH2 = velocities(:,1)
 
 
 end subroutine checkMultipleTrajectories
