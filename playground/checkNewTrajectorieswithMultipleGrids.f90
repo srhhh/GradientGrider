@@ -152,7 +152,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	random_num3 = rand() - 0.5d0
 	random_r2 = random_num1**2 + random_num2**2
 	random_r3 = random_r2 + random_num3**2
-	if (random_r3 > 1) cycle
+	if (random_r3 > 0.25d0) cycle
 	random_r2 = sqrt(random_r2)
 	initial_bond_angle1 = acos(random_num1 / random_r2)
 	initial_bond_angle2 = atan(random_r2 / random_num3)

@@ -152,11 +152,11 @@ write(gnuplotchannel,*) 'set tmargin 0'
 write(gnuplotchannel,*) 'set bmargin 0'
 write(gnuplotchannel,*) 'set lmargin 1'
 write(gnuplotchannel,*) 'set rmargin 1'
-write(boxwidth_text,FMT="(F6.5)") 3.14159 * 2 / real(Ntesttraj)
+write(boxwidth_text,FMT="(F6.5)") 3.14159 * 10 / real(Ntesttraj)
 write(Ntraj_text,FMT="(I6)") Ntesttraj
 write(gnuplotchannel,*) 'set multiplot layout 3,1 margins 0.15,0.95,.1,.9 spacing 0,0 title '//&
-                        '"Angle Distribution of '//trim(adjustl(Ntraj_text))//'trajectories of '//gridpath0//'"'
-write(Ntraj_text,FMT="(I6)") Ntesttraj * 2 / 10
+                        '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' trajectories of '//gridpath0//'"'
+write(Ntraj_text,FMT="(I6)") Ntesttraj * 10 / 10
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'set boxwidth '//boxwidth_text
 write(gnuplotchannel,*) 'bin_width = '//boxwidth_text
