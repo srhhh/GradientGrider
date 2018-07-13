@@ -26,7 +26,8 @@ contains
 
 subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2,force_Neighbors,&
-			   header1,header2,header3,counter0,counter1,counter2,counter3,path_to_grid)
+			   header1,header2,header3,counter0,counter1,counter2,counter3,path_to_grid,&
+                           velocityH1,velocityH2)
 	use PARAMETERS
 	use VARIABLES
 	use ANALYSIS
@@ -38,6 +39,7 @@ subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initia
         real(dp), dimension(3,Natoms) :: coords,velocities
 	real(dp), dimension(3,Natoms) :: gradient, approx_gradient
 	real(dp), dimension(Nvar) :: vals
+	real(dp), dimension(3),intent(out) :: velocityH1,velocityH2
 
 	!Grid Parameters
 	integer,intent(inout) :: header1,header2,header3
@@ -77,6 +79,7 @@ subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initia
                    	   initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2)
 
+	velocityH1 = velocities(:,1)
 
         !Accelerate the velcocities for a half step (verlet)
 
@@ -86,17 +89,17 @@ subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initia
         call Acceleration(vals,coords,gradient,&
              AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
 
-!        open(filechannel1,file=path_to_grid(1:gridpath_length+Ngrid_text_length+1)//trajectoryfile)
-!        write(filechannel1,'(I1)') 3
-!        write(filechannel1,*) ""
-!        write(filechannel1,'(A1,3F10.6)') 'H',&
-!              coords(1,1), coords(2,1), coords(3,1)
-!        write(filechannel1,'(A1,3F10.6)') 'H',&
-!              coords(1,2), coords(2,2), coords(3,2)
-!        write(filechannel1,'(A1,3F10.6)') 'H',&
-!              coords(1,3), coords(2,3), coords(3,3)
-! 	close(filechannel1)
-!  
+         open(filechannel1,file=path_to_grid(1:gridpath_length+Ngrid_text_length+1)//trajectoryfile)
+         write(filechannel1,'(I1)') 3
+         write(filechannel1,*) ""
+         write(filechannel1,'(A1,3F10.6)') 'H',&
+               coords(1,1), coords(2,1), coords(3,1)
+         write(filechannel1,'(A1,3F10.6)') 'H',&
+               coords(1,2), coords(2,2), coords(3,2)
+         write(filechannel1,'(A1,3F10.6)') 'H',&
+               coords(1,3), coords(2,3), coords(3,3)
+  	close(filechannel1)
+   
 	velocities = velocities + 0.5d0 * gradient
 
         !Keep track of the time
@@ -104,21 +107,21 @@ subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initia
 open(filechannel2,file=path_to_grid(1:gridpath_length+Ngrid_text_length+1)//checkstatefile)
         do step = 1, Nsteps
 
-!		!Every 50 frames, print to an xyz file for visualization
-!                if (modulo(step,10) == 0) then
-!                        open(filechannel1,file=path_to_grid(1:gridpath_length+Ngrid_text_length+1)//&
-!                                                trajectoryfile,position="append")
-!                        write(filechannel1,'(I1)') 3
-!                        write(filechannel1,*) ""
-!                        write(filechannel1,'(A1,3F10.6)') 'H',&
-!                                coords(1,1), coords(2,1), coords(3,1)
-!                        write(filechannel1,'(A1,3F10.6)') 'H',&
-!                                coords(1,2), coords(2,2), coords(3,2)
-!                        write(filechannel1,'(A1,3F10.6)') 'H',&
-!                                coords(1,3), coords(2,3), coords(3,3)
-! 			close(filechannel1)
-!                end if
-!
+ 		!Every 50 frames, print to an xyz file for visualization
+                 if (modulo(step,10) == 0) then
+                         open(filechannel1,file=path_to_grid(1:gridpath_length+Ngrid_text_length+1)//&
+                                                 trajectoryfile,position="append")
+                         write(filechannel1,'(I1)') 3
+                         write(filechannel1,*) ""
+                         write(filechannel1,'(A1,3F10.6)') 'H',&
+                                 coords(1,1), coords(2,1), coords(3,1)
+                         write(filechannel1,'(A1,3F10.6)') 'H',&
+                                 coords(1,2), coords(2,2), coords(3,2)
+                         write(filechannel1,'(A1,3F10.6)') 'H',&
+                                 coords(1,3), coords(2,3), coords(3,3)
+  			close(filechannel1)
+                 end if
+ 
                 !Just to see progress, print something out every 500 steps
                 if (modulo(step,500) == 1) then      
  			if ((vals(1)>max_var1) .or.&
@@ -169,6 +172,8 @@ write(filechannel2,FMT="(2(1x,F12.9))") U, KE
 
         end do
 close(filechannel2)
+
+	velocityH2 = velocities(:,1)
 
 end subroutine checkTrajectory
 

@@ -155,7 +155,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	if (random_r3 > 0.25d0) cycle
 	random_r2 = sqrt(random_r2)
 	initial_bond_angle1 = acos(random_num1 / random_r2)
-	initial_bond_angle2 = atan(random_r2 / random_num3)
+	initial_bond_angle2 = atan2(random_r2,random_num3) + pi
 	exit
 	end do
 	!The energy of the H2
@@ -217,7 +217,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
         !This is all recorded in the trajectoriesfile of the grid
         open(filechannel1,file=gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile,position="append")
-        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2+pi/2
+        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2
         close(filechannel1)
 
 
