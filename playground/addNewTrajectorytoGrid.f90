@@ -89,7 +89,8 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 			   initial_bond_angle1,initial_bond_angle2)
 
 	!velocityH is just the velocity from the get-go
-	velocityH = velocities(:,1)
+        velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+
 
 	call getVar3(coords,Natoms,vals(1))
 	call getVar4(coords,Natoms,vals(2))
@@ -152,7 +153,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
         end do
 
-	velocityH2 = velocities(:,1)
+        velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
 
 end subroutine addTrajectory
 

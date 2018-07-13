@@ -168,7 +168,7 @@ write(variable_length_text,FMT="(I5)") scattering_angle_column
 write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
                         '" u (rounded($'//trim(adjustl(variable_length_text))//&
 			')):(1.0) smooth frequency with boxes'
-write(gnuplotchannel,*) 'set xlabel "Initial H2 Theta Occurence"'
+write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence"'
 write(gnuplotchannel,*) 'set yrange [O:]'
 write(variable_length_text,FMT="(I5)") theta_column
 write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&

@@ -155,7 +155,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	if (random_r3 > 0.25d0) cycle
 	random_r2 = sqrt(random_r2)
 	initial_bond_angle1 = acos(random_num1 / random_r2)
-	initial_bond_angle2 = atan2(random_r2,random_num3) + pi
+	initial_bond_angle2 = atan2(random_r2,random_num3)
 	exit
 	end do
 	!The energy of the H2

@@ -146,7 +146,7 @@ random_r3 = random_r2 + random_num3**2
 if (random_r3 > 0.25d0) cycle
 random_r2 = sqrt(random_r2)
 initial_bond_angle1 = acos(random_num1 / random_r2)
-initial_bond_angle2 = atan2(random_r2,random_num3) + pi
+initial_bond_angle2 = atan2(random_r2,random_num3)
 exit
 end do
 !The energy of the H2
@@ -221,7 +221,7 @@ write(bond1descriptor,FMT="(F6.4)") initial_bond_distance
 write(scatteringdescriptor,FMT="(F6.3)") scattering_angle
 write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//' radians" at screen 0.7, 0.955'
 write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//' A" at screen 0.7, 0.94'
-write(gnuplotchannel,*) 'set label 3 "Scattering Angle: '//scatteringdescriptor//' A" at screen 0.7, 0.925'
+write(gnuplotchannel,*) 'set label 3 "Scattering Angle: '//scatteringdescriptor//' rand" at screen 0.7, 0.925'
 write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
 write(gnuplotchannel,*) 'set yrange [0:11]'
 write(gnuplotchannel,*) 'set ytics 2'

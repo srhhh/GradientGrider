@@ -184,7 +184,7 @@ integer,parameter :: key_start = population_max + 1
 
 
 !Multi-Grid Parameters
-integer,parameter :: Ntraj_max = 1000
+integer,parameter :: Ntraj_max = 1001
 real,parameter :: trajectory_CPU_time_max = 60.0
 integer,parameter :: Ngrid_max = 1
 integer,parameter :: trajectory_text_length = 4
