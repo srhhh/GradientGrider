@@ -45,7 +45,7 @@ logical,parameter :: testtraj_flag = .true.
    logical,parameter :: percentthreshold_flag = .true.
 
       !Set the threshold RMSD to be used for any rejection method
-      !real(dp),parameter :: threshold_rmsd = .200100d0
+      !real(dp),parameter :: !threshold_rmsd! = !.200100d0
       real(dp),parameter :: threshold_rmsd = .00100d0
 
       !Set .true. to generate trajectories using md-calculated gradients
