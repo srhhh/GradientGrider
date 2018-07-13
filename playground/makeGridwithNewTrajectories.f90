@@ -203,8 +203,8 @@ write(gnuplotchannel,*) 'set multiplot layout 4,1 margins 0.15,0.95,.1,.95 spaci
 			'"Trajectory '//checkstateTrajectory//'of '//gridpath0//'"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'unset xlabel'
-write(angle1descriptor,FMT="(F6.4)") initial_bond_angle1
-write(angle2descriptor,FMT="(F6.4)") initial_bond_angle2
+write(angle1descriptor,FMT="(F6.3)") initial_bond_angle1
+write(angle2descriptor,FMT="(F6.3)") initial_bond_angle2
 write(bond1descriptor,FMT="(F6.4)") initial_bond_distance
 write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//' radians" at screen 0.7, 0.955'
 write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//' A" at screen 0.7, 0.94'
