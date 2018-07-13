@@ -12,18 +12,18 @@ newANALYSIS=ANALYSIS_new
 oldMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids
 newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids_new
 
-newGRID=0016_00050_0010
+newGRID=0016_00050_0700
 
 rm -r $newGrid
 
-sed "s/Ntraj_max = [0-9]*/Ntraj_max = 10/
+sed "s/Ntraj_max = [0-9]*/Ntraj_max = 700/
      s/overcrowd0 = [0-9]*/overcrowd0 = 50/
      s/scaling1_0 = [0-9]*/scaling1_0 = 4/
      s/scaling2_0 = [0-9]*/scaling2_0 = 4/
-     s/Ngrid_max = [0-9]*/Ngrid_max = 1/
+     s/Ngrid_max = [0-9]*/Ngrid_max = 3/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS.f90/" <$oldPARAMETERS.f90 >$newPARAMETERS.f90
 
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 1/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
      s/heatmap_flag = \\.false\\./heatmap_flag = .true./
      s/trueSA_flag = \\.true\\./trueSA_flag = .false./
      s/testtraj_flag = \\.false\\./testtraj_flag = .true./
