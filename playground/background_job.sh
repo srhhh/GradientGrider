@@ -7,20 +7,14 @@ oldMAKEGRID=make_makeGridwithNewTrajectories
 newMAKEGRID=make_makeGridwithNewTrajectories_new
 
 oldANALYSIS=ANALYSIS
-ANALYSIS1=ANALYSIS_1
-ANALYSIS2=ANALYSIS_2
-ANALYSIS3=ANALYSIS_3
-ANALYSIS4=ANALYSIS_4
-ANALYSIS5=ANALYSIS_5
-ANALYSIS6=ANALYSIS_6
+newANALYSIS=ANALYSIS_new
 
 oldMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids
-MAKEANALYSIS1=make_checkNewTrajectorieswithMultipleGrids1
-MAKEANALYSIS2=make_checkNewTrajectorieswithMultipleGrids2
-MAKEANALYSIS3=make_checkNewTrajectorieswithMultipleGrids3
-MAKEANALYSIS4=make_checkNewTrajectorieswithMultipleGrids4
-MAKEANALYSIS5=make_checkNewTrajectorieswithMultipleGrids5
-MAKEANALYSIS6=make_checkNewTrajectorieswithMultipleGrids6
+newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids_new
+
+newGRID=0016_00050_0010
+
+rm -r $newGrid
 
 sed "s/Ntraj_max = [0-9]*/Ntraj_max = 10/
      s/overcrowd0 = [0-9]*/overcrowd0 = 50/
@@ -39,25 +33,25 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 1/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.0000d0/
      s/reject_flag = \\.false\\./reject_flag = .true./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS >$ANALYSIS1
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS.f90 >$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS.f90/
-     s/$oldANALYSIS\\.o/$ANALYSIS1.o/
-     s/$oldANALYSIS\\.f90/$ANALYSIS1.f90/" <$oldMAKEGRID >$newMAKEGRID
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$oldMAKEGRID >$newMAKEGRID
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
-     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/0016_00050_0010/
-     s/$oldANALYSIS\\.o/$ANALYSIS1.o/
-     s/$oldANALYSIS\\.f90/$ANALYSIS1.f90/" <$oldMAKEANALYSIS >$MAKEANALYSIS1
+     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/$newGrid/
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$oldMAKEANALYSIS >$newMAKEANALYSIS
 
-make -f make_makeGridwithNewTrajectories
-make clean -f make_makeGridwithNewTrajectories
+make -f $newMAKEGRID
+make clean -f $newMAKEGRID
 ./a.out
 
-make -f make_checkNewTrajectorieswithMultipleGrids
-make clean -f make_checkNewTrajectorieswithMultipleGrids
+make -f $newMAKEANALYSIS
+make clean -f $newMAKEANALYSIS
 ./a.out
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
@@ -70,16 +64,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.00010d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS >$ANALYSIS2
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS.f90 >$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
-     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/0016_00050_0010/
-     s/$oldANALYSIS\\.o/$ANALYSIS2.o/
-     s/$oldANALYSIS\\.f90/$ANALYSIS2.f90/" <$oldMAKEANALYSIS >$MAKEANALYSIS2
+     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/$newGrid/
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$oldMAKEANALYSIS >$newMAKEANALYSIS
 
-make -f make_checkNewTrajectorieswithMultipleGrids
-make clean -f make_checkNewTrajectorieswithMultipleGrids
+make -f $newMAKEANALYSIS
+make clean -f $newMAKEANALYSIS
 ./a.out
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
@@ -92,16 +86,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.00100d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS >$ANALYSIS3
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS.f90 >$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
-     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/0016_00050_0010/
-     s/$oldANALYSIS\\.o/$ANALYSIS2.o/
-     s/$oldANALYSIS\\.f90/$ANALYSIS2.f90/" <$oldMAKEANALYSIS >$MAKEANALYSIS3
+     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/$newGrid/
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$oldMAKEANALYSIS >$newMAKEANALYSIS
 
-make -f make_checkNewTrajectorieswithMultipleGrids
-make clean -f make_checkNewTrajectorieswithMultipleGrids
+make -f $newMAKEANALYSIS
+make clean -f $newMAKEANALYSIS
 ./a.out
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
@@ -114,16 +108,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.01000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS >$ANALYSIS4
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS.f90 >$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
-     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/0016_00050_0010/
-     s/$oldANALYSIS\\.o/$ANALYSIS2.o/
-     s/$oldANALYSIS\\.f90/$ANALYSIS2.f90/" <$oldMAKEANALYSIS >$MAKEANALYSIS4
+     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/$newGrid/
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$oldMAKEANALYSIS >$newMAKEANALYSIS
 
-make -f make_checkNewTrajectorieswithMultipleGrids
-make clean -f make_checkNewTrajectorieswithMultipleGrids
+make -f $newMAKEANALYSIS
+make clean -f $newMAKEANALYSIS
 ./a.out
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
@@ -136,16 +130,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.10000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS >$ANALYSIS5
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS.f90 >$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
-     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/0016_00050_0010/
-     s/$oldANALYSIS\\.o/$ANALYSIS2.o/
-     s/$oldANALYSIS\\.f90/$ANALYSIS2.f90/" <$oldMAKEANALYSIS >$MAKEANALYSIS5
+     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/$newGrid/
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$oldMAKEANALYSIS >$newMAKEANALYSIS
 
-make -f make_checkNewTrajectorieswithMultipleGrids
-make clean -f make_checkNewTrajectorieswithMultipleGrids
+make -f $newMAKEANALYSIS
+make clean -f $newMAKEANALYSIS
 ./a.out
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
@@ -158,14 +152,14 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 3/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.20000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS >$ANALYSIS6
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$oldANALYSIS.f90 >$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
-     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/0016_00050_0010/
-     s/$oldANALYSIS\\.o/$ANALYSIS2.o/
-     s/$oldANALYSIS\\.f90/$ANALYSIS2.f90/" <$oldMAKEANALYSIS >$MAKEANALYSIS6
+     s/[0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9]/$newGrid/
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$oldMAKEANALYSIS >$newMAKEANALYSIS
 
-make -f make_checkNewTrajectorieswithMultipleGrids
-make clean -f make_checkNewTrajectorieswithMultipleGrids
+make -f $newMAKEANALYSIS
+make clean -f $newMAKEANALYSIS
 ./a.out
