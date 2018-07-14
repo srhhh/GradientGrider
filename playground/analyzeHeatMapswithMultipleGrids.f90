@@ -5,13 +5,10 @@ implicit none
 
 contains
 
-subroutine analyzeHeatMaps1(gridpath0,Ngrid_cap)
+subroutine analyzeHeatMaps1(Ngrid_cap)
 use PARAMETERS
 use mapCellData
 implicit none
-
-!PATH TO MULTIPLE LIBRARIES
-character(*), intent(in) :: gridpath0
 
 !CAP TO NUMBER OF GRIDS ANALYZED
 integer, intent(in) :: Ngrid_cap

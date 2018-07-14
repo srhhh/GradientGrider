@@ -74,10 +74,10 @@ print *, ""
 seed = rand(seed)
 
 !This is for top-level heat map generation (from the grid)
-if (heatmap_flag) call analyzeHeatMaps1(gridpath0,Ngrid_total)
+if (heatmap_flag) call analyzeHeatMaps1(Ngrid_total)
 
 !This is for scattering angle plots (from the grid)
-if (trueSA_flag) call getScatteringAngles1(gridpath0,Ngrid_total,"f2_trajectories.dat",8,"trueSA.jpg")
+if (trueSA_flag) call getScatteringAngles1(Ngrid_total,"f2_trajectories.dat",8,"trueSA.jpg")
 
 
 
@@ -235,13 +235,13 @@ end if
 write(variable_length_text,FMT="(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 write(Ntraj_text,FMT="(F6.5)") threshold_rmsd
-if (percentthreshold_flag) call getRMSDThresholds1(gridpath0,Ngrid_total,1,&
+if (percentthreshold_flag) call getRMSDThresholds1(Ngrid_total,1,&
                                                    "PercentRMSDThreshold_"//&
                                                    Ngrid_text//reject_text//Ntraj_text)
 print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""
 
-if (testtrajSA_flag) call getScatteringAngles2(gridpath0,Ngrid_text//reject_text//Ntraj_text//&
+if (testtrajSA_flag) call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//&
                                                trajectoriesfile,3,4,5,"TestScatteringAngleDistribution_"//&
                                                Ngrid_text//reject_text//Ntraj_text)
 print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text

@@ -4,13 +4,10 @@ implicit none
 contains
 
 
-subroutine getRMSDThresholds1(gridpath0,Ngrid_total,RMSD_column,JPGfilename)
+subroutine getRMSDThresholds1(Ngrid_total,RMSD_column,JPGfilename)
 use PARAMETERS
 use ANALYSIS
 implicit none
-
-!PATH TO MULTIPLE LIBRARIES
-character(*), intent(in) :: gridpath0
 
 !TOTAL NUMBER OF GRIDS ANALYZED
 integer, intent(in) :: Ngrid_total

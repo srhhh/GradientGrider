@@ -337,7 +337,7 @@ close(gnuplotchannel)
 
 write(variable_length_text,FMT="(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-call getScatteringAngles2(gridpath1,trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"&
+call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"&
                           //Ngrid_text//reject_text//Nthreshold_text)
 
 

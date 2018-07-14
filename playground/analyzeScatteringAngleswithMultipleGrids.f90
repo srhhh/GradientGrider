@@ -4,13 +4,10 @@ implicit none
 contains
 
 
-subroutine getScatteringAngles1(gridpath0,Ngrid_cap,DATfilename,scattering_angle_column,JPGfilename)
+subroutine getScatteringAngles1(Ngrid_cap,DATfilename,scattering_angle_column,JPGfilename)
 use PARAMETERS
 implicit none
 integer,parameter :: dp = kind(1.0d0)
-
-!PATH TO MULTIPLE LIBRARIES
-character(*), intent(in) :: gridpath0
 
 !CAP TO NUMBER OF GRIDS ANALYZED
 integer, intent(in) :: Ngrid_cap
@@ -114,13 +111,10 @@ end do
 end subroutine getScatteringAngles1
 
 
-subroutine getScatteringAngles2(gridpath0,DATfilename,scattering_angle_column,theta_column,phi_column,JPGfilename)
+subroutine getScatteringAngles2(DATfilename,scattering_angle_column,theta_column,phi_column,JPGfilename)
 use PARAMETERS
 use ANALYSIS
 implicit none
-
-!PATH TO MULTIPLE LIBRARIES
-character(*), intent(in) :: gridpath0
 
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: DATfilename
