@@ -39,10 +39,10 @@ character(11),parameter :: gnuplotfile = "gnuplotfile"
 
 !Files where, when done, we save the counters with the numbers of frames
 !inside each subcell, as well as other information
-character(12+len(path3)-len(path2)-1),parameter :: counter0file = path3(len(path2)+1:len(path3)-1)//"counter0.txt"
-character(12+len(path3)-len(path2)-1),parameter :: counter1file = path3(len(path2)+1:len(path3)-1)//"counter1.txt"
-character(12+len(path3)-len(path2)-1),parameter :: counter2file = path3(len(path2)+1:len(path3)-1)//"counter2.txt"
-character(12+len(path3)-len(path2)-1),parameter :: counter3file = path3(len(path2)+1:len(path3)-1)//"counter3.txt"
+character(12),parameter :: counter0file = "counter0.txt"
+character(12),parameter :: counter1file = "counter1.txt"
+character(12),parameter :: counter2file = "counter2.txt"
+character(12),parameter :: counter3file = "counter3.txt"
 !File to write to for system calls
 character(8),parameter :: temporaryfile1 = "tmp1.txt"
 character(8),parameter :: temporaryfile2 = "tmp2.txt"
@@ -183,20 +183,40 @@ integer,parameter :: population_max = 999
 integer,parameter :: key_start = population_max + 1
 
 
-!Multi-Grid Parameters
-integer,parameter :: Ntraj_max = 1001
+!!Multi-Grid Parameters
+!integer,parameter :: Ntraj_max = 1001
+!real,parameter :: trajectory_CPU_time_max = 60.0
+!integer,parameter :: Ngrid_max = 1
+!integer,parameter :: trajectory_text_length = 4
+!integer,parameter :: resolution_text_length = 4
+!integer,parameter :: overcrowd0_text_length = 5
+!integer,parameter :: Ngrid_text_length = 3
+!integer,parameter :: gridpath_length = trajectory_text_length +&
+!                                       resolution_text_length +&
+!                                       overcrowd0_text_length + len(path5) + 3
+!character(23),parameter :: cumulativefile = "cumulative_trajectories"
+!integer, parameter :: trajectories_text_length = gridpath_length +&
+!                                                 4 + len(trajectoriesfile) + 1
+!
+integer,parameter :: Ntraj_max = 1000
 real,parameter :: trajectory_CPU_time_max = 60.0
 integer,parameter :: Ngrid_max = 1
-integer,parameter :: trajectory_text_length = 4
-integer,parameter :: resolution_text_length = 4
+integer,parameter :: trajectory_text_length = 5
+integer,parameter :: scaling1_text_length = 3
+integer,parameter :: scaling2_text_length = 3
 integer,parameter :: overcrowd0_text_length = 5
 integer,parameter :: Ngrid_text_length = 3
-integer,parameter :: gridpath_length = trajectory_text_length +&
-                                       resolution_text_length +&
-                                       overcrowd0_text_length + len(path5) + 3
+integer,parameter :: gridpath_length = 68
+character(gridpath_length),parameter :: gridpath0 = ""
+!integer,parameter :: !gridpath_length != trajectory_text_length + 1 +&
+!                                       scaling1_text_length + 1 +&
+!                                       scaling2_text_length + 1 +&
+!                                       overcrowd0_text_length + 1 + len(path5)
 character(23),parameter :: cumulativefile = "cumulative_trajectories"
 integer, parameter :: trajectories_text_length = gridpath_length +&
                                                  4 + len(trajectoriesfile) + 1
+
+
 
 
 

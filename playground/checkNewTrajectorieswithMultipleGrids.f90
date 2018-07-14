@@ -11,13 +11,9 @@ use analyzeScatteringAngleswithMultipleGrids
 implicit none
 
 !Variables used to name the new directory uniquely
-character(resolution_text_length) :: resolution_text
-character(overcrowd0_text_length) :: overcrowd0_text
-character(trajectory_text_length) :: trajectory_text
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
-character(gridpath_length) :: gridpath0
 character(trajectories_text_length*100) :: trajectories_text
 character(6) :: Ntraj_text
 character(6) :: Nthreshold_text
@@ -43,16 +39,6 @@ integer :: frames, step, total_threshold_rmsd
 !Timing
 real :: r1, r2, system_clock_rate
 integer :: c1, c2, cr
-
-!We identify which grid we are working with by what parameters were used to build it
-!In this case, the grid is uniquely determined by resolution0, overcrowd0, and overcrowd1
-write(variable_length_text,FMT="(I5)") resolution_text_length
-write(resolution_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") resolution_0
-write(variable_length_text,FMT="(I5)") overcrowd0_text_length
-write(overcrowd0_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") overcrowd0
-write(variable_length_text,FMT="(I5)") trajectory_text_length
-write(trajectory_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj_max
-gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//trajectory_text//"/"
 
 !All trajectory folders are formatted as I0.3 (3-digit integer)
 !So search for these numbered folders and read them

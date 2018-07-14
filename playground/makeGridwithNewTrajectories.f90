@@ -34,13 +34,9 @@ integer, dimension(counter3_max) :: counter3 = 0
 !Grid Naming Parameters
 integer :: Ngrid
 character(5) :: variable_length_text
-character(resolution_text_length) :: resolution_text
-character(overcrowd0_text_length) :: overcrowd0_text
-character(trajectory_text_length) :: trajectory_text
 character(Ngrid_text_length) :: Ngrid_text
-character(gridpath_length) :: gridpath0
-character(gridpath_length+len(Ngrid_text)+1) :: gridpath1
-character(gridpath_length+len(Ngrid_text)+1+5) :: gridpath2
+character(gridpath_length+Ngrid_text_length+1) :: gridpath1
+character(gridpath_length+Ngrid_text_length+1+5) :: gridpath2
 character(6) :: reject_text
 character(6) :: Nthreshold_text
 
@@ -76,17 +72,6 @@ if (reject_flag) then
 else
 	reject_text = "accept"
 end if
-
-!Make the multi-grid folder!
-write(variable_length_text,FMT="(I5)") resolution_text_length
-write(resolution_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") resolution_0
-write(variable_length_text,FMT="(I5)") overcrowd0_text_length
-write(overcrowd0_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") overcrowd0
-write(variable_length_text,FMT="(I5)") trajectory_text_length
-write(trajectory_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj_max
-gridpath0 = path5//resolution_text//"_"//overcrowd0_text//"_"//trajectory_text//"/"
-call system("mkdir "//gridpath0)
-call system("cp "//path5//parametersfile//" "//gridpath0//parametersfile)
 
 !We start off with zero files
 Nfile = 0
