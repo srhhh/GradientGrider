@@ -16,8 +16,8 @@ newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids_new
 scaling1_0=004
 scaling2_0=004
 overcrowd0=00050
-Ntraj_max=00700
-Ngrid_max=3
+Ntraj_max=00500
+Ngrid_max=4
 
 newGRID=${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
 currentPATH=$(pwd)
@@ -41,7 +41,7 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
      s|scaling2_text_length = [0-9]*|scaling2_text_length = ${#scaling2_0}|
      s|overcrowd0_text_length = [0-9]*|overcrowd0_text_length = ${#overcrowd0}|
      s|gridpath_length = .*|gridpath_length = $((${#gridPATH}+1))|
-     s|gridpath0 = .*|gridpath0 = $gridPATH/|
+     s|gridpath0 = .*|gridpath0 = \"$gridPATH/\"|
      s|$oldPARAMETERS\\.f90|$newPARAMETERS.f90|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/

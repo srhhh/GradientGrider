@@ -157,13 +157,13 @@ write(gnuplotchannel,*) 'bin_width = '//boxwidth_text
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
 write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set ylabel "Scattering Angle Occurence"'
-write(gnuplotchannel,*) 'set yrange [O:]'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(variable_length_text,FMT="(I5)") scattering_angle_column
 write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
                         '" u (rounded($'//trim(adjustl(variable_length_text))//&
 			')):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence"'
-write(gnuplotchannel,*) 'set yrange [O:]'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(variable_length_text,FMT="(I5)") theta_column
 write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
                         '" u (rounded($'//trim(adjustl(variable_length_text))//&
@@ -171,7 +171,7 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
 write(gnuplotchannel,*) 'set xlabel "Angle (rad)"'
 write(gnuplotchannel,*) 'set xtics'
 write(gnuplotchannel,*) 'set ylabel "Initial H2 Phi Occurence"'
-write(gnuplotchannel,*) 'set yrange [O:]'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(variable_length_text,FMT="(I5)") phi_column
 write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
 			'" u (rounded($'//trim(adjustl(variable_length_text))//&
