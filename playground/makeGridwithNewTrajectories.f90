@@ -162,11 +162,12 @@ initial_rotation_angle = random_num1*pi2
 
 
 		!This big if-statement is if we want to monitor our grid creation
-                if (modulo(n,Ntraj_max/10) == 0) then
+                if (modulo(n,max(Ntraj_max/10,1)) == 0) then
 
 			write(variable_length_text,FMT="(I5)") Ngrid_text_length
 			write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-			call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"&
+			call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,Ntraj,8,9,10,&
+                                                  "InitialScatteringAngleDistribution_"&
 			                          //Ngrid_text//reject_text//Nthreshold_text)
 
 			call checkTrajectory(initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
@@ -262,6 +263,12 @@ call system("gnuplot < "//gridpath1//gnuplotfile)
                 if ((header1 == header1_max).or.&
                    (trajectory_CPU_time > trajectory_CPU_time_max)) exit
 
+		!We also record the scattering angle of the trajectory
+		speedH = sqrt(velocityH1(1)**2 + velocityH1(2)**2 + velocityH1(3)**2)
+		speedH2 = sqrt(velocityH2(1)**2 + velocityH2(2)**2 + velocityH2(3)**2)
+		scattering_angle = acos(dot_product(velocityH1,velocityH2) / &
+					           (speedH * speedH2))
+
 		!Otherwise, we consider this a successful trajectory addition
                 Ntraj = Ntraj + 1
                 open(progresschannel,file=gridpath1//progressfile,position="append")
@@ -271,13 +278,9 @@ call system("gnuplot < "//gridpath1//gnuplotfile)
                                                 trajectory_wall_time
                 write(progresschannel,*) "                       CPU Time: ",&
                                                 trajectory_CPU_time
+                write(progresschannel,*) "               Scattering Angle: ",&
+                                                scattering_angle
                 close(progresschannel)
-
-		!We also record the scattering angle of the trajectory
-		speedH = sqrt(velocityH1(1)**2 + velocityH1(2)**2 + velocityH1(3)**2)
-		speedH2 = sqrt(velocityH2(1)**2 + velocityH2(2)**2 + velocityH2(3)**2)
-		scattering_angle = acos(dot_product(velocityH1,velocityH2) / &
-					           (speedH * speedH2))
 
 		!This is all recorded in the trajectoriesfile of the grid
                 open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
@@ -337,7 +340,7 @@ close(gnuplotchannel)
 
 write(variable_length_text,FMT="(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"&
+call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,Ntraj,8,9,10,"InitialScatteringAngleDistribution_"&
                           //Ngrid_text//reject_text//Nthreshold_text)
 
 

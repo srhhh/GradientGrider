@@ -203,7 +203,7 @@ subroutine Acceleration(vals,coords,gradient,&
 	!Calculate the velocity change
         velocity_change = coords_distance * AccelerationConstant2 * ( &
                         stretch_factor - 1.0d0 ) * stretch_factor / distance
-        gradient(:,1) = gradient(:,3) + velocity_change
+        gradient(:,1) = gradient(:,1) + velocity_change
         gradient(:,3) = -velocity_change
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

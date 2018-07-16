@@ -1,4 +1,4 @@
-program checkNewTrajectorieswithMultipleGrids
+rogram checkNewTrajectorieswithMultipleGrids
 use ANALYSIS
 use PARAMETERS
 use checkMultipleGrids
@@ -241,8 +241,8 @@ if (percentthreshold_flag) call getRMSDThresholds1(Ngrid_total,1,&
 print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""
 
-if (testtrajSA_flag) call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//&
-                                               trajectoriesfile,3,4,5,"TestScatteringAngleDistribution_"//&
+if (testtrajSA_flag) call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//trajectoriesfile,&
+                                               Ntesttraj,3,4,5,"TestScatteringAngleDistribution_"//&
                                                Ngrid_text//reject_text//Ntraj_text)
 print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""

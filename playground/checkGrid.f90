@@ -448,12 +448,9 @@ character(6),intent(in) :: FMTorder
 character(9) :: var1_filename,var2_filename
 character(100) :: subcell
 character(*),intent(in) :: path_to_grid
-real(dp) :: candidate_rmsd
-real(dp), intent(out) :: min_rmsd
-real(dp), allocatable :: rmsds(:)
-real(dp), allocatable :: neighbor_gradients(:,:,:), U(:,:,:)
-integer :: min_position
-real(dp), dimension(3,Natoms), intent(out) :: candidate_gradient
+real(dp), intent(inout) :: min_rmsd
+real(dp),dimension(3,Natoms),intent(inout) :: gradient
+real(dp),dimension(3,3),intent(inout) :: U
 real(dp),intent(in), dimension(3,Natoms) :: coords
 
 !Default to 100.0 rmsd
@@ -484,19 +481,7 @@ if ((flag1) .and. (flag3)) then
                 write(var2_filename,FMT=FMTorder) var2_round
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-                !Calculate the RMSDs
-                allocate(rmsds(population),neighbor_gradients(3,Natoms,population),U(3,3,population))
-                call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
-
-                !Now, we want the state that is closest in terms of rmsd
-                min_position = minloc(rmsds,1)
-                candidate_rmsd = rmsds(min_position)
-		if (candidate_rmsd < min_rmsd) then
-			min_rmsd = candidate_rmsd
-                	candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
-		end if
-
-                deallocate(rmsds,neighbor_gradients,U)
+                call getRMSD(subcell,population,coords,min_rmsd,gradient,U)
         end if
 end if
 
@@ -517,17 +502,7 @@ if ((flag2) .and. (flag3)) then
                 write(var2_filename,FMT=FMTorder) var2_round
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-                allocate(rmsds(population),neighbor_gradients(3,Natoms,population),U(3,3,population))
-                call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
-
-                min_position = minloc(rmsds,1)
-                candidate_rmsd = rmsds(min_position)
-		if (candidate_rmsd < min_rmsd) then
-			min_rmsd = candidate_rmsd
-                	candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
-		end if
-
-                deallocate(rmsds,neighbor_gradients,U)
+                call getRMSD(subcell,population,coords,min_rmsd,gradient,U)
         end if
 end if
 
@@ -547,18 +522,7 @@ if ((flag1) .and. (flag4)) then
                 write(var2_filename,FMT=FMTorder) var2_round
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-
-                allocate(rmsds(population),neighbor_gradients(3,Natoms,population),U(3,3,population))
-                call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
-
-                min_position = minloc(rmsds,1)
-                candidate_rmsd = rmsds(min_position)
-		if (candidate_rmsd < min_rmsd) then
-			min_rmsd = candidate_rmsd
-                	candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
-		end if
-
-                deallocate(rmsds,neighbor_gradients,U)
+                call getRMSD(subcell,population,coords,min_rmsd,gradient,U)
         end if
 end if
 
@@ -578,17 +542,7 @@ if ((flag2) .and. (flag4)) then
                 write(var2_filename,FMT=FMTorder) var2_round
                 subcell = path_to_grid//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-                allocate(rmsds(population),neighbor_gradients(3,Natoms,population),U(3,3,population))
-                call getRMSD(subcell,population,coords,rmsds,neighbor_gradients,U)
-
-                min_position = minloc(rmsds,1)
-                candidate_rmsd = rmsds(min_position)
-		if (candidate_rmsd < min_rmsd) then
-			min_rmsd = candidate_rmsd
-                	candidate_gradient = matmul(neighbor_gradients(:,:,min_position),U(:,:,min_position))
-		end if
-
-                deallocate(rmsds,neighbor_gradients,U)
+                call getRMSD(subcell,population,coords,min_rmsd,gradient,U)
         end if
 end if
 
@@ -601,18 +555,21 @@ end subroutine getNeighbors
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  actually pretty self-explanatory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine getRMSD(filename,population,coords,rmsds,neighbor_gradients,U)
+subroutine getRMSD(filename,population,coords,min_rmsd,gradient,U)
 
 use ls_rmsd_original
 use PARAMETERS
 implicit none
 integer,intent(in) :: population
-real(dp),intent(out), dimension(3,Natoms,population) :: neighbor_gradients
-real(dp),intent(out), dimension(3,3,population) :: U
-real(dp),intent(out), dimension(population) :: rmsds
+real(dp),intent(inout), dimension(3,Natoms) :: gradient
+real(dp),intent(inout), dimension(3,3) :: U
+real(dp),intent(inout) :: min_rmsd
 real(dp),dimension(3) :: x_center,y_center
 integer :: i,j,k
 character(*),intent(in) :: filename
+real(dp),dimension(3,Natoms) :: candidate_gradient
+real(dp),dimension(3,3) :: candidate_U
+real(dp) :: candidate_min_rmsd
 real(dp),intent(in), dimension(3,Natoms) :: coords
 real(dp), dimension(3,Natoms) :: coords2
 
@@ -620,12 +577,20 @@ real(dp), dimension(3,Natoms) :: coords2
 open(filechannel1,file=trim(filename)//".dat")
 do i = 1, population
 	read(filechannel1,FMT=FMT7,advance="no") ((coords2(j,k),j=1,3),k=1,Natoms)
-        read(filechannel1,FMT=FMT3) ((neighbor_gradients(j,k,i),j=1,3),k=1,Natoms)
 
-        call rmsd_dp(Natoms,coords2,coords,1,U(:,:,i),x_center,y_center,rmsds(i))
+        call rmsd_dp(Natoms,coords2,coords,1,candidate_U(:,:),&
+                     x_center,y_center,candidate_min_rmsd)
+	
+	if (candidate_min_rmsd < min_rmsd) then
+		min_rmsd = candidate_min_rmsd
+		U = candidate_U
+        	read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+	else
+        	read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+	end if
+
 end do
 close(filechannel1)
-
 
 end subroutine getRMSD
 

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+echo ""
+echo ""
+echo "Now running the background job"
+echo ""
+
 oldPARAMETERS=PARAMETERS
 newPARAMETERS=PARAMETERS_new
 
@@ -16,10 +21,10 @@ newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids_new
 scaling1_0=004
 scaling2_0=004
 overcrowd0=00050
-Ntraj_max=00200
-Ngrid_max=1
+Ntraj_max=00500
+Ngrid_max=4
 
-newGRID=HH2${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
+newGRID=HH2_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
 currentPATH=$(pwd)
 gridPATH=$currentPATH/$newGRID
 newSOURCE=SOURCE
@@ -82,7 +87,6 @@ make clean -f $newPATH/$newMAKEANALYSIS
 ./a.out
 
 fi
-exit
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = \\.false\\./heatmap_flag = .true./
@@ -92,8 +96,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = 100/
      s/testtrajRMSD_flag = \\.true\\./testtrajRMSD_flag = .false./
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
-     s/threshold_rmsd = .*/threshold_rmsd = 0.00000d0/
-     s/reject_flag = \\.false\\./reject_flag = .true./
+     s/threshold_rmsd = .*/threshold_rmsd = 0.00010d0/
+     s/reject_flag = \\.true\\./reject_flag = .false./
      s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
