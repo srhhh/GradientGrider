@@ -89,8 +89,8 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 			   initial_bond_angle1,initial_bond_angle2)
 
 	!velocityH is just the velocity from the get-go
-        velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
-
+        !velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH = velocities(:,1)
 
 	call getVar3(coords,Natoms,vals(1))
 	call getVar4(coords,Natoms,vals(2))
@@ -109,7 +109,7 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
 		!Every 50 frames, print to an xyz file for visualization
                 if (.false.) then !(modulo(steps,50) == 0) then
-                        open(filechannel1,file=path4//trajectoryfile,position="append")
+                        open(filechannel1,file=path_to_grid//trajectoryfile,position="append")
                         write(filechannel1,'(I1)') 3
                         write(filechannel1,*) ""
                         write(filechannel1,'(A1,3F10.6)') 'H',&
@@ -153,7 +153,8 @@ subroutine addTrajectory(initial_bond_distance,initial_rotational_speed,initial_
 
         end do
 
-        velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+        !velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH2 = velocities(:,1)
 
 end subroutine addTrajectory
 

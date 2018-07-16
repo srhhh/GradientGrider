@@ -80,7 +80,8 @@ subroutine checkMultipleTrajectories(initial_bond_distance,initial_rotational_sp
                    	   initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2)
 
-        velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+        !velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH = velocities(:,1)
 
         open(filechannel1,file=path_to_directory//trajectoryfile)
         write(filechannel1,'(I1)') 3
@@ -157,7 +158,8 @@ end if
 
         end do
 
-        velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+        !velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH2 = velocities(:,1)
 
 end subroutine checkMultipleTrajectories
 

@@ -16,16 +16,17 @@ newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids_new
 scaling1_0=004
 scaling2_0=004
 overcrowd0=00050
-Ntraj_max=00100
+Ntraj_max=00200
 Ngrid_max=1
 
-newGRID=${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
+newGRID=HH2${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
 currentPATH=$(pwd)
 gridPATH=$currentPATH/$newGRID
 newSOURCE=SOURCE
 newPATH=$(pwd)/$newGRID/$newSOURCE
 
-if [1 = 0]; then
+if [ "0" -eq "0" ]
+then
 
 rm -r $currentPATH/$newGRID
 mkdir $currentPATH/$newGRID
@@ -51,7 +52,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/trueSA_flag = \\.true\\./trueSA_flag = .false./
      s/testtraj_flag = \\.false\\./testtraj_flag = .true./
      s/useolddata_flag = \\.true\\./useolddata_flag = .false./
-     s/Ntesttraj = [0-9]*/Ntesttraj = $Ntraj_max/
+     s/Ntesttraj = [0-9]*/Ntesttraj = 100/
      s/testtrajRMSD_flag = \\.true\\./testtrajRMSD_flag = .false./
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.0000d0/
@@ -81,6 +82,7 @@ make clean -f $newPATH/$newMAKEANALYSIS
 ./a.out
 
 fi
+exit
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = \\.false\\./heatmap_flag = .true./
