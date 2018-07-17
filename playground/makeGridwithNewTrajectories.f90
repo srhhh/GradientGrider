@@ -120,39 +120,41 @@ end do
 	!We start off with zero trajectories
         Ntraj = 0
         do n = 1, Ntraj_max
-	
-		!Get some random initial conditions for the trajectory
-		!The orientation of the H2
-		do
-			!First, pick a random point in the unit cube centered at the origin
-			random_num1 = rand() - 0.5d0
-			random_num2 = rand() - 0.5d0
-			random_num3 = rand() - 0.5d0
-			random_r2 = random_num1**2 + random_num2**2
-			random_r3 = random_r2 + random_num3**2
-			if (random_r3 > 0.25d0) cycle
-			random_r2 = sqrt(random_r2)
-			initial_bond_angle1 = acos(random_num1 / random_r2)
-			initial_bond_angle2 = atan2(random_r2,random_num3)
-			exit
-		end do
-		!The energy of the H2
-		do
-			random_num1 = rand()
-			random_num2 = rand()
-			initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
-			if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
-		end do
-		!The ratio of vib:rot energy of H2
-			random_num2 = 1.0d0
-			initial_vibrational_energy = random_num2*initial_energy_H2
-			initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
-			initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
-			random_num1 = rand()
-			initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
-			initial_rotation_angle = random_num1*pi2
-	
-		!Record progress in the progress file
+
+!Get some random initial conditions for the trajectory
+!The orientation of the H2
+do
+random_num1 = rand() - 0.5d0
+random_num2 = rand() - 0.5d0
+random_num3 = rand() - 0.5d0
+random_r2 = random_num1**2 + random_num2**2
+random_r3 = random_r2 + random_num3**2
+if (random_r3 > 0.25d0) cycle
+random_r2 = sqrt(random_r2)
+! RS: Let's make this angle sampling generic and consistant
+! RS: i.e. two atan2 instead of atan2 + cos
+initial_bond_angle1 = acos(random_num1 / random_r2)
+initial_bond_angle2 = atan2(random_r2,random_num3)
+exit
+end do
+!The energy of the H2
+! RS: Please ELABORATE. I could not understand
+do
+random_num1 = rand()
+random_num2 = rand()
+initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
+if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
+end do
+!The ratio of vib:rot energy of H2
+random_num2 = 1.0d0
+initial_vibrational_energy = random_num2*initial_energy_H2
+initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
+initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
+random_num1 = rand()
+! RS: Please use the momentum of inertia and angular velocity to define rotation
+initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
+initial_rotation_angle = random_num1*pi2
+
                 open(progresschannel,file=gridpath1//progressfile,position="append")
                 write(progresschannel,*) ""
                 write(progresschannel,*) ""
