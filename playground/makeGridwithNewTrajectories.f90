@@ -130,11 +130,14 @@ random_r2 = random_num1**2 + random_num2**2
 random_r3 = random_r2 + random_num3**2
 if (random_r3 > 0.25d0) cycle
 random_r2 = sqrt(random_r2)
+! RS: Let's make this angle sampling generic and consistant
+! RS: i.e. two atan2 instead of atan2 + cos
 initial_bond_angle1 = acos(random_num1 / random_r2)
 initial_bond_angle2 = atan2(random_r2,random_num3)
 exit
 end do
 !The energy of the H2
+! RS: Please ELABORATE. I could not understand
 do
 random_num1 = rand()
 random_num2 = rand()
@@ -147,6 +150,7 @@ initial_vibrational_energy = random_num2*initial_energy_H2
 initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
 initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
 random_num1 = rand()
+! RS: Please use the momentum of inertia and angular velocity to define rotation
 initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
 initial_rotation_angle = random_num1*pi2
 
