@@ -1,4 +1,4 @@
-rogram checkNewTrajectorieswithMultipleGrids
+program checkNewTrajectorieswithMultipleGrids
 use ANALYSIS
 use PARAMETERS
 use checkMultipleGrids
@@ -77,7 +77,7 @@ seed = rand(seed)
 if (heatmap_flag) call analyzeHeatMaps1(Ngrid_total)
 
 !This is for scattering angle plots (from the grid)
-if (trueSA_flag) call getScatteringAngles1(Ngrid_total,"f2_trajectories.dat",8,"trueSA.jpg")
+if (trueSA_flag) call getScatteringAngles1(Ngrid_total,trajectoriesfile,8,"trueSA.jpg")
 
 
 

@@ -125,7 +125,6 @@ if (modulo(step,50) == 1) then
         close(filechannel1)
                 if (modulo(step,500) == 1) then      
 
-
  			if ((vals(1)>max_var1) .or.&
  			    (vals(2)>max_var2)) then
  				exit
@@ -140,6 +139,7 @@ end if
 		call getVar3(coords,Natoms,vals(1))
 		call getVar4(coords,Natoms,vals(2))
  
+		min_rmsd = .200100d0
 		!Check for similar frames
 		call checkState(vals,coords,approx_gradient,min_rmsd,&
 				force_Neighbors,path_to_directory,Ngrid_total,filechannels,&

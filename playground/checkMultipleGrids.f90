@@ -26,7 +26,7 @@ contains
 !	Of course, this assumes each grid uses the same parameters
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkState(vals,coords,approx_gradient,min_rmsd,force_Neighbors,&
+subroutine checkState(vals,coords,gradient,min_rmsd,force_Neighbors,&
                       path_to_directory,Ngrid_total,filechannels,&
                       number_of_frames,order,neighbor_check)
 use ANALYSIS
@@ -45,12 +45,10 @@ real :: var1,var2,var1_cell,var2_cell,var1_round,var2_round
 real :: var1_round0,var2_round0,var1_round1,var2_round1,var1_round2,var2_round2,var1_round3,var2_round3
 real(dp), dimension(Nvar), intent(in) :: vals
 real(dp), dimension(3,Natoms), intent(in) :: coords
-real(dp), dimension(3,Natoms), intent(out) :: approx_gradient
-real(dp), dimension(3,Natoms) :: candidate_gradient
-real(dp), allocatable :: candidate_gradients(:,:,:), U(:,:,:)
-real(dp), intent(out) :: min_rmsd
-real(dp)  :: candidate_rmsd
-real(dp), allocatable :: rmsds(:)
+real(dp), dimension(3,Natoms), intent(inout) :: gradient
+real(dp), dimension(3,3) :: U
+real(dp), intent(inout) :: min_rmsd
+real(dp)  :: old_min_rmsd
 logical :: subcell_existence
 character(100) :: subcell
 character(FMTlength) ::  var1_filename0, var2_filename0, var1_filename1, var2_filename1
@@ -62,7 +60,6 @@ character(3) :: Ngrid_text
 integer, dimension(Ngrid_total),intent(in) :: filechannels
 integer :: subcell0search_max,subcell1search_max
 
-!New feature
 !In order to decrease the number of frames checked
 !If we need to look at adjacent cells for a frame
 !(for instance, if the target cell is empty)
@@ -75,6 +72,8 @@ number_of_frames = 0
 neighbor_check = 0
 number_of_frames = 0
 
+old_min_rmsd = min_rmsd
+stop_flag = .false.
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 SUBCELL TARGETING
@@ -116,9 +115,6 @@ write(var2_filename1,FMT=FMTorder1) var2_round
 write(var1_filename0,FMT=FMTorder0) var1_round0
 write(var2_filename0,FMT=FMTorder0) var2_round0
 
-!We set min_rmsd to be 0.200100 by default
-min_rmsd = 0.200100d0
-
 !Now, we start iterating over the grids
 do Ngrid = 1, Ngrid_total
 
@@ -133,10 +129,6 @@ path_to_grid = path_to_directory//Ngrid_text//"/grid/"
 
 !Construct the subcell filename
 subcell = path_to_grid//trim(adjustl(var1_filename1))//"_"//trim(adjustl(var2_filename1))
-
-!We don't know how many frames may be in the child subcell
-!But we do know there will be no more than overcrowd1
-allocate(rmsds(overcrowd1),candidate_gradients(3,Natoms,overcrowd1),U(3,3,overcrowd1))
 
 !See whether this subcell exists
 inquire(file=trim(subcell)//".dat",exist=subcell_existence)
@@ -154,24 +146,11 @@ end if
 if (subcell_existence) then
         !getRMSD reads off the coordinates and calculated the RMSD with
         !ls_rmsd module
-	call getRMSD_dp(subcell,overcrowd1,coords,population,rmsds,candidate_gradients,U)
-        
-        !Using minloc locates the position in the array
-        !with the lowest value rmsd
-        min_position = minloc(rmsds(1:population),1)
-        candidate_rmsd = rmsds(min_position)
-        if (candidate_rmsd < min_rmsd) then
-        	min_rmsd = candidate_rmsd
-		approx_gradient = matmul(U(:,:,min_position),candidate_gradients(:,:,min_position))
-        end if
+	call getRMSD_dp(subcell,overcrowd1,coords,population,min_rmsd,gradient,U)
 
 	!However many frames are in the subcell we increment to number_of_frames
 	number_of_frames = number_of_frames + population
 	if (.not.(force_Neighbors)) then
-		deallocate(rmsds,candidate_gradients,U)
-
-		!If min_rmsd is lower than min_rmsd_prime, then we have a new candidate
-		!For lowest RMSD
 		write(filechannels(Ngrid),FMT=FMT6) min_rmsd
 		cycle
 	end if 
@@ -180,6 +159,7 @@ end if
 !If there are no frames in this cell, we can look at one of its
 !neighbors (better than having to look at the parent)
 if ((.not.(subcell_existence)).or.(force_Neighbors)) then
+	old_min_rmsd = min_rmsd
         neighbor_check = 1
 
         !Once we go far enough outside, we can stop
@@ -219,25 +199,14 @@ end if
                 call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,FMTorder1,&
                                   index1_1,index1_2,index2_1,index2_2,&
                                   var1_round0,var2_round0,path_to_grid,overcrowd1,&
-                                  coords,candidate_rmsd,candidate_gradient,number_of_frames)
+                                  coords,min_rmsd,gradient,U,number_of_frames)
 
-                !Even if all neighbors are empty, it still returns a
-                !minimum rmsd (default is 0.200100)
-                !ANY frame is better than none so it stops after it
-                !finds one
-                if (candidate_rmsd < min_rmsd) then
-                        min_rmsd = candidate_rmsd
-                        approx_gradient = candidate_gradient
+                if (min_rmsd < old_min_rmsd) then
                         stop_flag = .true.
                 end if
         end do
 
-        !We don't stop looking immediately (we may find a better fit
-        !somewhere else on the circumfrence) but we know we don't need
-        !to look any farther because farther subcells will normally have
-        !a larger RMSD
         if (stop_flag) then
-		deallocate(rmsds,candidate_gradients,U)
 		write(filechannels(Ngrid),FMT=FMT6) min_rmsd
 		exit
 	end if
@@ -249,11 +218,6 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 ORDER 0
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!We can use a smaller array size for parent-level cells
-deallocate(rmsds,candidate_gradients,U)
-
-allocate(rmsds(overcrowd0),candidate_gradients(3,Natoms,overcrowd0),U(3,3,overcrowd0))
 
 !Rinse and repeat
 subcell = path_to_grid//trim(adjustl(var1_filename0))//"_"//trim(adjustl(var2_filename0))
@@ -270,19 +234,13 @@ print *, ""
 end if
 
 if (subcell_existence) then
-	call getRMSD_dp(subcell,overcrowd0,coords,population,rmsds,candidate_gradients,U)
-
-        min_position = minloc(rmsds(1:population),1)
-        candidate_rmsd = rmsds(min_position)
-	if (candidate_rmsd < min_rmsd) then
-		min_rmsd = candidate_rmsd
-		approx_gradient = matmul(U(:,:,min_position),candidate_gradients(:,:,min_position))
-	end if
+	call getRMSD_dp(subcell,overcrowd0,coords,population,min_rmsd,gradient,U)
 
 	number_of_frames = number_of_frames + population
 end if
 
 if ((.not.(subcell_existence)).or.(force_Neighbors)) then
+	old_min_rmsd - min_rmsd
         neighbor_check = 1
 
         stop_flag = .false.
@@ -300,11 +258,9 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 call getNeighbors(bounds1,bounds2,multiplier1_0,multiplier2_0,FMTorder1,&
                                   index1_1,index1_2,index2_1,index2_2,&
                                   0.0,0.0,path_to_grid,overcrowd0,&
-                                  coords,candidate_rmsd,candidate_gradient,number_of_frames)
+                                  coords,min_rmsd,gradient,U,number_of_frames)
 
-                if (candidate_rmsd < min_rmsd) then
-                        min_rmsd = candidate_rmsd
-                        approx_gradient = candidate_gradient
+                if (min_rmsd < old_min_rmsd) then
                         stop_flag = .true.
                 end if
         end do
@@ -316,11 +272,10 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 
 end if
 
-!To end, just deallocate and write the lowest RMSD frame
-deallocate(rmsds,candidate_gradients,U)
 write(filechannels(Ngrid),FMT=FMT6) min_rmsd
-
 end do
+
+if (min_rmsd < old_min_rmsd) gradient = matmul(U,gradient)
 
 end subroutine checkState
 
@@ -344,8 +299,8 @@ end subroutine checkState
 
 subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,FMTorder,&
                         index1_1,index1_2,index2_1,index2_2,&
-                        var1_round0,var2_round0,path_to_grid,overcrowd,&
-                        coords,min_rmsd,approx_gradient,number_of_frames)
+                        var1_round0,var2_round0,path_to_grid,&
+                        coords,min_rmsd,gradient,U,number_of_frames)
 use ANALYSIS
 use PARAMETERS
 implicit none
@@ -356,22 +311,16 @@ real,intent(in) :: multiplier1,multiplier2
 real,intent(in) :: var1_round0,var2_round0
 real :: var1_round,var2_round
 !integer,intent(in) :: decimals1, decimals2
-integer,intent(in) :: overcrowd
 integer,intent(inout) :: number_of_frames
 character(6),intent(in) :: FMTorder
 character(FMTlength) :: var1_filename,var2_filename
 character(100) :: subcell
 character(*),intent(in) :: path_to_grid
-real(dp),dimension(3,3,overcrowd) :: U
-real(dp), intent(out) :: min_rmsd
-real(dp), dimension(overcrowd) :: rmsds
-real(dp), dimension(3,Natoms,overcrowd) :: candidate_gradients
-integer :: min_position,population
-real(dp), dimension(3,Natoms), intent(out) :: approx_gradient
+real(dp),dimension(3,3),intent(inout) :: U
+real(dp), intent(inout) :: min_rmsd
+real(dp), dimension(3,Natoms), intent(inout) :: gradient
+integer :: population
 real(dp),intent(in), dimension(3,Natoms) :: coords
-
-!Default to 0.200100 rmsd
-min_rmsd = 0.200100d0
 
 !We need to check if any of the indexes (neighbors!) are out of bounds
 flag1 = index1_1 < scaling1
@@ -398,17 +347,7 @@ if (.false.) print *, "inquiring for: ", subcell
 	!If it exists, get the rmsd of each frame in it
 	if (subcell_existence) then
 
-                !Calculate the RMSDs
-		call getRMSD_dp(subcell,overcrowd,coords,population,rmsds,candidate_gradients,U)
-
-                !Now, we want the state that is closest in terms of rmsd
-                min_position = minloc(rmsds(1:population),1)
-
-		!If it is lower than our original rmsd, we take it
-		if (rmsds(min_position) < min_rmsd) then
-                min_rmsd = rmsds(min_position)
-		approx_gradient = matmul(U(:,:,min_position),candidate_gradients(:,:,min_position))
-		end if
+		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
 	!Increment however many frames we have
@@ -428,13 +367,7 @@ if ((flag1) .and. (flag4)) then
 if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
 
-		call getRMSD_dp(subcell,overcrowd,coords,population,rmsds,candidate_gradients,U)
-
-                min_position = minloc(rmsds(1:population),1)
-		if (rmsds(min_position) < min_rmsd) then
-                min_rmsd = rmsds(min_position)
-		approx_gradient = matmul(U(:,:,min_position),candidate_gradients(:,:,min_position))
-		end if
+		call getRMSD_dp(subcell,coords,population,min_rmsd,gradientsU)
 	end if
 
 	number_of_frames = number_of_frames + population
@@ -453,13 +386,7 @@ if ((flag2) .and. (flag3)) then
 if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
 
-		call getRMSD_dp(subcell,overcrowd,coords,population,rmsds,candidate_gradients,U)
-
-                min_position = minloc(rmsds(1:population),1)
-		if (rmsds(min_position) < min_rmsd) then
-                min_rmsd = rmsds(min_position)
-		approx_gradient = matmul(U(:,:,min_position),candidate_gradients(:,:,min_position))
-		end if
+		call getRMSD_dp(subcell,coords,population,min_rmsd,gradientsU)
 	end if
 
 	number_of_frames = number_of_frames + population
@@ -478,13 +405,7 @@ if ((flag2) .and. (flag4)) then
 if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
 
-		call getRMSD_dp(subcell,overcrowd,coords,population,rmsds,candidate_gradients,U)
-
-                min_position = minloc(rmsds(1:population),1)
-		if (rmsds(min_position) < min_rmsd) then
-                min_rmsd = rmsds(min_position)
-		approx_gradient = matmul(U(:,:,min_position),candidate_gradients(:,:,min_position))
-		end if
+		call getRMSD_dp(subcell,coords,population,min_rmsd,gradientsU)
 	end if
 
 	number_of_frames = number_of_frames + population
@@ -501,20 +422,24 @@ end subroutine getNeighbors
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  actually pretty self-explanatory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine getRMSD(subcell,overcrowd,coords,population,rmsds,candidate_gradients,U)
+subroutine getRMSD(subcell,coords,population,min_rmsd,gradient,U)
 
 use ls_rmsd
 use PARAMETERS
 implicit none
-integer,intent(in) :: overcrowd
 integer,intent(out) :: population
-real,intent(out), dimension(3,Natoms,overcrowd) :: candidate_gradients
-real,intent(out), dimension(overcrowd) :: rmsds
+real,intent(out), dimension(3,Natoms) :: gradient
+real,dimension(3,Natoms) :: candidate_gradient
+real,intent(out) :: min_rmsd
+real :: old_min_rmsd
 integer :: i,j,iostate
 character(*),intent(in) :: subcell
 real,intent(in), dimension(3,Natoms) :: coords
 real, dimension(3,Natoms) :: coords2
-real,dimension(3,3,overcrowd),intent(out) :: U
+real,dimension(3,3),intent(out) :: U
+real,dimension(3,3) :: candidate_U
+
+old_min_rmsd = min_rmsd
 
 !Read off the states in this subcell
 open(filechannel1,file=trim(subcell)//".dat")
@@ -523,10 +448,15 @@ do
 	!Once we've had enough, exit
         read(filechannel1,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
 	if (iostate /= 0) exit
-        read(filechannel1,FMT=FMT3) ((candidate_gradients(i,j,population),i=1,3),j=1,Natoms)
 
-	!Get the RMSD
-        call rmsd(Natoms,coords2,coords,rmsds(population),U(:,:,population))
+        call rmsd(Natoms,coords2,coords,min_rmsd,candidate_U)
+	if (min_rmsd < old_min_rmsd) then
+        	read(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+		old_min_rmsd = min_rmsd
+		U = candidate_U
+	else
+        	read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+	end if
 
 	!Increment the position
 	population = population + 1
@@ -546,23 +476,26 @@ end subroutine getRMSD
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  actually pretty self-explanatory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine getRMSD_dp(subcell,overcrowd,coords,population,rmsds,candidate_gradients,U)
+subroutine getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 
 use ls_rmsd_original
 use PARAMETERS
 implicit none
-integer,intent(in) :: overcrowd
 integer,intent(out) :: population
-real(dp),intent(out), dimension(3,Natoms,overcrowd) :: candidate_gradients
-real(dp),intent(out), dimension(overcrowd) :: rmsds
+real(dp),intent(inout), dimension(3,Natom) :: gradient
+real(dp),dimension(3,Natoms) :: candidate_gradient
+real(dp),intent(inout) :: min_rmsd
 integer :: i,j,iostate
 character(*),intent(in) :: subcell
 real(dp),intent(in), dimension(3,Natoms) :: coords
-real(dp) :: min_rmsd_dp
+real(dp) :: old_min_rmsd
 real(dp), dimension(3) :: x_center, y_center
 real(dp), allocatable :: g(:,:)
-real(dp),dimension(3,3,overcrowd),intent(out) :: U
+real(dp),dimension(3,3),intent(inout) :: U
+real(dp),dimension(3,3) :: candidate_U
 real(dp), dimension(3,Natoms) :: coords2
+
+old_min_rmsd = min_rmsd
 
 !Read off the states in this subcell
 open(filechannel1,file=trim(subcell)//".dat")
@@ -571,11 +504,16 @@ do
 	!Once we've had enough, exit
         read(filechannel1,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
 	if (iostate /= 0) exit
-        read(filechannel1,FMT=FMT3) ((candidate_gradients(i,j,population),i=1,3),j=1,Natoms)
 
-        !Get the RMSD
-        call rmsd_dp(Natoms,coords2,coords,1,U(:,:,population),x_center,y_center,&
-                  rmsds(population))!,.false.,g)
+        call rmsd_dp(Natoms,coords2,coords,1,candidate_U,x_center,y_center,min_rmsd)!,.false.,g)
+
+	if (min_rmsd < old_min_rmsd) then
+		old_min_rmsd = min_rmsd
+        	read(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+		U = candidate_U
+	else
+        	read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+	end if
 
         !Increment the position
         population = population + 1

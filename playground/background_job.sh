@@ -30,7 +30,7 @@ gridPATH=$currentPATH/$newGRID
 newSOURCE=SOURCE
 newPATH=$(pwd)/$newGRID/$newSOURCE
 
-if [ "0" -eq "0" ]
+if [ "1" -eq "0" ]
 then
 
 rm -r $currentPATH/$newGRID
@@ -97,7 +97,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/testtrajRMSD_flag = \\.true\\./testtrajRMSD_flag = .false./
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.00010d0/
-     s/reject_flag = \\.true\\./reject_flag = .false./
+     s/reject_flag = \\.false\\./reject_flag = .true./
      s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/

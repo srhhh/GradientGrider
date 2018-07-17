@@ -66,6 +66,7 @@ seed = rand(seed)
 call system_clock(count_rate=cr)
 system_clock_rate = 1.0/real(cr)
 
+!We now do some formatting for the names of the files
 write(Nthreshold_text,FMT="(F6.5)") threshold_rmsd
 if (reject_flag) then
 	reject_text = "reject"
@@ -96,7 +97,7 @@ do m = 1, counter3_max
 counter3(m) = 0
 end do
 
-	!The grids will be named 001 with increments of 1
+	!The grids will be named 001 (I0.3) with increments of 1
 	write(variable_length_text,FMT="(I5)") Ngrid_text_length
         write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
         gridpath1 = gridpath0//Ngrid_text//"/"
@@ -106,8 +107,8 @@ end do
         call system("mkdir "//gridpath1)
         call system("mkdir "//gridpath2)
 
-print *, gridpath1
-print *, gridpath2
+	print *, gridpath1
+	print *, gridpath2
 
         open(progresschannel,file=gridpath1//progressfile)
         write(progresschannel,*) ""
@@ -119,37 +120,39 @@ print *, gridpath2
 	!We start off with zero trajectories
         Ntraj = 0
         do n = 1, Ntraj_max
-
-!Get some random initial conditions for the trajectory
-!The orientation of the H2
-do
-random_num1 = rand() - 0.5d0
-random_num2 = rand() - 0.5d0
-random_num3 = rand() - 0.5d0
-random_r2 = random_num1**2 + random_num2**2
-random_r3 = random_r2 + random_num3**2
-if (random_r3 > 0.25d0) cycle
-random_r2 = sqrt(random_r2)
-initial_bond_angle1 = acos(random_num1 / random_r2)
-initial_bond_angle2 = atan2(random_r2,random_num3)
-exit
-end do
-!The energy of the H2
-do
-random_num1 = rand()
-random_num2 = rand()
-initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
-if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
-end do
-!The ratio of vib:rot energy of H2
-random_num2 = 1.0d0
-initial_vibrational_energy = random_num2*initial_energy_H2
-initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
-initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
-random_num1 = rand()
-initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
-initial_rotation_angle = random_num1*pi2
-
+	
+		!Get some random initial conditions for the trajectory
+		!The orientation of the H2
+		do
+			!First, pick a random point in the unit cube centered at the origin
+			random_num1 = rand() - 0.5d0
+			random_num2 = rand() - 0.5d0
+			random_num3 = rand() - 0.5d0
+			random_r2 = random_num1**2 + random_num2**2
+			random_r3 = random_r2 + random_num3**2
+			if (random_r3 > 0.25d0) cycle
+			random_r2 = sqrt(random_r2)
+			initial_bond_angle1 = acos(random_num1 / random_r2)
+			initial_bond_angle2 = atan2(random_r2,random_num3)
+			exit
+		end do
+		!The energy of the H2
+		do
+			random_num1 = rand()
+			random_num2 = rand()
+			initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
+			if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
+		end do
+		!The ratio of vib:rot energy of H2
+			random_num2 = 1.0d0
+			initial_vibrational_energy = random_num2*initial_energy_H2
+			initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
+			initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
+			random_num1 = rand()
+			initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
+			initial_rotation_angle = random_num1*pi2
+	
+		!Record progress in the progress file
                 open(progresschannel,file=gridpath1//progressfile,position="append")
                 write(progresschannel,*) ""
                 write(progresschannel,*) ""
@@ -162,10 +165,14 @@ initial_rotation_angle = random_num1*pi2
 
 
 		!This big if-statement is if we want to monitor our grid creation
+		!We space it out so that there will be ten graphs made over the Ntraj_max trajectories
                 if (modulo(n,max(Ntraj_max/10,1)) == 0) then
 
+			!We need to point to the directory that we are working on (increments with Ngrid)
 			write(variable_length_text,FMT="(I5)") Ngrid_text_length
 			write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+
+			!To 
 			call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,Ntraj,8,9,10,&
                                                   "InitialScatteringAngleDistribution_"&
 			                          //Ngrid_text//reject_text//Nthreshold_text)
