@@ -268,7 +268,7 @@ if (key2 < overcrowd2) then
                                           var1_round,var2_round,counter2,counter2_max,path_to_grid,&
                                           coords,min_rmsd,gradient,U,number_of_frames)
 
-                        if (min_rms < old_min_rmsd) then
+                        if (min_rmsd < old_min_rmsd) then
                                 stop_flag = .true.
                         end if
 

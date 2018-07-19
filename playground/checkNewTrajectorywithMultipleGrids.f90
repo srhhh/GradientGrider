@@ -146,7 +146,7 @@ end if
 				number_of_frames,order,neighbor_check)
 
                 !Update the gradient
-		if ((min_rmsd .le. threshold_RMSD).or.(reject_flag)) then
+		if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                 	call Acceleration(vals,coords,gradient,&
 				AccelerationConstant0,AccelerationConstant1,AccelerationConstant2)
 		else

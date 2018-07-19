@@ -21,8 +21,8 @@ newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids_new
 scaling1_0=004
 scaling2_0=004
 overcrowd0=00050
-Ntraj_max=00500
-Ngrid_max=4
+Ntraj_max=01000
+Ngrid_max=2
 
 newGRID=HH2_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
 currentPATH=$(pwd)
@@ -30,7 +30,7 @@ gridPATH=$currentPATH/$newGRID
 newSOURCE=SOURCE
 newPATH=$(pwd)/$newGRID/$newSOURCE
 
-if [ "1" -eq "0" ]
+if [ "0" -eq "0" ]
 then
 
 rm -r $currentPATH/$newGRID
