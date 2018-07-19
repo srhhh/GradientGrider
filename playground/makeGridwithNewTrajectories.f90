@@ -206,7 +206,7 @@ do Ngrid = 1, Ngrid_max
 				exit
 			end do
 
-\			!The energy of the H2 should be some random value
+ 			!The energy of the H2 should be some random value
 			!that follows the boltzmann distribution at this temperature
 			do
 				!This picks a random value between zero and some very high upper limit
