@@ -12,7 +12,7 @@ implicit none
 
 !CAP TO NUMBER OF GRIDS ANALYZED
 integer, intent(in) :: Ngrid_cap
-integer :: Ngrid_total, Ngrid
+integer :: Ngrid_total
 
 !THE COUNTERS TO BE PLOTTED
 integer,dimension(counter0_max) :: counter0

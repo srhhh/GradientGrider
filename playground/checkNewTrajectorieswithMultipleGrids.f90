@@ -2,7 +2,6 @@ program checkNewTrajectorieswithMultipleGrids
 use ANALYSIS
 use PARAMETERS
 use interactMultipleGrids
-use mapCellData
 use runTrajectory
 use analyzeHeatMapswithMultipleGrids
 use analyzeRMSDThresholdwithMultipleGrids
