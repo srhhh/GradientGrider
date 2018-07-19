@@ -98,7 +98,7 @@ do Ngrid = 1, Ngrid_total
         write(gnuplotchannel,*) 'set yrange [0:3.14159]'
 	write(variable_length_text,FMT="(I5)") scattering_angle_column
         write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//&
-                                trim(adjustl(Ntraj_text))//
+                                trim(adjustl(Ntraj_text))//&
                                 '.dat" u (rounded($'//trim(adjustl(variable_length_text))//&
 				')):(1.0) smooth frequency with boxes'
         close(gnuplotchannel)
