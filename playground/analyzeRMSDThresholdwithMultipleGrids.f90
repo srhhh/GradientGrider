@@ -11,7 +11,6 @@ implicit none
 
 !TOTAL NUMBER OF GRIDS ANALYZED
 integer, intent(in) :: Ngrid_total
-integer :: Ngrid
 
 !NUMBER OF TRAJECTORIES CHECKED
 integer :: n_testtraj
