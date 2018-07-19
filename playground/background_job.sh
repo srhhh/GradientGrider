@@ -14,8 +14,8 @@ newMAKEGRID=make_makeGridwithNewTrajectories2_new
 oldANALYSIS=ANALYSIS
 newANALYSIS=ANALYSIS_new
 
-oldMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids
-newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids_new
+oldMAKEANALYSIS="make_checkNewTrajectorieswithMultipleGrids2"
+newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids2_new
 
 ##newGRID=0016_00050_0PATH
 scaling1_0=004
@@ -81,8 +81,6 @@ cd $newGRID/
 make -f $newPATH/$newMAKEGRID
 make clean -f $newPATH/$newMAKEGRID
 ./a.out
-
-exit
 
 make -f $newPATH/$newMAKEANALYSIS
 make clean -f $newPATH/$newMAKEANALYSIS

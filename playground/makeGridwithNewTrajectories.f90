@@ -147,7 +147,7 @@ do Ngrid = 1, Ngrid_max
 
 		!This big if-statement is if we want to monitor our grid creation
 		!We space it out so that there will be ten graphs made over the Ntraj_max trajectories
-                if (modulo(n,max(Ntraj_max/Ngrid_check,1)) == 0) then
+                if (modulo(n,Ngrid_check) == 0) then
 
 			!Remark: ScatteringAngles2 checks the trajectoriesfile INSIDE the Ngrid/ subdirectory
 			call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,&
