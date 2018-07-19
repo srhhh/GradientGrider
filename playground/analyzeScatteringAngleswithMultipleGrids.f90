@@ -111,7 +111,7 @@ end do
 end subroutine getScatteringAngles1
 
 
-subroutine getScatteringAngles2(DATfilename,scattering_angle_column,theta_column,phi_column,JPGfilename)
+subroutine getScatteringAngles2(DATfilename,Ntraj,scattering_angle_column,theta_column,phi_column,JPGfilename)
 use PARAMETERS
 use ANALYSIS
 implicit none
@@ -120,7 +120,7 @@ implicit none
 character(*), intent(in) :: DATfilename
 
 !COLUMN OF DAT FILE WITH SCATTERING ANGLES
-integer, intent(in) :: scattering_angle_column,theta_column,phi_column
+integer, intent(in) :: Ntraj,scattering_angle_column,theta_column,phi_column
 
 !FORMAT OF JPG FILES TO BE MADE
 character(*), intent(in) :: JPGfilename
@@ -146,8 +146,8 @@ write(gnuplotchannel,*) 'set tmargin 0'
 write(gnuplotchannel,*) 'set bmargin 0'
 write(gnuplotchannel,*) 'set lmargin 1'
 write(gnuplotchannel,*) 'set rmargin 1'
-write(boxwidth_text,FMT="(F6.5)") 3.14159 * 10 / real(Ntesttraj)
-write(Ntraj_text,FMT="(I6)") Ntesttraj
+write(boxwidth_text,FMT="(F6.5)") 3.14159 * 10 / max(real(Ntraj),50.0)
+write(Ntraj_text,FMT="(I6)") Ntraj
 write(gnuplotchannel,*) 'set multiplot layout 3,1 margins 0.15,0.95,.1,.9 spacing 0,0 title '//&
                         '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' trajectories of '//gridpath0//'"'
 write(Ntraj_text,FMT="(I6)") Ntesttraj * 10 / 10

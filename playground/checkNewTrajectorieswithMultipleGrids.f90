@@ -77,7 +77,7 @@ seed = rand(seed)
 if (heatmap_flag) call analyzeHeatMaps1(Ngrid_total)
 
 !This is for scattering angle plots (from the grid)
-if (trueSA_flag) call getScatteringAngles1(Ngrid_total,"f2_trajectories.dat",8,"trueSA.jpg")
+if (trueSA_flag) call getScatteringAngles1(Ngrid_total,trajectoriesfile,8,"trueSA.jpg")
 
 
 
@@ -241,8 +241,8 @@ if (percentthreshold_flag) call getRMSDThresholds1(Ngrid_total,1,&
 print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""
 
-if (testtrajSA_flag) call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//&
-                                               trajectoriesfile,3,4,5,"TestScatteringAngleDistribution_"//&
+if (testtrajSA_flag) call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//trajectoriesfile,&
+                                               Ntesttraj,3,4,5,"TestScatteringAngleDistribution_"//&
                                                Ngrid_text//reject_text//Ntraj_text)
 print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""

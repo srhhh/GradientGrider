@@ -79,7 +79,8 @@ subroutine checkTrajectory(initial_bond_distance,initial_rotational_speed,initia
                    	   initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2)
 
-	velocityH1 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	!velocityH1 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH1 = velocities(:,1)
 
         !Accelerate the velcocities for a half step (verlet)
 
@@ -173,7 +174,8 @@ write(filechannel2,FMT="(2(1x,F12.9))") U, KE
         end do
 close(filechannel2)
 
-	velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	!velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH2 = velocities(:,1)
 
 end subroutine checkTrajectory
 

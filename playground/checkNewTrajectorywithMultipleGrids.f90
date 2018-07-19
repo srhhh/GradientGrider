@@ -80,7 +80,8 @@ subroutine checkMultipleTrajectories(initial_bond_distance,initial_rotational_sp
                    	   initial_bond_distance,initial_rotational_speed,initial_rotation_angle,&
 			   initial_bond_angle1,initial_bond_angle2)
 
-        velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+        !velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH = velocities(:,1)
 
         open(filechannel1,file=path_to_directory//trajectoryfile)
         write(filechannel1,'(I1)') 3
@@ -124,7 +125,6 @@ if (modulo(step,50) == 1) then
         close(filechannel1)
                 if (modulo(step,500) == 1) then      
 
-
  			if ((vals(1)>max_var1) .or.&
  			    (vals(2)>max_var2)) then
  				exit
@@ -139,6 +139,7 @@ end if
 		call getVar3(coords,Natoms,vals(1))
 		call getVar4(coords,Natoms,vals(2))
  
+		min_rmsd = .200100d0
 		!Check for similar frames
 		call checkState(vals,coords,approx_gradient,min_rmsd,&
 				force_Neighbors,path_to_directory,Ngrid_total,filechannels,&
@@ -157,7 +158,8 @@ end if
 
         end do
 
-        velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+        !velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH2 = velocities(:,1)
 
 end subroutine checkMultipleTrajectories
 
