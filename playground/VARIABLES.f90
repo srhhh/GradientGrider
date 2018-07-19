@@ -1,5 +1,5 @@
 module VARIABLES
-use PHYSICS
+use DOUBLE
 implicit none
 
 !This module defines the variables we're using to 'grid' the system

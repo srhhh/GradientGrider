@@ -1,10 +1,9 @@
 program checkNewTrajectorieswithMultipleGrids
 use ANALYSIS
 use PARAMETERS
-use checkMultipleGrids
+use interactMultipleGrids
 use mapCellData
-use checkNewTrajectorywithMultipleGrids
-use addNewTrajectorytoGrid
+use runTrajectory
 use analyzeHeatMapswithMultipleGrids
 use analyzeRMSDThresholdwithMultipleGrids
 use analyzeScatteringAngleswithMultipleGrids
@@ -23,18 +22,15 @@ character(6) :: reject_text
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
+real(dp),dimension(Nbonds,5) :: INITIAL_BOND_DATA
 real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
 real(dp) :: speedH, speedH2, scattering_angle
 real(dp),dimension(3) :: velocityH,velocityH2
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
 
 !Variables
-integer :: Ngrid,iostate,Ngrid_total
+integer :: Ngrid,iostate
 integer,allocatable :: filechannels(:)
-integer,dimension(counter0_max) :: counter0
-real(dp),allocatable :: percent_threshold_rmsd(:)
-real(dp) :: min_rmsd
-integer :: frames, step, total_threshold_rmsd
 
 !Timing
 real :: r1, r2, system_clock_rate
@@ -74,26 +70,28 @@ print *, ""
 seed = rand(seed)
 
 !This is for top-level heat map generation (from the grid)
-if (heatmap_flag) call analyzeHeatMaps1(Ngrid_total)
+if (heatmap_flag) call analyzeHeatMaps1()
 
 !This is for scattering angle plots (from the grid)
-if (trueSA_flag) call getScatteringAngles1(Ngrid_total,trajectoriesfile,8,"trueSA.jpg")
+if (trueSA_flag) call getScatteringAngles1(trajectoriesfile,8,"trueSA.jpg")
 
 
 
 
 
 !Some intitialization stuff
+write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
 if (reject_flag) then
 	reject_text = "reject"
 else
 	reject_text = "accept"
 end if
 
-write(variable_length_text,FMT="(I5)") Ngrid_text_length
+write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-write(Ntraj_text,FMT="(F6.5)") threshold_rmsd
-call system("rm "//gridpath0//Ngrid_text//reject_text//Ntraj_text//trajectoriesfile)
+
+!If another folder exists with the same name, remove it
+call system("rm "//gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile)
 
 
 !This is for checking trajectories against the grid
@@ -106,7 +104,7 @@ if (testtraj_flag) then
 initial_n_testtraj = 1
 if (useolddata_flag) then
 print *, "     Deciding to use old data..."
-write(variable_length_text,FMT="(I5)") Ngrid_text_length
+write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 call system("ls "//gridpath0//Ngrid_text//"/ | grep -E '^[0123456789]{6}.dat' > "//gridpath0//trajectories)
 open(trajectorieschannel,file=gridpath0//trajectories,action="read")
@@ -125,43 +123,45 @@ end if
 call system_clock(c1,count_rate=cr)
 system_clock_rate = 1.0/real(cr)
 
-
-write(Nthreshold_text,FMT="(F6.5)") threshold_rmsd
 !Now here we actually make these new trajectories
 do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!This is just the creation of the random initial trajectory
-	!The orientation of the H2
-	do
-	random_num1 = rand() - 0.5d0
-	random_num2 = rand() - 0.5d0
-	random_num3 = rand() - 0.5d0
-	random_r2 = random_num1**2 + random_num2**2
-	random_r3 = random_r2 + random_num3**2
-	if (random_r3 > 0.25d0) cycle
-	random_r2 = sqrt(random_r2)
-	initial_bond_angle1 = acos(random_num1 / random_r2)
-	initial_bond_angle2 = atan2(random_r2,random_num3)
-	exit
-	end do
-	!The energy of the H2
-        do
-        random_num1 = rand()
-        random_num2 = rand()
-        initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
-        if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
-        end do
-        random_num2 = 1.0d0
-        initial_vibrational_energy = random_num2*initial_energy_H2
-        initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
-        initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
-        random_num1 = rand()
-        initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
-        initial_rotation_angle = random_num1*pi2
+	do n = 1, Nbonds
+		!The orientation of the H2
+		do
+			random_num1 = rand() - 0.5d0
+			random_num2 = rand() - 0.5d0
+			random_num3 = rand() - 0.5d0
+			random_r2 = random_num1**2 + random_num2**2
+			random_r3 = random_r2 + random_num3**2
+			if (random_r3 > 0.25d0) cycle
+			random_r2 = sqrt(random_r2)
+			initial_bond_angle1 = acos(random_num1 / random_r2)
+			initial_bond_angle2 = atan2(random_r2,random_num3)
+			exit
+		end do
+		!The energy of the H2
+	        do
+		        random_num1 = rand()
+		        random_num2 = rand()
+		        initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
+		        if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
+	        end do
+	        random_num2 = 1.0d0
+	        initial_vibrational_energy = random_num2*initial_energy_H2
+	        initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
+	        initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
+	        random_num1 = rand()
+	        initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
+	        initial_rotation_angle = random_num1*pi2
+
+		INITIAL_BOND_DATA(n,:) = (/ initial_bond_distance,initial_rotational_speed,&
+                           initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)
 
 	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
 	!The trajectory number will uniquely identify one trajectory from another
-	write(Ntraj_text,FMT="(I0.6)") n_testtraj
+	write(Ntraj_text,FMT=FMT6_pos_int) n_testtraj
 	
 	call system_clock(c1)
 	call CPU_time(r1)
@@ -169,7 +169,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!The grid number will uniquely identify one trajectory
 	!Open all these files under filechannels
-	write(variable_length_text,FMT="(I5)") Ngrid_text_length
+	write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 	do Ngrid = 1, Ngrid_total
 		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 		filechannels(Ngrid) = 1000 + 69 * Ngrid
@@ -179,10 +179,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!Then write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkMultipleGrids uses filechannel1 to open files in the grid
-	call checkMultipleTrajectories(initial_bond_distance,&
-		    initial_rotational_speed,initial_rotation_angle,&
-                    initial_bond_angle1,initial_bond_angle2,.false.,threshold_rmsd,reject_flag,&
-                    Ngrid_total,filechannels(1:Ngrid_max),gridpath0,velocityH,velocityH2)
+	call checkMultipleTrajectories(INITIAL_BOND_DATA,filechannels(1:Ngrid_max),velocityH,velocityH2)
 
 	!Also let's see how long a single trajectory takes
 	call system_clock(c2)
@@ -232,11 +229,10 @@ print *, ""
 end if
 
 
-write(variable_length_text,FMT="(I5)") Ngrid_text_length
+write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-write(Ntraj_text,FMT="(F6.5)") threshold_rmsd
-if (percentthreshold_flag) call getRMSDThresholds1(Ngrid_total,1,&
-                                                   "PercentRMSDThreshold_"//&
+write(Ntraj_text,FMT=FMT6_pos_real0) threshold_rmsd
+if (percentthreshold_flag) call getRMSDThresholds1(1,"PercentRMSDThreshold_"//&
                                                    Ngrid_text//reject_text//Ntraj_text)
 print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""

@@ -1,27 +1,29 @@
 module PARAMETERS
-implicit none
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!PATHS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                      PATHS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !Path to the trajectories
 !character(28),parameter :: path1 = "/home/ruisun/proj/ruisun/B0/"
- character(25),parameter :: path1 = "/home/kazuumi/Desktop/B0/"
+ character(25),parameter :: path_to_existing_frames = "/home/kazuumi/Desktop/B0/"
 !Path to the f90s and bash scripts
 !character(44),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
 !character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
- character(48),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/playground/"
-!Path to the grid
-!character(39),parameter :: path3 = "/home/kazuumi/lus/B0/branch1/grid_test/"
- character(51),parameter :: path3 = "/home/kazuumi/Desktop/GradientGrider/f2_grid_test5/"
-!Path for the following files (see below)
-!character(29),parameter :: path4 = "/home/kazuumi/lus/B0/branch1/"
- character(45),parameter :: path4 = "/home/kazuumi/Desktop/GradientGrider/f2_dump/"
-!Path for special constructMultipleTrajectories program
-character(len(path2)),parameter :: path5 = path2
+ character(48),parameter :: path_to_source = "/home/kazuumi/Desktop/GradientGrider/playground/"
 
 
 
-!FILES
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                      FILENAMES
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !File that will keep the trajectory folder names
 character(16),parameter :: trajectories = "trajectories.txt"
 !File that writes the progress of the program
@@ -36,6 +38,8 @@ character(16),parameter :: trajectoriesfile = "trajectories.dat"
 character(14),parameter :: parametersfile = "PARAMETERS.f90"
 !File for any gnuplot scripting
 character(11),parameter :: gnuplotfile = "gnuplotfile"
+!File for storing trajectory data from across many grids
+character(23),parameter :: cumulativefile = "cumulative_trajectories"
 
 !Files where, when done, we save the counters with the numbers of frames
 !inside each subcell, as well as other information
@@ -48,7 +52,11 @@ character(8),parameter :: temporaryfile1 = "tmp1.txt"
 character(8),parameter :: temporaryfile2 = "tmp2.txt"
 character(8),parameter :: temporaryfile3 = "tmp3.txt"
 
-!FILE CHANNELS
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     FILE CHANNELS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !Channel for the progressfile
 integer,parameter :: progresschannel = 70
 integer,parameter :: trajectorieschannel = 71
@@ -59,24 +67,38 @@ integer,parameter :: filechannel3 = 75
 integer,parameter :: gnuplotchannel = 77
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                      FORMATTING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-!If we need to create a grid from the trajectories in path1, then set this true
-logical :: start_from_scratch = .true.
-
-
-
-!FORMATS
-character(14),parameter :: FMT1 = "(2(1x,F14.10))"           !For three variables
-character(15),parameter :: FMT2 = "(36(1x,F14.10))"          !For six atoms, full state
-character(15),parameter :: FMT3 = "(18(1x,F14.10))"          !For six atoms, coords
+character(14),parameter :: FMT1 = "(2(1x,F14.10))"          !For two variables
+character(15),parameter :: FMT2 = "(36(1x,F14.10))"         !For six atoms, coords and gradient
+character(15),parameter :: FMT3 = "(18(1x,F14.10))"         !For six atoms, coords or gradient
 character(4),parameter :: FMT4 = "(I4)"                     !For subcell names
 character(4),parameter :: FMT5 = "(I9)"                     !For number of substates
 character(7),parameter :: FMT6 = "(F12.8)"                  !For RMSD
-character(19),parameter :: FMT7 = "(30x,18(1x,F14.10))"		    !For skipping the variables
+character(19),parameter :: FMT7 = "(30x,18(1x,F14.10))"     !For skipping the variables
 
+character(4),parameter :: FMT5_variable = "(I5)"
+character(4),parameter :: FMT8_counter = "(I8)"
+character(6),parameter :: FMT6_pos_real0 = "(F6.5)"
+character(6),parameter :: FMT6_pos_real1 = "(F6.4)"
+character(6),parameter :: FMT6_neg_real1 = "(F6.3)"
+character(6),parameter :: FMT6_pos_int = "(I0.6)"
 
-!VARIABLES
+integer,parameter :: trajectory_text_length = 5
+integer,parameter :: scaling1_text_length = 3
+integer,parameter :: scaling2_text_length = 3
+integer,parameter :: overcrowd0_text_length = 5
+integer,parameter :: Ngrid_text_length = 3
+integer,parameter :: gridpath_length = 68
+character(gridpath_length),parameter :: gridpath0 = ""
+integer, parameter :: trajectories_text_length = gridpath_length +&
+                                                 4 + len(trajectoriesfile) + 1
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                      VARIABLES
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !The number of atoms in the system
 integer,parameter :: Natoms = 3
@@ -85,6 +107,16 @@ integer,parameter :: Ncoords = Natoms*3
 !The number of variables in use
 integer,parameter :: Nvar = 2
 integer,parameter :: Ncoordsvals = Nvar+Ncoords
+
+
+
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     GRID PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !The spacing is the spacing of the parent-level grid
 !Because the variables may be unbound, we define the
@@ -162,6 +194,10 @@ real,dimension(2*Nvar),parameter :: MP2=(/multiplier1_2,multiplier2_2,&
 real,dimension(2*Nvar),parameter :: MP3=(/multiplier1_3,multiplier2_3,&
 					  divisor1_3,divisor2_3/)
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                    MEMORY OVERHEAD COST
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !We need to estimate how many cells will be overcrowded in counter0
 !Must not be greater than 99999*resolution
 integer,parameter :: header1_max = 90000
@@ -182,39 +218,79 @@ integer,parameter :: counter3_max = header3_max*resolution_2
 integer,parameter :: population_max = 999
 integer,parameter :: key_start = population_max + 1
 
+!This takes much more time but you can force the checkState subroutine
+!to also check the rmsd of frames in adjacent cells
+!Not heavily tested in the newer updates so is deprecated (for now)
+logical,parameter :: force_Neighbors = .false.
 
-!!Multi-Grid Parameters
-!integer,parameter :: Ntraj_max = 1001
-!real,parameter :: trajectory_CPU_time_max = 60.0
-!integer,parameter :: Ngrid_max = 1
-!integer,parameter :: trajectory_text_length = 4
-!integer,parameter :: resolution_text_length = 4
-!integer,parameter :: overcrowd0_text_length = 5
-!integer,parameter :: Ngrid_text_length = 3
-!integer,parameter :: gridpath_length = trajectory_text_length +&
-!                                       resolution_text_length +&
-!                                       overcrowd0_text_length + len(path5) + 3
-!character(23),parameter :: cumulativefile = "cumulative_trajectories"
-!integer, parameter :: trajectories_text_length = gridpath_length +&
-!                                                 4 + len(trajectoriesfile) + 1
-!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                   MULTI-GRID PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!The number of trajectories we add to a grid
 integer,parameter :: Ntraj_max = 1000
+!The maximum amount of time (seconds) we are willing to wait for a single trajectory to finish
 real,parameter :: trajectory_CPU_time_max = 60.0
+!The number of grids we will make
 integer,parameter :: Ngrid_max = 1
-integer,parameter :: trajectory_text_length = 5
-integer,parameter :: scaling1_text_length = 3
-integer,parameter :: scaling2_text_length = 3
-integer,parameter :: overcrowd0_text_length = 5
-integer,parameter :: Ngrid_text_length = 3
-integer,parameter :: gridpath_length = 68
-character(gridpath_length),parameter :: gridpath0 = ""
-!integer,parameter :: !gridpath_length != trajectory_text_length + 1 +&
-!                                       scaling1_text_length + 1 +&
-!                                       scaling2_text_length + 1 +&
-!                                       overcrowd0_text_length + 1 + len(path5)
-character(23),parameter :: cumulativefile = "cumulative_trajectories"
-integer, parameter :: trajectories_text_length = gridpath_length +&
-                                                 4 + len(trajectoriesfile) + 1
+!The number of trajectories to make before checking the grid-making progress
+integer,parameter :: Ngrid_check = max(Ntraj_max/10,1)
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     VARIABLES
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                      COUNTERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+integer :: header1, header2, header3
+integer, dimension(counter0_max) :: counter0
+integer, dimension(counter1_max) :: counter1
+integer, dimension(counter2_max) :: counter2
+integer, dimension(counter3_max) :: counter3
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                  GRID FORMATTING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+integer :: Ngrid
+character(gridpath_length+Ngrid_text_length+1) :: gridpath1
+character(gridpath_length+Ngrid_text_length+1+5) :: gridpath2
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                    PLOT FORMATTING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+character(6) :: checkstateTrajectory
+character(6) :: angle1descriptor,angle2descriptor,bond1descriptor,scatteringdescriptor
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                    TRAJECTORY
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+integer :: Ntraj,Nfile,steps,Norder1
+logical :: header_max_flag
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

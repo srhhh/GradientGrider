@@ -10,6 +10,8 @@ implicit none
 !If this number is larger than the number of grids in the folder,
 !then it will default to the number of grids in the folder
 integer,parameter :: Ngrid_cap = 1
+!The number of grids we will end up using (never more than Ngrid_cap)
+integer :: Ngrid_total
 
 !Set .true. to generate top-level heat maps for each grid
 logical,parameter :: heatmap_flag = .true.
@@ -56,13 +58,6 @@ logical,parameter :: testtraj_flag = .true.
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid
    logical,parameter :: testtrajSA_flag = .true.
-
-!Set .true. to generate trajectories with gradient approximations
-!produced from the grid (no MD at all)
-logical,parameter :: approxtraj_flag = .false.
-
-   !Set how many trajectories will be generated for the test
-   integer,parameter :: Napproxtraj = 100
 
 end module ANALYSIS
 
