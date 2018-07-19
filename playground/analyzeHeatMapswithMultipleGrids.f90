@@ -14,9 +14,6 @@ implicit none
 integer, intent(in) :: Ngrid_cap
 integer :: Ngrid_total
 
-!THE COUNTERS TO BE PLOTTED
-integer,dimension(counter0_max) :: counter0
-
 !FORMATTING OF JPG FILES
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
