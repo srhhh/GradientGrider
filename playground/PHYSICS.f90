@@ -1,9 +1,16 @@
 module PHYSICS
-implicit none
+use DOUBLE
 
-integer,parameter :: dp = kind(1.0d0)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!PHYSICAL CONSTANTS (all in SI)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                 PHYSICAL CONSTANTS (all in SI)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 real(dp),parameter :: Na = 6.02214d23
 real(dp),parameter :: kb = 1.38065d-23
 real(dp),parameter :: Da = 1.66054d-27
@@ -13,18 +20,27 @@ real(dp),parameter :: pi2 = pi*2.0d0
 real(dp),parameter :: eV = 1.60218d-19 
 real(dp),parameter :: hbar = 1.05457d-34
 
-!REDUCED UNITS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     REDUCED UNITS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 real(dp),parameter :: RU_length = 1.0d-10
 real(dp),parameter :: RU_mass = Da
 real(dp),parameter :: RU_time = 1.0d-15
 real(dp),parameter :: RU_force = RU_mass*RU_length*RU_time**(-2)
 real(dp),parameter :: RU_energy = RU_mass*(RU_length/RU_time)**2
 
-!TIME PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                    TIME PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 real(dp),parameter :: dt = (1.0d-17)/RU_time
 integer,parameter :: Nsteps = 30000
 
-!ATOMIC PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                   ATOMIC PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 real(dp),parameter :: HOr0_hydrogen = (1.0d-10)*0.7412d0/RU_length
                                         ! originally in A
 real(dp),parameter :: HOke_hydrogen =  (1.0d10*1.0d-8)*5.756d0/(RU_force/RU_length)
@@ -38,7 +54,25 @@ real(dp),parameter :: Morsealpha_hydrogen = -10.6d0
 real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass
                                         !originally g/mol
 
-!TEMPERATURE PARAMETERS
+        !Calculation Savers
+        real(dp), parameter :: PotentialConstant0 =&
+                0.5d0*HOke_hydrogen*HOr0_hydrogen**2
+        real(dp), parameter :: PotentialConstant1 =&
+                -HOke_hydrogen*HOr0_hydrogen
+        real(dp), parameter :: PotentialConstant2 =&
+                0.5d0*HOke_hydrogen
+        real(dp), parameter :: AccelerationConstant0 =&
+                HOke_hydrogen*(dt/mass_hydrogen)
+        real(dp), parameter :: AccelerationConstant1 =&
+                -HOke_hydrogen*(dt/mass_hydrogen)*HOr0_hydrogen
+        real(dp), parameter :: AccelerationConstant2 =&
+                2*MorseDe_hydrogen*Morsealpha_hydrogen*dt/mass_hydrogen
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                 TEMPERATURE PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 real(dp), parameter :: temperature = 200.0d0
 					!Kelvin
 real(dp), parameter :: upsilon_max = 5.0d0
@@ -48,13 +82,52 @@ real(dp), parameter :: upsilon_factor2 = pi2*(hbar/(RU_energy*RU_time))*frequenc
 real(dp), parameter :: temperature_factor = exp(0.5d0*upsilon_factor1)
 real(dp), parameter :: temperature_scaling = (1.0d0-temperature_factor)*upsilon_max/temperature_factor
 
-!COLLISION PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                  COLLISION PARAMETERS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 real(dp),parameter :: initial_translational_KE = (1.0d0)*eV/RU_energy
 !real(dp),parameter :: collision_distance = Morser0_hydrogen*5.0
  real(dp),parameter :: collision_distance = 9.5d0
 real(dp),parameter :: collision_skew = HOr0_hydrogen*0.0d0
 
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!			BONDAGE
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+integer,parameter :: Nbonds = 1
+integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, 3 /),&
+                                                                                  (/ Nbonds, 2 /))
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     VARIABLES
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                RANDOM COLLISION SETTINGS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+real(dp),dimension(Nbonds,5) :: INITIAL_BOND_DATA
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     SUBROUTINES
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
 contains
+
+
+
 subroutine decompose_two_velocities(coords,velocities,&
            velocity_translation,velocity_vibration,velocity_rotation)
 
@@ -142,6 +215,181 @@ AcrossB = (/ A(2)*B(3) - A(3)*B(2), &
              A(1)*B(2) - A(2)*B(1)  /)
 
 end subroutine cross
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                     ENERGY, FORCE, ACCELERATION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+real(dp) function KineticEnergy(velocity)
+        implicit none
+        real(dp), dimension(3), intent(in) :: velocity
+        real(dp) :: speed_squared
+
+        !Compute the speed, then compute the kinetic energy
+        speed_squared = velocity(1)**2 + velocity(2)**2 + velocity(3)**2
+        KineticEnergy = 0.5d0*mass_hydrogen*speed_squared
+
+end function KineticEnergy
+
+
+real(dp) function MorsePotential(coords1,coords2)
+        implicit none
+        integer :: i
+        real(dp), dimension(3), intent(in) :: coords1,coords2
+        real(dp), dimension(3) :: coords_distance
+        real(dp) :: distance_squared,distance,stretch_factor
+
+        !Calculate the distance
+        coords_distance = coords2 - coords1
+        distance_squared = coords_distance(1)**2 + coords_distance(2)**2 +&
+                           coords_distance(3)**2
+
+        distance = sqrt(distance_squared)
+        stretch_factor = exp(Morsealpha_hydrogen*(distance-Morser0_hydrogen))
+        MorsePotential = MorseDe_hydrogen*stretch_factor*(stretch_factor-2.0d0)
+
+end function MorsePotential
+
+
+real(dp) function HOPotential(coords1,coords2)
+        implicit none
+        integer :: i
+        real(dp), dimension(3), intent(in) :: coords1,coords2
+        real(dp), dimension(3) :: coords_distance
+        real(dp) :: distance_squared,distance
+
+        !Calculate the distance
+        coords_distance = coords2 - coords1
+        distance_squared = coords_distance(1)**2 + coords_distance(2)**2 +&
+                           coords_distance(3)**2
+
+        distance = sqrt(distance_squared)
+        HOpotential = PotentialConstant2*distance_squared + &
+                      PotentialConstant1*distance + &
+                      PotentialConstant0
+
+end function HOPotential
+
+
+
+subroutine InitialSetup3(coords,velocities)
+	use PARAMETERS
+        implicit none
+        real(dp), dimension(3,Natoms), intent(out) :: velocities,coords
+        real(dp), dimension(3) :: bond_vector,rotation_vector,rotation0_vector,rotation90_vector
+        real(dp) :: initial_bond_distance,initial_rotational_speed,initial_rotation_angle
+        real(dp) :: initial_bond_angle1,initial_bond_angle2
+        integer :: i, atom1, atom2
+
+        do i = 1, Nbonds
+                initial_bond_distance = INITIAL_BOND_DATA(i,1)
+                initial_rotational_speed = INITIAL_BOND_DATA(i,2)
+                initial_rotation_angle = INITIAL_BOND_DATA(i,3)
+                initial_bond_angle1 = INITIAL_BOND_DATA(i,4)
+                initial_bond_angle2 = INITIAL_BOND_DATA(i,5)
+
+                atom1 = BONDING_DATA(i,1)
+                atom2 = BONDING_DATA(i,2)
+
+                !Figure out which direction the bond is going
+                bond_vector = (/ sin(initial_bond_angle1)*cos(initial_bond_angle2),&
+                                 sin(initial_bond_angle1)*sin(initial_bond_angle2),&
+                                 cos(initial_bond_angle1) /)
+
+                !And two orthogonal vectors that are both perpendicular to the bond
+                rotation0_vector =  (/ bond_vector(2), -bond_vector(1), 0.0d0 /) / &
+                                       sqrt(bond_vector(2)**2 + bond_vector(1)**2)
+                call cross(bond_vector,rotation0_vector,rotation90_vector)
+
+                !Calculate the coordinates of the atoms via the distance, skew, and bond vector
+                bond_vector = initial_bond_distance * bond_vector
+                coords(:,atom1) = bond_vector/2
+                coords(:,atom2) = -bond_vector/2
+
+                !Calculate the direction the bond is spinning given the two
+                !orthogonal vectors
+                rotation_vector = ( sin(initial_rotation_angle) * rotation0_vector + &
+                                    cos(initial_rotation_angle) * rotation90_vector ) * &
+                                  initial_rotational_speed
+
+                !With the translational, vibrational, and rotational vectors and speeds
+                !Calculate the velocities of the atoms
+                velocities(:,atom1) = rotation_vector
+                velocities(:,atom2) = -rotation_vector
+        end do
+
+        !Extra stuff that is specific to this reaction (NOT GENERIC!!)
+        coords(:,1) = (/ 0.0d0, 0.0d0, 0.0d0 /)
+        coords(:,2) = coords(:,2) + (/ collision_distance, collision_skew, 0.0d0 /)
+        coords(:,3) = coords(:,3) + (/ collision_distance, collision_skew, 0.0d0 /)
+
+        velocities(:,1) = (/ sqrt(2*initial_translational_KE/mass_hydrogen), 0.0d0, 0.0d0 /)
+
+end subroutine InitialSetup3
+
+
+subroutine NonBondedForce(coords1,coords2,gradient1,gradient2,r)
+        implicit none
+        real(dp), dimension(3), intent(in) :: coords1,coords2
+        real(dp), dimension(3), intent(out) :: gradient1,gradient2
+        real(dp),optional,intent(in) :: r
+        real(dp), dimension(3) :: coords_distance,velocity_change
+        real(dp) :: distance12,distance_squared,stretch_factor
+
+        coords_distance = coords2 - coords1
+        if (present(r)) then
+                distance12 = r
+        else
+                distance_squared = coords_distance(1)**2 &
+                                 + coords_distance(2)**2 &
+                                 + coords_distance(3)**2
+                distance12 = sqrt(distance_squared)
+        end if
+
+        stretch_factor = exp(Morsealpha_hydrogen*(distance12-Morser0_hydrogen))
+        velocity_change = coords_distance * AccelerationConstant2 * ( &
+                        stretch_factor - 1.0d0 ) * stretch_factor / distance12
+
+        gradient1 = gradient1 + velocity_change
+        gradient2 = gradient2 - velocity_change
+
+        return
+
+end subroutine NonBondedForce
+
+subroutine BondedForce(coords1,coords2,gradient1,gradient2,r)
+        implicit none
+        real(dp), dimension(3), intent(in) :: coords1,coords2
+        real(dp), dimension(3), intent(out) :: gradient1,gradient2
+        real(dp),optional,intent(in) :: r
+        real(dp), dimension(3) :: coords_distance,velocity_change
+        real(dp) :: distance12,distance_squared
+
+        coords_distance = coords2 - coords1
+        if (present(r)) then
+                distance12 = r
+        else
+                distance_squared = coords_distance(1)**2 &
+                                 + coords_distance(2)**2 &
+                                 + coords_distance(3)**2
+                distance12 = sqrt(distance_squared)
+        end if
+
+        velocity_change = coords_distance * ( &
+                        AccelerationConstant0 + &
+                        AccelerationConstant1/distance12 )
+
+        gradient1 = gradient1 + velocity_change
+        gradient2 = gradient2 - velocity_change
+
+        return
+
+end subroutine BondedForce
+
+
 
 
 end module PHYSICS

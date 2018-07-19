@@ -8,8 +8,8 @@ echo ""
 oldPARAMETERS=PARAMETERS
 newPARAMETERS=PARAMETERS_new
 
-oldMAKEGRID=make_makeGridwithNewTrajectories
-newMAKEGRID=make_makeGridwithNewTrajectories_new
+oldMAKEGRID="make_makeGridwithNewTrajectories2"
+newMAKEGRID=make_makeGridwithNewTrajectories2_new
 
 oldANALYSIS=ANALYSIS
 newANALYSIS=ANALYSIS_new
@@ -21,10 +21,10 @@ newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids_new
 scaling1_0=004
 scaling2_0=004
 overcrowd0=00050
-Ntraj_max=01000
-Ngrid_max=2
+Ntraj_max=00100
+Ngrid_max=1
 
-newGRID=HH2_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
+newGRID=testHH2_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
 currentPATH=$(pwd)
 gridPATH=$currentPATH/$newGRID
 newSOURCE=SOURCE
@@ -81,6 +81,8 @@ cd $newGRID/
 make -f $newPATH/$newMAKEGRID
 make clean -f $newPATH/$newMAKEGRID
 ./a.out
+
+exit
 
 make -f $newPATH/$newMAKEANALYSIS
 make clean -f $newPATH/$newMAKEANALYSIS

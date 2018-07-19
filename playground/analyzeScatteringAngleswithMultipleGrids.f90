@@ -11,7 +11,7 @@ integer,parameter :: dp = kind(1.0d0)
 
 !CAP TO NUMBER OF GRIDS ANALYZED
 integer, intent(in) :: Ngrid_cap
-integer :: Ngrid_total, Ngrid
+integer :: Ngrid_total
 
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: DATfilename
@@ -111,7 +111,7 @@ end do
 end subroutine getScatteringAngles1
 
 
-subroutine getScatteringAngles2(DATfilename,Ntraj,scattering_angle_column,theta_column,phi_column,JPGfilename)
+subroutine getScatteringAngles2(DATfilename,scattering_angle_column,theta_column,phi_column,JPGfilename)
 use PARAMETERS
 use ANALYSIS
 implicit none
@@ -120,7 +120,7 @@ implicit none
 character(*), intent(in) :: DATfilename
 
 !COLUMN OF DAT FILE WITH SCATTERING ANGLES
-integer, intent(in) :: Ntraj,scattering_angle_column,theta_column,phi_column
+integer, intent(in) :: scattering_angle_column,theta_column,phi_column
 
 !FORMAT OF JPG FILES TO BE MADE
 character(*), intent(in) :: JPGfilename
