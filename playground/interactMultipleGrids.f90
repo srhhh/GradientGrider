@@ -52,6 +52,7 @@ character(FMTlength) ::  var1_filename0, var2_filename0, var1_filename1, var2_fi
 integer, dimension(Ngrid_total),intent(in) :: filechannels
 integer :: subcell0search_max,subcell1search_max
 character(Ngrid_text_length) :: Ngrid_text
+character(5) :: variable_length_text
 
 !In order to decrease the number of frames checked
 !If we need to look at adjacent cells for a frame
