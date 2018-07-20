@@ -57,7 +57,7 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=01000
+Ntraj_max=0700
 
 #The number of grids to add to the overall library (folder)
 Ngrid_max=3
@@ -86,7 +86,7 @@ newPATH=$(pwd)/$newGRID/$newSOURCE
 ###############################################################################################################################################
 
 #Set this true if you want to create a new grid
-if [ "0" -eq "0" ]
+if [ "1" -eq "0" ]
 then
 
 #If there is another folder of the same name delete that folder first
@@ -126,7 +126,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = 100/
      s/testtrajRMSD_flag = \\.true\\./testtrajRMSD_flag = .false./
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
-     s/threshold_rmsd = .*/threshold_rmsd = 0.0000d0/
+     s/threshold_rmsd = .*/threshold_rmsd = 0.0001d0/
      s/reject_flag = \\.false\\./reject_flag = .true./
      s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -178,7 +178,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = 100/
      s/testtrajRMSD_flag = \\.true\\./testtrajRMSD_flag = .false./
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
-     s/threshold_rmsd = .*/threshold_rmsd = 0.00010d0/
+     s/threshold_rmsd = .*/threshold_rmsd = 0.00100d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
      s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -195,7 +195,7 @@ make clean -f $newPATH/$newMAKEANALYSIS
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-#exit
+ exit
 
 ###############################################################################################################################################
 ###############################################################################################################################################

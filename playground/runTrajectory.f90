@@ -353,7 +353,7 @@ subroutine checkMultipleTrajectories(filechannels,velocityH,velocityH2)
                          filechannels,number_of_frames,order,neighbor_check)
 
                 !Update the gradient
-                if ((min_rmsd .le. threshold_RMSD).or.(reject_flag)) then
+                if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                         call Acceleration(vals,coords,gradient)
                 else
                         gradient = approx_gradient

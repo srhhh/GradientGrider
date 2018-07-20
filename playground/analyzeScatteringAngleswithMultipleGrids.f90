@@ -84,7 +84,7 @@ do Ngrid = 1, Ngrid_total
         !This is the gnuplot code to make the plots
         open(gnuplotchannel,file=gridpath0//gnuplotfile)
         write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-        write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//trim(adjustl(Ntraj_text))//'"'
+        write(gnuplotchannel,*) 'set output "'//gridpath0//trim(adjustl(Ntraj_text))//JPGfilename//'"'
         write(gnuplotchannel,*) 'set title "Scattering Angle Distribution of '//trim(adjustl(Ntraj_text))//&
                                 ' trajectories of '//gridpath0//'"'
         write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
@@ -92,6 +92,7 @@ do Ngrid = 1, Ngrid_total
 	write(boxwidth_text,FMT="(F6.5)") 3.14159 * 10 / max(real(Ngrid*Ntraj_max),50.0)
 	write(gnuplotchannel,*) 'set boxwidth '//boxwidth_text
 	write(gnuplotchannel,*) 'bin_width = '//boxwidth_text
+	write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
         write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
         write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
         write(gnuplotchannel,*) 'set ylabel "Occurence"'

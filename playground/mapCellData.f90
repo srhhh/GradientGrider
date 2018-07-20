@@ -53,9 +53,6 @@ write(filechannel1,*) 'splot "'//path_to_grid//temporaryfile3//'" u 1:2:3 w pm3d
 close(filechannel1)
 call system("gnuplot < "//path_to_grid//gnuplotfile)
 
-!Then call gnuplot to make the image
-call system("gnuplot < makeHeatMap")
-
 end subroutine mapCell
 
 end module mapCellData
