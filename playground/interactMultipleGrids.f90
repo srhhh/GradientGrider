@@ -51,6 +51,7 @@ character(100) :: subcell
 character(FMTlength) ::  var1_filename0, var2_filename0, var1_filename1, var2_filename1
 integer, dimension(Ngrid_total),intent(in) :: filechannels
 integer :: subcell0search_max,subcell1search_max
+character(Ngrid_text_length) :: Ngrid_text
 
 !In order to decrease the number of frames checked
 !If we need to look at adjacent cells for a frame
@@ -59,9 +60,7 @@ integer :: subcell0search_max,subcell1search_max
 subcell0search_max = 1
 subcell1search_max = 1
 
-!These variables always default to zero
-order = 0
-neighbor_check = 0
+!We start off with zero frames having been checked
 number_of_frames = 0
 
 old_min_rmsd = min_rmsd
@@ -110,6 +109,12 @@ write(var2_filename0,FMT=FMTorder0) var2_round0
 !Now, we start iterating over the grids
 do Ngrid = 1, Ngrid_total
 
+order = 1
+neighbor_check = 0
+
+write(variable_length_text,FMT=FMTvariable) Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+gridpath2 = gridpath0//Ngrid_text//"/grid/"
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 ORDER 1
@@ -211,6 +216,8 @@ end if
 subcell = gridpath2//trim(adjustl(var1_filename0))//"_"//trim(adjustl(var2_filename0))
 
 inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+
+order = 0
 
 !For bug-testing
 if (.false.) then
@@ -438,6 +445,8 @@ do
 	!Once we've had enough, exit
         read(filechannel1,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
 	if (iostate /= 0) exit
+
+print *, "checking a frame..."
 
         call rmsd_dp(Natoms,coords2,coords,1,candidate_U,x_center,y_center,min_rmsd)!,.false.,g)
 

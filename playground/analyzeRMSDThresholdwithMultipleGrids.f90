@@ -4,13 +4,10 @@ implicit none
 contains
 
 
-subroutine getRMSDThresholds1(Ngrid_total,RMSD_column,JPGfilename)
+subroutine getRMSDThresholds1(RMSD_column,JPGfilename)
 use PARAMETERS
 use ANALYSIS
 implicit none
-
-!TOTAL NUMBER OF GRIDS ANALYZED
-integer, intent(in) :: Ngrid_total
 
 !NUMBER OF TRAJECTORIES CHECKED
 integer :: n_testtraj

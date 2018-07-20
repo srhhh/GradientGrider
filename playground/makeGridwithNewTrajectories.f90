@@ -1,8 +1,62 @@
-program makeGridwithNewTrajectories
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	PROGRAM
+!		makeGridwithNewTrajectories
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	PURPOSE
+!		The program creates a library (multiple grids) according to PARAMETERS
+!		with MD simulations produced by runTrajectory, governed by PHYSICS
+!		and with collective variables calculated according to VARIABLES;
+!		each frame is added according to interactSingleGrid
+!
+!		The program may take a long time so there can be occasional
+!		checks on a grid; these are governed by ANALYSIS
+!		and the frequency of checks is governed by PARAMETERS;
+!		the MD simulations used to check the grid are also governed
+!		by runTrajectory which checks the grid with interactSingleGrid
+!
+!		When a grid is completed, its scattering angle plot is made
+!		according to analyzeScatteringAngleswithMultipleGrids
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	FILECHANNELS			ACTION
+!
+!		GNUPLOTCHANNEL			OPEN, WRITE, CLOSE
+!		PROGRESSCHANNEL			OPEN, WRITE, CLOSE
+!		FILECHANNEL1			OPEN, WRITE, CLOSE
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	SUBROUTINES			MODULE
+!
+!		SYSTEM				INTRINSIC
+!		CPU_TIME			INTRINSIC
+!		SYSTEMCLOCK			INTRINSIC
+!
+!		addTrajectory			runTrajectory
+!		checkTrajectory			runTrajectory
+!
+!		getScatteringAngles2		analyzeScatteringAngleswithMultipleGrids
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	OUTPUT				FILETYPE
+!
+!		ALOT				WOAH
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!I call all the modules here just to keep track of them for the makefile
+program makeGridwithNewTrajectories
 use runTrajectory
-use interactSingleGrid
 use PARAMETERS
 use FUNCTIONS
 use VARIABLES
@@ -17,22 +71,32 @@ character(6) :: reject_text
 character(6) :: Nthreshold_text
 
 !Trajectory Variables
-real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
 real(dp) :: trajectory_CPU_time,trajectory_wall_time
 real(dp) :: speedH,speedH2,scattering_angle
 real(dp),dimension(3) :: velocityH1,velocityH2
+integer :: header1_old,header2_old,header3_old
 
 !Trajectory Initialization Variables
+real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
 
 !Timing Variables
 real :: r1,r2
-integer :: seed,n,m,c1,c2,cr
+integer :: seed,c1,c2,cr
 real :: system_clock_rate
 
-!Get a random seed and print it in case there's a problem
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!		LIBRARY (MULTI-GRID) INITIALIZATION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!Incremental Integers
+integer :: n, m
+
+!Get a random seed and print it in case there's a problem you need to replicate
 call system_clock(seed)
 print *, ""
 print *, "System clock seed: ", seed
@@ -42,7 +106,7 @@ seed = rand(seed)
 call system_clock(count_rate=cr)
 system_clock_rate = 1.0/real(cr)
 
-!We now do some formatting for the names of the files
+!We now do some formatting for the names of the files (for the occasional checks)
 write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
 if (reject_flag) then
 	reject_text = "reject"
@@ -50,22 +114,33 @@ else
 	reject_text = "accept"
 end if
 
-!For each grid, just spit out Ntraj_max trajectories into it
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!		GRID INITIALIZATION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 do Ngrid = 1, Ngrid_max
 
-	!The grids will be named 001 (I0.3) with increments of 1
+	!This formats the name of the grid directory (001/, 002/, ...)
 	write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
         write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+
+	!This names the paths formally
         gridpath1 = gridpath0//Ngrid_text//"/"
         gridpath2 = gridpath1//"grid/"
 
-	!This will create a folder for the grid files and for its outputs
+	!Gridpath1 is the directory 001/
         call system("mkdir "//gridpath1)
+
+	!Gridpath2 is the directory housing the files with coordinates and gradients
         call system("mkdir "//gridpath2)
 
+	!Whenever a folder is made, make a print statement
 	print *, gridpath1
 	print *, gridpath2
 
+	!Inside the directory, we monitor the progress of the grid's creation
         open(progresschannel,file=gridpath1//progressfile)
         write(progresschannel,*) ""
         write(progresschannel,*) ""
@@ -73,13 +148,21 @@ do Ngrid = 1, Ngrid_max
         write(progresschannel,*) ""
         close(progresschannel)
 
-	!We start off with zero trajectories, zero files
+	!We start off with zero trajectories
         Ntraj = 0
+
+	!We start off with zero files
 	Nfile = 0
-	Norder1 = 0
+
+	!We start off with no overcrowded files
         header1 = 1
+	header1_old = 1
         header2 = 1
+	header2_old = 1
         header3 = 1
+	header3_old = 1
+
+	!We start off with zero frames in all files
         do m = 1, counter0_max
                 counter0(m) = 0
         end do
@@ -93,43 +176,69 @@ do Ngrid = 1, Ngrid_max
                 counter3(m) = 0
         end do
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!		TRAJECTORY INITIALIZATION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
         do n = 1, Ntraj_max
 
 		!Get some random initial conditions for the trajectory
+		!For now, we are only handling systems with H-H bonds
+
 		do m = 1, Nbonds
-			!The orientation of the H2
+
+			!The orientation of the H2 should be some random
+			!point in the unit sphere
 			do
+				!First get a random point in the unit cube
+				!centered at zero
 				random_num1 = rand() - 0.5d0
 				random_num2 = rand() - 0.5d0
 				random_num3 = rand() - 0.5d0
 				random_r2 = random_num1**2 + random_num2**2
 				random_r3 = random_r2 + random_num3**2
+
+				!If the point lies outside of the cube, reject it
 				if (random_r3 > 0.25d0) cycle
 				random_r2 = sqrt(random_r2)
-				! RS: Let's make this angle sampling generic and consistant
-				! RS: i.e. two atan2 instead of atan2 + cos
-				initial_bond_angle1 = acos(random_num1 / random_r2)
+
+				!But if it lies in the sphere, use its direction (angles)
+				initial_bond_angle1 = atan2(random_num1,random_num2)
 				initial_bond_angle2 = atan2(random_r2,random_num3)
 				exit
 			end do
-			!The energy of the H2
-			! RS: Please ELABORATE. I could not understand
+
+ 			!The energy of the H2 should be some random value
+			!that follows the boltzmann distribution at this temperature
 			do
+				!This picks a random value between zero and some very high upper limit
 				random_num1 = rand()
 				random_num2 = rand()
 				initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
+
+				!We calculate the probability of this value occuring in our distribution [0,1]
+				!and we accept it if our second random number (also in range [0,1]) is below it
 				if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
 			end do
-			!The ratio of vib:rot energy of H2
+
+			!The ratio of vib:rot energy of the H2
+			!Right now, we set it to all vibrational
 			random_num2 = 1.0d0
 			initial_vibrational_energy = random_num2*initial_energy_H2
 			initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
+
+			!Right now, we make all vibrational energy be potential energy
+			!by simply increasing the bond length to match the required energy
 			initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
 			random_num1 = rand()
 			! RS: Please use the momentum of inertia and angular velocity to define rotation
+			!	KF: must work on this in the future
 			initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
 			initial_rotation_angle = random_num1*pi2
 	
+			!All of this is stored for later use in the InitialSetup of runTrajectory
 			INITIAL_BOND_DATA(Nbonds,:) = (/ initial_bond_distance,initial_rotational_speed,&
 	                                        initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)
 		end do
@@ -145,8 +254,15 @@ do Ngrid = 1, Ngrid_max
                 close(progresschannel)
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!		GRID CREATION MONITORING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 		!This big if-statement is if we want to monitor our grid creation
-		!We space it out so that there will be ten graphs made over the Ntraj_max trajectories
+		!The check only happens every Ngrid_check
+		!Right now it is spaced so that we get (at most) ten graphs over the period of its creation
                 if (modulo(n,Ngrid_check) == 0) then
 
 			!Remark: ScatteringAngles2 checks the trajectoriesfile INSIDE the Ngrid/ subdirectory
@@ -256,11 +372,14 @@ do Ngrid = 1, Ngrid_max
 
 		!This is all recorded in the trajectoriesfile of the grid
                 open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
-                write(filechannel1,*) Ntraj, header1, header2, Nfile,&
+                write(filechannel1,*) Ntraj, header1-header1_old, header2-header2_old, Nfile,&
                                       trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps),&
                                       Norder1*100.0/real(steps),&
 				      scattering_angle,initial_bond_angle1,initial_bond_angle2
                 close(filechannel1)
+		header1_old = header1
+		header2_old = header2
+		header3_old = header3
         end do
 
 
@@ -295,7 +414,7 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'unset xlabel'
 write(gnuplotchannel,*) 'set ylabel "Number of Files"'
 write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:4 w lines'
-write(gnuplotchannel,*) 'set ylabel "Number of Overcrowded Cells"'
+write(gnuplotchannel,*) 'set ylabel "Number of Calls to DivyUp"'
 write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:2 w lines, '//&
                            '"'//gridpath1//trajectoriesfile//'" u 1:3 w lines'
 write(gnuplotchannel,*) 'set ylabel "Percentage of Frames added to Order 1"'

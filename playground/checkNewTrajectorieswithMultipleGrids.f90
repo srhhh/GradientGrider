@@ -21,14 +21,13 @@ character(6) :: reject_text
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
-real(dp),dimension(Nbonds,5) :: INITIAL_BOND_DATA
 real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
 real(dp) :: speedH, speedH2, scattering_angle
 real(dp),dimension(3) :: velocityH,velocityH2
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
 
 !Variables
-integer :: Ngrid,iostate
+integer :: iostate
 integer,allocatable :: filechannels(:)
 
 !Timing
@@ -69,10 +68,10 @@ print *, ""
 seed = rand(seed)
 
 !This is for top-level heat map generation (from the grid)
-if (heatmap_flag) call analyzeHeatMaps1()
+if (heatmap_flag) call analyzeHeatMaps1(Ngrid_cap)
 
 !This is for scattering angle plots (from the grid)
-if (trueSA_flag) call getScatteringAngles1(trajectoriesfile,8,"trueSA.jpg")
+if (trueSA_flag) call getScatteringAngles1(Ngrid_cap,trajectoriesfile,8,"trueSA.jpg")
 
 
 
@@ -157,6 +156,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 		INITIAL_BOND_DATA(n,:) = (/ initial_bond_distance,initial_rotational_speed,&
                            initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)
+	end do
 
 	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
 	!The trajectory number will uniquely identify one trajectory from another
@@ -178,7 +178,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!Then write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkMultipleGrids uses filechannel1 to open files in the grid
-	call checkMultipleTrajectories(INITIAL_BOND_DATA,filechannels(1:Ngrid_max),velocityH,velocityH2)
+	call checkMultipleTrajectories(filechannels(1:Ngrid_max),velocityH,velocityH2)
 
 	!Also let's see how long a single trajectory takes
 	call system_clock(c2)
@@ -236,8 +236,9 @@ if (percentthreshold_flag) call getRMSDThresholds1(1,"PercentRMSDThreshold_"//&
 print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""
 
+Ntraj = Ntesttraj
 if (testtrajSA_flag) call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//trajectoriesfile,&
-                                               Ntesttraj,3,4,5,"TestScatteringAngleDistribution_"//&
+                                               3,4,5,"TestScatteringAngleDistribution_"//&
                                                Ngrid_text//reject_text//Ntraj_text)
 print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
 print *, ""

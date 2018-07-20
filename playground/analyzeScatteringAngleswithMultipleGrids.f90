@@ -27,7 +27,7 @@ character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(trajectories_text_length*100) :: trajectories_text
-character(6) :: Ntraj_text
+character(6) :: Ntraj_text,boxwidth_text
 
 !I/O HANDLING
 integer :: iostate
@@ -79,22 +79,27 @@ do Ngrid = 1, Ngrid_total
         !This system call concatenates all the data files from that previously made 'hack'
         !By doing that, we merge all the scattering angle data together
         call system("cat"//trajectories_text(1:Ngrid*trajectories_text_length)//" >> "//&
-                    gridpath0//Ngrid_text//"/"//cumulativefile//Ntraj_text//".dat")
+                    gridpath0//Ngrid_text//"/"//cumulativefile//trim(adjustl(Ntraj_text))//".dat")
 
         !This is the gnuplot code to make the plots
         open(gnuplotchannel,file=gridpath0//gnuplotfile)
         write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-        write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//Ntraj_text//'"'
+        write(gnuplotchannel,*) 'set output "'//gridpath0//trim(adjustl(Ntraj_text))//JPGfilename//'"'
+        write(gnuplotchannel,*) 'set title "Scattering Angle Distribution of '//trim(adjustl(Ntraj_text))//&
+                                ' trajectories of '//gridpath0//'"'
         write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
         write(gnuplotchannel,*) 'unset key'
-        write(gnuplotchannel,*) 'bin_width = 0.001'
-        write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
+	write(boxwidth_text,FMT="(F6.5)") 3.14159 * 10 / max(real(Ngrid*Ntraj_max),50.0)
+	write(gnuplotchannel,*) 'set boxwidth '//boxwidth_text
+	write(gnuplotchannel,*) 'bin_width = '//boxwidth_text
+	write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
         write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
         write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
         write(gnuplotchannel,*) 'set ylabel "Occurence"'
         write(gnuplotchannel,*) 'set yrange [0:3.14159]'
 	write(variable_length_text,FMT="(I5)") scattering_angle_column
-        write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//Ntraj_text//&
+        write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//&
+                                trim(adjustl(Ntraj_text))//&
                                 '.dat" u (rounded($'//trim(adjustl(variable_length_text))//&
 				')):(1.0) smooth frequency with boxes'
         close(gnuplotchannel)
