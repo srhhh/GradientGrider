@@ -74,6 +74,7 @@ character(6) :: Nthreshold_text
 real(dp) :: trajectory_CPU_time,trajectory_wall_time
 real(dp) :: speedH,speedH2,scattering_angle
 real(dp),dimension(3) :: velocityH1,velocityH2
+integer :: header1_old,header2_old,header3_old
 
 !Trajectory Initialization Variables
 real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
@@ -155,8 +156,11 @@ do Ngrid = 1, Ngrid_max
 
 	!We start off with no overcrowded files
         header1 = 1
+	header1_old = 1
         header2 = 1
+	header2_old = 1
         header3 = 1
+	header3_old = 1
 
 	!We start off with zero frames in all files
         do m = 1, counter0_max
@@ -368,11 +372,14 @@ do Ngrid = 1, Ngrid_max
 
 		!This is all recorded in the trajectoriesfile of the grid
                 open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
-                write(filechannel1,*) Ntraj, header1, header2, Nfile,&
+                write(filechannel1,*) Ntraj, header1-header1_old, header2-header2_old, Nfile,&
                                       trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps),&
                                       Norder1*100.0/real(steps),&
 				      scattering_angle,initial_bond_angle1,initial_bond_angle2
                 close(filechannel1)
+		header1_old = header1
+		header2_old = header2
+		header3_old = header3
         end do
 
 
@@ -407,7 +414,7 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'unset xlabel'
 write(gnuplotchannel,*) 'set ylabel "Number of Files"'
 write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:4 w lines'
-write(gnuplotchannel,*) 'set ylabel "Number of Overcrowded Cells"'
+write(gnuplotchannel,*) 'set ylabel "Number of Calls to DivyUp"'
 write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:2 w lines, '//&
                            '"'//gridpath1//trajectoriesfile//'" u 1:3 w lines'
 write(gnuplotchannel,*) 'set ylabel "Percentage of Frames added to Order 1"'
