@@ -112,7 +112,7 @@ do Ngrid = 1, Ngrid_total
 order = 1
 neighbor_check = 0
 
-write(variable_length_text,FMT=FMTvariable) Ngrid_text_length
+write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 gridpath2 = gridpath0//Ngrid_text//"/grid/"
 
