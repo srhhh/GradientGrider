@@ -34,7 +34,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!	SUBROUTINES			MODULE
+!       CALLS                           MODULE
 !
 !		SYSTEM				INTRINSIC
 !		CPU_TIME			INTRINSIC
@@ -87,14 +87,14 @@ real :: r1,r2
 integer :: seed,c1,c2,cr
 real :: system_clock_rate
 
+!Incremental Integers
+integer :: n, m
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !		LIBRARY (MULTI-GRID) INITIALIZATION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!Incremental Integers
-integer :: n, m
 
 !Get a random seed and print it in case there's a problem you need to replicate
 call system_clock(seed)
@@ -212,6 +212,11 @@ do Ngrid = 1, Ngrid_max
 
  			!The energy of the H2 should be some random value
 			!that follows the boltzmann distribution at this temperature
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!			WORK ON THIS LATER
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 			do
 				!This picks a random value between zero and some very high upper limit
 				random_num1 = rand()
@@ -336,6 +341,12 @@ do Ngrid = 1, Ngrid_max
 			
                 end if
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!		TRAJECTORY ADDITION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 		!We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
@@ -371,7 +382,7 @@ do Ngrid = 1, Ngrid_max
                 close(progresschannel)
 
 		!This is all recorded in the trajectoriesfile of the grid
-                open(filechannel1,file=gridpath1//trajectoriesfile,position="append")
+                open(filechannel1,file=gridpath1//"Initial"//trajectoriesfile,position="append")
                 write(filechannel1,*) Ntraj, header1-header1_old, header2-header2_old, Nfile,&
                                       trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps),&
                                       Norder1*100.0/real(steps),&
@@ -382,89 +393,95 @@ do Ngrid = 1, Ngrid_max
 		header3_old = header3
         end do
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!		GRID FINAL ANALYSIS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-open(progresschannel,file=gridpath1//progressfile,position="append")
-write(progresschannel,*) ""
-write(progresschannel,*) ""
-write(progresschannel,*) "Finished all trajectories for grid "//Ngrid_text//"/"
-write(progresschannel,*) "        Now we have ", Nfile, " files"
-write(progresschannel,*) ""
-write(progresschannel,*) ""
-close(progresschannel)
-
-
-!Here, we can see how much time the grid creation took
-!There is also some other interesting data
-open(gnuplotchannel,file=gridpath1//gnuplotfile)
-write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath1//'CPUTime.jpg"'
-write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
-write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
-write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
-write(gnuplotchannel,*) 'set style line 4 lc rgb "orange" pt 9'
-write(gnuplotchannel,*) 'set style line 5 lc rgb "yellow" pt 11'
-write(gnuplotchannel,*) 'set style line 6 lc rgb "pink" pt 20'
-write(gnuplotchannel,*) 'unset xtics'
-write(gnuplotchannel,*) 'set tmargin 0'
-write(gnuplotchannel,*) 'set bmargin 0'
-write(gnuplotchannel,*) 'set lmargin 1'
-write(gnuplotchannel,*) 'set rmargin 1'
-write(gnuplotchannel,*) 'set multiplot layout 5,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory '//Ngrid_text//'"'
-write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'unset xlabel'
-write(gnuplotchannel,*) 'set ylabel "Number of Files"'
-write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:4 w lines'
-write(gnuplotchannel,*) 'set ylabel "Number of Calls to DivyUp"'
-write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:2 w lines, '//&
-                           '"'//gridpath1//trajectoriesfile//'" u 1:3 w lines'
-write(gnuplotchannel,*) 'set ylabel "Percentage of Frames added to Order 1"'
-write(gnuplotchannel,*) 'set yrange [0:100]'
-write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:7 w lines'
-write(gnuplotchannel,*) 'set autoscale y'
-write(gnuplotchannel,*) 'set ylabel "Wall Time (sec)"'
-write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:6 w lines'
-write(gnuplotchannel,*) 'set xtics'
-write(gnuplotchannel,*) 'set xlabel "Trajectories"'
-write(gnuplotchannel,*) 'set autoscale y'
-write(gnuplotchannel,*) 'set ylabel "CPU Time (sec)"'
-write(gnuplotchannel,*) 'plot "'//gridpath1//trajectoriesfile//'" u 1:5 w lines'
-close(gnuplotchannel)
-call system("gnuplot < "//gridpath1//gnuplotfile)
-
-call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"&
-                          //Ngrid_text//reject_text//Nthreshold_text)
-
-
-
-
-
-
-open(filechannel1,file=trim(gridpath1)//counter0file)
-do n = 1, counter0_max
-        write(filechannel1,FMT=FMT8_counter) counter0(n)
-end do
-close(filechannel1)
-
-open(filechannel1,file=trim(gridpath1)//counter1file)
-do n = 1, counter1_max
-        write(filechannel1,FMT=FMT8_counter) counter1(n)
-end do
-close(filechannel1)
-
-open(filechannel1,file=trim(gridpath1)//counter2file)
-do n = 1, counter2_max
-        write(filechannel1,FMT=FMT8_counter) counter2(n)
-end do
-close(filechannel1)
-
-open(filechannel1,file=trim(gridpath1)//counter3file)
-do n = 1, counter3_max
-        write(filechannel1,FMT=FMT8_counter) counter3(n)
-end do
-close(filechannel1)
-
-
-
+	open(progresschannel,file=gridpath1//progressfile,position="append")
+	write(progresschannel,*) ""
+	write(progresschannel,*) ""
+	write(progresschannel,*) "Finished all trajectories for grid "//Ngrid_text//"/"
+	write(progresschannel,*) "        Now we have ", Nfile, " files"
+	write(progresschannel,*) ""
+	write(progresschannel,*) ""
+	close(progresschannel)
+	
+	
+	!Now that we are done with a grid, we can see how much time the grid creation took
+	!There is also some other interesting data
+	open(gnuplotchannel,file=gridpath1//gnuplotfile)
+	write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
+	write(gnuplotchannel,*) 'set output "'//gridpath1//'GridCreationGraph.jpg"'
+	write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
+	write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
+	write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
+	write(gnuplotchannel,*) 'set style line 4 lc rgb "orange" pt 9'
+	write(gnuplotchannel,*) 'set style line 5 lc rgb "yellow" pt 11'
+	write(gnuplotchannel,*) 'set style line 6 lc rgb "pink" pt 20'
+	write(gnuplotchannel,*) 'unset xtics'
+	write(gnuplotchannel,*) 'set tmargin 0'
+	write(gnuplotchannel,*) 'set bmargin 0'
+	write(gnuplotchannel,*) 'set lmargin 1'
+	write(gnuplotchannel,*) 'set rmargin 1'
+	write(gnuplotchannel,*) 'set multiplot layout 5,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Trajectory '//Ngrid_text//'"'
+	write(gnuplotchannel,*) 'unset key'
+	write(gnuplotchannel,*) 'unset xlabel'
+	write(gnuplotchannel,*) 'set ylabel "Number of Files"'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:4 w lines'
+	write(gnuplotchannel,*) 'set ylabel "Number of Calls to DivyUp"'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:2 w lines, '//&
+	                           '"'//gridpath1//"Initial"//trajectoriesfile//'" u 1:3 w lines'
+	write(gnuplotchannel,*) 'set ylabel "Percentage of Frames added to Order 1"'
+	write(gnuplotchannel,*) 'set yrange [0:100]'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:7 w lines'
+	write(gnuplotchannel,*) 'set autoscale y'
+	write(gnuplotchannel,*) 'set ylabel "Wall Time (sec)"'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:6 w lines'
+	write(gnuplotchannel,*) 'set xtics'
+	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
+	write(gnuplotchannel,*) 'set autoscale y'
+	write(gnuplotchannel,*) 'set ylabel "CPU Time (sec)"'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:5 w lines'
+	close(gnuplotchannel)
+	call system("gnuplot < "//gridpath1//gnuplotfile)
+	
+	!Also, make a scattering angle plot
+	call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"&
+	                          //Ngrid_text//reject_text//Nthreshold_text)
+	
+	
+	
+	
+	
+	!Finally, we save all of the counters to their respective counter files in the folder
+	open(filechannel1,file=trim(gridpath1)//counter0file)
+	do n = 1, counter0_max
+	        write(filechannel1,FMT=FMT8_counter) counter0(n)
+	end do
+	close(filechannel1)
+	
+	open(filechannel1,file=trim(gridpath1)//counter1file)
+	do n = 1, counter1_max
+	        write(filechannel1,FMT=FMT8_counter) counter1(n)
+	end do
+	close(filechannel1)
+	
+	open(filechannel1,file=trim(gridpath1)//counter2file)
+	do n = 1, counter2_max
+	        write(filechannel1,FMT=FMT8_counter) counter2(n)
+	end do
+	close(filechannel1)
+	
+	open(filechannel1,file=trim(gridpath1)//counter3file)
+	do n = 1, counter3_max
+	        write(filechannel1,FMT=FMT8_counter) counter3(n)
+	end do
+	close(filechannel1)
+	
+	
+	
 end do
 
 end program makeGridwithNewTrajectories

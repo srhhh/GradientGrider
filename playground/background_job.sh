@@ -60,7 +60,7 @@ overcrowd0=00050
 Ntraj_max=0700
 
 #The number of grids to add to the overall library (folder)
-Ngrid_max=3
+Ngrid_max=4
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -149,12 +149,12 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 #Now, all we need to do is go into the new folder and make the output files
 cd $newGRID/
 
-make -f $newPATH/$newMAKEGRID
 make clean -f $newPATH/$newMAKEGRID
+make -f $newPATH/$newMAKEGRID
 ./a.out
 
-make -f $newPATH/$newMAKEANALYSIS
 make clean -f $newPATH/$newMAKEANALYSIS
+make -f $newPATH/$newMAKEANALYSIS
 ./a.out
 
 fi
@@ -188,14 +188,14 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
-make -f $newPATH/$newMAKEANALYSIS
 make clean -f $newPATH/$newMAKEANALYSIS
+make -f $newPATH/$newMAKEANALYSIS
 ./a.out
 
 ###############################################################################################################################################
 ###############################################################################################################################################
 
- exit
+#exit
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -211,7 +211,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntraj_max/
      s/testtrajRMSD_flag = \\.true\\./testtrajRMSD_flag = .false./
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
-     s/threshold_rmsd = .*/threshold_rmsd = 0.00100d0/
+     s/threshold_rmsd = .*/threshold_rmsd = 0.01000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
      s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 $newPATH/$newANALYSIS.f90
 
@@ -221,8 +221,8 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS $newPATH/$newMAKEANALYSIS
 
-make -f $newPATH/$newMAKEANALYSIS
 make clean -f $newPATH/$newMAKEANALYSIS
+make -f $newPATH/$newMAKEANALYSIS
 ./a.out
 
 ###############################################################################################################################################
@@ -254,8 +254,8 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS $newPATH/$newMAKEANALYSIS
 
-make -f $newPATH/$newMAKEANALYSIS
 make clean -f $newPATH/$newMAKEANALYSIS
+make -f $newPATH/$newMAKEANALYSIS
 ./a.out
 
 ###############################################################################################################################################
@@ -287,8 +287,8 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS $newPATH/$newMAKEANALYSIS
 
-make -f $newPATH/$newMAKEANALYSIS
 make clean -f $newPATH/$newMAKEANALYSIS
+make -f $newPATH/$newMAKEANALYSIS
 ./a.out
 
 ###############################################################################################################################################
@@ -320,6 +320,6 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS $newPATH/$newMAKEANALYSIS
 
-make -f $newPATH/$newMAKEANALYSIS
 make clean -f $newPATH/$newMAKEANALYSIS
+make -f $newPATH/$newMAKEANALYSIS
 ./a.out

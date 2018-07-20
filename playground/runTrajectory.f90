@@ -1,37 +1,148 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PROGRAM
+!               runTrajectory
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!		This program simulates an MD collision of two molecules
+!		as described in PHYSICS
+!
+!		A frame advances in time to another frame with the
+!		verlet method
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILECHANNELS                    ACTION
+!
+!               FILECHANNEL1                    OPEN, WRITE, CLOSE
+!               FILECHANNEL2                    OPEN, CALL CHECKSTATE, WRITE, CLOSE
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	SUBROUTINES			ARGUMENTS		KIND
+!
+!		addTrajectory			velocityH1		intent(out),real(dp)
+!						velocityH2		intent(out),real(dp)
+!
+!		checkTrajectory			velocityH1		intent(out),real(dp)
+!						velocityH2		intent(out),real(dp)
+!
+!		checkMultipleTrajectories	filechannels		intent(in),dim(Ngrid_total),integer
+!
+!						velocityH1		intent(out),real(dp)
+!						velocityH2		intent(out),real(dp)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       CALLS                           MODULE
+!
+!		getVar3				VARIABLES
+!		getVar4				VARIABLES
+!
+!		InitialSetup3			PHYSICS
+!
+!		Acceleration			runTrajectory
+!
+!		addState			interactSingleGrid
+!		checkState			interactSingleGrid
+!		checkState			interactMultipleGrids
+!
+!		BondedForce			PHYSICS
+!		NonBondedForce			PHYSICS
+!
+!		MorsePotential			PHYSICS
+!		HOPotential			PHYSICS
+!		KineticEnergy			PHYSICS
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES	                          FILETYPE	SUBROUTINE
+!
+!		gridpath0//trajectory		XYZ		checkMultipleTrajectories
+!		gridpath1//trajectory		XYZ		checkTrajectory
+!		gridpath1//checkstatefile	DAT		checkTrajectory
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
 module runTrajectory
 implicit none
 
 contains
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!	SUBROTUINE addTrajectory
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!INPUT	real ::	initial_bond_distance		"the length of the H2 bond initially"
-!		initial_rotational_speed	"the rotational speed of the H2"
-!		initial_rotation_angle		"the direction the H2 is spinning (relative)"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!	real :: initial_bond_angle1		"the angle the H2 bond makes with the x-axis"
-!		initial_bond_angle2		"the angle the H2 bond makes with the y-z plane"
+!	SUBROUTINE
+!		addTrajectory
 !
-!	integer	     :: headerN			"for grid creation and maintenance"
-!	int,dim(...) ::	counterN		"for grid creation and miantenance"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!	character(*) :: path_to_grid		"the path to the grid"
+!	PURPOSE
+!		This subroutine simulates an MD collision by calculating the gradient
+!		at every step with classical mechanics and parameters in PHYSICS
 !
-!OUTPUT integer :: Nfile			"the number of files created"
-!		   Norder1			"the number of times order1 subcells were added to"
+!		Every frame is added to the current grid through interactSingleGrid
 !
-!	real    :: velocityH			"the velocity of the incoming H (principal axis)"
-!		   velocityH2			"the velocity of the departing H2"
+!		The initial and final velocity of the incoming H/H2 is output to
+!		gather scattering angle data
 !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!	Simulates a H --> H2 collision with the above parameters
-!	Uses physical constants and parameters as supplied by f2_physics_parameters.f90
-!	Adds this data to a grid of files according to addState.f90
-!	Makes use of a cross product which is supplied by f1_functions.f90
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	INPUT
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	OUTPUT				KIND				DESCRIPTION
+!
+!		velocityH1			REAL(DP)			The velocity of the incoming H/H2 molecule
+!										at the start of the trajectory
+!		velocityH2			REAL(DP)			The velocity of the incoming H/H2 molecule
+!										at the end of the trajectory (post-collision)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	IMPORTANT VARIABLES		KIND				DESCRIPTION
+!
+!		vals				REAL(DP),DIM(Nvar)		The variables associated with a frame
+!
+!		coords				REAL(DP),DIM(3,Natoms)		The coordinates defining a frame
+!		velocities			REAL(DP),DIM(3,Natoms)		The velocities of a frame
+!		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
+!
+!		Norder1				INTEGER				The number of times a frame enters an order1 cell
+!		steps				INTEGER				The number of timesteps advanced
+!		header_max_flag			LOGICAL				The flag indicating whether counter1 is full or not
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	OUTPUT				KIND				DESCRIPTION
+!
+!		velocityH1			REAL(DP)			The velocity of the incoming H/H2 molecule
+!										at the start of the trajectory
+!		velocityH2			REAL(DP)			The velocity of the incoming H/H2 molecule
+!										at the end of the trajectory (post-collision)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES	                          FILETYPE			SUBROUTINE
+!
+!		gridpath0//trajectory		XYZ				checkMultipleTrajectories
+!		gridpath1//trajectory		XYZ				checkTrajectory
+!		gridpath1//checkstatefile	DAT				checkTrajectory
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine addTrajectory(velocityH,velocityH2)
+subroutine addTrajectory(velocityH1,velocityH2)
 	use VARIABLES
 	use PHYSICS
 	use PARAMETERS
@@ -41,26 +152,18 @@ subroutine addTrajectory(velocityH,velocityH2)
 	!Coordinates, Velocities, and Variables
 	real(dp), dimension(3,Natoms) :: coords,gradient,velocities,approx_gradient
 	real(dp), dimension(Nvar) :: vals
-	real(dp), dimension(3) :: velocity_translation,velocity_vibration,velocity_rotation
-	real(dp), dimension(3),intent(out) :: velocityH, velocityH2
-
-	!Various other variables
-        real(dp) :: U, KE
-        integer :: TimeA,TimeB,order,m
-	real :: system_clock_rate,r1,r2
-	integer :: c1,c2,c3,c4,c5,cr
+	real(dp), dimension(3),intent(out) :: velocityH1, velocityH2
 
 	call system_clock(c1,count_rate=cr)
 	system_clock_rate = 1.0/real(cr)
 
         !Initialize the scene
         call InitialSetup3(coords,velocities)
-	header_max_flag = .false.
 	Norder1 = 0
 
 	!velocityH is just the velocity from the get-go
-        !velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
-	velocityH = velocities(:,1)
+        !velocityH1 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	velocityH1 = velocities(:,1)
 
 	call getVar3(coords,Natoms,vals(1))
 	call getVar4(coords,Natoms,vals(2))
@@ -74,7 +177,7 @@ subroutine addTrajectory(velocityH,velocityH2)
         do steps = 1, Nsteps
 
 
-		!Every 50 frames, print to an xyz file for visualization
+		!Just for bug-testing
                 if (.false.) then !(modulo(steps,50) == 0) then
                         open(filechannel1,file=gridpath0//trajectoryfile,position="append")
                         write(filechannel1,'(I1)') 3
@@ -263,7 +366,7 @@ end subroutine checkTrajectory
 !       Makes use of a cross product which is supplied by f1_functions.f90
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkMultipleTrajectories(filechannels,velocityH,velocityH2)
+subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
         use PHYSICS
         use PARAMETERS
         use VARIABLES
@@ -275,7 +378,7 @@ subroutine checkMultipleTrajectories(filechannels,velocityH,velocityH2)
         real(dp),dimension(3,Natoms) :: coords,velocities
         real(dp),dimension(3,Natoms) :: gradient,approx_gradient
         real(dp),dimension(Nvar) :: vals
-        real(dp),dimension(3),intent(out) :: velocityH, velocityH2
+        real(dp),dimension(3),intent(out) :: velocityH1, velocityH2
         real(dp),dimension(3) :: velocity_rotation,velocity_vibration,velocity_translation
 
         !Grid Parameters
@@ -290,8 +393,8 @@ subroutine checkMultipleTrajectories(filechannels,velocityH,velocityH2)
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-        !velocityH = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
-        velocityH = velocities(:,1)
+        !velocityH1 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+        velocityH1 = velocities(:,1)
 
         open(filechannel1,file=gridpath0//trajectoryfile)
         write(filechannel1,'(I1)') 3
