@@ -273,7 +273,7 @@ do Ngrid = 1, Ngrid_max
 			!Remark: ScatteringAngles2 checks the trajectoriesfile INSIDE the Ngrid/ subdirectory
 			call getScatteringAngles2(Ngrid_text//"/Initial"//trajectoriesfile,8,9,10,&
                                                   "InitialScatteringAngleDistribution_"&
-			                          //Ngrid_text//reject_text//Nthreshold_text)
+			                          //Ngrid_text)
 
 			!Remark: output of checkTrajectory is in the checkstatefile
 			call checkTrajectory(velocityH1,velocityH2)
