@@ -1,14 +1,14 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!       PROGRAM
+!       MODULE
 !               runTrajectory
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       PURPOSE
-!		This program simulates an MD collision of two molecules
+!		This module simulates an MD collision of two molecules
 !		as described in PHYSICS
 !
 !		A frame advances in time to another frame with the
@@ -64,11 +64,12 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!       FILES	                          FILETYPE	SUBROUTINE
+!       FILES	                          FILETYPE	SUBROUTINE				FMT
 !
-!		gridpath0//trajectory		XYZ		checkMultipleTrajectories
-!		gridpath1//trajectory		XYZ		checkTrajectory
-!		gridpath1//checkstatefile	DAT		checkTrajectory
+!		gridpath0//trajectory		XYZ		addTrajectory			'(A1,3F10.6)'
+!		gridpath0//trajectory		XYZ		checkMultipleTrajectories	'(A1,3F10.6)'
+!		gridpath1//trajectory		XYZ		checkTrajectory			'(A1,3F10.6)'
+!		gridpath1//checkstatefile	DAT		checkTrajectory			*
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -98,7 +99,7 @@ contains
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!	INPUT
+!	INPUT				KIND				DESCRIPTION
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -125,20 +126,10 @@ contains
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!	OUTPUT				KIND				DESCRIPTION
+!       FILES	                          FILETYPE			DESCRIPTION
 !
-!		velocityH1			REAL(DP)			The velocity of the incoming H/H2 molecule
-!										at the start of the trajectory
-!		velocityH2			REAL(DP)			The velocity of the incoming H/H2 molecule
-!										at the end of the trajectory (post-collision)
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       FILES	                          FILETYPE			SUBROUTINE
-!
-!		gridpath0//trajectory		XYZ				checkMultipleTrajectories
-!		gridpath1//trajectory		XYZ				checkTrajectory
-!		gridpath1//checkstatefile	DAT				checkTrajectory
+!		gridpath0//trajectory		XYZ				Coordinates to view the trajectory over time;
+!										currently just for bug-testing (set to false)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -150,21 +141,23 @@ subroutine addTrajectory(velocityH1,velocityH2)
         implicit none
 
 	!Coordinates, Velocities, and Variables
-	real(dp), dimension(3,Natoms) :: coords,gradient,velocities,approx_gradient
+	real(dp), dimension(3,Natoms) :: coords,gradient,velocities
 	real(dp), dimension(Nvar) :: vals
 	real(dp), dimension(3),intent(out) :: velocityH1, velocityH2
 
-	call system_clock(c1,count_rate=cr)
-	system_clock_rate = 1.0/real(cr)
+	!Incremental Integer
+	integer :: n
 
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 	Norder1 = 0
 
-	!velocityH is just the velocity from the get-go
-        !velocityH1 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	!velocityH1 is just the velocity of the incoming H from the get-go
+	!Right now, this is not generic (only works for H - H2)
 	velocityH1 = velocities(:,1)
 
+	!Always calculate the variables before accelerating
+	!because we can reuse these calculations
 	call getVar3(coords,Natoms,vals(1))
 	call getVar4(coords,Natoms,vals(2))
 
@@ -172,26 +165,26 @@ subroutine addTrajectory(velocityH1,velocityH2)
         call Acceleration(vals,coords,gradient)
 	call addState(vals,coords,gradient)
 
+	!Update the velocities
 	velocities = velocities + 0.5d0 * gradient
 
+	!Now we go into the mainloop
+	!We have a hard cap of Nsteps timesteps
         do steps = 1, Nsteps
-
 
 		!Just for bug-testing
                 if (.false.) then !(modulo(steps,50) == 0) then
                         open(filechannel1,file=gridpath0//trajectoryfile,position="append")
                         write(filechannel1,'(I1)') 3
                         write(filechannel1,*) ""
+			do n = 1, Natoms
                         write(filechannel1,'(A1,3F10.6)') 'H',&
-                                coords(1,1), coords(2,1), coords(3,1)
-                        write(filechannel1,'(A1,3F10.6)') 'H',&
-                                coords(1,2), coords(2,2), coords(3,2)
-                        write(filechannel1,'(A1,3F10.6)') 'H',&
-                                coords(1,3), coords(2,3), coords(3,3)
+                                coords(1,n), coords(2,n), coords(3,n)
+			end do
 			close(filechannel1)
                 end if
  
-                !Just to see progress, print something out every 500 steps
+                !Check every 500 steps if we are out-of-bounds
                 if (modulo(steps,500) == 1) then      
  			if ((vals(1)>max_var1) .or. (vals(2)>max_var2)) then
  				exit
@@ -201,27 +194,94 @@ subroutine addTrajectory(velocityH1,velocityH2)
                 !Update the coordinates with the velocities
 		coords = coords + dt * velocities
 
+		!Always calculate the variables before adding a frame or accelerating
 		call getVar3(coords,Natoms,vals(1))
 		call getVar4(coords,Natoms,vals(2))
 
-
-                !Accelerate and update velocities
+                !Accelerate and update gradients
                 call Acceleration(vals,coords,gradient)
+
+		!Add the frame to the grid
         	call addState(vals,coords,gradient)
 
 		!If there are too many subdivisions and counter0 will get out-of-bounds
 		!we would have to call this to exit
                 if (header_max_flag) exit
 
+		!Update the velocities
 		velocities = velocities + gradient
-
         end do
 
-        !velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	!velocityH2 is just the velocity of the incoming H at the end
+	!Right now, this is not generic (only works for H - H2)
 	velocityH2 = velocities(:,1)
 
 end subroutine addTrajectory
 
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	SUBROUTINE
+!		checkTrajectory
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	PURPOSE
+!		This subroutine simulates an MD collision by calculating the gradient
+!		at every step with classical mechanics and parameters in PHYSICS
+!
+!		Every frame is checked with the current grid through interactSingleGrid
+!
+!		The initial and final velocity of the incoming H/H2 is output to
+!		gather scattering angle data
+!
+!		Data is output every frame to gather information on how the trajectory
+!		interacts with the grid and whether it is accurate, realistic, etc.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	INPUT				KIND				DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	OUTPUT				KIND				DESCRIPTION
+!
+!		velocityH1			REAL(DP)			The velocity of the incoming H/H2 molecule
+!										at the start of the trajectory
+!		velocityH2			REAL(DP)			The velocity of the incoming H/H2 molecule
+!										at the end of the trajectory (post-collision)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	IMPORTANT VARIABLES		KIND				DESCRIPTION
+!
+!		vals				REAL(DP),DIM(Nvar)		The variables associated with a frame
+!
+!		coords				REAL(DP),DIM(3,Natoms)		The coordinates defining a frame
+!		velocities			REAL(DP),DIM(3,Natoms)		The velocities of a frame
+!		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
+!		approx_gradient			REAL(DP),DIM(3,Natoms)		The gradient recovered for a frame from the grid
+!
+!		number_of_frames		INTEGER				The total amount of frames checked for a frame
+!		order				INTEGER				The order of the cell checked for a frame
+!		neighbor_check			INTEGER				Signifies whether neighbor cells were check
+!										or not for a frame(0 or 1)
+!
+!		min_rmsd			REAL(DP)			The minimum rmsd recovered for a frame from the grid
+!		min_rmsd_prime			REAL(DP)			The minimum rmsd recovered for a frame from the grid
+!										after a forced neighbor check (may not apply)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES	                          FILETYPE			DESCRIPTION
+!
+!		gridpath1//trajectory		XYZ				Coordinates to view the trajectory over time;
+!										currently it is written every 10 timesteps
+!		gridpath1//checkstatefile	DAT				The DAT file containing information about the
+!										trajectory over time
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 subroutine checkTrajectory(velocityH1,velocityH2)
@@ -241,55 +301,56 @@ subroutine checkTrajectory(velocityH1,velocityH2)
         !Various other variables
         real(dp) :: U, KE
         real(dp) :: min_rmsd,min_rmsd_prime
-        integer :: TimeA,TimeB
         integer :: number_of_frames,order,neighbor_check
+
+	!Incremental Integer
+	integer :: n
 
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-        !velocityH1 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	!velocityH1 is just the velocity of the incoming H from the get-go
+	!Right now, this is not generic (only works for H - H2)
         velocityH1 = velocities(:,1)
 
-        !Accelerate the velcocities for a half step (verlet)
-
+	!Always calculate the variables before accelerating
         call getVar3(coords,Natoms,vals(1))
         call getVar4(coords,Natoms,vals(2))
 
+        !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
 
-         open(filechannel1,file=gridpath1//trajectoryfile)
-         write(filechannel1,'(I1)') 3
-         write(filechannel1,*) ""
-         write(filechannel1,'(A1,3F10.6)') 'H',&
-               coords(1,1), coords(2,1), coords(3,1)
-         write(filechannel1,'(A1,3F10.6)') 'H',&
-               coords(1,2), coords(2,2), coords(3,2)
-         write(filechannel1,'(A1,3F10.6)') 'H',&
-               coords(1,3), coords(2,3), coords(3,3)
-        close(filechannel1)
-
+	!Update the velocities
         velocities = velocities + 0.5d0 * gradient
 
-        !Keep track of the time
-        TimeA = time()
-open(filechannel2,file=gridpath1//checkstatefile)
+	!Get the trajectory file open for trajectory visualization
+        open(filechannel1,file=gridpath1//trajectoryfile)
+        write(filechannel1,'(I1)') 3
+        write(filechannel1,*) ""
+	do n = 1, Natoms
+        	write(filechannel1,'(A1,3F10.6)') 'H',&
+              		coords(1,n), coords(2,n), coords(3,n)
+        end do
+        close(filechannel1)
+
+	!We keep this file open for the whole trajectory (instead of
+	!continually opening and closing) to keep data of each frame
+	open(filechannel2,file=gridpath1//checkstatefile)
         do steps = 1, Nsteps
 
-                !Every 50 frames, print to an xyz file for visualization
+                !Every 10 frames, print to an xyz file for visualization
                  if (modulo(steps,10) == 0) then
-                         open(filechannel1,file=gridpath1//trajectoryfile,position="append")
-                         write(filechannel1,'(I1)') 3
-                         write(filechannel1,*) ""
-                         write(filechannel1,'(A1,3F10.6)') 'H',&
-                                 coords(1,1), coords(2,1), coords(3,1)
-                         write(filechannel1,'(A1,3F10.6)') 'H',&
-                                 coords(1,2), coords(2,2), coords(3,2)
-                         write(filechannel1,'(A1,3F10.6)') 'H',&
-                                 coords(1,3), coords(2,3), coords(3,3)
+                        open(filechannel1,file=gridpath1//trajectoryfile,position="append")
+                        write(filechannel1,'(I1)') 3
+                        write(filechannel1,*) ""
+			do n = 1, Natoms
+                        	write(filechannel1,'(A1,3F10.6)') 'H',&
+                              		coords(1,n), coords(2,n), coords(3,n)
+                        end do
                         close(filechannel1)
                  end if
 
-                !Just to see progress, print something out every 500 steps
+                !Check every 500 steps to see if we are out-of-bounds
                 if (modulo(steps,500) == 1) then
                         if ((vals(1)>max_var1) .or.&
                             (vals(2)>max_var2)) then
@@ -300,33 +361,43 @@ open(filechannel2,file=gridpath1//checkstatefile)
                 !Upate the coordinates with the velocities
                 coords = coords + dt * velocities
 
-                !Get the variables
+                !Always calculate the variables before checking a frame or accelerating
                 call getVar3(coords,Natoms,vals(1))
                 call getVar4(coords,Natoms,vals(2))
 
-                !Check for similar frames
+                !Check for similar frames in the grid
+		!Always set a default value; in this case, set min_rmsd_prime a default value
                 min_rmsd_prime = .200100d0
                 call checkState(coords,approx_gradient,min_rmsd_prime,&
                                 number_of_frames,order,neighbor_check)
                 min_rmsd = min_rmsd_prime
 
+		!If we need to check neighbor cells then we can update min_rmsd accordingly
+		!That way we can see whether we can compare the two and see if its better
+		!(Deprecated, do not use please)
                 if (force_Neighbors) then
                 call checkState(coords,approx_gradient,min_rmsd)
                 end if
 
-                !Update the gradient
+                !Update the gradient either with the approximation or by accelerating
+		!This depends on the threshold and the rejection method
                 if ((min_rmsd .ge. threshold_rmsd) .or. (reject_flag)) then
                         call Acceleration(vals,coords,gradient)
                 else
                         gradient = approx_gradient
                 end if
 
+		!Calculate the potential and kinetic energy
+		!(yes, making this nicer is next on the to-do list)
+		!Right now, it is not generic (we only take into account 3 atoms)
 	        U = MorsePotential(coords(:,1),coords(:,2))
 	        U = U + MorsePotential(coords(:,1),coords(:,3))
 	        U = U + HOPotential(coords(:,2),coords(:,3))
 	        KE = KineticEnergy(velocities(:,1))
 	        KE = KE + KineticEnergy(velocities(:,2))
 	        KE = KE + KineticEnergy(velocities(:,3))
+
+		!Finally write to the data file all the important data values
 		write(filechannel2,FMT=*) number_of_frames,order,neighbor_check,steps,&
                                           min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
 
@@ -334,9 +405,10 @@ open(filechannel2,file=gridpath1//checkstatefile)
                 velocities = velocities + gradient
 
         end do
-close(filechannel2)
+	close(filechannel2)
 
-        !velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	!velocityH2 is just the velocity of the incoming H at the end
+	!Right now, this is not generic (only works for H - H2)
         velocityH2 = velocities(:,1)
 
 end subroutine checkTrajectory
@@ -344,27 +416,64 @@ end subroutine checkTrajectory
 
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!       SUBROTUINE checkMultipleTrajectories
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!INPUT: real :: initial_bond_distance           "the length of the H2 bond initially"
-!               initial_rotational_speed        "the rotational speed of the H2"
-!               initial_rotation_angle          "the direction the H2 is spinning (relative)"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!       real :: initial_bond_angle1             "the angle the H2 bond makes with the x-axis"
-!               initial_bond_angle2             "the angle the H2 bond makes with the y-z plane"
+!	SUBROUTINE
+!		checkMultipleTrajectories
 !
-!       logical            :: force_Neighbors           "the choice to check adjacent cells"
-!       integer            :: Ngrid_total                       "the number of grids to check"
-!       int,dim(Ngrid_total) :: filechannels            "the files that we write RMSD calls to"
-!       character(*)       :: path_to_directory         "the path to the directory with the grids"
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!       Simulates a H --> H2 collision with the above parameters
-!       Uses physical constants and parameters as supplied by f2_physics_parameters.f90
-!       Checks a folder full of grids of files formatted by f2_parameters.f90
-!       Checks each individual frame according to subroutines in checkCells5.f90
-!       Makes use of a cross product which is supplied by f1_functions.f90
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	PURPOSE
+!		This subroutine simulates an MD collision by calculating the gradient
+!		at every step with classical mechanics and parameters in PHYSICS
+!
+!		Every frame is checked with multiple grids through interactMultipleGrids
+!
+!		The initial and final velocity of the incoming H/H2 is output to
+!		gather scattering angle data
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	INPUT				KIND				DESCRIPTION
+!
+!		filechannels			INTEGER,DIM(Ngrid_total)	These filechannels were opened beforehand to the
+!										trajectory files that we output rmsd data to;
+!										all that's left to do is to write to them every frame
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	OUTPUT				KIND				DESCRIPTION
+!
+!		velocityH1			REAL(DP)			The velocity of the incoming H/H2 molecule
+!										at the start of the trajectory
+!		velocityH2			REAL(DP)			The velocity of the incoming H/H2 molecule
+!										at the end of the trajectory (post-collision)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	IMPORTANT VARIABLES		KIND				DESCRIPTION
+!
+!		vals				REAL(DP),DIM(Nvar)		The variables associated with a frame
+!
+!		coords				REAL(DP),DIM(3,Natoms)		The coordinates defining a frame
+!		velocities			REAL(DP),DIM(3,Natoms)		The velocities of a frame
+!		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
+!		approx_gradient			REAL(DP),DIM(3,Natoms)		The gradient recovered for a frame from the grid
+!
+!		number_of_frames		INTEGER				The total amount of frames checked over all frames
+!		order				INTEGER				The order of the cell checked for a frame
+!		neighbor_check			INTEGER				Signifies whether neighbor cells were check or not (0 or 1)
+!
+!		min_rmsd			REAL(DP)			The minimum rmsd recovered for a frame from the grid
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES	                          FILETYPE			DESCRIPTION
+!
+!		gridpath0//trajectory		XYZ				Coordinates to view the trajectory over time;
+!										currently just for bug-testing (set to false)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
         use PHYSICS
@@ -379,7 +488,6 @@ subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
         real(dp),dimension(3,Natoms) :: gradient,approx_gradient
         real(dp),dimension(Nvar) :: vals
         real(dp),dimension(3),intent(out) :: velocityH1, velocityH2
-        real(dp),dimension(3) :: velocity_rotation,velocity_vibration,velocity_translation
 
         !Grid Parameters
         integer,dimension(Ngrid_total),intent(in) :: filechannels
@@ -387,75 +495,66 @@ subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
         !Various other variables
         real(dp) :: U, KE
         real(dp) :: min_rmsd,min_rmsd_prime
-        integer :: TimeA,TimeB
         integer :: number_of_frames,order,neighbor_check
+
+	!Incremental Integer
+	integer :: n
 
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-        !velocityH1 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	!velocityH1 is just the velocity of the incoming H from the get-go
+	!Right now, this is not generic (only works for H - H2)
         velocityH1 = velocities(:,1)
 
-        open(filechannel1,file=gridpath0//trajectoryfile)
-        write(filechannel1,'(I1)') 3
-        write(filechannel1,*) ""
-        write(filechannel1,'(A1,3F10.6)') 'H',&
-              coords(1,1), coords(2,1), coords(3,1)
-        write(filechannel1,'(A1,3F10.6)') 'H',&
-              coords(1,2), coords(2,2), coords(3,2)
-        write(filechannel1,'(A1,3F10.6)') 'H',&
-              coords(1,3), coords(2,3), coords(3,3)
-        close(filechannel1)
-
-        !Calculate the variables for use in acceleration
+        !Always calculate the variables before accelearting
         call getVar3(coords,Natoms,vals(1))
         call getVar4(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
 
+	!Update the velocities
         velocities = velocities + 0.5d0 * gradient
 
-        !Keep track of the time
-        TimeA = time()
+	!Start the main loop
         do steps = 1, Nsteps
 
-                if (modulo(steps,50) == 1) then
-                        !Just to see progress, print something out every 500 steps
-                        !If we are too far out, stop the simulation
-                
+		!Just for bug-testing
+                if (.false.) then !(modulo(steps,50) == 1) then
                         open(filechannel1,file=gridpath0//trajectoryfile,position="append")
                         write(filechannel1,'(I1)') 3
                         write(filechannel1,*) ""
-                        write(filechannel1,'(A1,3F10.6)') 'H',&
-                              coords(1,1), coords(2,1), coords(3,1)
-                        write(filechannel1,'(A1,3F10.6)') 'H',&
-                              coords(1,2), coords(2,2), coords(3,2)
-                        write(filechannel1,'(A1,3F10.6)') 'H',&
-                              coords(1,3), coords(2,3), coords(3,3)
-                        close(filechannel1)
-                        if (modulo(steps,500) == 1) then
-        
-                                if ((vals(1)>max_var1) .or.&
-                                    (vals(2)>max_var2)) then
-                                        exit
-                                end if
-                        endif
+			do n = 1, Natoms
+                        	write(filechannel1,'(A1,3F10.6)') 'H',&
+                              		coords(1,n), coords(2,n), coords(3,n)
+                        end do
+			close(filechannel1)
                 end if
+
+		!Check every 500 steps if we are out-of-bounds
+                if (modulo(steps,500) == 1) then
+                        if ((vals(1)>max_var1) .or.&
+                            (vals(2)>max_var2)) then
+                                exit
+                        end if
+                endif
 
                 !Upate the coordinates with the velocities
                 coords = coords + dt * velocities
 
-                !Get the variables
+                !Always calculate the variables before checking a frame or accelerating
                 call getVar3(coords,Natoms,vals(1))
                 call getVar4(coords,Natoms,vals(2))
 
+		!Check for a frame in the grid
+		!Set the default value beforehand though
                 min_rmsd = .200100d0
-                !Check for similar frames
                 call checkState(vals,coords,approx_gradient,min_rmsd,&
                          filechannels,number_of_frames,order,neighbor_check)
 
-                !Update the gradient
+                !Update the gradient with either the approximation or by acclerating
+		!This is dependent on the threshold and the rejection method
                 if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                         call Acceleration(vals,coords,gradient)
                 else
@@ -467,7 +566,8 @@ subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
 
         end do
 
-        !velocityH2 = velocities(:,1) - (velocities(:,1)+velocities(:,2)+velocities(:,3))/3
+	!velocityH2 is just the velocity of the incoming H at the end
+	!Right now, this is not generic (only works for H - H2)
         velocityH2 = velocities(:,1)
 
 end subroutine checkMultipleTrajectories
@@ -476,29 +576,86 @@ end subroutine checkMultipleTrajectories
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	SUBROUTINE
+!		Acceleration
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	PURPOSE
+!		This subroutine calculates the gradient of a particular frame and
+!		is governed by bond information and parameters in PHYSICS
+!
+!		Variables are supplied in case they have values useful for calcualtion
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	INPUT				KIND				DESCRIPTION
+!
+!		vals				REAL(DP),DIM(Nvar)		The variables associated with a frame
+!		coords				REAL(DP),DIM(3,Natoms)		The coordinates defining a frame
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	OUTPUT				KIND				DESCRIPTION
+!
+!		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!	IMPORTANT VARIABLES		KIND				DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES	                          FILETYPE			DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 subroutine Acceleration(vals,coords,gradient)
 	use PARAMETERS
         use PHYSICS
         implicit none
+
+	!Frame information
         real(dp), dimension(Nvar), intent(in) :: vals
         real(dp), dimension(3,Natoms), intent(in) :: coords
         real(dp), dimension(3,Natoms), intent(out) :: gradient
-        integer :: i, start_index1, start_index2
+
+	!Indexing of the atoms of the frame
+        integer :: start_index1, start_index2
         integer :: index1, index2, bond_index1, bond_index2
 
+	!Incremental integer
+	integer :: i
+
+	!Set the gradient to zero (we add on per pair of interactions)
         gradient = 0.0d0
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         !                 NON-BONDED INTERACTIONS
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+	!BONDING_DATA is arranged by ascending order of the first index
+	!and the second index is always larger than the first index
+	!So the first pair would naturally be (1,2)
         start_index1 = 1
         start_index2 = 2
+
+	!We do a loop through every pair of atoms BETWEEN the bonds
         do i = 1, Nbonds
+
+		!Figure out where the next pair of atoms forms a bond
+		!And iterate over pairs of atoms until you reach that bond
                 bond_index1 = BONDING_DATA(i,1)
                 do index1 = start_index1, bond_index1
+
+			!If we are almost there, then we only do pairs up until the bond index
                         if (index1 == bond_index1) then
                                 bond_index2 = BONDING_DATA(i,2) - 1
+
+			!Otherwise, we must consider all pairs of atoms
                         else
                                 bond_index2 = Natoms
                         end if
@@ -506,16 +663,24 @@ subroutine Acceleration(vals,coords,gradient)
                         do index2 = start_index2, bond_index2
                                 !Remark: the optional 5th argument is the distance between
                                 !        coord1 and coord2 (so it doesn't have to recalculate)
+				!Right now, this is also not generic
                                 call NonBondedForce(coords(:,index1),coords(:,index2),&
                                                 gradient(:,index1),gradient(:,index2),vals(index2-1))
                         end do
 
+			!Start off the next iteration from the index1 + 1
+			!because index2 is always greater than index1
                         start_index2 = index1 + 2
                 end do
 
+		!Start off the next iteration over pairs of atoms
+		!while skipping the pair of atoms that are bonded
                 start_index1 = bond_index1
                 start_index2 = bond_index2 + 2
         end do
+
+	!Repeat the inner loop of the above; this loop takes into account the
+	!pairs of atoms that have indexes larger than the last pair of atoms that are bonded
 	do index1 = start_index1,Natoms
 		do index2 = start_index2,Natoms
                         call NonBondedForce(coords(:,index1),coords(:,index2),&
@@ -529,6 +694,7 @@ subroutine Acceleration(vals,coords,gradient)
         !                 BONDED INTERACTIONS
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+	!Finally, just calculate the forces between the bonded atoms
         do i = 1, Nbonds
                 index1 = BONDING_DATA(i,1)
                 index2 = BONDING_DATA(i,2)

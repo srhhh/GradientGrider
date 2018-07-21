@@ -1,3 +1,74 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PROGRAM
+!               checkNewTrajectorieswithMultipleGrids
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!		This program performs an analysis of a library of grids
+!		specified in PARAMETERS, with the analysis guided by
+!		logical flags in ANALYSIS
+!
+!		Often, new trajectories will have to be made with certain
+!		rejection method and RMSD threshold; these sample trajectories
+!		have each frame checked with the grids, and an approximate
+!		gradient used if within threshold; these frames are not added
+!		to the grids.
+!
+!		The graphs that output include: heat maps, scattering angle
+!		plots, and percent rmsd threshold plots
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILECHANNELS                    ACTION
+!
+!               GNUPLOTCHANNEL                  OPEN, WRITE, CLOSE
+!               FILECHANNEL1                    OPEN, WRITE, CLOSE
+!		TRAJECTORIESCHANNEL		OPEN, WRITE, CLOSE
+!		FILECHANNELS(GRID#)		OPEN, RUNTRAJECTORY, CLOSE
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       CALLS                           MODULE
+!
+!               SYSTEM                          INTRINSIC
+!               CPU_TIME                        INTRINSIC
+!               SYSTEMCLOCK                     INTRINSIC
+!
+!               checkMultipleTrajectories       runTrajectory
+!
+!               getScatteringAngles1            analyzeScatteringAngleswithMultipleGrids
+!               getScatteringAngles2            analyzeScatteringAngleswithMultipleGrids
+!		analyzeHeatMaps1		analyzeHeatMapswithMultipleGrids
+!		getRMSDThresholds1		analyzeRMSDThresholdwithMultipleGrids
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!		gridpath0//trajectories		DAT			A list of grids (001/, 002/, ...)
+!		gridpath1//reject//		DAT			The min_rmsd retrieved for each step
+!			threshold//TRAJ#				of a trajectory
+!		gridpath0//Ngrid///reject//	DAT			A list of data from all trajectories with the
+!		     threshold//trajectories				same suffix (Ngrid,reject,threshold)
+!		gridpath1//HeatMap		JPG			The heat map of a grid
+!		gridpath0//TrueSADist//		JPG			The scattering angle distribution of
+!			TOTALTRAJ#					TOTALTRAJ# trajectories (multiple grids)
+!		gridpath0//TestSADist//		JPG			The scattering angle distribution of all
+!		     Ngrid//reject//threshold				trajectoreis with the same suffix
+!		gridpath1//PercentRMSDDist//	JPG			The percent RMSD threshold distribution of
+!		     Ngrid//reject//threshold				all trajectories with the same suffix
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 program checkNewTrajectorieswithMultipleGrids
 use ANALYSIS
 use PARAMETERS
@@ -71,7 +142,7 @@ seed = rand(seed)
 if (heatmap_flag) call analyzeHeatMaps1(Ngrid_cap)
 
 !This is for scattering angle plots (from the grid)
-if (trueSA_flag) call getScatteringAngles1(Ngrid_cap,trajectoriesfile,8,"trueSA.jpg")
+if (trueSA_flag) call getScatteringAngles1(Ngrid_cap,trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
 
 
 

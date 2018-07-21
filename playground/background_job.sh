@@ -69,7 +69,7 @@ Ngrid_max=4
 #the library housing all the grids (a folder) to be called
 
 #The name of the new library (folder)
-newGRID=testHH2_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
+newGRID=finalHH2_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -86,7 +86,7 @@ newPATH=$(pwd)/$newGRID/$newSOURCE
 ###############################################################################################################################################
 
 #Set this true if you want to create a new grid
-if [ "1" -eq "0" ]
+if [ "0" -eq "0" ]
 then
 
 #If there is another folder of the same name delete that folder first
@@ -127,7 +127,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/testtrajRMSD_flag = \\.true\\./testtrajRMSD_flag = .false./
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.0001d0/
-     s/reject_flag = \\.false\\./reject_flag = .true./
+     s/reject_flag = \\.true\\./reject_flag = .false./
      s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 #DO NOT TOUCH THIS
@@ -228,7 +228,7 @@ make -f $newPATH/$newMAKEANALYSIS
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-exit
+#exit
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -244,7 +244,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntraj_max/
      s/testtrajRMSD_flag = \\.true\\./testtrajRMSD_flag = .false./
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
-     s/threshold_rmsd = .*/threshold_rmsd = 0.01000d0/
+     s/threshold_rmsd = .*/threshold_rmsd = 0.1000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
      s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 $newPATH/$newANALYSIS.f90
 
