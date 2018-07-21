@@ -271,7 +271,7 @@ do Ngrid = 1, Ngrid_max
                 if (modulo(n,Ngrid_check) == 0) then
 
 			!Remark: ScatteringAngles2 checks the trajectoriesfile INSIDE the Ngrid/ subdirectory
-			call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,&
+			call getScatteringAngles2(Ngrid_text//"/Initial"//trajectoriesfile,8,9,10,&
                                                   "InitialScatteringAngleDistribution_"&
 			                          //Ngrid_text//reject_text//Nthreshold_text)
 
