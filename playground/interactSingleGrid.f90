@@ -936,7 +936,11 @@ var1_cell = var1_cell - var1_round0
 var2_cell = var2_cell - var2_round0
 
 var1_index = int(var1_cell * divisor1_1)
+if (var1_index < 0) var1_index = 0
+if (var1_index .ge. scaling1_0) var1_index = scaling1_0 - 1
 var2_index = int(var2_cell * divisor2_1)
+if (var2_index < 0) var2_index = 0
+if (var2_index .ge. scaling2_0) var2_index = scaling2_0 - 1
 
 var1_round1 = multiplier1_1 * var1_index
 var2_round1 = multiplier2_1 * var2_index

@@ -98,6 +98,7 @@ integer :: n, m
 
 !Get a random seed and print it in case there's a problem you need to replicate
 call system_clock(seed)
+seed = 1301119133
 print *, ""
 print *, "System clock seed: ", seed
 seed = rand(seed)
@@ -448,8 +449,7 @@ do Ngrid = 1, Ngrid_max
 	call system("gnuplot < "//gridpath1//gnuplotfile)
 	
 	!Also, make a scattering angle plot
-	call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"&
-	                          //Ngrid_text//reject_text//Nthreshold_text)
+	call getScatteringAngles2(Ngrid_text//"/"//trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"//Ngrid_text)
 	
 	
 	

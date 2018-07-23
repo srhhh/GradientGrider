@@ -213,13 +213,13 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.01000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 $newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
-     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS $newPATH/$newMAKEANALYSIS
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
@@ -246,13 +246,13 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.1000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 $newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
-     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS $newPATH/$newMAKEANALYSIS
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
@@ -279,13 +279,13 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.10000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 $newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
-     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS $newPATH/$newMAKEANALYSIS
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
@@ -312,13 +312,13 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/percentthreshold_flag = \\.false\\./percentthreshold_flag = .true./
      s/threshold_rmsd = .*/threshold_rmsd = 0.20000d0/
      s/reject_flag = \\.true\\./reject_flag = .false./
-     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 $newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = \\.false\\./testtrajSA_flag = .true./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
-     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS $newPATH/$newMAKEANALYSIS
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
