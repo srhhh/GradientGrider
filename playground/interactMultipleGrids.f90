@@ -1,30 +1,155 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       MODULE
+!               interactSingleGrid
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This module governs how a frame interacts with a grid
+!
+!               A frame can be added to the grid or it can be
+!               checked alongside the grid (for the closest frame)
+!
+!               The grid has a particular file formatting system
+!               which stores frames according to the variables they are
+!               associated with (ex. r1, r2); this formatting is
+!               initialized in PARAMETERS
+!
+!               The grid also has an internal file counting system
+!               which keeps track of the size of files, whether they
+!               have children or not, and which children have a file
+!               associated with them; this system is initialized in
+!               PARAMETERS and reset whenever a grid is made 
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILECHANNELS                    ACTION
+!
+!               FILECHANNEL1                    OPEN, WRITE, CLOSE
+!               FILECHANNEL1                    OPEN, READ, CLOSE
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINES                     ARGUMENTS               KIND
+!
+!		checkState
+!
+!		getNeighbors
+!
+!		getRMSD_dp
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       CALLS                           MODULE
+!
+!               getVar3                         VARIABLES
+!               getVar4                         VARIABLES
+!
+!               getNeighbors                    interactMultipleGrids
+!               getRMSD_dp                      interactMultipleGrids
+!
+!               rmsd                            ls_rmsd_original
+!               matmul                          PHYSICS
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE      SUBROUTINE                      FMT
+!
+!               gridpath2//                     DAT             getRMSD_dp              FMT7,FMT3
+!                 trim(subcell).dat
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 module interactMultipleGrids
 implicit none
 
 
 contains
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!              FUNCTION CHECKSTATE
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!INPUT: real,dim(3*Natoms)	coords                  "the to-be-checked frame"
-!	logical 		force_Neighbors		"do we force it to check adjacent cells?"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!	character(*) 		path_to_directory	"the path to the directory containing the grids"
-!	integer 		Ngrid_total		"the number of grids to check"
-!	integer,dim(Ngrid_total) 	filechannels		"the files we write to for data on each grid"
+!       SUBROUTINE
+!               checkState
 !
-!OUTPUT real, dim(6*Natoms) 	approx_gradient           "closest frame+gradient"
-!       dp 			min_rmsd                "closest frame rmsd"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!	integer number_of frames			"the number of frames checked" (deprecated) 
-!		order					"the order of the subcell checked" (deprecated)
-!		neighbor_check				"did we check adjacent cells?" (deprecated)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!	This checkstate does not rely on counters
-!	Instead it inquires for some subcell in each grid
-!	Of course, this assumes each grid uses the same parameters
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       PURPOSE
+!               This subroutine bins a frame into a subcell then checks the file associated
+!               with that subcell for frames that are close in RMSD to the original frame
+!
+!               Only the subcell that is most granular and which is not overcrowded
+!               is checked; if this subcell is empty then the subcells closest to it
+!               in terms of variable1, variable2 are checked
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               coords                          REAL(DP),DIM(3,Natoms)          The coordinates defining the reference frame
+!		filechannels			INTEGER,DIM(Ngrid_total)	The filechannels of each grid to write data
+!										such as minimum rmsd
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               min_rmsd                        REAL(DP)                        The minimum rmsd found between the refence frame and
+!                                                                               all frames in the subcell associated with it
+!               gradient                        REAL(DP),DIM(3,Natoms)          The gradient associated with a frame
+!
+!               number_of_frames                INTEGER                         The total number of frames checked for the refernce frame
+!               order                           INTEGER                         The order of the subcell that was checked
+!               neighbor_check                  INTEGER                         May either be 0 or 1 depending on whether the
+!                                                                               subcells surrounding the original subcell were checked
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               subcell                         CHARACTER                       The name of the file associated with a subcell
+!               var1_filename                   CHARACTER                       The portion of the subcell string that is
+!                                                                               associated with variable1
+!               var2_filename                   CHARACTER                       The portion of the subcell string that is
+!                                                                               associated with variable2
+!
+!               var                             REAL                            The original value of the variable
+!               var_cell                        REAL                            The value of the variable minus all rounding;
+!                                                                               can be considered the "round off"
+!               var_roundN                      REAL                            The rounded value of the variable, rounded down
+!                                                                               to order N (specified in PARAMETERS)
+!               var_index                       INTEGER                         The modulo of the variable with respect to
+!                                                                               a subcell spacing
+!
+!		subcell_existence		LOGICAL				A flag indicating whethere a file associated with
+!										a subcell exists
+!
+!		old_min_rmsd			REAL(DP)			Temporary buffer for the value of min_rmsd
+!										when comparing the min_rmsd output of two grids
+!
+!               stop_flag                       LOGICAL                         A flag to indicate when a nonempty cell was found
+!                                                                               in the search for neighbors, so the search can stop
+!               index1_1                        INTEGER                         The first index to check for variable1 (neighbors)
+!               index1_2                        INTEGER                         The second index to check for variable1 (neighbors)
+!               index2_1                        INTEGER                         The first index to check for variable2 (neighbors)
+!               index2_2                        INTEGER                         The second index to check for variable2 (neighbors)
+!
+!               U                               REAL(DP),DIM(3,3)               The rotation matrix used to rotate a frame
+!                                                                               and minimize its RMSD with respect to the reference frame
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine checkState(vals,coords,gradient,min_rmsd,filechannels,&
                       number_of_frames,order,neighbor_check)
@@ -36,8 +161,8 @@ integer :: i,j,k
 integer,intent(out),optional :: order,number_of_frames,neighbor_check
 integer :: var1_index0,var2_index0,var1_index1,var2_index1
 integer :: index1_1,index1_2,index2_1,index2_2
-integer :: min_position,population
-logical :: stop_flag,flag1,flag2,flag3,flag4
+integer :: population
+logical :: stop_flag
 real :: var1,var2,var1_cell,var2_cell,var1_round,var2_round
 real :: var1_round0,var2_round0,var1_round1,var2_round1,var1_round2,var2_round2,var1_round3,var2_round3
 real(dp), dimension(Nvar), intent(in) :: vals
@@ -275,23 +400,83 @@ if (min_rmsd < old_min_rmsd) gradient = matmul(U,gradient)
 
 end subroutine checkState
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!          FUNCTION GETNEIGHBORS
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!INPUT: integer		scaling1,scaling2                       "the number of subcells per parent cell"
-!       real 		multiplier1,multiplier2                 "the spacing of the subcell"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!       integer 	index1_1,index1_2,index2_1,index2_2     "index of subcells to check"
-!       real 		var1_round0, var2_round0		"the value of the parent subcell"
+!       SUBROUTINE
+!               getNeighbors
 !
-!       character(*) 		path_to_grid			"the path to the grid"
-!       integer 		overcrowd			"the maximum number of frames we'll encounter in a subcell"
-!       dp, dim(3,Natoms) 	coords_static                 	"comparison frame"
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!OUTPUT dp			min_rmsd             		"min rmsd of subcells"
-!       real, dim(6*Natoms) 	approx_gradient               	"coords of min rmsd frame"
-!	integer 		number_of_frames		"keeps count of the number of frames"
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       PURPOSE
+!               This subroutine checks the four subcells in the cartesian product
+!               of relative indexes (index1_1,index1_2) x (index2_1, index2_2), with knowledge
+!               of the scaling, the variables rounded down, and the counter
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               scaling1                        INTEGER                         The ratio between the sizes of parent vs child
+!                                                                               subcells with respect to variable1
+!               scaling2                        INTEGER                         The ratio between the sizes of parent vs child
+!                                                                               subcells with respect to variable2
+!               multiplier1                     REAL                            The actual size of the child subcell
+!                                                                               with respect to variable1
+!               multiplier2                     REAL                            The actual size of the child subcell
+!                                                                               with respect to variable2
+!               FMTorder                        CHRACTER(6)                     The formatting for filenames associated with the
+!                                                                               child subcell
+!               var_round                       REAL                            The variables associated with the reference frame
+!                                                                               after rounding to order N
+!
+!               index1_1                        INTEGER                         The first index to check for variable1
+!               index1_2                        INTEGER                         The second index to check for variable1
+!               index2_1                        INTEGER                         The first index to check for variable2
+!               index2_2                        INTEGER                         The second index to check for variable2
+!
+!               coords                          REAL(DP),DIM(3,Natoms)          The coordinates defining the reference frame
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               min_rmsd                        REAL(DP)                        The minimum rmsd found between the reference frame and
+!                                                                               all frames in the subcell associated with it
+!               gradient                        REAL(DP),DIM(3,Natoms)          The gradient associated with a frame
+!               U                               REAL(DP),DIM(3,3)               The rotation matrix used to rotate a frame
+!                                                                               and minimize its RMSD with respect to the reference frame
+!
+!               number_of_frames                INTEGER                         The total number of frames checked for the reference frame
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               subcell                         CHARACTER                       The name of the file associated with a subcell
+!               var1_filename                   CHARACTER                       The portion of the subcell string that is
+!                                                                               associated with variable1
+!               var2_filename                   CHARACTER                       The portion of the subcell string that is
+!                                                                               associated with variable2
+!
+!               var_round                       REAL                            The variable associated with the subcell in question,
+!                                                                               rounded down to the order specified by multiplier
+!
+!               flag1                           LOGICAL                         Is relative index (index1_1) not out-of-bounds?
+!               flag2                           LOGICAL                         Is relative index (index1_2) not out-of-bounds?
+!               flag3                           LOGICAL                         Is relative index (index2_1) not out-of-bounds?
+!               flag4                           LOGICAL                         Is relative index (index2_2) not out-of-bounds?
+!
+!               population                      INTEGER                         The number of frames in a subcell
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath2//                     DAT                     The file houses all the information (var1,var2,coords,
+!                 trim(subcell).dat                                     gradient) of each frame that is in the cell associated
+!                                                                       with this file
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,FMTorder,&
                         index1_1,index1_2,index2_1,index2_2,&
@@ -418,6 +603,7 @@ end subroutine getNeighbors
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  actually pretty self-explanatory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 
 use ls_rmsd_original
