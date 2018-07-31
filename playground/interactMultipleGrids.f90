@@ -447,8 +447,6 @@ do
         read(filechannel1,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
 	if (iostate /= 0) exit
 
-print *, "checking a frame..."
-
         call rmsd_dp(Natoms,coords2,coords,1,candidate_U,x_center,y_center,min_rmsd)!,.false.,g)
 
 	if (min_rmsd < old_min_rmsd) then
