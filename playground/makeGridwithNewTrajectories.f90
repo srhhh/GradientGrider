@@ -86,6 +86,9 @@ real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_ener
 real :: r1,r2
 integer :: seed,c1,c2,cr
 real :: system_clock_rate
+integer :: grid_t0, grid_t1
+real :: grid_wall_time
+character(10) :: grid_wall_time_text
 
 !Incremental Integers
 integer :: n, m
@@ -98,9 +101,8 @@ integer :: n, m
 
 !Get a random seed and print it in case there's a problem you need to replicate
 call system_clock(seed)
-seed = 1301119133
 print *, ""
-print *, "System clock seed: ", seed
+print *, "     RNG Seed: ", seed
 seed = rand(seed)
 
 !Initialize the clock
@@ -122,6 +124,9 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 do Ngrid = 1, Ngrid_max
+
+	!Time the grid creation
+	call system_clock(grid_t0)
 
 	!This formats the name of the grid directory (001/, 002/, ...)
 	write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
@@ -394,6 +399,10 @@ do Ngrid = 1, Ngrid_max
 		header3_old = header3
         end do
 
+	!Grid Timing
+	call system_clock(grid_t1)
+	grid_wall_time = (grid_t1-grid_t0)*system_clock_rate
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !		GRID FINAL ANALYSIS
@@ -405,6 +414,7 @@ do Ngrid = 1, Ngrid_max
 	write(progresschannel,*) ""
 	write(progresschannel,*) "Finished all trajectories for grid "//Ngrid_text//"/"
 	write(progresschannel,*) "        Now we have ", Nfile, " files"
+	write(progresschannel,*) "        Altogether the grid took this many seconds: ", grid_wall_time
 	write(progresschannel,*) ""
 	write(progresschannel,*) ""
 	close(progresschannel)
@@ -439,10 +449,13 @@ do Ngrid = 1, Ngrid_max
 	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:7 w lines'
 	write(gnuplotchannel,*) 'set autoscale y'
 	write(gnuplotchannel,*) 'set ylabel "Wall Time (sec)"'
+	write(grid_wall_time_text,FMT="(F10.2)") grid_wall_time
+	write(gnuplotchannel,*) 'set label 1 "Total Wall Time: '//trim(adjustl(grid_wall_time_text))//'" at graph 0.1,0.9'
 	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:6 w lines'
 	write(gnuplotchannel,*) 'set xtics'
 	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
 	write(gnuplotchannel,*) 'set autoscale y'
+	write(gnuplotchannel,*) 'unset label 1'
 	write(gnuplotchannel,*) 'set ylabel "CPU Time (sec)"'
 	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:5 w lines'
 	close(gnuplotchannel)
