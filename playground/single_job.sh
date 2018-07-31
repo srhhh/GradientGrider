@@ -57,10 +57,10 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0700
 
 #The number of grids to add to the overall library (folder)
-Ngrid_max=1
+Ngrid_max=4
 
 #The deafault flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -140,7 +140,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = .000100d0/
+     s/threshold_rmsd = .*/threshold_rmsd = .0100d0/
      s/reject_flag = .*/reject_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -167,8 +167,6 @@ make clean -f $newPATH/$newMAKEGRID
 make -f $newPATH/$newMAKEGRID
 ./a.out
 
-exit
-
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 ./a.out
@@ -178,7 +176,7 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-#exit
+ exit
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -211,7 +209,7 @@ make -f $newPATH/$newMAKEANALYSIS
 ###############################################################################################################################################
 ###############################################################################################################################################
 
- exit
+#exit
 
 ###############################################################################################################################################
 ###############################################################################################################################################
