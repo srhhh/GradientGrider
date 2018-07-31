@@ -913,7 +913,7 @@ if (key0 < overcrowd0) then
 		var2_round = var2_round0
                 write(var1_filename,FMT=FMTorder0) var1_round
                 write(var2_filename,FMT=FMTorder0) var2_round
-                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 call getRMSD(subcell,key0,coords,min_rmsd,gradient,U)
 
@@ -963,7 +963,7 @@ if (key1 < overcrowd1) then
 		var2_round = var2_round0 + var2_round1
                 write(var1_filename,FMT=FMTorder1) var1_round
                 write(var2_filename,FMT=FMTorder1) var2_round
-                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 call getRMSD(subcell,key1,coords,min_rmsd,gradient,U)
 	end if
@@ -1064,7 +1064,7 @@ if (key2 < overcrowd2) then
 		var2_round = var2_round0 + var2_round1 + var2_round2
                 write(var1_filename,FMT=FMTorder2) var1_round
                 write(var2_filename,FMT=FMTorder2) var2_round
-                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 call getRMSD(subcell,key2,coords,min_rmsd,gradient,U)
 	end if
@@ -1138,7 +1138,7 @@ if (key3 < overcrowd3) then
 		var2_round = var2_round0 + var2_round1 + var2_round2 + var2_round3
                 write(var1_filename,FMT=FMTorder3) var1_round
                 write(var2_filename,FMT=FMTorder3) var2_round
-                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 call getRMSD(subcell,key3,coords,min_rmsd,gradient,U)
 	end if
@@ -1321,7 +1321,7 @@ if ((flag1) .and. (flag3)) then
 		var2_round = var2_round0 + index2_1 * multiplier2
                 write(var1_filename,FMT=FMTorder) var1_round
                 write(var2_filename,FMT=FMTorder) var2_round
-                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 call getRMSD(subcell,population,coords,min_rmsd,gradient,U)
         end if
@@ -1342,7 +1342,7 @@ if ((flag2) .and. (flag3)) then
 		var2_round = var2_round0 + index2_1 * multiplier2
                 write(var1_filename,FMT=FMTorder) var1_round
                 write(var2_filename,FMT=FMTorder) var2_round
-                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 call getRMSD(subcell,population,coords,min_rmsd,gradient,U)
         end if
@@ -1362,7 +1362,7 @@ if ((flag1) .and. (flag4)) then
 		var2_round = var2_round0 + index2_2 * multiplier2
                 write(var1_filename,FMT=FMTorder) var1_round
                 write(var2_filename,FMT=FMTorder) var2_round
-                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 call getRMSD(subcell,population,coords,min_rmsd,gradient,U)
         end if
@@ -1382,7 +1382,7 @@ if ((flag2) .and. (flag4)) then
 		var2_round = var2_round0 + index2_2 * multiplier2
                 write(var1_filename,FMT=FMTorder) var1_round
                 write(var2_filename,FMT=FMTorder) var2_round
-                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
                 call getRMSD(subcell,population,coords,min_rmsd,gradient,U)
         end if
@@ -1417,7 +1417,7 @@ real(dp),intent(in), dimension(3,Natoms) :: coords
 real(dp), dimension(3,Natoms) :: coords2
 
 !Read off the states in this subcell
-open(filechannel1,file=trim(filename)//".dat")
+open(filechannel1,file=gridpath2//trim(filename)//".dat")
 do i = 1, population
 	read(filechannel1,FMT=FMT7,advance="no") ((coords2(j,k),j=1,3),k=1,Natoms)
 
