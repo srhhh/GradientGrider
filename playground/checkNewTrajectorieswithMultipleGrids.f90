@@ -105,6 +105,12 @@ integer,allocatable :: filechannels(:)
 real :: r1, r2, system_clock_rate
 integer :: c1, c2, cr
 
+!And we print the seed in case there's some bug that we need to reproduce
+call system_clock(seed)
+print *, "   RNG seed: ", seed
+print *, ""
+seed = rand(seed)
+
 !All trajectory folders are formatted as I0.3 (3-digit integer)
 !So search for these numbered folders and read them
 call system("ls -p "//gridpath0//" | grep '[0123456789]/' > "//gridpath0//trajectories)
@@ -132,17 +138,11 @@ print *, ""
 !We may need a filechannel open for each grid
 allocate(filechannels(Ngrid_total))
 
-!And we print the seed in case there's some bug that we need to reproduce
-call system_clock(seed)
-print *, "Working with system_clock seed: ", seed
-print *, ""
-seed = rand(seed)
-
-!This is for top-level heat map generation (from the grid)
+This is for top-level heat map generation (from the grid)
 if (heatmap_flag) call analyzeHeatMaps1(Ngrid_cap)
 
 !This is for scattering angle plots (from the grid)
-if (trueSA_flag) call getScatteringAngles1(Ngrid_cap,trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
+if (trueSA_flag) call getScatteringAngles1(Ngrid_cap,20,"Initial"//trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
 
 
 
@@ -296,22 +296,26 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 end do
 print *, ""
 
-end if
-
 
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 write(Ntraj_text,FMT=FMT6_pos_real0) threshold_rmsd
-if (percentthreshold_flag) call getRMSDThresholds1(1,"PercentRMSDThreshold_"//&
+if (percentthreshold_flag) then
+	call getRMSDThresholds1(1,"PercentRMSDThreshold_"//&
                                                    Ngrid_text//reject_text//Ntraj_text)
-print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
-print *, ""
+	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
+	print *, ""
+end if
 
 Ntraj = Ntesttraj
-if (testtrajSA_flag) call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//trajectoriesfile,&
+if (testtrajSA_flag) then
+	call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//trajectoriesfile,&
                                                3,4,5,"TestScatteringAngleDistribution_"//&
                                                Ngrid_text//reject_text//Ntraj_text)
-print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
-print *, ""
+	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
+	print *, ""
+end if
+
+end if
 
 end program checkNewTrajectorieswithMultipleGrids

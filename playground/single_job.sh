@@ -57,10 +57,10 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0100
 
 #The number of grids to add to the overall library (folder)
-Ngrid_max=4
+Ngrid_max=2
 
 #The deafault flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -71,10 +71,11 @@ testtraj_flag=.true.
 useolddata_flag=.false.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
-threshold_rmsd=.200100d0
-reject_flag=.false.
+#threshold_rmsd=.200100d0
+threshold_rmsd=.1000d0
+reject_flag=.true.
 testtrajSA_flag=.true.
-Ntrajectories=200
+Ntrajectories=50
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -83,7 +84,8 @@ Ntrajectories=200
 #the library housing all the grids (a folder) to be called
 
 #The name of the new library (folder)
-newGRID=timetest_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
+#newGRID=timetest_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
+newGRID="testgrid_1"
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -135,13 +137,13 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = .*/heatmap_flag = .true./
      s/trueSA_flag = .*/trueSA_flag = .true./
-     s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
+     s/testtraj_flag = .*/testtraj_flag = .false./
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = .0100d0/
-     s/reject_flag = .*/reject_flag = .false./
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/reject_flag = .*/reject_flag = $reject_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 #DO NOT TOUCH THIS

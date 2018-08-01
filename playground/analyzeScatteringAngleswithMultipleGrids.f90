@@ -41,7 +41,7 @@ implicit none
 contains
 
 
-subroutine getScatteringAngles1(Ngrid_cap,DATfilename,scattering_angle_column,JPGfilename)
+subroutine getScatteringAngles1(Ngrid_cap,Nsamples,DATfilename,scattering_angle_column,JPGfilename)
 use PARAMETERS
 implicit none
 integer,parameter :: dp = kind(1.0d0)
@@ -49,6 +49,19 @@ integer,parameter :: dp = kind(1.0d0)
 !CAP TO NUMBER OF GRIDS ANALYZED
 integer, intent(in) :: Ngrid_cap
 integer :: Ngrid_total
+
+!RANDOM TRAJECTORY SAMPLING
+integer,intent(in) :: Nsamples
+real,allocatable :: scatteringAngles
+integer,allocatable :: originalIndexes(:)
+integer,dimension(Ntesttraj,Nsamples) :: selectIntegers, selectIndexes
+integer,dimension(Nsamples) :: selectIndex
+
+!SCATTERING ANGLE BINNING
+real :: scatteringAngle
+real :: bin_width, bin_accept
+real :: binMean, binSD
+real,dimension(Nsamples) :: binSize
 
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: DATfilename
@@ -96,9 +109,6 @@ Ngrid_total = Ngrid_total - 1
 !For now, we are putting a soft cap on how many trajectories we are using
 !Each grid has Ntraj_max trajectories so we will use a maximum of 4 * Ntraj_max trajectories
 Ngrid_total = min(Ngrid_cap, Ngrid_total)
-print *, "Working on directory ", gridpath0
-print *, "Deciding on using ", Ngrid_total, " grids"
-print *, ""
 
 
 !This data was made during creation (or should have been!) so all we need to do
@@ -111,11 +121,11 @@ do Ngrid = 1, Ngrid_total
         print *, " Working on grid number: ", Ngrid_text
 
         !The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
-        write(Ntraj_text,FMT="(I0.6)") Ngrid * Ntraj_max
+        write(Ntraj_text,FMT="(I6)") Ngrid * Ntraj_max
 
         !This system call concatenates all the data files from that previously made 'hack'
         !By doing that, we merge all the scattering angle data together
-        call system("cat"//trajectories_text(1:Ngrid*trajectories_text_length)//" >> "//&
+        call system("cat"//trajectories_text(1:Ngrid*(trajectories_text_length+7))//" >> "//&
                     gridpath0//Ngrid_text//"/"//cumulativefile//trim(adjustl(Ntraj_text))//".dat")
 
         !This is the gnuplot code to make the plots
@@ -145,11 +155,78 @@ do Ngrid = 1, Ngrid_total
         !And then we just input it into gnuplot.exe
         call system("gnuplot < "//gridpath0//gnuplotfile)
 
-	!And remove any extra files
-	call system("rm "//gridpath0//Ngrid_text//"/"//cumulativefile//Ntraj_text//".dat")
-	call system("rm "//gridpath0//gnuplotfile)
-
 end do
+
+!We also want to know how much variance there is for a particular
+!sample size (a sample size of Ntesttraj in this case)
+
+!For this, we need to know how to bin the scattering angles of ALL the trajectories
+
+!First, get all the trajectories in an internal array
+allocate(scatteringAngles(Ngrid_total*Ntraj_max),originalIndexes(Ngrid_total*Ntraj_max))
+open(filechannel1,file=gridpath0//Ngrid_test//"/"//cumulativefile//trim(adjustl(Ntraj_text))//".dat")
+do i = 1, Ngrid_total*Ntraj_max
+        read(filechannel1,FMT=*) (line_data(j),j=1,scattering_angle_column)
+        originalIndexes(i) = (/ line_data(1) /)
+        scatteringAngles(i) = (/ line_data(scattering_angle_column) /)
+end do
+close(filechannel1)
+
+!Then we need to sort this big list
+call qsort2(scatteringAngles,originalIndexes,Ngrid_total*Ntraj,1,1)
+
+!Now we need some random samples of this big list
+!Here, we just choose a random Ntesttraj number of integers within bounds of the array
+do i = 1, Ntesttraj
+        selectIndexes(i,:) = i
+end do
+do i = 1, Nsamples
+        call chooseINT(Ntesttraj,1,Ngrid_total*Ntraj,selectIntegers(:,i))
+        call qsort2(selectIntegers(:,i),selectIndexes(:,i),Ntesttraj,1,1)
+end do
+
+!Now we must do the laborious job of binning these
+!Each bin has its own average and standard deviation based on how many samples we took
+bin_width = pi2 / Nbins
+bin_accept = bin_width
+selectIndex = 1
+open(filechannel1,file=gridpath0//"Adjusted"//cumulativefile)
+do i = 1, Nbins
+        binSize = 0.0
+        do j = 1, Nsamples
+                if (selectIndex(j) > Ntesttraj) cycle
+                scatteringAngle = scatteringAngles(originalIndexes(&
+                                  selectIntegers(j,selectIndexes(j,selectIndex(j)))))
+                if (scatteringAngle > bin_accept) cycle
+                selectIndex(j) = selectIndex(j) + 1
+                binSize(j) = binSize(j) + 1.0
+        end do
+        binMean = sum(binSize) / Nsamples
+        binSD = sqrt(sum(((binSize-binMean)**2))/(Nsamples - 1))
+
+        write(filechannel1,*) bin_accept, binMean, binSD
+        bin_accept = bin_accept + bin_width
+end do
+close(filechannel1)
+
+!We have everything we need to draw the distribution with error bars
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) "set terminal jpeg size 1200,1200"
+write(variable_length_text,FMT="(I6)") Ntesttraj
+write(gnuplotchannel,*) 'set output "'//gridpath0//'Adjustedto'//&
+                        trim(adjustl(variable_length_text)//JPGfilename//'"'
+write(gnuplotchannel,*) 'set title "Scattering Angle Distribution for Samples of '//&
+                        trim(adjustl(variable_length_text))//' Trajectories"'
+write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
+write(gnuplotchannel,*) 'set xrange [0:6.28318]'
+write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set ylabel "Frequency"'
+write(gnuplotchannel,*) 'set ytics 1'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//cumulativefile//'" u 1:2 w lines, \'
+write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'" u 1:2:3 w yerrorbars'
+close(gnuplotchannel)
+
 
 end subroutine getScatteringAngles1
 
