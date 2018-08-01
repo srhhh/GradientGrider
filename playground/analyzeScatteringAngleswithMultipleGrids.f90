@@ -184,7 +184,7 @@ do i = 1, Ntesttraj
 end do
 do i = 1, Nsamples
         call chooseINT(Ntesttraj,1,Ngrid_total*Ntraj_max,selectIntegers(:,i))
-        call qsort2(selectIntegers(:,i),selectIndexes(:,i),Ntesttraj,1,1,Ntesttraj,i)
+        call qsort2(selectIntegers(:,i),selectIndexes(:,i),Ntesttraj,1,1,Ntesttraj,1)
 end do
 
 !Now we must do the laborious job of binning these
@@ -196,8 +196,7 @@ do bin_accept = 1, Nbins
         do i = 1, Nsamples
 		do
 	                if (selectIndex(i) > Ntesttraj) exit
-	                scatteringAngle = scatteringAngles(originalIndexes(&
-	                                  selectIntegers(selectIndexes(selectIndex(i),i),i),1),1)
+	                scatteringAngle = scatteringAngles(selectIntegers(selectIndex(i),i),1)
 	                if (scatteringAngle > bin_accept) exit
 	                selectIndex(i) = selectIndex(i) + 1
 	                binSize(i) = binSize(i) + 1.0
@@ -206,7 +205,7 @@ do bin_accept = 1, Nbins
         binMean = sum(binSize) / Nsamples
         binSD = sqrt(sum(((binSize-binMean)**2))/(Nsamples - 1))
 
-        write(filechannel1,*) (bin_accept-0.5)*bin_width, binMean, binSD/sqrt(real(Nsamples))
+        write(filechannel1,*) (bin_accept-0.5)*bin_width, binMean, binSD!/sqrt(real(Nsamples))
 end do
 close(filechannel1)
 

@@ -150,7 +150,7 @@ end if
 if (trueSA_flag) then
 	print *, "   Making plot: ", "trueScatteringAngleDistribution"
 	print *, ""
-	call getScatteringAngles1(20,"Initial"//trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
+	call getScatteringAngles1(100,"Initial"//trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
 end if
 
 
