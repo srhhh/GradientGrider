@@ -107,6 +107,7 @@ integer :: c1, c2, cr
 
 !And we print the seed in case there's some bug that we need to reproduce
 call system_clock(seed)
+print *, ""
 print *, "   RNG seed: ", seed
 print *, ""
 seed = rand(seed)
@@ -131,22 +132,33 @@ Ngrid_total = Ngrid_total - 1
 Ngrid_total = min(Ngrid_cap, Ngrid_total)
 
 print *, ""
-print *, "Working on directory ", gridpath0
+print *, "Analysis on directory ", gridpath0
 print *, "Deciding on using ", Ngrid_total, " grids"
 print *, ""
 
 !We may need a filechannel open for each grid
 allocate(filechannels(Ngrid_total))
 
-This is for top-level heat map generation (from the grid)
-if (heatmap_flag) call analyzeHeatMaps1(Ngrid_cap)
+!This is for top-level heat map generation (from the grid)
+if (heatmap_flag) then
+	print *, "   Making plot: ", "TopLevel_HeatMap"
+	print *, ""
+	call analyzeHeatMaps1(Ngrid_cap)
+end if
 
 !This is for scattering angle plots (from the grid)
-if (trueSA_flag) call getScatteringAngles1(Ngrid_cap,20,"Initial"//trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
+if (trueSA_flag) then
+	print *, "   Making plot: ", "trueScatteringAngleDistribution"
+	print *, ""
+	call getScatteringAngles1(20,"Initial"//trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
+end if
 
 
 
 
+!This is for checking trajectories against the grid
+!Currently, this is the main use of this program
+if (testtraj_flag) then
 
 !Some intitialization stuff
 write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
@@ -161,11 +173,6 @@ write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_tot
 
 !If another folder exists with the same name, remove it
 call system("rm "//gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile)
-
-
-!This is for checking trajectories against the grid
-!Currently, this is the main use of this program
-if (testtraj_flag) then
 
 !If we want this program to be a "pick up where we left off last time" program
 !we figure out how many new trajectories I already checked for RMSD
@@ -301,21 +308,25 @@ write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 write(Ntraj_text,FMT=FMT6_pos_real0) threshold_rmsd
 if (percentthreshold_flag) then
-	call getRMSDThresholds1(1,"PercentRMSDThreshold_"//&
-                                                   Ngrid_text//reject_text//Ntraj_text)
 	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
 	print *, ""
+	call getRMSDThresholds1(1,"PercentRMSDThreshold_"//&
+                                                   Ngrid_text//reject_text//Ntraj_text)
 end if
 
 Ntraj = Ntesttraj
 if (testtrajSA_flag) then
+	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
+	print *, ""
 	call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//trajectoriesfile,&
                                                3,4,5,"TestScatteringAngleDistribution_"//&
                                                Ngrid_text//reject_text//Ntraj_text)
-	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
-	print *, ""
 end if
 
 end if
+
+print *, ""
+print *, "Successfully exited analysis"
+print *, ""
 
 end program checkNewTrajectorieswithMultipleGrids

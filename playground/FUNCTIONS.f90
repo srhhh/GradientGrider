@@ -266,7 +266,7 @@ do i = 1, Nintegers
                         if (rand_int == randomIntegers(j)) stop_flag = .true.
                 end do
                 if (stop_flag) cycle
-                random_Integers(i) = rand_int
+                randomIntegers(i) = rand_int
                 exit
         end do
 end do
