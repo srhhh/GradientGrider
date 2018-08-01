@@ -52,9 +52,6 @@ Ngrid_total = Ngrid_total - 1
 !For now, we are putting a soft cap on how many trajectories we are using
 !Each grid has Ntraj_max trajectories so we will use a maximum of 4 * Ntraj_max trajectories
 Ngrid_total = min(4, Ngrid_total)
-print *, "Working on directory ", gridpath0
-print *, "Deciding on using ", Ngrid_total, " grids"
-print *, ""
 
 !First, we do the 'true' scattering angle plots
 !This data was made during creation (or should have been!) so all we need to do
@@ -64,7 +61,6 @@ do Ngrid = 1, Ngrid_total
 
         !The folders are named starting from 001 by increments of 1
         write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-        print *, " Working on grid number: ", Ngrid_text
 
         !We will produce a basic parent-level heat map for the grid
         open(filechannel1,file=gridpath0//Ngrid_text//"/"//counter0file)

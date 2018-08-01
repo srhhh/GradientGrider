@@ -103,7 +103,12 @@ integer :: n, m
 call system_clock(seed)
 print *, ""
 print *, "     RNG Seed: ", seed
+print *, ""
 seed = rand(seed)
+
+!Print statement
+print *, "Creation of directory ", gridpath0
+print *, ""
 
 !Initialize the clock
 call system_clock(count_rate=cr)
@@ -142,9 +147,8 @@ do Ngrid = 1, Ngrid_max
 	!Gridpath2 is the directory housing the files with coordinates and gradients
         call system("mkdir "//gridpath2)
 
-	!Whenever a folder is made, make a print statement
-	print *, gridpath1
-	print *, gridpath2
+	print *, "           Making grid ", Ngrid_text
+	print *, ""
 
 	!Inside the directory, we monitor the progress of the grid's creation
         open(progresschannel,file=gridpath1//progressfile)
@@ -504,5 +508,9 @@ do Ngrid = 1, Ngrid_max
 	
 	
 end do
+
+print *, ""
+print *, "Successfully exited grid creation"
+print *, ""
 
 end program makeGridwithNewTrajectories

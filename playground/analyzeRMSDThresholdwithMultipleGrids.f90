@@ -92,7 +92,6 @@ end if
 write(variable_length_text,"(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_total
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-print *, " Working on all grids up until grid number: ", Ngrid_text
 
 !We will bin data by GRID, not by trajectory
 !So we uniquely name each output .dat and graph by the grid number

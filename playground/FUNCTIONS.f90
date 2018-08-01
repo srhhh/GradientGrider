@@ -243,5 +243,38 @@ end do
 end subroutine grider
 
 
+
+subroutine chooseINT(Nintegers,lowerBound,upperBound,randomIntegers)
+implicit none
+integer,intent(in) :: Nintegers, lowerBound, upperBound
+integer,dimension(Nintegers),intent(out) :: randomIntegers
+real :: rand_num
+integer :: rand_int
+integer :: Nrange
+logical :: stop_flag
+integer :: i,j
+
+Nrange = upperBound - lowerBound + 1
+
+do i = 1, Nintegers
+        do
+                stop_flag = .false.
+                rand_num = rand()
+                rand_int = floor(rand_num*Nrange)
+                if ((rand_int < 0).or.(rand_int == Nrange)) cycle
+                do j = 1, i-1
+                        if (rand_int == randomIntegers(j)) stop_flag = .true.
+                end do
+                if (stop_flag) cycle
+                randomIntegers(i) = rand_int
+                exit
+        end do
+end do
+
+randomIntegers = randomIntegers + lowerBound
+
+end subroutine chooseINT
+
+
 end module FUNCTIONS
 

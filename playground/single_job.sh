@@ -71,8 +71,9 @@ testtraj_flag=.true.
 useolddata_flag=.false.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
-threshold_rmsd=.200100d0
-reject_flag=.false.
+#threshold_rmsd=.200100d0
+threshold_rmsd=.1000d0
+reject_flag=.true.
 testtrajSA_flag=.true.
 Ntrajectories=200
 
@@ -135,13 +136,13 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = .*/heatmap_flag = .true./
      s/trueSA_flag = .*/trueSA_flag = .true./
-     s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
+     s/testtraj_flag = .*/testtraj_flag = .false./
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = .0100d0/
-     s/reject_flag = .*/reject_flag = .false./
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/reject_flag = .*/reject_flag = $reject_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 #DO NOT TOUCH THIS
