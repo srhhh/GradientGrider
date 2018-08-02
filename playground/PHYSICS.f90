@@ -73,14 +73,26 @@ real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass
 !                 TEMPERATURE PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!real(dp), parameter :: temperature = 200.0d0
+!					!Kelvin
+!real(dp), parameter :: upsilon_max = 5.0d0
+!real(dp), parameter :: frequency_factor  = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))/pi2
+!real(dp), parameter :: upsilon_factor1 = -pi2*(hbar/(RU_energy*RU_time))*frequency_factor/(kb*temperature/RU_energy)
+!real(dp), parameter :: upsilon_factor2 = pi2*(hbar/(RU_energy*RU_time))*frequency_factor
+!real(dp), parameter :: temperature_factor = exp(0.5d0*upsilon_factor1)
+!real(dp), parameter :: temperature_scaling = (1.0d0-temperature_factor)*upsilon_max/temperature_factor
+
 real(dp), parameter :: temperature = 200.0d0
 					!Kelvin
 real(dp), parameter :: upsilon_max = 5.0d0
-real(dp), parameter :: frequency_factor  = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))/pi2
-real(dp), parameter :: upsilon_factor1 = -pi2*(hbar/(RU_energy*RU_time))*frequency_factor/(kb*temperature/RU_energy)
-real(dp), parameter :: upsilon_factor2 = pi2*(hbar/(RU_energy*RU_time))*frequency_factor
-real(dp), parameter :: temperature_factor = exp(0.5d0*upsilon_factor1)
-real(dp), parameter :: temperature_scaling = (1.0d0-temperature_factor)*upsilon_max/temperature_factor
+					!Vibrational Quantum Number Cutoff
+real(dp), parameter :: vib_frequency = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))/pi2
+real(dp), parameter :: theta_vib = h * HOke_hydrogen / kb
+					!Vibrational Constant
+real(dp), parameter :: upsilon_factor1 = theta_vib / temperature
+real(dp), parameter :: upsilon_factor2 = 1.0 - exp(-upsilon_factor1)
+real(dp), parameter :: epsilon_factor = h * HOke_hydrogen
+					!Some scaling factors
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                  COLLISION PARAMETERS

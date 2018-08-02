@@ -41,23 +41,23 @@ implicit none
 contains
 
 
-subroutine getScatteringAngles1(Nsamples,DATfilename,scattering_angle_column,JPGfilename)
+subroutine getScatteringAngles1(DATfilename,scattering_angle_column,JPGfilename)
 use PARAMETERS
 use ANALYSIS
 use FUNCTIONS
 implicit none
 
 !RANDOM TRAJECTORY SAMPLING
-integer,intent(in) :: Nsamples
-integer,allocatable,dimension(:,:) :: scatteringAngles, originalIndexes
-integer,dimension(Ntesttraj,Nsamples) :: selectIntegers, selectIndexes
-integer,dimension(Nsamples) :: selectIndex
+integer :: Nsamples
 
 !SCATTERING ANGLE BINNING
-integer :: scatteringAngle, bin_accept
+integer :: Nsamples_max
+integer :: scatteringAngle
 real :: bin_width, binMean, binSD
-real,dimension(Nsamples) :: binSize
-integer :: Nbins
+real,allocatable :: binAverage(:,:),binRMSD(:)
+integer,allocatable :: binTotal(:)
+integer :: Nbins, binTally
+real :: binThreshold = 0.1
 
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: DATfilename
@@ -160,62 +160,84 @@ end do
 !sample size (a sample size of Ntesttraj in this case)
 
 !For this, we need to know how to bin the scattering angles of ALL the trajectories
-allocate(scatteringAngles(Ngrid_total*Ntraj_max,1),originalIndexes(Ngrid_total*Ntraj_max,1))
 Nbins = Ntesttraj / 5
 bin_width = pi / Nbins
 
-!Get all the trajectories in an internal array
-open(filechannel1,file=gridpath0//Ngrid_text//"/"//cumulativefile//trim(adjustl(Ntraj_text))//".dat")
-do i = 1, Ngrid_total*Ntraj_max
-        read(filechannel1,FMT=*) line_data
-        originalIndexes(i,1) = i
-        scatteringAngles(i,1) = ceiling(line_data(scattering_angle_column) / bin_width)
-	if (scatteringAngles(i,1) > Nbins) scatteringAngles(i,1) = Nbins
+!We will get a running average distribution by adding Ntesttraj trajectories at a time
+!If the running average converges then we stop
+Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj - 1
+allocate(binAverage(Nbins,Nsamples_max+1),binTotal(Nbins,Nsamples_max+1),binRMSD(Nsamples_max))
+
+binAverage(:,1) = 0.0
+binTotal(:,:) = 0
+Nsamples = 0
+binTally = 0
+open(filechannel1,file=gridpath0//Ngrid_text//"/"//cumulativefile//trim(Adjustl(Ntraj_text))".dat",action="read")
+open(filechannel2,file=gridpath0//"RMSD"//cumulativefile//".dat",action="write")
+do
+        Nsamples = Nsamples + 1
+
+        do i = 1, Ntesttraj
+                read(filechannel1,FMT=*) line_data
+                scatteringAngle = ceiling(line_data(scattering_angle_column) / bin_width)
+                if (scatteringAngle > Nbins) scatteringAngle = Nbins
+                binTotal(scatteringAngle,Nsamples+1) = binTotal(scatteringAngle,Nsamples+1) + 1
+        end do
+
+        binAverage(:,Nsamples+1) = (binAverage(:,Nsamples) * Nsamples + binTotal(:,Nsamples+1)) / (Nsamples)
+        binRMSD(Nsamples) = sqrt(sum((binAverage(:,Nsamples+1)-binAverage(:,Nsamples))**2))/Nbins
+        write(filechannel2,FMT=*) Nsamples*Ntesttraj, binRMSD(Nsamples), binThreshold
+
+        if (binRMSD(Nsamples) < binThreshold) then
+                binTally = binTally + 1
+        else
+                binTally = 0
+        end if
+
+        if (binTally == 5) exit
+        if (Nsamples == Nsamples_max) then
+                print *, "    No convergence for true scattering angle"
+                print *, ""
+                exit
+        end if
 end do
 close(filechannel1)
-
-!Then we need to sort this big list
-call qsort2(scatteringAngles,originalIndexes,Ngrid_total*Ntraj_max,1,1,Ngrid_total*Ntraj_max,1)
-
-!Now we need some random samples of this big list
-!Here, we just choose a random Ntesttraj number of integers within bounds of the array
-do i = 1, Ntesttraj
-        selectIndexes(i,:) = i
-end do
-do i = 1, Nsamples
-        call chooseINT(Ntesttraj,1,Ngrid_total*Ntraj_max,selectIntegers(:,i))
-        call qsort2(selectIntegers(:,i),selectIndexes(:,i),Ntesttraj,1,1,Ntesttraj,1)
-end do
+close(filechannel2)
 
 !Now we must do the laborious job of binning these
 !Each bin has its own average and standard deviation based on how many samples we took
-selectIndex = 1
-open(filechannel1,file=gridpath0//"Adjusted"//cumulativefile)
-do bin_accept = 1, Nbins
-        binSize = 0.0
-        do i = 1, Nsamples
-		do
-	                if (selectIndex(i) > Ntesttraj) exit
-	                scatteringAngle = scatteringAngles(selectIntegers(selectIndex(i),i),1)
-	                if (scatteringAngle > bin_accept) exit
-	                selectIndex(i) = selectIndex(i) + 1
-	                binSize(i) = binSize(i) + 1.0
-		end do
-        end do
-        binMean = sum(binSize) / Nsamples
-        binSD = sqrt(sum(((binSize-binMean)**2))/(Nsamples - 1))
+open(filechannel1,file=gridpath0//"Adjusted"//cumulativefile//".dat")
+do i = 1, Nbins
+        binMean = sum(binTotal(i,2:Nsamples+1)) * 1.0 / Nsamples
+        binSD = sqrt(sum(((binTotal(i,2:Nsamples+1)-binMean)**2))/(Nsamples - 1))
 
-        write(filechannel1,*) (bin_accept-0.5)*bin_width, binMean, binSD!/sqrt(real(Nsamples))
+        write(filechannel1,*) (i-0.5)*bin_width, binMean, binSD!/sqrt(real(Nsamples))
 end do
 close(filechannel1)
+
+deallocate(binAverage,binTotal,binRMSD)
 
 !We have everything we need to draw the distribution with error bars
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) "set terminal jpeg size 1200,1200"
-write(variable_length_text,FMT="(I5)") Ntesttraj
+write(variable_length_text,FMT="(I5)") Ntesttraj*Nsamples
 write(gnuplotchannel,*) 'set output "'//gridpath0//'Adjustedto'//&
                         trim(adjustl(variable_length_text))//JPGfilename//'"'
-write(gnuplotchannel,*) 'set title "Scattering Angle Distribution for Samples of '//&
+write(gnuplotchannel,*) 'set multiplot layout 2,1'
+write(variable_length_text,FMT="(I5)") Ntesttraj
+write(gnuplotchannel,*) 'set title "Convergence of the '//trim(adjustl(variable_length_text))//' Scattering Angle Distribution"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "Number of Trajectories"'
+write(gnuplotchannel,*) 'set ylabel "Distribution RMSD with Running Average"'
+write(gnuplotchannel,*) 'set autoscale x'
+write(variable_length_text,FMT="(I5)") Ntesttraj
+write(gnuplotchannel,*) 'set xtics '//trim(adjustl(variable_length_text))
+write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set label 1 "Convergence Threshold" at graph 0.02,0.08'
+write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:2 w lines, \'
+write(gnuplotchannel,*) '     "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:3 w lines lc -1'
+write(variable_length_text,FMT="(I5)") Ntesttraj
+write(gnuplotchannel,*) 'set title "Final Scattering Angle Distribution for '//&
                         trim(adjustl(variable_length_text))//' Trajectories"'
 write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
 write(gnuplotchannel,*) 'set xrange [0:3.14159]'
@@ -223,14 +245,12 @@ write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//cumulativefile//'" u 1:2 w boxes, \'
-write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'" u 1:2:3 w yerrorbars'
+write(gnuplotchannel,*) 'unset label 1'
+write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2 w boxes, \'
+write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2:3 w yerrorbars'
 close(gnuplotchannel)
 
 call system("gnuplot < "//gridpath0//gnuplotfile)
-
-deallocate(scatteringAngles,originalIndexes)
 
 end subroutine getScatteringAngles1
 
