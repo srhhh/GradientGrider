@@ -87,11 +87,11 @@ real(dp), parameter :: temperature = 200.0d0
 real(dp), parameter :: upsilon_max = 5.0d0
 					!Vibrational Quantum Number Cutoff
 real(dp), parameter :: vib_frequency = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))/pi2
-real(dp), parameter :: theta_vib = h * HOke_hydrogen / kb
+real(dp), parameter :: theta_vib = hbar * pi2 * HOke_hydrogen / kb
 					!Vibrational Constant
 real(dp), parameter :: upsilon_factor1 = theta_vib / temperature
 real(dp), parameter :: upsilon_factor2 = 1.0 - exp(-upsilon_factor1)
-real(dp), parameter :: epsilon_factor = h * HOke_hydrogen
+real(dp), parameter :: epsilon_factor = hbar * pi2 * vib_frequency
 					!Some scaling factors
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

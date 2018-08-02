@@ -66,14 +66,14 @@ Ngrid_max=4
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
 #what you want each individual one to do
 heatmap_flag=.false.
-trueSA_flag=.true.
-testtraj_flag=.false.
+trueSA_flag=.false.
+testtraj_flag=.true.
 useolddata_flag=.false.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.1000d0
-reject_flag=.true.
+reject_flag=.false.
 testtrajSA_flag=.true.
 Ntrajectories=200
 
@@ -84,7 +84,8 @@ Ntrajectories=200
 #the library housing all the grids (a folder) to be called
 
 #The name of the new library (folder)
-newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
+#newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
+newGRID=freedom_HH
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -101,7 +102,7 @@ newPATH=$(pwd)/$newGRID/$newSOURCE
 ###############################################################################################################################################
 
 #Set this true if you want to create a new grid
-if [ "1" -eq "0" ]
+if [ "0" -eq "0" ]
 then
 
 #If there is another folder of the same name delete that folder first
@@ -131,7 +132,6 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
 #Make changes to the analysis file as specified in the variables above
 #This first analysis simulates new trajectories and checks them with the grid
 #All of these variables can be changed;
-#Always remember to replace true with false when changing a logical variable
 #Ntesttraj is how many trajectorie to simulate (important!)
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = .*/heatmap_flag = .true./

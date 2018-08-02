@@ -222,7 +222,6 @@ do Ngrid = 1, Ngrid_max
 
  			!The energy of the H2 should be some random value
 			!that follows the boltzmann distribution at this temperature
-
 			do
 				!This picks a random value between zero and some very high upper limit
 				random_num1 = rand() * upsilon_max
@@ -231,12 +230,6 @@ do Ngrid = 1, Ngrid_max
 				if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
 
 				initial_energy_H2 = (random_num1 + 0.5d0) * epsilon_factor
-!
-!				initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
-!
-!				!We calculate the probability of this value occuring in our distribution [0,1]
-!				!and we accept it if our second random number (also in range [0,1]) is below it
-!				if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
 			end do
 
 			!The ratio of vib:rot energy of the H2

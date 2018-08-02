@@ -1,21 +1,21 @@
-a.out : DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd_original.o interactSingleGrid.o interactMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o makeGridwithNewTrajectories.o
-	$(FC) -o a.out -O3 -fcheck="bound" DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd_original.o interactSingleGrid.o interactMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o makeGridwithNewTrajectories.o
+a.out : DOUBLE.o PARAMETERS_new.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS_new.o ls_rmsd_original.o interactSingleGrid.o interactMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o makeGridwithNewTrajectories.o
+	$(FC) -o a.out -O3 -fcheck="bound" DOUBLE.o PARAMETERS_new.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS_new.o ls_rmsd_original.o interactSingleGrid.o interactMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o makeGridwithNewTrajectories.o
 
 FC = gfortran
 SOURCE = /home/kazuumi/Desktop/GradientGrider/playground/
 
 DOUBLE.o : $(SOURCE)DOUBLE.f90
 	$(FC) -c $(SOURCE)DOUBLE.f90
-PARAMETERS.o : $(SOURCE)PARAMETERS.f90
-	$(FC) -c $(SOURCE)PARAMETERS.f90
+PARAMETERS_new.o : $(SOURCE)PARAMETERS_new.f90
+	$(FC) -c $(SOURCE)PARAMETERS_new.f90
 FUNCTIONS.o : $(SOURCE)FUNCTIONS.f90
 	$(FC) -c $(SOURCE)FUNCTIONS.f90
 VARIABLES.o : $(SOURCE)VARIABLES.f90
 	$(FC) -c $(SOURCE)VARIABLES.f90
 PHYSICS.o : $(SOURCE)PHYSICS.f90
 	$(FC) -c $(SOURCE)PHYSICS.f90
-ANALYSIS.o : $(SOURCE)ANALYSIS.f90
-	$(FC) -c $(SOURCE)ANALYSIS.f90
+ANALYSIS_new.o : $(SOURCE)ANALYSIS_new.f90
+	$(FC) -c $(SOURCE)ANALYSIS_new.f90
 ls_rmsd_original.o : $(SOURCE)ls_rmsd_original.f90
 	$(FC) -c $(SOURCE)ls_rmsd_original.f90
 interactSingleGrid.o : $(SOURCE)interactSingleGrid.f90

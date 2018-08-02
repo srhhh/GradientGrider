@@ -47,15 +47,12 @@ use ANALYSIS
 use FUNCTIONS
 implicit none
 
-!RANDOM TRAJECTORY SAMPLING
-integer :: Nsamples
-
 !SCATTERING ANGLE BINNING
-integer :: Nsamples_max
+integer :: Nsamples, Nsamples_max
 integer :: scatteringAngle
 real :: bin_width, binMean, binSD
 real,allocatable :: binAverage(:,:),binRMSD(:)
-integer,allocatable :: binTotal(:)
+integer,allocatable :: binTotal(:,:)
 integer :: Nbins, binTally
 real :: binThreshold = 0.1
 
@@ -172,7 +169,7 @@ binAverage(:,1) = 0.0
 binTotal(:,:) = 0
 Nsamples = 0
 binTally = 0
-open(filechannel1,file=gridpath0//Ngrid_text//"/"//cumulativefile//trim(Adjustl(Ntraj_text))".dat",action="read")
+open(filechannel1,file=gridpath0//Ngrid_text//"/"//cumulativefile//trim(Adjustl(Ntraj_text))//".dat",action="read")
 open(filechannel2,file=gridpath0//"RMSD"//cumulativefile//".dat",action="write")
 do
         Nsamples = Nsamples + 1

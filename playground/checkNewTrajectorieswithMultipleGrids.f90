@@ -217,13 +217,15 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 			initial_bond_angle2 = atan2(random_r2,random_num3)
 			exit
 		end do
+
 		!The energy of the H2
-	        do
-		        random_num1 = rand()
-		        random_num2 = rand()
-		        initial_energy_H2 = (upsilon_max*random_num1 + 0.5d0)*upsilon_factor2
-		        if (random_num2 < temperature_scaling*exp(upsilon_max*random_num1*upsilon_factor1)) exit
-	        end do
+                do
+                        !This picks a random value between zero and some very high upper limit
+                        random_num1 = rand() * upsilon_max
+                        random_num2 = rand() * upsilon_factor2
+                        if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
+                        initial_energy_H2 = (random_num1 + 0.5d0) * epsilon_factor
+                end do
 	        random_num2 = 1.0d0
 	        initial_vibrational_energy = random_num2*initial_energy_H2
 	        initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
