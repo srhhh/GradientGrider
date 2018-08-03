@@ -50,9 +50,9 @@ implicit none
 !SCATTERING ANGLE BINNING
 integer :: Nsamples, Nsamples_max
 integer :: scatteringAngle
-real :: bin_width, binMean, binSD
-real,allocatable :: binAverage(:,:),binRMSD(:)
-integer,allocatable :: binTotal(:,:)
+real :: bin_width, binMean, binSD,binRMSD
+real,allocatable :: binAverage(:)
+integer,allocatable :: binTotal(:,:),sampleSize(:)
 integer :: Nbins, binTally
 real :: binThreshold = 0.1
 
@@ -153,39 +153,52 @@ do Ngrid = 1, Ngrid_total
 
 end do
 
-!We also want to know how much variance there is for a particular
-!sample size (a sample size of Ntesttraj in this case)
+!For a prototype distribution we need three things:
+!	1. A standard binning
+!	2. A reference distribution
+!	3. An errorbar
 
-!For this, we need to know how to bin the scattering angles of ALL the trajectories
+!First, we set a binning
 Nbins = Ntesttraj / 5
 bin_width = pi / Nbins
-
-!We will get a running average distribution by adding Ntesttraj trajectories at a time
-!If the running average converges then we stop
 Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj - 1
-allocate(binAverage(Nbins,Nsamples_max+1),binTotal(Nbins,Nsamples_max+1),binRMSD(Nsamples_max))
+allocate(binTotal(Nbins,Nsamples_max),binAverage(Nbins),sampleSize(Nsamples_max))
 
-binAverage(:,1) = 0.0
-binTotal(:,:) = 0
-Nsamples = 0
-binTally = 0
-open(filechannel1,file=gridpath0//Ngrid_text//"/"//cumulativefile//trim(Adjustl(Ntraj_text))//".dat",action="read")
-open(filechannel2,file=gridpath0//"RMSD"//cumulativefile//".dat",action="write")
-do
-        Nsamples = Nsamples + 1
-
+!Second, we want a reference distribution
+!This will be the distribution of ALL trajectories
+binTotal = 0
+sampleSize = 0
+open(filechannel1,file=gridpath0//Ngrid_text//"/"//cumulativefile//trim(adjustl(Ntraj_text))//".dat",action="read")
+do Nsamples = 1, Nsamples_max
         do i = 1, Ntesttraj
                 read(filechannel1,FMT=*) line_data
                 scatteringAngle = ceiling(line_data(scattering_angle_column) / bin_width)
                 if (scatteringAngle > Nbins) scatteringAngle = Nbins
-                binTotal(scatteringAngle,Nsamples+1) = binTotal(scatteringAngle,Nsamples+1) + 1
+                binTotal(scatteringAngle,Nsamples) = binTotal(scatteringAngle,Nsamples) + 1
+        end do
+        sampleSize(Nsamples) = Nsamples
+end do
+close(filechannel1)
+
+do i = 1,Nbins
+        binAverage(i) = sum(binTotal(i,:)) * 1.0 / Nsamples_max
+end do
+
+!Third, we want error bars
+!For this, we will get a running average distribution by adding Ntesttraj trajectories at a time
+!When the running average converges then we stop and see the variance
+binTally = 0
+open(filechannel1,file=gridpath0//"RMSD"//cumulativefile//".dat",action="write")
+do Nsamples = 1, Nsamples_max
+        binRMSD = 0.0
+        do i = 1, Nbins
+                binRMSD = binRMSD + (sum(binTotal(i,1:Nsamples)) * 1.0 / Nsamples - binAverage(i))**2
         end do
 
-        binAverage(:,Nsamples+1) = (binAverage(:,Nsamples) * Nsamples + binTotal(:,Nsamples+1)) / (Nsamples)
-        binRMSD(Nsamples) = sqrt(sum((binAverage(:,Nsamples+1)-binAverage(:,Nsamples))**2))/Nbins
-        write(filechannel2,FMT=*) Nsamples*Ntesttraj, binRMSD(Nsamples), binThreshold
+        binRMSD = sqrt(binRMSD)/Nbins
+        write(filechannel1,FMT=*) Nsamples*Ntesttraj, binRMSD, binThreshold
 
-        if (binRMSD(Nsamples) < binThreshold) then
+        if (binRMSD < binThreshold) then
                 binTally = binTally + 1
         else
                 binTally = 0
@@ -199,20 +212,19 @@ do
         end if
 end do
 close(filechannel1)
-close(filechannel2)
 
 !Now we must do the laborious job of binning these
 !Each bin has its own average and standard deviation based on how many samples we took
 open(filechannel1,file=gridpath0//"Adjusted"//cumulativefile//".dat")
 do i = 1, Nbins
-        binMean = sum(binTotal(i,2:Nsamples+1)) * 1.0 / Nsamples
-        binSD = sqrt(sum(((binTotal(i,2:Nsamples+1)-binMean)**2))/(Nsamples - 1))
+        binMean = binAverage(i)
+        binSD = sqrt(sum((binTotal(i,1:Nsamples) * 1.0 / sampleSize(1:Nsamples) - binMean)**2)/(Nsamples - 1))
 
         write(filechannel1,*) (i-0.5)*bin_width, binMean, binSD!/sqrt(real(Nsamples))
 end do
 close(filechannel1)
 
-deallocate(binAverage,binTotal,binRMSD)
+deallocate(binAverage,binTotal,sampleSize)
 
 !We have everything we need to draw the distribution with error bars
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
