@@ -225,6 +225,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                         random_num2 = rand() * upsilon_factor2
                         if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
                         initial_energy_H2 = (random_num1 + 0.5d0) * epsilon_factor
+			exit
                 end do
 	        random_num2 = 1.0d0
 	        initial_vibrational_energy = random_num2*initial_energy_H2

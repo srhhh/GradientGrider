@@ -230,6 +230,7 @@ do Ngrid = 1, Ngrid_max
 				if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
 
 				initial_energy_H2 = (random_num1 + 0.5d0) * epsilon_factor
+				exit
 			end do
 
 			!The ratio of vib:rot energy of the H2
