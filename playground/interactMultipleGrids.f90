@@ -168,9 +168,10 @@ real :: var1_round0,var2_round0,var1_round1,var2_round1,var1_round2,var2_round2,
 real(dp), dimension(Nvar), intent(in) :: vals
 real(dp), dimension(3,Natoms), intent(in) :: coords
 real(dp), dimension(3,Natoms), intent(inout) :: gradient
-real(dp), dimension(3,3) :: U
+real(dp), dimension(3,3) :: U, old_U
 real(dp), intent(inout) :: min_rmsd
 real(dp)  :: old_min_rmsd
+real(dp), dimension(3,Natoms) :: old_gradient
 logical :: subcell_existence
 character(100) :: subcell
 character(FMTlength) ::  var1_filename0, var2_filename0, var1_filename1, var2_filename1
@@ -190,7 +191,8 @@ subcell1search_max = 1
 number_of_frames = 0
 
 old_min_rmsd = min_rmsd
-stop_flag = .false.
+old_gradient = gradient
+old_U = 0.0d0
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 SUBCELL TARGETING
@@ -251,6 +253,7 @@ subcell = gridpath2//trim(adjustl(var1_filename1))//"_"//trim(adjustl(var2_filen
 
 !See whether this subcell exists
 inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+stop_flag = .false.
 
 !For bug-testing
 if (.false.) then
@@ -269,20 +272,20 @@ if (subcell_existence) then
 
 	!However many frames are in the subcell we increment to number_of_frames
 	number_of_frames = number_of_frames + population
-	if (.not.(force_Neighbors)) then
-		write(filechannels(Ngrid),FMT=FMT6) min_rmsd
-		cycle
-	end if 
+
+	if (min_rmsd < old_min_rmsd) then
+		old_min_rmsd = min_rmsd
+		old_gradient = gradient
+		old_U = U
+	end if
+
+	stop_flag = .true.
 end if
 
 !If there are no frames in this cell, we can look at one of its
 !neighbors (better than having to look at the parent)
 if ((.not.(subcell_existence)).or.(force_Neighbors)) then
-	old_min_rmsd = min_rmsd
         neighbor_check = 1
-
-        !Once we go far enough outside, we can stop
-        stop_flag = .false.
 
         !Integer i keeps track of how far away from the original
         !subcell we are; we look at cells on the 'diamond' surrounding
@@ -320,18 +323,23 @@ end if
                                   var1_round0,var2_round0,&
                                   coords,min_rmsd,gradient,U,number_of_frames)
 
-                if (min_rmsd < old_min_rmsd) then
+                if (min_rmsd /= old_min_rmsd) then
                         stop_flag = .true.
+			if (min_rmsd < old_min_rmsd) then
+				old_min_rmsd = min_rmsd
+				old_gradient = gradient
+				old_U = U
+			end if
                 end if
         end do
 
-        if (stop_flag) then
-		write(filechannels(Ngrid),FMT=FMT6) min_rmsd
-		exit
-	end if
+        if (stop_flag) exit
         end do
+end if
 
-	if (stop_flag) cycle
+if (stop_flag) then
+	write(filechannels(Ngrid),FMT=FMT6) old_min_rmsd
+	cycle
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -358,12 +366,16 @@ if (subcell_existence) then
 	call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 
 	number_of_frames = number_of_frames + population
+
+	if (min_rmsd < old_min_rmsd) then
+		old_min_rmsd = min_rmsd
+		old_gradient = gradient
+		old_U = U
+	end if
 end if
 
 if ((.not.(subcell_existence)).or.(force_Neighbors)) then
-	old_min_rmsd = min_rmsd
         neighbor_check = 1
-
         stop_flag = .false.
 
         do i = 1, subcell0search_max
@@ -381,22 +393,27 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                                   0.0,0.0,&
                                   coords,min_rmsd,gradient,U,number_of_frames)
 
-                if (min_rmsd < old_min_rmsd) then
+                if (min_rmsd /= old_min_rmsd) then
                         stop_flag = .true.
+			if (min_rmsd < old_min_rmsd) then
+				old_min_rmsd = min_rmsd
+				old_gradient = gradient
+				old_U = U
+			end if
                 end if
         end do
 
-        if (stop_flag) then
-		exit
-	end if
+        if (stop_flag) exit
         end do
 
 end if
 
-write(filechannels(Ngrid),FMT=FMT6) min_rmsd
+write(filechannels(Ngrid),FMT=FMT6) old_min_rmsd
 end do
 
-if (min_rmsd < old_min_rmsd) gradient = matmul(U,gradient)
+!This is to see whether old_U has its default value (all zeroes) or not
+if (any(abs(old_U) > 1.0d-20)) gradient = matmul(old_U,old_gradient)
+min_rmsd = old_min_rmsd
 
 end subroutine checkState
 
