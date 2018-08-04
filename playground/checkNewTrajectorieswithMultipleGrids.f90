@@ -93,8 +93,8 @@ real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_sp
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
 real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
-real(dp) :: speedH, speedH2, scattering_angle
-real(dp),dimension(3) :: velocityH,velocityH2
+real(dp) :: scattering_angle
+real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
 
 !Variables
@@ -174,6 +174,10 @@ if (trueSA_flag) then
 	call getScatteringAngles1("Initial"//trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
 end if
 
+!This is for the energy decomposition plots
+print *, "   Making plot: ", "trueEnergyDecompositionDistribution"
+print *, ""
+call getEnergyAngles("Initial"//trajectoriesfile,8,11,12,13,"trueEnergyDecompositionDistribution.jpg")
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -350,11 +354,12 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!Then write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkMultipleGrids uses filechannel1 to open files in the grid
-	call checkMultipleTrajectories(filechannels(1:Ngrid_max),velocityH,velocityH2)
+	call checkMultipleTrajectories(filechannels(1:Ngrid_max),scattering_angle,TRVenergies1,TRVenergies2)
 
 	!Also let's see how long a single trajectory takes
 	call system_clock(c2)
 	call CPU_time(r2)
+	dTRVenergies = TRVenergies2 - TRVenergies1
 	print *, "        CPU Time: ", r2 - r1
 	print *, "       Wall Time: ", (c2 - c1) * system_clock_rate
 
@@ -363,15 +368,10 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 		close(filechannels(Ngrid))
 	end do
 
-        !We also record the scattering angle of the trajectory
-        speedH = sqrt(velocityH(1)**2 + velocityH(2)**2 + velocityH(3)**2)
-        speedH2 = sqrt(velocityH2(1)**2 + velocityH2(2)**2 + velocityH2(3)**2)
-        scattering_angle = acos(dot_product(velocityH,velocityH2) / &
-                                           (speedH * speedH2))
-
         !This is all recorded in the trajectoriesfile of the grid
         open(filechannel1,file=gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile,position="append")
-        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2
+        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2,&
+                              dTRVenergies(1),dTRVenergies(2),dTRVenergies(3)
         close(filechannel1)
 
 

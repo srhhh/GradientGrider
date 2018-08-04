@@ -140,12 +140,13 @@ contains
 
 
 
-subroutine decompose_two_velocities(coords,velocities,&
-           velocity_translation,velocity_vibration,velocity_rotation)
+subroutine decompose_two_velocities(coords,velocities,velocity_translation,TRVenergies)
 
 implicit none
 real(dp),dimension(3,2),intent(in) :: coords,velocities
-real(dp),dimension(3),intent(out) :: velocity_translation,velocity_vibration,velocity_rotation
+real(dp),dimension(3),intent(out) :: TRVenergies
+real(dp),dimension(3),intent(out) :: velocity_translation
+real(dp),dimension(3) :: velocity_vibration,velocity_rotation
 real(dp),dimension(3) :: parallel_vector,orthogonal_vector
 real(dp),dimension(3) :: velocity_translation1,velocity_translation2,velocity_translation3
 real(dp),dimension(3) :: velocity_rotation1,velocity_rotation2
@@ -155,9 +156,7 @@ real(dp),dimension(3,2) :: velocities_ortho2
 real(dp),dimension(3,2) :: velocities_ortho1
 
 parallel_vector = coords(:,1) - coords(:,2)
-parallel_vector = parallel_vector / sqrt(parallel_vector(1)**2 +&
-                                         parallel_vector(2)**2 +&
-                                         parallel_vector(3)**2 )
+parallel_vector = parallel_vector / sqrt(sum(parallel_vector**2))
 
 velocities_parallel(:,1) = dot_product(velocities(:,1),&
                                       parallel_vector) * parallel_vector
@@ -167,9 +166,7 @@ velocities_parallel(:,2) = dot_product(velocities(:,2),&
 velocities_orthogonal = velocities - velocities_parallel
 
 orthogonal_vector = velocities_orthogonal(:,1) + velocities_orthogonal(:,2)
-orthogonal_vector = orthogonal_vector / sqrt(orthogonal_vector(1)**2 +&
-                                             orthogonal_vector(2)**2 +&
-                                             orthogonal_vector(3)**2 )
+orthogonal_vector = orthogonal_vector / sqrt(sum(orthogonal_vector**2))
 
 velocities_ortho1(:,1) = dot_product(velocities_orthogonal(:,1),&
                                      orthogonal_vector) * orthogonal_vector
@@ -191,6 +188,12 @@ velocity_translation = velocity_translation1 + &
                        velocity_translation3
 velocity_rotation = velocity_rotation1 + &
                     velocity_rotation2
+
+TRVenergies(1) = sqrt(sum(velocity_translation**2))
+TRVenergies(2) = sqrt(sum(velocity_rotation**2))
+TRVenergies(3) = sqrt(sum(velocity_vibration**2))
+
+TRVenergies = 0.5d0*mass_hydrogen*TRVenergies
 
 end subroutine decompose_two_velocities
 

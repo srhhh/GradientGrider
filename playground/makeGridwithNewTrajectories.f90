@@ -72,8 +72,8 @@ character(6) :: Nthreshold_text
 
 !Trajectory Variables
 real(dp) :: trajectory_CPU_time,trajectory_wall_time
-real(dp) :: speedH,speedH2,scattering_angle
-real(dp),dimension(3) :: velocityH1,velocityH2
+real(dp) :: scattering_angle
+real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
 integer :: header1_old,header2_old,header3_old
 
 !Trajectory Initialization Variables
@@ -282,15 +282,10 @@ do Ngrid = 1, Ngrid_max
 
 			!Remark: output of checkTrajectory is in the checkstatefile
 			call system_clock(trajectory_t0)
-			call checkTrajectory(velocityH1,velocityH2)
+			call checkTrajectory(scattering_angle,TRVenergies1,TRVenergies1)
 			call system_clock(trajectory_t1)
 			checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
 
-			!We also record the scattering angle of the trajectory
-			speedH = sqrt(velocityH1(1)**2 + velocityH1(2)**2 + velocityH1(3)**2)
-			speedH2 = sqrt(velocityH2(1)**2 + velocityH2(2)**2 + velocityH2(3)**2)
-			scattering_angle = acos(dot_product(velocityH1,velocityH2) / &
-						           (speedH * speedH2))
 			
 			write(checkstateTrajectory,FMT=FMT6_pos_int) Ntraj
 			open(gnuplotchannel,file=gridpath1//gnuplotfile)
@@ -362,23 +357,18 @@ do Ngrid = 1, Ngrid_max
 		!We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
-                call addTrajectory(velocityH1,velocityH2)
+                call addTrajectory(scattering_angle,TRVenergies1,TRVenergies2)
 
                 call CPU_time(r2)
                 call system_clock(c2)
                 trajectory_CPU_time = r2 - r1
                 trajectory_wall_time = (c2 -c1) * system_clock_rate
+		dTRVenergies = TRVenergies2 - TRVenergies1
 
 		!If there have been a large number of subdivisions (so many that our array will go
 		!out of bounds) then we stop; we also stop if it is taking too long
                 if ((header1 == header1_max).or.&
                    (trajectory_CPU_time > trajectory_CPU_time_max)) exit
-
-		!We also record the scattering angle of the trajectory
-		speedH = sqrt(velocityH1(1)**2 + velocityH1(2)**2 + velocityH1(3)**2)
-		speedH2 = sqrt(velocityH2(1)**2 + velocityH2(2)**2 + velocityH2(3)**2)
-		scattering_angle = acos(dot_product(velocityH1,velocityH2) / &
-					           (speedH * speedH2))
 
 		!Otherwise, we consider this a successful trajectory addition
                 Ntraj = Ntraj + 1
@@ -398,7 +388,8 @@ do Ngrid = 1, Ngrid_max
                 write(filechannel1,*) Ntraj, header1-header1_old, header2-header2_old, Nfile,&
                                       trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps),&
                                       Norder1*100.0/real(steps),&
-				      scattering_angle,initial_bond_angle1,initial_bond_angle2
+				      scattering_angle,initial_bond_angle1,initial_bond_angle2,&
+				      dTRVenergies(1),dTRVenergies(2),dTRVenergies(3)
                 close(filechannel1)
 		header1_old = header1
 		header2_old = header2

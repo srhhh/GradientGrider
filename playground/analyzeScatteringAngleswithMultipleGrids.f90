@@ -61,7 +61,7 @@ character(*), intent(in) :: DATfilename
 
 !COLUMN OF DAT FILE WITH SCATTERING ANGLES
 integer, intent(in) :: scattering_angle_column
-real,dimension(10) :: line_data
+real,dimension(13) :: line_data
 
 !FORMAT OF JPG FILES TO BE MADE
 character(*), intent(in) :: JPGfilename
@@ -347,6 +347,151 @@ close(gnuplotchannel)
 call system("gnuplot < "//gridpath0//gnuplotfile)
 
 end subroutine getScatteringAngles2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+subroutine getEnergyAngles(DATfilename,scattering_angle_column,translational_speed_column,&
+                           rotational_speed_column,vibrational_speed_column,JPGfilename)
+use PARAMETERS
+use ANALYSIS
+use FUNCTIONS
+use PHYSICS
+implicit none
+
+!SCATTERING ANGLE BINNING
+integer :: scatteringAngle
+real(dp) :: sizeSpeedBin = 0.10 * (eV / RU_energy) / 50
+real(dp) :: sizeAngleBin = pi / 50
+integer :: speedBins, angleBins
+
+!FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
+character(*), intent(in) :: DATfilename
+
+!COLUMN OF DAT FILE WITH SCATTERING ANGLES
+integer, intent(in) :: scattering_angle_column,translational_speed_column
+integer, intent(in) :: rotational_speed_column,vibrational_speed_column
+real,dimension(13) :: line_data
+
+!FORMAT OF JPG FILES TO BE MADE
+character(*), intent(in) :: JPGfilename
+
+!FORMATTING OF JPG FILES
+character(5) :: variable_length_text
+character(Ngrid_text_length) :: Ngrid_text
+character(Ngrid_text_length+1) :: folder_text
+character(trajectories_text_length*100) :: trajectories_text
+character(6) :: Ntraj_text
+
+!I/O HANDLING
+integer :: iostate
+
+!Incremental Integers
+integer :: i, j
+
+speedBins = int((eV / RU_energy) / sizeSpeedBin)
+angleBins = int(pi2 / sizeAngleBin)
+
+!All trajectory folders are formatted as I0.3 (3-digit integer)
+!So search for these numbered folders and read them
+call system("ls -p "//gridpath0//" | grep '[0123456789]/' > "//gridpath0//trajectories)
+
+!This is a slight 'hack'; for the 'true' scattering angle plots based on
+!the trajectories FROM THE GRID, we only need to concatenate
+!all the trajectories and read off a specific column
+!To do this, we make a long string " file1 file2 file3 ... fileN"
+!And only take whatever portion out we want (ex. " file1 file2")
+open(trajectorieschannel,file=gridpath0//trajectories,action="read")
+trajectories_text = ""
+do Ngrid = 1, Ngrid_max
+        read(trajectorieschannel,FMT="(A4)",iostat=iostate) folder_text
+        if (iostate /= 0) exit
+        trajectories_text = trim(trajectories_text)//" "//gridpath0//folder_text//&
+                            DATfilename
+end do
+close(trajectorieschannel)
+
+
+!This data was made during creation (or should have been!) so all we need to do
+!is merge, read, and plot them
+do Ngrid = 1, Ngrid_total
+
+	write(variable_length_text,FMT="(I5)") Ngrid_text_length
+        !The folders are named starting from 001 by increments of 1
+        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+
+        !The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
+        write(Ntraj_text,FMT="(I6)") Ngrid * Ntraj_max
+
+        !This system call concatenates all the data files from that previously made 'hack'
+        !By doing that, we merge all the scattering angle data together
+        call system("cat"//trajectories_text(1:Ngrid*(trajectories_text_length+7))//" >> "//&
+                    gridpath0//Ngrid_text//"/"//cumulativefile//trim(adjustl(Ntraj_text))//".dat")
+
+        !This is the gnuplot code to make the plots
+        open(gnuplotchannel,file=gridpath0//gnuplotfile)
+        write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
+        write(gnuplotchannel,*) 'set output "'//gridpath0//trim(adjustl(Ntraj_text))//JPGfilename//'"'
+        write(gnuplotchannel,*) 'set multiplot layout 3,1'
+        write(gnuplotchannel,*) 'set title "Translational Speed Change Distribution of '//trim(adjustl(Ntraj_text))//&
+                                ' trajectories of '//gridpath0//'"'
+        write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+        write(gnuplotchannel,*) 'unset key'
+	write(variable_length_text,FMT="(I5)") speedBins
+	write(gnuplotchannel,*) 'Nbins = '//variable_length_text
+	write(gnuplotchannel,*) 'eV = 1.0'
+	write(gnuplotchannel,*) 'bin_width = eV/Nbins'
+	write(gnuplotchannel,*) 'set boxwidth bin_width'
+	write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
+        write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
+        write(gnuplotchannel,*) 'set xlabel "Energy Change (eV)"'
+        write(gnuplotchannel,*) 'set ylabel "Occurence"'
+        write(gnuplotchannel,*) 'set xrange [0:0.10*eV]'
+        write(gnuplotchannel,*) 'set autoscale y'
+	write(variable_length_text,FMT="(I5)") translational_speed_column
+        write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//&
+                                trim(adjustl(Ntraj_text))//&
+                                '.dat" u (rounded($'//trim(adjustl(variable_length_text))//&
+				')):(1.0) smooth frequency with boxes'
+        write(gnuplotchannel,*) 'set title "Rotational Speed Change Distribution of '//trim(adjustl(Ntraj_text))//&
+                                ' trajectories of '//gridpath0//'"'
+        write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+        write(gnuplotchannel,*) 'set autoscale y'
+	write(variable_length_text,FMT="(I5)") rotational_speed_column
+        write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//&
+                                trim(adjustl(Ntraj_text))//&
+                                '.dat" u (rounded($'//trim(adjustl(variable_length_text))//&
+				')):(1.0) smooth frequency with boxes'
+        write(gnuplotchannel,*) 'set title "Scattering Angle Distribution of '//trim(adjustl(Ntraj_text))//&
+                                ' trajectories of '//gridpath0//'"'
+        write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+        write(gnuplotchannel,*) 'set autoscale y'
+	write(variable_length_text,FMT="(I5)") vibrational_speed_column
+        write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//&
+                                trim(adjustl(Ntraj_text))//&
+                                '.dat" u (rounded($'//trim(adjustl(variable_length_text))//&
+				')):(1.0) smooth frequency with boxes'
+        close(gnuplotchannel)
+
+        !And then we just input it into gnuplot.exe
+        call system("gnuplot < "//gridpath0//gnuplotfile)
+
+end do
+
+end subroutine getEnergyAngles
+
 
 
 end module analyzeScatteringAngleswithMultipleGrids

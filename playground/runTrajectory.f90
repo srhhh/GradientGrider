@@ -105,9 +105,12 @@ contains
 !
 !	OUTPUT				KIND				DESCRIPTION
 !
-!		velocityH1			REAL(DP)			The velocity of the incoming H/H2 molecule
+!		ScatteringAngle			REAL(DP)			The scatteringangle
+!		TRVenergies1			REAL(DP),DIM(3)			The translation, rotational, and vibrational
+!										speeds of the incoming H/H2 molecule
 !										at the start of the trajectory
-!		velocityH2			REAL(DP)			The velocity of the incoming H/H2 molecule
+!		TRVenergies2			REAL(DP),DIM(3)			The translation, rotational, and vibrational
+!										speeds of the incoming H/H2 molecule
 !										at the end of the trajectory (post-collision)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -133,7 +136,7 @@ contains
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine addTrajectory(velocityH1,velocityH2)
+subroutine addTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
 	use VARIABLES
 	use PHYSICS
 	use PARAMETERS
@@ -143,7 +146,9 @@ subroutine addTrajectory(velocityH1,velocityH2)
 	!Coordinates, Velocities, and Variables
 	real(dp), dimension(3,Natoms) :: coords,gradient,velocities
 	real(dp), dimension(Nvar) :: vals
-	real(dp), dimension(3),intent(out) :: velocityH1, velocityH2
+	real(dp), dimension(3),intent(out) :: TRVenergies1, TRVenergies2
+	real(dp), dimension(3) :: velocity_in, velocity_out
+	real(dp),intent(out) :: ScatteringAngle
 
 	!Incremental Integer
 	integer :: n
@@ -152,9 +157,12 @@ subroutine addTrajectory(velocityH1,velocityH2)
         call InitialSetup3(coords,velocities)
 	Norder1 = 0
 
-	!velocityH1 is just the velocity of the incoming H from the get-go
+	!TRVenergies are the translational, rotational, and vibrational
+	!speeds of the incoming H from the get-go
+	!velocity_in is the velocity of the incoming H from the get-go
 	!Right now, this is not generic (only works for H - H2)
-	velocityH1 = velocities(:,1)
+	TRVenergies1 = (/ 0.0d0, 0.0d0, HOPotential(coords(:,2),coords(:,3)) /)
+	velocity_in = velocities(:,1)
 
 	!Always calculate the variables before accelerating
 	!because we can reuse these calculations
@@ -212,9 +220,17 @@ subroutine addTrajectory(velocityH1,velocityH2)
 		velocities = velocities + gradient
         end do
 
-	!velocityH2 is just the velocity of the incoming H at the end
+	!TRVenergies are the translational, rotational, and vibrational
+	!speeds of the incoming H at the end
+	!velocity_out is the velocity of the incoming H at the end
 	!Right now, this is not generic (only works for H - H2)
-	velocityH2 = velocities(:,1)
+	call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),velocity_out,TRVenergies2)
+	TRVenergies2(3) = TRVenergies2(3) + HOPotential(coords(:,2),coords(:,3))
+	velocity_out = velocities(:,1)
+
+        !We also record the scattering angle of the trajectory
+        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
+                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
 
 end subroutine addTrajectory
 
@@ -247,9 +263,12 @@ end subroutine addTrajectory
 !
 !	OUTPUT				KIND				DESCRIPTION
 !
-!		velocityH1			REAL(DP)			The velocity of the incoming H/H2 molecule
+!		ScatteringAngle			REAL(DP)			The scatteringangle
+!		TRVenergies1			REAL(DP),DIM(3)			The translation, rotational, and vibrational
+!										speeds of the incoming H/H2 molecule
 !										at the start of the trajectory
-!		velocityH2			REAL(DP)			The velocity of the incoming H/H2 molecule
+!		TRVenergies2			REAL(DP),DIM(3)			The translation, rotational, and vibrational
+!										speeds of the incoming H/H2 molecule
 !										at the end of the trajectory (post-collision)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -284,7 +303,7 @@ end subroutine addTrajectory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-subroutine checkTrajectory(velocityH1,velocityH2)
+subroutine checkTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
         use PARAMETERS
         use PHYSICS
         use VARIABLES
@@ -296,7 +315,9 @@ subroutine checkTrajectory(velocityH1,velocityH2)
         real(dp), dimension(3,Natoms) :: coords,velocities
         real(dp), dimension(3,Natoms) :: gradient, approx_gradient
         real(dp), dimension(Nvar) :: vals
-        real(dp), dimension(3),intent(out) :: velocityH1,velocityH2
+        real(dp), dimension(3),intent(out) :: TRVenergies1,TRVenergies2
+	real(dp), dimension(3) :: velocity_in, velocity_out
+	real(dp),intent(out) :: ScatteringAngle
 
         !Various other variables
         real(dp) :: U, KE
@@ -309,9 +330,12 @@ subroutine checkTrajectory(velocityH1,velocityH2)
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-	!velocityH1 is just the velocity of the incoming H from the get-go
+	!TRVenergies are the translational, rotational, and vibrational
+	!speeds of the incoming H from the get-go
+	!velocity_in is the velocity of the incoming H from the get-go
 	!Right now, this is not generic (only works for H - H2)
-        velocityH1 = velocities(:,1)
+	TRVenergies1 = (/ 0.0d0, 0.0d0, HOPotential(coords(:,2),coords(:,3)) /)
+	velocity_in = velocities(:,1)
 
 	!Always calculate the variables before accelerating
         call getVar3(coords,Natoms,vals(1))
@@ -407,9 +431,17 @@ subroutine checkTrajectory(velocityH1,velocityH2)
         end do
 	close(filechannel2)
 
-	!velocityH2 is just the velocity of the incoming H at the end
+	!TRVenergies are the translational, rotational, and vibrational
+	!speeds of the incoming H at the end
+	!velocity_out is the velocity of the incoming H at the end
 	!Right now, this is not generic (only works for H - H2)
-        velocityH2 = velocities(:,1)
+	call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),velocity_out,TRVenergies2)
+	TRVenergies2(3) = TRVenergies2(3) + HOPotential(coords(:,2),coords(:,3))
+	velocity_out = velocities(:,1)
+
+        !We also record the scattering angle of the trajectory
+        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
+                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
 
 end subroutine checkTrajectory
 
@@ -444,9 +476,12 @@ end subroutine checkTrajectory
 !
 !	OUTPUT				KIND				DESCRIPTION
 !
-!		velocityH1			REAL(DP)			The velocity of the incoming H/H2 molecule
+!		ScatteringAngle			REAL(DP)			The scatteringangle
+!		TRVenergies1			REAL(DP),DIM(3)			The translation, rotational, and vibrational
+!										speeds of the incoming H/H2 molecule
 !										at the start of the trajectory
-!		velocityH2			REAL(DP)			The velocity of the incoming H/H2 molecule
+!		TRVenergies2			REAL(DP),DIM(3)			The translation, rotational, and vibrational
+!										speeds of the incoming H/H2 molecule
 !										at the end of the trajectory (post-collision)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -475,7 +510,7 @@ end subroutine checkTrajectory
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
+subroutine checkMultipleTrajectories(filechannels,ScatteringAngle, TRVenergies1,TRVenergies2)
         use PHYSICS
         use PARAMETERS
         use VARIABLES
@@ -487,7 +522,9 @@ subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
         real(dp),dimension(3,Natoms) :: coords,velocities
         real(dp),dimension(3,Natoms) :: gradient,approx_gradient
         real(dp),dimension(Nvar) :: vals
-        real(dp),dimension(3),intent(out) :: velocityH1, velocityH2
+        real(dp),dimension(3),intent(out) :: TRVenergies1,TRVenergies2
+	real(dp),dimension(3) :: velocity_in,velocity_out
+	real(dp),intent(out) :: ScatteringAngle
 
         !Grid Parameters
         integer,dimension(Ngrid_total),intent(in) :: filechannels
@@ -503,9 +540,12 @@ subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-	!velocityH1 is just the velocity of the incoming H from the get-go
+	!TRVenergies are the translational, rotational, and vibrational
+	!speeds of the incoming H from the get-go
+	!velocity_in is the velocity of the incoming H from the get-go
 	!Right now, this is not generic (only works for H - H2)
-        velocityH1 = velocities(:,1)
+	TRVenergies1 = (/ 0.0d0, 0.0d0, HOPotential(coords(:,2),coords(:,3)) /)
+	velocity_in = velocities(:,1)
 
         !Always calculate the variables before accelearting
         call getVar3(coords,Natoms,vals(1))
@@ -566,9 +606,17 @@ subroutine checkMultipleTrajectories(filechannels,velocityH1,velocityH2)
 
         end do
 
-	!velocityH2 is just the velocity of the incoming H at the end
+	!TRVenergies are the translational, rotational, and vibrational
+	!speeds of the incoming H at the end
+	!velocity_out is the velocity of the incoming H at the end
 	!Right now, this is not generic (only works for H - H2)
-        velocityH2 = velocities(:,1)
+	call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),velocity_out,TRVenergies2)
+	TRVenergies2(3) = TRVenergies2(3) + HOPotential(coords(:,2),coords(3,:))
+	velocity_out = velocities(:,1)
+
+        !We also record the scattering angle of the trajectory
+        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
+                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
 
 end subroutine checkMultipleTrajectories
 

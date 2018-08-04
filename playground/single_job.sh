@@ -102,7 +102,7 @@ newPATH=$(pwd)/$newGRID/$newSOURCE
 ###############################################################################################################################################
 
 #Set this true if you want to create a new grid
-if [ "1" -eq "0" ]
+if [ "0" -eq "0" ]
 then
 
 #If there is another folder of the same name delete that folder first
