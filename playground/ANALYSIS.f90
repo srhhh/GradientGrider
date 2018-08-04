@@ -19,6 +19,7 @@ logical,parameter :: heatmap_flag = .true.
 !Set .true. to generate the scattering angle plots of the trajectories
 !that were generated with molecular dynamics for each grid
 logical,parameter :: trueSA_flag = .false.
+integer,parameter :: SA_Nbins = 50
 
 !Set .true. to generate trajectories with molecular dynamics
 !and test them against the grid
@@ -45,6 +46,7 @@ logical,parameter :: testtraj_flag = .true.
    !of frames in each trajectory that were below some threshold RMSD
    !One plot will be produced per grid
    logical,parameter :: percentthreshold_flag = .true.
+   integer,parameter :: RMSD_Nbins = 50
 
       !Set the threshold RMSD to be used for any rejection method
       !real(dp),parameter :: !threshold_rmsd! = !.200100d0

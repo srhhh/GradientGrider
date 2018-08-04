@@ -82,6 +82,7 @@ integer :: iostate
 integer :: n
 
 
+!Initialize some strings so that we can uniquely name our data files and graphs
 write(Nthreshold_text,FMT="(F6.5)") threshold_RMSD
 if (reject_flag) then
         reject_text = "reject"
@@ -118,7 +119,7 @@ do n_testtraj = 1, Ntesttraj
         !We want the percentage of frames that has an RMSD below the threshhold
         !So we keep track of the number of frames and divide by that
         percent_threshold_rmsd(n_testtraj) = total_threshold_rmsd * 100.0 / frames
-        write(filechannel1,FMT="(I6,1x,F7.4,1x,I8)") n_testtraj, percent_threshold_rmsd(n_testtraj), frames
+        write(filechannel1,FMT="(I6,1x,F7.3,1x,I8)") n_testtraj, percent_threshold_rmsd(n_testtraj), frames
 end do
 close(filechannel1)
 
@@ -126,7 +127,6 @@ end do
 
 !Finally, plot the data
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
-write(Ntraj_text,FMT="(F6.5)") threshold_rmsd
 write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.jpg"'
 write(gnuplotchannel,*) 'set tmargin 0'
@@ -138,25 +138,29 @@ write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_tot
 write(gnuplotchannel,*) 'set multiplot layout '//Ngrid_text(Ngrid_text_length:Ngrid_text_length)//&
                         ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0'&
                         //' title "Trajectory RMSD Distribution with '//reject_text//' method and '&
-                        //Ntraj_text//' RMSD threshold"'
+                        //Nthreshold_text//' RMSD threshold"'
 write(gnuplotchannel,*) 'set title "Percentages of Trajectories with RMSD Below Threshold"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'unset xtics'
 write(gnuplotchannel,*) 'unset xlabel'
-write(gnuplotchannel,*) 'set boxwidth 5.0'
-write(gnuplotchannel,*) 'bin_width = 5.0'
-write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
+write(gnuplotchannel,*) 'ymax = 100.0'
+write(variable_length_text,"(I5)") RMSD_Nbins
+write(gnuplotchannel,*) 'Nbins = '//trim(adjustl(variable_length_text))
+write(gnuplotchannel,*) 'bin_width = ymax / Nbins'
+write(gnuplotchannel,*) 'set boxwidth bin_width'
+write(gnuplotchannel,*) 'min(x,y) = (x < y) ? x : y'
+write(gnuplotchannel,*) 'bin_number(x) = min(floor(x/bin_width),Nbins-1)'
 write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xrange [0:100]'
+write(gnuplotchannel,*) 'set xrange [0:ymax]'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
 
-write(variable_length_text,"(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_total
 if (Ngrid == Ngrid_total) then
 	write(gnuplotchannel,*) 'set xtics'
-	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below '//Ntraj_text//' A"'
+	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below '//Nthreshold_text//' A"'
 end if
+write(variable_length_text,"(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 write(gnuplotchannel,*) 'plot "'//gridpath0//'percent_rmsd'//Ngrid_text//'.dat'//&
                         '" u (rounded($2)):(1.0) smooth frequency with boxes'
@@ -167,14 +171,14 @@ write(gnuplotchannel,*) 'set title "Distribution of Trajectories, Percent RMSD v
 write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'unset xtics'
 write(gnuplotchannel,*) 'unset xlabel'
-write(gnuplotchannel,*) 'set xrange [0:100]'
+write(gnuplotchannel,*) 'set xrange [0:ymax]'
 write(gnuplotchannel,*) 'set ylabel "Length of Trajectory (Frames)"'
 
 write(variable_length_text,"(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_total
 if (Ngrid == Ngrid_total) then
 	write(gnuplotchannel,*) 'set xtics'
-	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below '//Ntraj_text//' A"'
+	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below '//Nthreshold_text//' A"'
 end if
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 write(gnuplotchannel,*) 'plot "'//gridpath0//'percent_rmsd'//Ngrid_text//'.dat'//&

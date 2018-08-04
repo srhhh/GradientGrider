@@ -57,10 +57,10 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0100
 
 #The number of grids to add to the overall library (folder)
-Ngrid_max=4
+Ngrid_max=1
 
 #The deafault flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -68,14 +68,14 @@ Ngrid_max=4
 heatmap_flag=.false.
 trueSA_flag=.false.
 testtraj_flag=.true.
-useolddata_flag=.false.
+useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.1000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=200
+Ntrajectories=50
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -85,7 +85,7 @@ Ntrajectories=200
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID=freedom_HH
+newGRID=justice_HH
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -102,7 +102,7 @@ newPATH=$(pwd)/$newGRID/$newSOURCE
 ###############################################################################################################################################
 
 #Set this true if you want to create a new grid
-if [ "0" -eq "0" ]
+if [ "1" -eq "0" ]
 then
 
 #If there is another folder of the same name delete that folder first

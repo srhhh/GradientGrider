@@ -79,7 +79,7 @@ use analyzeRMSDThresholdwithMultipleGrids
 use analyzeScatteringAngleswithMultipleGrids
 implicit none
 
-!Variables used to name the new directory uniquely
+!Variables used to name the new directory and trajectories uniquely
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
@@ -105,12 +105,28 @@ integer,allocatable :: filechannels(:)
 real :: r1, r2, system_clock_rate
 integer :: c1, c2, cr
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       RNG SETUP
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 !And we print the seed in case there's some bug that we need to reproduce
 call system_clock(seed)
 print *, ""
 print *, "   RNG seed: ", seed
 print *, ""
 seed = rand(seed)
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       PRE-PROCESSING LIBRARY OVERVIEW
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 !All trajectory folders are formatted as I0.3 (3-digit integer)
 !So search for these numbered folders and read them
@@ -136,17 +152,22 @@ print *, "Analysis on directory ", gridpath0
 print *, "Deciding on using ", Ngrid_total, " grids"
 print *, ""
 
-!We may need a filechannel open for each grid
-allocate(filechannels(Ngrid_total))
 
-!This is for top-level heat map generation (from the grid)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       PRE-CREATION LIBRARY ANALYSIS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!This is for top-level heat map generation (for each of the grids)
 if (heatmap_flag) then
 	print *, "   Making plot: ", "TopLevel_HeatMap"
 	print *, ""
 	call analyzeHeatMaps1(Ngrid_cap)
 end if
 
-!This is for scattering angle plots (from the grid)
+!This is for scattering angle plots (from each of the grids)
 if (trueSA_flag) then
 	print *, "   Making plot: ", "trueScatteringAngleDistribution"
 	print *, ""
@@ -155,10 +176,18 @@ end if
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       TRAJECTORY CREATION FLAG START
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !This is for checking trajectories against the grid
 !Currently, this is the main use of this program
 if (testtraj_flag) then
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Some intitialization stuff
 write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
@@ -167,32 +196,94 @@ if (reject_flag) then
 else
 	reject_text = "accept"
 end if
-
+allocate(filechannels(Ngrid_total))
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 
-!If another folder exists with the same name, remove it
-call system("rm "//gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       PRE-CREATION LIBRARY OVERVIEW
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !If we want this program to be a "pick up where we left off last time" program
 !we figure out how many new trajectories I already checked for RMSD
-!We need all grids 1 to Ngrid_total to have the trajectories so we just check the last one
+
+!By default, we say we will remake all the trajectories
 initial_n_testtraj = 1
+
+!And then we check if we want to reuse some old ones
 if (useolddata_flag) then
-print *, "     Deciding to use old data..."
-write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-call system("ls "//gridpath0//Ngrid_text//"/ | grep -E '^[0123456789]{6}.dat' > "//gridpath0//trajectories)
-open(trajectorieschannel,file=gridpath0//trajectories,action="read")
-do
-	read(trajectorieschannel,FMT="(A50)",iostat=iostate) trajectories_text
-	if (iostate /= 0) exit
-	initial_n_testtraj = initial_n_testtraj + 1
-	print *, "     Already have trajectory: ", trim(adjustl(trajectories_text))
-end do
-print *, ""
-close(trajectorieschannel)
+
+        print *, "     Deciding to use old data..."
+
+        !First we check how many trajectory (Ntraj_text format) files we have
+        !This system call puts them all onto one file
+	!We need all grids 1 to Ngrid_total to have the trajectories but we just check the last one
+	!and we assume all previous grids have just as many or more (usually a safe assumption)
+        write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
+        call system("ls "//gridpath0//Ngrid_text//"/ | grep -E '^"//&
+                    reject_text//"\"//Nthreshold_text//"_[0123456789]{6}.dat' > "//gridpath0//trajectories)
+
+        !Then we simply have to read the file to see how many we have
+	!This also assumes they were numbered correctly (usually a safe assumption)
+        open(trajectorieschannel,file=gridpath0//trajectories,action="read")
+        do
+                read(trajectorieschannel,FMT="(A50)",iostat=iostate) trajectories_text
+                if (iostate /= 0) exit
+                initial_n_testtraj = initial_n_testtraj + 1
+        end do
+        close(trajectorieschannel)
+
+        !Second, we check how many lines are on the trajectories file
+        Ntraj = 1
+        open(trajectorieschannel,file=gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile)
+        do
+                read(trajectorieschannel,*,iostat=iostate)
+                if (iostate /= 0) exit
+                Ntraj = Ntraj + 1
+        end do
+        close(trajectorieschannel)
+
+        !If these two values are not congruent there has been some sort of file corruption or deletion
+        if (Ntraj /= initial_n_testtraj) then
+                print *, ""
+                print *, ""
+                print *, ""
+                print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                print *, "          DATA INCONGRUENCE "
+                print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                if (Ntraj > initial_n_testtraj) print *, "    trajectory files missing for "//&
+                                                         Ngrid_text//reject_text//Nthreshold_text//" ... .dat"
+                if (Ntraj < initial_n_testtraj) print *, "    trajectories file corrupted for "//&
+                                                         Ngrid_text//reject_text//Nthreshold_text
+                print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                print *, ""
+                print *, "    Program exited disgracefully"
+                print *, ""
+                return
+        end if
+
+        print *, "     Total Number of Trajectories Saved: ", initial_n_testtraj - 1, " out of ", Ntesttraj
+        print *, ""
+
+!If not...
+else
+
+        !We need to make a new one of these trajectory files altogether
+        call system("rm "//gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile)
 end if
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       TRAJECTORY CREATION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 !Start timing because this part of the program takes a lot of time
 !so we want to measure our progress
@@ -284,6 +375,13 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         close(filechannel1)
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       DURING-CREATION TRAJECTORY ANALYSIS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 	if (testtrajRMSD_flag) then
 		open(gnuplotchannel,file=gridpath0//gnuplotfile)
 		write(gnuplotchannel,*) 'set term jpeg size 600, 600'
@@ -307,26 +405,41 @@ end do
 print *, ""
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       POST-CREATION LIBRARY ANALYSIS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-write(Ntraj_text,FMT=FMT6_pos_real0) threshold_rmsd
 if (percentthreshold_flag) then
-	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Ntraj_text
+	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Nthreshold_text
 	print *, ""
 	call getRMSDThresholds1(1,"PercentRMSDThreshold_"//&
-                                                   Ngrid_text//reject_text//Ntraj_text)
+                                                   Ngrid_text//reject_text//Nthreshold_text)
 end if
 
 Ntraj = Ntesttraj
 if (testtrajSA_flag) then
-	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Ntraj_text
+	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Nthreshold_text
 	print *, ""
-	call getScatteringAngles2(Ngrid_text//reject_text//Ntraj_text//trajectoriesfile,&
+	call getScatteringAngles2(Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile,&
                                                3,4,5,"TestScatteringAngleDistribution_"//&
-                                               Ngrid_text//reject_text//Ntraj_text)
+                                               Ngrid_text//reject_text//Nthreshold_text)
 end if
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       TRAJECTORY CREATION FLAG END
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 end if
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 print *, ""
 print *, "Successfully exited analysis"

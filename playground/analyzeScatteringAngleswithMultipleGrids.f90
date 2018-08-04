@@ -53,7 +53,7 @@ integer :: scatteringAngle
 real :: bin_width, binMean, binSD,binRMSD
 real,allocatable :: binAverage(:)
 integer,allocatable :: binTotal(:,:),sampleSize(:)
-integer :: Nbins, binTally
+integer :: binTally
 real :: binThreshold = 0.1
 
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
@@ -71,7 +71,7 @@ character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(trajectories_text_length*100) :: trajectories_text
-character(6) :: Ntraj_text,boxwidth_text
+character(6) :: Ntraj_text
 
 !I/O HANDLING
 integer :: iostate
@@ -91,21 +91,13 @@ call system("ls -p "//gridpath0//" | grep '[0123456789]/' > "//gridpath0//trajec
 !And only take whatever portion out we want (ex. " file1 file2")
 open(trajectorieschannel,file=gridpath0//trajectories,action="read")
 trajectories_text = ""
-do Ngrid_total = 1, Ngrid_max
+do Ngrid = 1, Ngrid_max
         read(trajectorieschannel,FMT="(A4)",iostat=iostate) folder_text
         if (iostate /= 0) exit
         trajectories_text = trim(trajectories_text)//" "//gridpath0//folder_text//&
                             DATfilename
 end do
 close(trajectorieschannel)
-
-!We increment before we read, so we need to subtract out one increment here
-if (Ngrid_total < 2) return
-Ngrid_total = Ngrid_total - 1
-
-!For now, we are putting a soft cap on how many trajectories we are using
-!Each grid has Ntraj_max trajectories so we will use a maximum of 4 * Ntraj_max trajectories
-Ngrid_total = min(Ngrid_cap, Ngrid_total)
 
 
 !This data was made during creation (or should have been!) so all we need to do
@@ -132,14 +124,16 @@ do Ngrid = 1, Ngrid_total
                                 ' trajectories of '//gridpath0//'"'
         write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
         write(gnuplotchannel,*) 'unset key'
-	write(boxwidth_text,FMT="(F6.5)") 3.14159 * 10 / max(real(Ngrid*Ntraj_max),50.0)
-	write(gnuplotchannel,*) 'set boxwidth '//boxwidth_text
-	write(gnuplotchannel,*) 'bin_width = '//boxwidth_text
+	write(variable_length_text,FMT="(I5)") SA_Nbins
+	write(gnuplotchannel,*) 'Nbins = '//variable_length_text
+	write(gnuplotchannel,*) 'pi = 3.14159265'
+	write(gnuplotchannel,*) 'bin_width = pi/Nbins'
+	write(gnuplotchannel,*) 'set boxwidth bin_width'
 	write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
         write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
         write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
         write(gnuplotchannel,*) 'set ylabel "Occurence"'
-        write(gnuplotchannel,*) 'set xrange [0:3.14159]'
+        write(gnuplotchannel,*) 'set xrange [0:pi]'
         write(gnuplotchannel,*) 'set autoscale y'
 	write(variable_length_text,FMT="(I5)") scattering_angle_column
         write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//&
@@ -159,10 +153,9 @@ end do
 !	3. An errorbar
 
 !First, we set a binning
-Nbins = Ntesttraj / 5
-bin_width = pi / Nbins
+bin_width = pi / SA_Nbins
 Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj - 1
-allocate(binTotal(Nbins,Nsamples_max),binAverage(Nbins),sampleSize(Nsamples_max))
+allocate(binTotal(SA_Nbins,Nsamples_max),binAverage(SA_Nbins),sampleSize(Nsamples_max))
 
 !Second, we want a reference distribution
 !This will be the distribution of ALL trajectories
@@ -173,14 +166,14 @@ do Nsamples = 1, Nsamples_max
         do i = 1, Ntesttraj
                 read(filechannel1,FMT=*) line_data
                 scatteringAngle = ceiling(line_data(scattering_angle_column) / bin_width)
-                if (scatteringAngle > Nbins) scatteringAngle = Nbins
+                if (scatteringAngle > SA_Nbins) scatteringAngle = SA_Nbins
                 binTotal(scatteringAngle,Nsamples) = binTotal(scatteringAngle,Nsamples) + 1
         end do
         sampleSize(Nsamples) = Nsamples
 end do
 close(filechannel1)
 
-do i = 1,Nbins
+do i = 1,SA_Nbins
         binAverage(i) = sum(binTotal(i,:)) * 1.0 / Nsamples_max
 end do
 
@@ -191,11 +184,11 @@ binTally = 0
 open(filechannel1,file=gridpath0//"RMSD"//cumulativefile//".dat",action="write")
 do Nsamples = 1, Nsamples_max
         binRMSD = 0.0
-        do i = 1, Nbins
+        do i = 1, SA_Nbins
                 binRMSD = binRMSD + (sum(binTotal(i,1:Nsamples)) * 1.0 / Nsamples - binAverage(i))**2
         end do
 
-        binRMSD = sqrt(binRMSD)/Nbins
+        binRMSD = sqrt(binRMSD)/SA_Nbins
         write(filechannel1,FMT=*) Nsamples*Ntesttraj, binRMSD, binThreshold
 
         if (binRMSD < binThreshold) then
@@ -216,7 +209,7 @@ close(filechannel1)
 !Now we must do the laborious job of binning these
 !Each bin has its own average and standard deviation based on how many samples we took
 open(filechannel1,file=gridpath0//"Adjusted"//cumulativefile//".dat")
-do i = 1, Nbins
+do i = 1, SA_Nbins
         binMean = binAverage(i)
         binSD = sqrt(sum((binTotal(i,1:Nsamples) * 1.0 / sampleSize(1:Nsamples) - binMean)**2)/(Nsamples - 1))
 
@@ -248,10 +241,11 @@ write(gnuplotchannel,*) '     "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set title "Final Scattering Angle Distribution for '//&
                         trim(adjustl(variable_length_text))//' Trajectories"'
-write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
-write(gnuplotchannel,*) 'set xrange [0:3.14159]'
+write(gnuplotchannel,*) 'pi = 3.14159265'
+write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
 write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'unset label 1'
@@ -285,14 +279,17 @@ character(Ngrid_text_length+1) :: folder_text
 character(trajectories_text_length*100) :: trajectories_text
 character(6) :: Ntraj_text
 character(6) :: boxwidth_text
+logical :: grid_is_done
 
+inquire(file=gridpath0//'Adjusted'//cumulativefile//'.dat',exist=grid_is_done)
 
 !This is the gnuplot code to make the plots
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'"'
 write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'set xrange [0:3.14159]'
+write(gnuplotchannel,*) 'pi = 3.14159265'
+write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'unset xlabel'
 write(gnuplotchannel,*) 'unset xtics'
 write(gnuplotchannel,*) 'set tmargin 0'
@@ -304,17 +301,31 @@ write(Ntraj_text,FMT="(I6)") Ntraj
 write(gnuplotchannel,*) 'set multiplot layout 3,1 margins 0.15,0.95,.1,.9 spacing 0,0 title '//&
                         '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' trajectories of '//gridpath0//'"'
 write(Ntraj_text,FMT="(I6)") Ntesttraj * 10 / 10
+write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-write(gnuplotchannel,*) 'set boxwidth '//boxwidth_text
-write(gnuplotchannel,*) 'bin_width = '//boxwidth_text
+write(variable_length_text,FMT="(I5)") SA_Nbins
+write(gnuplotchannel,*) 'Nbins = '//variable_length_text
+write(gnuplotchannel,*) 'bin_width = pi/Nbins'
+write(gnuplotchannel,*) 'set boxwidth bin_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/bin_width)'
 write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set ylabel "Scattering Angle Occurence"'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(variable_length_text,FMT="(I5)") scattering_angle_column
-write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
-                        '" u (rounded($'//trim(adjustl(variable_length_text))//&
-			')):(1.0) smooth frequency with boxes'
+
+if (grid_is_done) then
+        write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
+                                '" u (rounded($'//trim(adjustl(variable_length_text))//&
+        			')):(1.0) smooth frequency w boxes, \'
+        write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2 w boxes'//&
+                                       ' fs transparent solid 0.5 noborder, \'
+        write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+else
+        write(gnuplotchannel,*) 'plot "'//gridpath0//DATfilename//&
+                                '" u (rounded($'//trim(adjustl(variable_length_text))//&
+        			')):(1.0) smooth frequency with boxes'
+end if
+
 write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence"'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(variable_length_text,FMT="(I5)") theta_column
@@ -334,7 +345,6 @@ close(gnuplotchannel)
 
 !And then we just input it into gnuplot.exe
 call system("gnuplot < "//gridpath0//gnuplotfile)
-call system("rm "//gridpath0//gnuplotfile)
 
 end subroutine getScatteringAngles2
 
