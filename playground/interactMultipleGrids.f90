@@ -375,12 +375,32 @@ if (subcell_existence) then
 end if
 
 if ((.not.(subcell_existence)).or.(force_Neighbors)) then
-        neighbor_check = 1
         stop_flag = .false.
 
         do i = 1, subcell0search_max
+                neighbor_check = i
 
-        do j = 0, i
+                index1_1 = var1_index0 + i
+                index1_2 = var1_index0 - i
+
+                index2_1 = var2_index0 + i
+                index2_2 = var2_index0 - i
+
+                call getNeighbors(bounds1,bounds2,multiplier1_0,multiplier2_0,FMTorder1,&
+                                  index1_1,index1_2,index2_1,index2_2,&
+                                  0.0,0.0,&
+                                  coords,min_rmsd,gradient,U,number_of_frames)
+
+                if (min_rmsd /= old_min_rmsd) then
+                        stop_flag = .true.
+			if (min_rmsd < old_min_rmsd) then
+				old_min_rmsd = min_rmsd
+				old_gradient = gradient
+				old_U = U
+			end if
+                end if
+
+        do j = 1, i-1
         
                 index1_1 = var1_index0 + j
                 index1_2 = var1_index0 - j
@@ -401,6 +421,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 				old_U = U
 			end if
                 end if
+
         end do
 
         if (stop_flag) exit

@@ -175,9 +175,11 @@ if (trueSA_flag) then
 end if
 
 !This is for the energy decomposition plots
-print *, "   Making plot: ", "trueEnergyDecompositionDistribution"
-print *, ""
-call getEnergyAngles("Initial"//trajectoriesfile,8,11,12,13,"trueEnergyDecompositionDistribution.jpg")
+if (trueED_flag) then
+	print *, "   Making plot: ", "trueEnergyDecompositionDistribution"
+	print *, ""
+	call getEnergyAngles("Initial"//trajectoriesfile,8,11,12,13,"trueEnergyDecompositionDistribution.jpg")
+end if
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

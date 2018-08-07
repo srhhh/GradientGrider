@@ -661,7 +661,7 @@ end subroutine checkMultipleTrajectories
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-subroutine Acceleration(vals,coords,gradient)
+subroutine Acceleration_generic(vals,coords,gradient)
 	use PARAMETERS
         use PHYSICS
         implicit none
@@ -752,7 +752,58 @@ subroutine Acceleration(vals,coords,gradient)
 
 	return
 
+end subroutine Acceleration_generic
+
+
+subroutine Acceleration(vals,coords,gradient)
+	use PARAMETERS
+        use PHYSICS
+        implicit none
+
+	!Frame information
+        real(dp), dimension(Nvar), intent(in) :: vals
+        real(dp), dimension(3,Natoms), intent(in) :: coords
+        real(dp), dimension(3,Natoms), intent(out) :: gradient
+
+	!Indexing of the atoms of the frame
+        integer :: bond_index
+        integer :: index1, index2, bond_index1, bond_index2
+
+	!Set the gradient to zero (we add on per pair of interactions)
+        gradient = 0.0d0
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !                 NON-BONDED INTERACTIONS
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	bond_index = 1
+	bond_index1 = BONDING_DATA(1,1)
+	bond_index2 = BONDING_DATA(1,2)
+
+	do index1 = 1, Natoms
+		do index2 = 1, Natoms
+
+			if ((index1 == bond_index1).and.(index2 == bond_index2)) then
+				bond_index = bond_index + 1
+				bond_index1 = BONDING_DATA(bond_index,1)
+				bond_index2 = BONDING_DATA(bond_index,2)
+
+                                !Remark: the optional 5th argument is the distance between
+                                !        coord1 and coord2 (so it doesn't have to recalculate)
+				!Right now, this is also not generic
+		                call BondedForce(coords(:,index1),coords(:,index2),&
+		                             gradient(:,index1),gradient(:,index2))
+			else
+                                call NonBondedForce(coords(:,index1),coords(:,index2),&
+                                                gradient(:,index1),gradient(:,index2),vals(index2-1))
+			end if
+		end do
+	end do
+	
+	return
+
 end subroutine Acceleration
+
 
 
 end module runTrajectory

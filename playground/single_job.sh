@@ -57,25 +57,26 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0700
 
 #The number of grids to add to the overall library (folder)
-Ngrid_max=1
+Ngrid_max=4
 
-#The deafault flags to be used for analyses
+#The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
 #what you want each individual one to do
 heatmap_flag=.false.
 trueSA_flag=.false.
-testtraj_flag=.true.
+trueED_flag=.true.
+testtraj_flag=.false.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.1000d0
+threshold_rmsd=.005000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=50
+Ntrajectories=200
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -87,6 +88,12 @@ Ntrajectories=50
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
 newGRID=justice_HH
 
+#If you want to make a new grid, set this to 1; otherwise, set it to zero
+newGRID_flag=0
+
+#The number of post-grid analyses you would like done
+Nanalyses=1
+
 #The path that has the original source code
 currentPATH=$(pwd)
 
@@ -97,12 +104,12 @@ newPATH=$(pwd)/$newGRID/$newSOURCE
 
 ###############################################################################################################################################
 ###############################################################################################################################################
-#		GRID CREATION AND ANALYSIS
+#		GRID CREATION AND SUMMARY ANALYSIS
 ###############################################################################################################################################
 ###############################################################################################################################################
 
 #Set this true if you want to create a new grid
-if [ "0" -eq "0" ]
+if [ $newGRID_flag -eq 1 ]
 then
 
 #If there is another folder of the same name delete that folder first
@@ -136,6 +143,7 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = .*/heatmap_flag = .true./
      s/trueSA_flag = .*/trueSA_flag = .true./
+     s/trueED_flag = .*/trueED_flag = .true./
      s/testtraj_flag = .*/testtraj_flag = .false./
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
@@ -177,7 +185,55 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-#exit
+if [ $Nanalyses -lt 1 ]
+then
+exit
+fi
+
+###############################################################################################################################################
+###############################################################################################################################################
+#		FIRST ANALYSIS
+###############################################################################################################################################
+###############################################################################################################################################
+
+#This prevents a new parameters file from being copied into the library
+#While at the same time, updating all of the .f90 files
+#Remember, the parameters file should never change after creation!
+shopt -s extglob
+cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS)+(.f90) $newPATH/
+cp $currentPATH/make_$(echo "*") $newPATH/
+shopt -s extglob
+
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
+     s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
+     s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
+     s/trueED_flag = .*/trueED_flag = $trueED_flag/
+     s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
+     s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
+     s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
+     s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/reject_flag = .*/reject_flag = $reject_flag/
+     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+
+sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
+     s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
+     s|SOURCE = .*|SOURCE = $newPATH/|
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
+
+make clean -f $newPATH/$newMAKEANALYSIS
+make -f $newPATH/$newMAKEANALYSIS
+./a.out
+
+###############################################################################################################################################
+###############################################################################################################################################
+
+if [ $Nanalyses -lt 2 ]
+then
+exit
+fi
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -188,6 +244,7 @@ fi
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
+     s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
@@ -210,7 +267,10 @@ make -f $newPATH/$newMAKEANALYSIS
 ###############################################################################################################################################
 ###############################################################################################################################################
 
- exit
+if [ $Nanalyses -lt 3 ]
+then
+exit
+fi
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -221,6 +281,7 @@ make -f $newPATH/$newMAKEANALYSIS
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
+     s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
@@ -243,7 +304,10 @@ make -f $newPATH/$newMAKEANALYSIS
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-#exit
+if [ $Nanalyses -lt 4 ]
+then
+exit
+fi
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -254,6 +318,7 @@ make -f $newPATH/$newMAKEANALYSIS
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
+     s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
@@ -276,7 +341,10 @@ make -f $newPATH/$newMAKEANALYSIS
 ###############################################################################################################################################
 ###############################################################################################################################################
 
+if [ $Nanalyses -lt 5 ]
+then
 exit
+fi
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -287,39 +355,7 @@ exit
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
-     s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
-     s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
-     s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
-     s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
-     s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
-     s/reject_flag = .*/reject_flag = $reject_flag/
-     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
-
-sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
-     s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
-     s|SOURCE = .*|SOURCE = $newPATH/|
-     s/$oldANALYSIS\\.o/$newANALYSIS.o/
-     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
-
-make clean -f $newPATH/$newMAKEANALYSIS
-make -f $newPATH/$newMAKEANALYSIS
-./a.out
-
-###############################################################################################################################################
-###############################################################################################################################################
-
-exit
-
-###############################################################################################################################################
-###############################################################################################################################################
-#		SIXTH ANALYSIS
-###############################################################################################################################################
-###############################################################################################################################################
-
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
-     s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
-     s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
+     s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/

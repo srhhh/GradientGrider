@@ -19,6 +19,7 @@ logical,parameter :: heatmap_flag = .true.
 !Set .true. to generate the scattering angle plots of the trajectories
 !that were generated with molecular dynamics for each grid
 logical,parameter :: trueSA_flag = .false.
+logical,parameter :: trueED_flag = .false.
 integer,parameter :: SA_Nbins = 50
 
 !Set .true. to generate trajectories with molecular dynamics
