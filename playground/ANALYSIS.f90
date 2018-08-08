@@ -21,6 +21,7 @@ logical,parameter :: heatmap_flag = .true.
 logical,parameter :: trueSA_flag = .false.
 logical,parameter :: trueED_flag = .false.
 integer,parameter :: SA_Nbins = 50
+integer :: Ncovergence
 
 !Set .true. to generate trajectories with molecular dynamics
 !and test them against the grid

@@ -59,24 +59,29 @@ overcrowd0=00050
 #The number of trajectories simulated and added to a new grid
 Ntraj_max=0700
 
-#The number of grids to add to the overall library (folder)
-Ngrid_max=4
+#The number of grids to add to a new library
+Ngrid_max=8
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
 #what you want each individual one to do
-heatmap_flag=.false.
-trueSA_flag=.false.
+heatmap_flag=.true.
+trueSA_flag=.true.
 trueED_flag=.true.
-testtraj_flag=.false.
+testtraj_flag=.true.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.005000d0
+threshold_rmsd=.001000d0
+threshold_rmsd1=.000500d0
+threshold_rmsd2=.001000d0
+threshold_rmsd3=.005000d0
+threshold_rmsd4=.010000d0
+threshold_rmsd5=.050000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=200
+Ntrajectories=700
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -86,13 +91,13 @@ Ntrajectories=200
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID=justice_HH
+newGRID=integrity_HH
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 
 #The number of post-grid analyses you would like done
-Nanalyses=1
+Nanalyses=3
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -213,7 +218,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -250,7 +255,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -287,7 +292,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -324,7 +329,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -361,7 +366,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 

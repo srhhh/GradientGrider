@@ -175,6 +175,7 @@ real(dp), dimension(3,Natoms) :: old_gradient
 logical :: subcell_existence
 character(100) :: subcell
 character(FMTlength) ::  var1_filename0, var2_filename0, var1_filename1, var2_filename1
+character(FMTlength) :: var1_filename,var2_filename
 integer, dimension(Ngrid_total),intent(in) :: filechannels
 integer :: subcell0search_max,subcell1search_max
 character(Ngrid_text_length) :: Ngrid_text
@@ -291,37 +292,81 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
         !subcell we are; we look at cells on the 'diamond' surrounding
         !the original subcell
         do i = 1, subcell1search_max
+                neighbor_check = i
 
-!For bug-testing
-if (.false.) then
-print *, "Looking for neighbors: ", i, " cells away"
-print *, "Scalings: ", scaling1_0, scaling2_0
-print *, "Multipliers: ", multiplier1_1, multiplier2_1
-print *, "var: ", var1, var2
-print *, "var_round0: ", var1_round0, var2_round0
-print *, "var_round1: ", var1_round1, var2_round1
-end if
+                index1_1 = var1_index1 + i
+                index1_2 = var1_index1 - i
 
-        !And integer j keeps track of where on the circumfrence
-        !Of the diamond surrounding the subcell we are at
-        do j = 0, i
-        
-                !Yes, there are redundancies for j = 0 and j = i
-                !This is the first thing we can improve upon
-                !(maybe with an if statement?)
-                index1_1 = var1_index1 + j
-                index1_2 = var1_index1 - j
-
-                index2_1 = var2_index1 + i - j
-                index2_2 = var2_index1 - i + j
-
-                !This does the nitty-gritty of checking to see
-                !If any of the indexes are out of bounds and 
-                !obtaining their rmsds and coordinates
-                call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,FMTorder1,&
-                                  index1_1,index1_2,index2_1,index2_2,&
-                                  var1_round0,var2_round0,&
-                                  coords,min_rmsd,gradient,U,number_of_frames)
+                index2_1 = var2_index1 + i
+                index2_2 = var2_index1 - i
+                
+                if (index1_1 < scaling1_0) then
+                
+                        !Make the name of the subcell
+                        var1_round = var1_round0 + index1_1 * multiplier1_1
+                        var2_round = var2_round0 + var2_round1
+                        write(var1_filename,FMT=FMTorder1) var1_round
+                        write(var2_filename,FMT=FMTorder1) var2_round
+                        subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                
+                        !Check if it exists
+                        inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+                        if (subcell_existence) then
+                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                        end if
+                
+                        number_of_frames = number_of_frames + population
+                
+                end if
+                !Rinse and repeat
+                if (index1_2 > 0) then
+                
+                        var1_round = var1_round0 + index1_2 * multiplier1_1
+                        var2_round = var2_round0 + var2_round1
+                        write(var1_filename,FMT=FMTorder1) var1_round
+                        write(var2_filename,FMT=FMTorder1) var2_round
+                        subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                
+                        inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+                        if (subcell_existence) then
+                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                        end if
+                
+                        number_of_frames = number_of_frames + population
+                end if
+                !Rinse and repeat
+                if (index2_1 < scaling2_0) then
+                
+                        var1_round = var1_round0 + var1_round1
+                        var2_round = var2_round0 + index2_1 * multiplier2_1
+                        write(var1_filename,FMT=FMTorder1) var1_round
+                        write(var2_filename,FMT=FMTorder1) var2_round
+                        subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                
+                        inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+                        if (subcell_existence) then
+                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                        end if
+                
+                        number_of_frames = number_of_frames + population
+                end if
+                
+                !Rinse and repeat
+                if (index2_2 > 0) then
+                
+                        var1_round = var1_round0 + var1_round1
+                        var2_round = var2_round0 + index2_2 * multiplier2_1
+                        write(var1_filename,FMT=FMTorder1) var1_round
+                        write(var2_filename,FMT=FMTorder1) var2_round
+                        subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                
+                        inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+                        if (subcell_existence) then
+                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                        end if
+                
+                        number_of_frames = number_of_frames + population
+                end if
 
                 if (min_rmsd /= old_min_rmsd) then
                         stop_flag = .true.
@@ -331,9 +376,39 @@ end if
 				old_U = U
 			end if
                 end if
-        end do
-
-        if (stop_flag) exit
+        
+                !And integer j keeps track of where on the circumfrence
+                !Of the diamond surrounding the subcell we are at
+                do j = 1, i-1
+                
+                        !Yes, there are redundancies for j = 0 and j = i
+                        !This is the first thing we can improve upon
+                        !(maybe with an if statement?)
+                        index1_1 = var1_index1 + j
+                        index1_2 = var1_index1 - j
+        
+                        index2_1 = var2_index1 + i - j
+                        index2_2 = var2_index1 - i + j
+        
+                        !This does the nitty-gritty of checking to see
+                        !If any of the indexes are out of bounds and 
+                        !obtaining their rmsds and coordinates
+                        call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,FMTorder1,&
+                                          index1_1,index1_2,index2_1,index2_2,&
+                                          var1_round0,var2_round0,&
+                                          coords,min_rmsd,gradient,U,number_of_frames)
+        
+                        if (min_rmsd /= old_min_rmsd) then
+                                stop_flag = .true.
+        			if (min_rmsd < old_min_rmsd) then
+        				old_min_rmsd = min_rmsd
+        				old_gradient = gradient
+        				old_U = U
+        			end if
+                        end if
+                end do
+        
+                if (stop_flag) exit
         end do
 end if
 
@@ -385,11 +460,74 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 
                 index2_1 = var2_index0 + i
                 index2_2 = var2_index0 - i
-
-                call getNeighbors(bounds1,bounds2,multiplier1_0,multiplier2_0,FMTorder1,&
-                                  index1_1,index1_2,index2_1,index2_2,&
-                                  0.0,0.0,&
-                                  coords,min_rmsd,gradient,U,number_of_frames)
+                
+                if (index1_1 < bounds1) then
+                
+                        !Make the name of the subcell
+                        var1_round = index1_1 * multiplier1_0
+                        var2_round = var2_round0
+                        write(var1_filename,FMT=FMTorder0) var1_round
+                        write(var2_filename,FMT=FMTorder0) var2_round
+                        subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                
+                        !Check if it exists
+                        inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+                        if (subcell_existence) then
+                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                        end if
+                
+                        number_of_frames = number_of_frames + population
+                end if
+                
+                !Rinse and repeat
+                if (index1_2 > 0) then
+                
+                        var1_round = index1_2 * multiplier1_0
+                        var2_round = var2_round0
+                        write(var1_filename,FMT=FMTorder0) var1_round
+                        write(var2_filename,FMT=FMTorder0) var2_round
+                        subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                
+                        inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+                        if (subcell_existence) then
+                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                        end if
+                
+                        number_of_frames = number_of_frames + population
+                end if
+                !Rinse and repeat
+                if (index2_1 < bounds2) then
+                
+                        var1_round = var1_round0
+                        var2_round = index2_1 * multiplier2_0
+                        write(var1_filename,FMT=FMTorder0) var1_round
+                        write(var2_filename,FMT=FMTorder0) var2_round
+                        subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                
+                        inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+                        if (subcell_existence) then
+                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                        end if
+                
+                        number_of_frames = number_of_frames + population
+                end if
+                
+                !Rinse and repeat
+                if (index2_2 > 0) then
+                
+                        var1_round = var1_round0
+                        var2_round = index2_2 * multiplier2_0
+                        write(var1_filename,FMT=FMTorder0) var1_round
+                        write(var2_filename,FMT=FMTorder0) var2_round
+                        subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+                
+                        inquire(file=trim(subcell)//".dat",exist=subcell_existence)
+                        if (subcell_existence) then
+                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                        end if
+                
+                        number_of_frames = number_of_frames + population
+                end if
 
                 if (min_rmsd /= old_min_rmsd) then
                         stop_flag = .true.
@@ -559,12 +697,8 @@ if ((flag1) .and. (flag3)) then
 	!Check if it exists
 	inquire(file=trim(subcell)//".dat",exist=subcell_existence)
 
-!For bug-testing
-if (.false.) print *, "inquiring for: ", subcell
-
 	!If it exists, get the rmsd of each frame in it
 	if (subcell_existence) then
-
 		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
@@ -582,9 +716,7 @@ if ((flag1) .and. (flag4)) then
         subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
 	inquire(file=trim(subcell)//".dat",exist=subcell_existence)
-if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
-
 		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
@@ -601,9 +733,7 @@ if ((flag2) .and. (flag3)) then
         subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
 	inquire(file=trim(subcell)//".dat",exist=subcell_existence)
-if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
-
 		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
@@ -620,9 +750,7 @@ if ((flag2) .and. (flag4)) then
         subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
 	inquire(file=trim(subcell)//".dat",exist=subcell_existence)
-if (.false.) print *, "inquiring for: ", subcell
 	if (subcell_existence) then
-
 		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
@@ -665,7 +793,7 @@ old_min_rmsd = min_rmsd
 
 !Read off the states in this subcell
 open(filechannel1,file=trim(subcell)//".dat")
-population = 1
+population = 0
 do
 	!Once we've had enough, exit
         read(filechannel1,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
@@ -681,12 +809,9 @@ do
         	read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
 	end if
 
-        !Increment the position
+        !Increment the number of frames visited
         population = population + 1
 end do
-
-!The population is one less than the current position
-population = population - 1
 close(filechannel1)
 
 end subroutine getRMSD_dp

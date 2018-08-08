@@ -189,11 +189,15 @@ velocity_translation = velocity_translation1 + &
 velocity_rotation = velocity_rotation1 + &
                     velocity_rotation2
 
-TRVenergies(1) = sqrt(sum(velocity_translation**2))
-TRVenergies(2) = sqrt(sum(velocity_rotation**2))
-TRVenergies(3) = sqrt(sum(velocity_vibration**2))
+!Note: these are INDIVIDUAL VELOCITIES
+!So first we multiply by two and take a square root to get a speed
+!Then we divide by two and take a square to get a kinetic energy
+!These two calculations cancel each other out
+TRVenergies(1) = sum(velocity_translation**2)
+TRVenergies(2) = sum(velocity_rotation**2)
+TRVenergies(3) = sum(velocity_vibration**2)
 
-TRVenergies = 0.5d0*mass_hydrogen*TRVenergies
+TRVenergies = mass_hydrogen*TRVenergies
 
 end subroutine decompose_two_velocities
 

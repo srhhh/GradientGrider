@@ -95,6 +95,7 @@ real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_ener
 real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
 real(dp) :: scattering_angle
 real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
+real(dp) :: totalEnergy
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
 
 !Variables
@@ -133,19 +134,17 @@ seed = rand(seed)
 call system("ls -p "//gridpath0//" | grep '[0123456789]/' > "//gridpath0//trajectories)
 
 !Let's see how many grids are actually in the folder
+Ngrid_max = 0
 open(trajectorieschannel,file=gridpath0//trajectories,action="read")
-do Ngrid_total = 1, Ngrid_max
+do
 	read(trajectorieschannel,FMT="(A4)",iostat=iostate) folder_text
 	if (iostate /= 0) exit
+	Ngrid_max = Ngrid_max + 1
 end do
 close(trajectorieschannel)
 
-!We increment before we read, so we need to subtract out one increment here
-if (Ngrid_total < 2) return
-Ngrid_total = Ngrid_total - 1
-
 !Keep the cap to the number of grids in mind
-Ngrid_total = min(Ngrid_cap, Ngrid_total)
+Ngrid_total = min(Ngrid_cap, Ngrid_max)
 
 print *, ""
 print *, "Analysis on directory ", gridpath0
@@ -164,7 +163,7 @@ print *, ""
 if (heatmap_flag) then
 	print *, "   Making plot: ", "TopLevel_HeatMap"
 	print *, ""
-	call analyzeHeatMaps1(Ngrid_cap)
+	call analyzeHeatMaps1()
 end if
 
 !This is for scattering angle plots (from each of the grids)
@@ -331,6 +330,9 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	        random_num1 = rand()
 	        initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
 	        initial_rotation_angle = random_num1*pi2
+
+		totalEnergy = initial_translational_KE + initial_vibrational_energy + &
+                              initial_rotational_energy
 
 		INITIAL_BOND_DATA(n,:) = (/ initial_bond_distance,initial_rotational_speed,&
                            initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)

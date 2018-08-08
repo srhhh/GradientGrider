@@ -233,7 +233,7 @@ integer,parameter :: Ntraj_max = 1000
 !The maximum amount of time (seconds) we are willing to wait for a single trajectory to finish
 real,parameter :: trajectory_CPU_time_max = 60.0
 !The number of grids we will make
-integer,parameter :: Ngrid_max = 1
+integer :: Ngrid_max = 1
 !The number of trajectories to make before checking the grid-making progress
 integer,parameter :: Ngrid_check = max(Ntraj_max/10,1)
 

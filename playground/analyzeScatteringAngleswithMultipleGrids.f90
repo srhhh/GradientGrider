@@ -54,7 +54,7 @@ real :: bin_width, binMean, binSD,binRMSD
 real,allocatable :: binAverage(:)
 integer,allocatable :: binTotal(:,:),sampleSize(:)
 integer :: binTally
-real :: binThreshold = 0.1
+real :: binThreshold = 1.0
 
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: DATfilename
@@ -68,6 +68,7 @@ character(*), intent(in) :: JPGfilename
 
 !FORMATTING OF JPG FILES
 character(5) :: variable_length_text
+character(5) :: variable_length_text1, variable_length_text2
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(trajectories_text_length*100) :: trajectories_text
@@ -91,7 +92,7 @@ call system("ls -p "//gridpath0//" | grep '[0123456789]/' > "//gridpath0//trajec
 !And only take whatever portion out we want (ex. " file1 file2")
 open(trajectorieschannel,file=gridpath0//trajectories,action="read")
 trajectories_text = ""
-do Ngrid = 1, Ngrid_max
+do Ngrid = 1, Ngrid_total
         read(trajectorieschannel,FMT="(A4)",iostat=iostate) folder_text
         if (iostate /= 0) exit
         trajectories_text = trim(trajectories_text)//" "//gridpath0//folder_text//&
@@ -154,7 +155,7 @@ end do
 
 !First, we set a binning
 bin_width = pi / SA_Nbins
-Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj - 1
+Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj
 allocate(binTotal(SA_Nbins,Nsamples_max),binAverage(SA_Nbins),sampleSize(Nsamples_max))
 
 !Second, we want a reference distribution
@@ -188,7 +189,7 @@ do Nsamples = 1, Nsamples_max
                 binRMSD = binRMSD + (sum(binTotal(i,1:Nsamples)) * 1.0 / Nsamples - binAverage(i))**2
         end do
 
-        binRMSD = sqrt(binRMSD)/SA_Nbins
+        binRMSD = sqrt(binRMSD/SA_Nbins)
         write(filechannel1,FMT=*) Nsamples*Ntesttraj, binRMSD, binThreshold
 
         if (binRMSD < binThreshold) then
@@ -211,7 +212,7 @@ close(filechannel1)
 open(filechannel1,file=gridpath0//"Adjusted"//cumulativefile//".dat")
 do i = 1, SA_Nbins
         binMean = binAverage(i)
-        binSD = sqrt(sum((binTotal(i,1:Nsamples) * 1.0 / sampleSize(1:Nsamples) - binMean)**2)/(Nsamples - 1))
+        binSD = sqrt(sum((binTotal(i,1:Nsamples) - binMean)**2)/(Nsamples - 1))
 
         write(filechannel1,*) (i-0.5)*bin_width, binMean, binSD!/sqrt(real(Nsamples))
 end do
@@ -222,7 +223,7 @@ deallocate(binAverage,binTotal,sampleSize)
 !We have everything we need to draw the distribution with error bars
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) "set terminal jpeg size 1200,1200"
-write(variable_length_text,FMT="(I5)") Ntesttraj*Nsamples
+write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set output "'//gridpath0//'Adjustedto'//&
                         trim(adjustl(variable_length_text))//JPGfilename//'"'
 write(gnuplotchannel,*) 'set multiplot layout 2,1'
@@ -230,12 +231,15 @@ write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set title "Convergence of the '//trim(adjustl(variable_length_text))//' Scattering Angle Distribution"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set xlabel "Number of Trajectories"'
-write(gnuplotchannel,*) 'set ylabel "Distribution RMSD with Running Average"'
+write(gnuplotchannel,*) 'set ylabel "RMSD of the Distribution Over a Running Average"'
 write(gnuplotchannel,*) 'set autoscale x'
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set xtics '//trim(adjustl(variable_length_text))
 write(gnuplotchannel,*) 'set autoscale y'
-write(gnuplotchannel,*) 'set label 1 "Convergence Threshold" at graph 0.02,0.08'
+write(variable_length_text1,FMT="(I5)") Ntesttraj
+write(variable_length_text2,FMT="(F5.3)") binThreshold
+write(gnuplotchannel,*) 'set label 1 "Convergence Threshold" at first '//&
+                        variable_length_text1//','//variable_length_text2
 write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:2 w lines, \'
 write(gnuplotchannel,*) '     "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:3 w lines lc -1'
 write(variable_length_text,FMT="(I5)") Ntesttraj
@@ -418,7 +422,7 @@ call system("ls -p "//gridpath0//" | grep '[0123456789]/' > "//gridpath0//trajec
 !And only take whatever portion out we want (ex. " file1 file2")
 open(trajectorieschannel,file=gridpath0//trajectories,action="read")
 trajectories_text = ""
-do Ngrid = 1, Ngrid_max
+do Ngrid = 1, Ngrid_total
         read(trajectorieschannel,FMT="(A4)",iostat=iostate) folder_text
         if (iostate /= 0) exit
         trajectories_text = trim(trajectories_text)//" "//gridpath0//folder_text//&
@@ -455,7 +459,7 @@ do Ngrid = 1, Ngrid_total
 		rotational_max = max(rotational_max,line_data(rotational_energy_column))
 		translational_max = max(translational_max,line_data(translational_energy_column))
 		vibrational_max = max(vibrational_max,line_data(vibrational_energy_column))
-		translational_min = min(translational_min,line_data(translational_energy_column))
+		translational_min = min(translational_max,line_data(translational_energy_column))
 	end do
 	close(trajectorieschannel)
 	energy_max = max(rotational_max, translational_max, vibrational_max)
@@ -490,7 +494,7 @@ do Ngrid = 1, Ngrid_total
         write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//cumulativefile//&
                                 trim(adjustl(Ntraj_text))//&
                                 '.dat" u (rounded($'//trim(adjustl(variable_length_text))//&
-				')):(1.0) smooth frequency with boxes'
+                                ')):(1.0) smooth frequency with boxes'
         write(gnuplotchannel,*) 'set title "Rotational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                                 ' trajectories of '//gridpath0//'"'
         write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
@@ -518,7 +522,7 @@ end do
 
 allocate(angle_energy_bins(angleBins,energyBins))
 angle_energy_bins = 0
-sizeEnergyBin = (translational_max - translational_min) / (energyBins)
+sizeEnergyBin = (translational_max) / (energyBins)
 sizeAngleBin = pi2 / (angleBins)
 open(trajectorieschannel,file=gridpath0//Ngrid_text//"/"//cumulativefile//trim(adjustl(Ntraj_text))//".dat")
 do i = 1, Ngrid_total*Ntraj_max
@@ -526,7 +530,7 @@ do i = 1, Ngrid_total*Ntraj_max
         read(trajectorieschannel,FMT=*) line_data
 
 	ScatteringAngle = ceiling(line_data(scattering_angle_column) / sizeAngleBin)
-	TranslationalEnergy = ceiling((line_data(translational_energy_column)-translational_min)/ sizeEnergyBin)
+	TranslationalEnergy = ceiling((line_data(translational_energy_column))/ sizeEnergyBin)
 
 	if (ScatteringAngle > angleBins) ScatteringAngle = angleBins
 	if (ScatteringAngle == 0) ScatteringAngle = 1
@@ -542,7 +546,7 @@ close(trajectorieschannel)
 open(filechannel1,file=gridpath0//temporaryfile1)
 do i = 1, angleBins
 	do j = 1, energyBins
-		write(filechannel1,FMT=*) i*sizeAngleBin, translational_min + j*sizeEnergyBin, angle_energy_bins(i,j)
+		write(filechannel1,FMT=*) i*sizeAngleBin, j*sizeEnergyBin, angle_energy_bins(i,j)
 	end do
 	write(filechannel1,FMT=*) ""
 end do
@@ -570,14 +574,13 @@ write(variable_length_text,FMT="(F5.3)") translational_max
 write(gnuplotchannel,*) 'r = '//variable_length_text
 write(gnuplotchannel,*) 'pi = 3.14159'
 !write(gnuplotchannel,*) 'set palette rgb 33,13,10 #rainbow (blue-green-yellow-red)'
-write(gnuplotchannel,*) 'set cbrange [0:120]'
+write(gnuplotchannel,*) 'set cbrange [0:4]'
 write(gnuplotchannel,*) 'set cblabel "Frequency"'
 write(gnuplotchannel,*) 'set palette rgb -21, -22, -23'
 write(gnuplotchannel,*) 'scaling_factor = 0.8'
 write(variable_length_text,FMT="(F5.3)") (translational_max - translational_min)*1.0
-write(gnuplotchannel,*) 'dr = '//variable_length_text
-write(gnuplotchannel,*) 'set xrange[-dr:dr]'
-write(gnuplotchannel,*) 'set yrange[-dr:dr]'
+write(gnuplotchannel,*) 'set xrange[-r:r]'
+write(gnuplotchannel,*) 'set yrange[-r:r]'
 write(gnuplotchannel,*) 'set colorbox user origin 0.9,0.1 size 0.03,0.8'
 write(gnuplotchannel,*) 'splot "'//gridpath0//temporaryfile1//'" u ($2*cos($1)):($2*sin($1)):3'
 write(gnuplotchannel,*) 'set style line 11 lc rgb "black" lw 2'
@@ -585,15 +588,15 @@ write(gnuplotchannel,*) 'set grid polar ls 11'
 write(gnuplotchannel,*) 'set polar'
 write(variable_length_text1,FMT="(F5.3)") translational_min
 write(variable_length_text2,FMT="(F5.3)") translational_max
-write(gnuplotchannel,*) 'set rrange['//variable_length_text1//':'//variable_length_text2//']'
+write(gnuplotchannel,*) 'set rrange[0:'//variable_length_text2//']'
 !write(gnuplotchannel,*) 'unset raxis'
 write(gnuplotchannel,*) 'set rlabel "Translational Energy Change (eV)"'
 !write(gnuplotchannel,*) 'set rtics format "" scale 0'
-write(variable_length_text,FMT="(F5.3)") (translational_max - translational_min) * 0.30
+write(variable_length_text,FMT="(F5.3)") (translational_max) * 0.25
 write(gnuplotchannel,*) 'set rtics '//variable_length_text
 write(gnuplotchannel,*) 'unset parametric'
-write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (dr*scaling_factor)*cos(i*pi/180),'//&
-                        ' first (dr*scaling_factor)*sin(i*pi/180)\'
+write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (r*scaling_factor)*cos(i*pi/180),'//&
+                        ' first (r*scaling_factor)*sin(i*pi/180)\'
 write(gnuplotchannel,*) 'center sprintf(''%d'', i)'
 write(gnuplotchannel,*) 'plot NaN w l'
 write(gnuplotchannel,*) 'unset multiplot'

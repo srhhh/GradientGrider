@@ -162,6 +162,7 @@ subroutine addTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
 	!velocity_in is the velocity of the incoming H from the get-go
 	!Right now, this is not generic (only works for H - H2)
 	TRVenergies1 = (/ 0.0d0, 0.0d0, HOPotential(coords(:,2),coords(:,3)) /)
+	TRVenergies1(1) = TRVenergies1(1) + KineticEnergy(velocities(:,1))
 	velocity_in = velocities(:,1)
 
 	!Always calculate the variables before accelerating
@@ -225,6 +226,7 @@ subroutine addTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
 	!velocity_out is the velocity of the incoming H at the end
 	!Right now, this is not generic (only works for H - H2)
 	call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),velocity_out,TRVenergies2)
+	TRVenergies2(1) = TRVenergies2(1) + KineticEnergy(velocities(:,1))
 	TRVenergies2(3) = TRVenergies2(3) + HOPotential(coords(:,2),coords(:,3))
 	velocity_out = velocities(:,1)
 
@@ -781,7 +783,7 @@ subroutine Acceleration(vals,coords,gradient)
 	bond_index2 = BONDING_DATA(1,2)
 
 	do index1 = 1, Natoms
-		do index2 = 1, Natoms
+		do index2 = index1+1, Natoms
 
 			if ((index1 == bond_index1).and.(index2 == bond_index2)) then
 				bond_index = bond_index + 1

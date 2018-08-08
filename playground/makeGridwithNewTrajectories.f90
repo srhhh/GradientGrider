@@ -74,6 +74,7 @@ character(6) :: Nthreshold_text
 real(dp) :: trajectory_CPU_time,trajectory_wall_time
 real(dp) :: scattering_angle
 real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
+real(dp) :: totalEnergy
 integer :: header1_old,header2_old,header3_old
 
 !Trajectory Initialization Variables
@@ -247,11 +248,13 @@ do Ngrid = 1, Ngrid_max
 			!	KF: must work on this in the future
 			initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
 			initial_rotation_angle = random_num1*pi2
-	
+
 			!All of this is stored for later use in the InitialSetup of runTrajectory
 			INITIAL_BOND_DATA(Nbonds,:) = (/ initial_bond_distance,initial_rotational_speed,&
 	                                        initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)
 		end do
+
+                totalEnergy = initial_translational_KE + initial_energy_H2
 
                 open(progresschannel,file=gridpath1//progressfile,position="append")
                 write(progresschannel,*) ""
@@ -363,7 +366,7 @@ do Ngrid = 1, Ngrid_max
                 call system_clock(c2)
                 trajectory_CPU_time = r2 - r1
                 trajectory_wall_time = (c2 -c1) * system_clock_rate
-		dTRVenergies = TRVenergies2 - TRVenergies1
+		dTRVenergies = abs(TRVenergies2 - TRVenergies1)
 
 		!If there have been a large number of subdivisions (so many that our array will go
 		!out of bounds) then we stop; we also stop if it is taking too long
