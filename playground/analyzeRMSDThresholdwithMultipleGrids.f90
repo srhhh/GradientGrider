@@ -45,7 +45,7 @@ implicit none
 contains
 
 
-subroutine getRMSDThresholds1(RMSD_column,JPGfilename)
+subroutine getRMSDThresholds1(prefix_filename,JPGfilename)
 use PARAMETERS
 use ANALYSIS
 implicit none
@@ -57,23 +57,18 @@ integer :: n_testtraj
 real, dimension(Ntesttraj) :: percent_threshold_rmsd
 integer :: total_threshold_rmsd, frames
 
-!COLUMN OF DAT FILE WITH SCATTERING ANGLES
-integer, intent(in) :: RMSD_column
-
 !ARRAY HOLDING DATA FROM FILE
-real(dp), dimension(RMSD_column) :: min_rmsd
+real(dp) :: min_rmsd
 
 !FORMAT OF JPG FILES TO BE MADE
 character(*), intent(in) :: JPGfilename
+character(*), intent(in) :: prefix_filename
 
 !FORMATTING OF JPG FILES
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
-character(trajectories_text_length*100) :: trajectories_text
 character(6) :: Ntraj_text
-character(6) :: Nthreshold_text
-character(6) :: reject_text
 
 !I/O HANDLING
 integer :: iostate
@@ -82,13 +77,6 @@ integer :: iostate
 integer :: n
 
 
-!Initialize some strings so that we can uniquely name our data files and graphs
-write(Nthreshold_text,FMT="(F6.5)") threshold_RMSD
-if (reject_flag) then
-        reject_text = "reject"
-else
-        reject_text = "accept"
-end if
 
 write(variable_length_text,"(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_total
@@ -103,16 +91,16 @@ do n_testtraj = 1, Ntesttraj
         !Read the trajectory (which has the rmsd) across all grids line-by-line
         frames = 0
         total_threshold_rmsd = 0
-        open(filechannel2,file=gridpath0//Ngrid_text//"/"//reject_text//Nthreshold_text//&
+        open(filechannel2,file=gridpath0//Ngrid_text//"/"//prefix_filename//&
                                "_"//Ntraj_text//".dat")
 
         do
-                read(filechannel2,FMT=*,iostat=iostate) (min_rmsd(n),n=1,RMSD_column)
+                read(filechannel2,FMT=*,iostat=iostate) min_rmsd
                 if (iostate /= 0) exit
                 frames = frames + 1
 
         !If the RMSD is below the threshhold we tally that
-                if (min_rmsd(RMSD_column) < threshold_RMSD) total_threshold_rmsd = total_threshold_rmsd + 1
+                if (min_rmsd < threshold_RMSD) total_threshold_rmsd = total_threshold_rmsd + 1
         end do
         close(filechannel2)
 
@@ -137,8 +125,7 @@ write(variable_length_text,"(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 write(gnuplotchannel,*) 'set multiplot layout '//Ngrid_text(Ngrid_text_length:Ngrid_text_length)//&
                         ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0'&
-                        //' title "Trajectory RMSD Distribution with '//reject_text//' method and '&
-                        //Nthreshold_text//' RMSD threshold"'
+                        //' title "Trajectory RMSD Distribution with '//prefix_filename//' method'
 write(gnuplotchannel,*) 'set title "Percentages of Trajectories with RMSD Below Threshold"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'unset key'
@@ -158,7 +145,7 @@ write(gnuplotchannel,*) 'set ylabel "Occurence"'
 do Ngrid = 1, Ngrid_total
 if (Ngrid == Ngrid_total) then
 	write(gnuplotchannel,*) 'set xtics'
-	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below '//Nthreshold_text//' A"'
+	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below Threshold"'
 end if
 write(variable_length_text,"(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
@@ -178,7 +165,7 @@ write(variable_length_text,"(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_total
 if (Ngrid == Ngrid_total) then
 	write(gnuplotchannel,*) 'set xtics'
-	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below '//Nthreshold_text//' A"'
+	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below Threshold"'
 end if
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 write(gnuplotchannel,*) 'plot "'//gridpath0//'percent_rmsd'//Ngrid_text//'.dat'//&

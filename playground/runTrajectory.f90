@@ -136,7 +136,7 @@ contains
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine addTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
+subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
 	use VARIABLES
 	use PHYSICS
 	use PARAMETERS
@@ -146,9 +146,9 @@ subroutine addTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
 	!Coordinates, Velocities, and Variables
 	real(dp), dimension(3,Natoms) :: coords,gradient,velocities
 	real(dp), dimension(Nvar) :: vals
-	real(dp), dimension(3),intent(out) :: TRVenergies1, TRVenergies2
-	real(dp), dimension(3) :: velocity_in, velocity_out
-	real(dp),intent(out) :: ScatteringAngle
+	real(dp),dimension(3,3),intent(out) :: coords_initial,velocities_initial
+	real(dp),dimension(3,3),intent(out) :: coords_final,velocities_final
+	integer :: bond_index1, bond_index2
 
 	!Incremental Integer
 	integer :: n
@@ -157,13 +157,8 @@ subroutine addTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
         call InitialSetup3(coords,velocities)
 	Norder1 = 0
 
-	!TRVenergies are the translational, rotational, and vibrational
-	!speeds of the incoming H from the get-go
-	!velocity_in is the velocity of the incoming H from the get-go
-	!Right now, this is not generic (only works for H - H2)
-	TRVenergies1 = (/ 0.0d0, 0.0d0, HOPotential(coords(:,2),coords(:,3)) /)
-	TRVenergies1(1) = TRVenergies1(1) + KineticEnergy(velocities(:,1))
-	velocity_in = velocities(:,1)
+	coords_initial = coords
+	velocities_initial = velocities
 
 	!Always calculate the variables before accelerating
 	!because we can reuse these calculations
@@ -221,18 +216,8 @@ subroutine addTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
 		velocities = velocities + gradient
         end do
 
-	!TRVenergies are the translational, rotational, and vibrational
-	!speeds of the incoming H at the end
-	!velocity_out is the velocity of the incoming H at the end
-	!Right now, this is not generic (only works for H - H2)
-	call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),velocity_out,TRVenergies2)
-	TRVenergies2(1) = TRVenergies2(1) + KineticEnergy(velocities(:,1))
-	TRVenergies2(3) = TRVenergies2(3) + HOPotential(coords(:,2),coords(:,3))
-	velocity_out = velocities(:,1)
-
-        !We also record the scattering angle of the trajectory
-        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
-                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
+	coords_final = coords
+	velocities_final = velocities
 
 end subroutine addTrajectory
 
@@ -305,7 +290,7 @@ end subroutine addTrajectory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-subroutine checkTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
+subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
         use PARAMETERS
         use PHYSICS
         use VARIABLES
@@ -317,9 +302,9 @@ subroutine checkTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
         real(dp), dimension(3,Natoms) :: coords,velocities
         real(dp), dimension(3,Natoms) :: gradient, approx_gradient
         real(dp), dimension(Nvar) :: vals
-        real(dp), dimension(3),intent(out) :: TRVenergies1,TRVenergies2
-	real(dp), dimension(3) :: velocity_in, velocity_out
-	real(dp),intent(out) :: ScatteringAngle
+	real(dp), dimension(3,3), intent(out) :: coords_initial, velocities_initial 
+	real(dp), dimension(3,3), intent(out) :: coords_final, velocities_final 
+	integer :: bond_index1, bond_index2
 
         !Various other variables
         real(dp) :: U, KE
@@ -332,12 +317,29 @@ subroutine checkTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-	!TRVenergies are the translational, rotational, and vibrational
-	!speeds of the incoming H from the get-go
-	!velocity_in is the velocity of the incoming H from the get-go
-	!Right now, this is not generic (only works for H - H2)
-	TRVenergies1 = (/ 0.0d0, 0.0d0, HOPotential(coords(:,2),coords(:,3)) /)
-	velocity_in = velocities(:,1)
+!	!TRVenergies are the translational, rotational, and vibrational
+!	!speeds of the incoming H from the get-go
+!	!velocity_in is the velocity of the incoming H from the get-go
+!
+!	TRVenergies1 = 0.0d0
+!	do n = 1, Nbonds
+!		bond_index1 = BONDING_DATA(n,1)
+!		bond_index2 = BONDING_DATA(n,2)
+!		call decompose_two_velocities(coords(:,bond_index1:bond_index2),&
+!                                              velocities(:,bond_index1:bond_index2),&
+!                                              velocity_out,dTRVenergies)
+!		TRVenergies1 = TRVenergies1 + dTRVenergies
+!		TRVenergies1(3) = TRVenergies1(3) + &
+!                                  HOPotential(coords(:,bond_index1),coords(:,bond_index2))
+!	end do
+!	do n = 1, Natoms
+!		if (all(BONDING_DATA /= n)) TRVenergies1(n) = TRVenergies1(n) + KineticEnergy(velocities(:,n))
+!	end do
+!
+!	velocity_in = velocities(:,1)
+
+	coords_initial = coords
+	velocities_initial = velocities
 
 	!Always calculate the variables before accelerating
         call getVar3(coords,Natoms,vals(1))
@@ -393,17 +395,10 @@ subroutine checkTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
 
                 !Check for similar frames in the grid
 		!Always set a default value; in this case, set min_rmsd_prime a default value
-                min_rmsd_prime = .200100d0
+                min_rmsd_prime = default_rmsd
                 call checkState(coords,approx_gradient,min_rmsd_prime,&
                                 number_of_frames,order,neighbor_check)
                 min_rmsd = min_rmsd_prime
-
-		!If we need to check neighbor cells then we can update min_rmsd accordingly
-		!That way we can see whether we can compare the two and see if its better
-		!(Deprecated, do not use please)
-                if (force_Neighbors) then
-                call checkState(coords,approx_gradient,min_rmsd)
-                end if
 
                 !Update the gradient either with the approximation or by accelerating
 		!This depends on the threshold and the rejection method
@@ -433,17 +428,33 @@ subroutine checkTrajectory(ScatteringAngle,TRVenergies1,TRVenergies2)
         end do
 	close(filechannel2)
 
-	!TRVenergies are the translational, rotational, and vibrational
-	!speeds of the incoming H at the end
-	!velocity_out is the velocity of the incoming H at the end
-	!Right now, this is not generic (only works for H - H2)
-	call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),velocity_out,TRVenergies2)
-	TRVenergies2(3) = TRVenergies2(3) + HOPotential(coords(:,2),coords(:,3))
-	velocity_out = velocities(:,1)
+!	!TRVenergies are the translational, rotational, and vibrational
+!	!speeds of the incoming H at the end
+!	!velocity_out is the velocity of the incoming H at the end
+!
+!	TRVenergies2 = 0.0d0
+!	do n = 1, Nbonds
+!		bond_index1 = BONDING_DATA(n,1)
+!		bond_index2 = BONDING_DATA(n,2)
+!		call decompose_two_velocities(coords(:,bond_index1:bond_index2),&
+!                                              velocities(:,bond_index1:bond_index2),&
+!                                              velocity_out,dTRVenergies)
+!		TRVenergies2 = TRVenergies2 + dTRVenergies
+!		TRVenergies2(3) = TRVenergies2(3) + &
+!                                  HOPotential(coords(:,bond_index1),coords(:,bond_index2))
+!	end do
+!	do n = 1, Natoms
+!		if (all(BONDING_DATA /= n)) TRVenergies2(n) = TRVenergies1(n) + KineticEnergy(velocities(:,n))
+!	end do
+!
+!	velocity_out = velocities(:,1)
 
-        !We also record the scattering angle of the trajectory
-        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
-                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
+	coords_final = coords
+	velocities_final = velocities
+
+!        !We also record the scattering angle of the trajectory
+!        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
+!                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
 
 end subroutine checkTrajectory
 
@@ -512,7 +523,8 @@ end subroutine checkTrajectory
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkMultipleTrajectories(filechannels,ScatteringAngle, TRVenergies1,TRVenergies2)
+subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_initial,&
+                                                  coords_final,velocities_final)
         use PHYSICS
         use PARAMETERS
         use VARIABLES
@@ -523,10 +535,11 @@ subroutine checkMultipleTrajectories(filechannels,ScatteringAngle, TRVenergies1,
         !Coordinates, Velocities, and Variables
         real(dp),dimension(3,Natoms) :: coords,velocities
         real(dp),dimension(3,Natoms) :: gradient,approx_gradient
-        real(dp),dimension(Nvar) :: vals
-        real(dp),dimension(3),intent(out) :: TRVenergies1,TRVenergies2
-	real(dp),dimension(3) :: velocity_in,velocity_out
-	real(dp),intent(out) :: ScatteringAngle
+        real(dp),dimension(3,3),intent(out) :: coords_initial, velocities_initial
+        real(dp),dimension(3,3),intent(out) :: coords_final, velocities_final
+	real(dp),dimension(Nvar) :: vals
+	
+	integer :: bond_index1, bond_index2
 
         !Grid Parameters
         integer,dimension(Ngrid_total),intent(in) :: filechannels
@@ -542,12 +555,29 @@ subroutine checkMultipleTrajectories(filechannels,ScatteringAngle, TRVenergies1,
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-	!TRVenergies are the translational, rotational, and vibrational
-	!speeds of the incoming H from the get-go
-	!velocity_in is the velocity of the incoming H from the get-go
-	!Right now, this is not generic (only works for H - H2)
-	TRVenergies1 = (/ 0.0d0, 0.0d0, HOPotential(coords(:,2),coords(:,3)) /)
-	velocity_in = velocities(:,1)
+!	!TRVenergies are the translational, rotational, and vibrational
+!	!speeds of the incoming H from the get-go
+!	!velocity_in is the velocity of the incoming H from the get-go
+!
+!	TRVenergies1 = 0.0d0
+!	do n = 1, Nbonds
+!		bond_index1 = BONDING_DATA(n,1)
+!		bond_index2 = BONDING_DATA(n,2)
+!		call decompose_two_velocities(coords(:,bond_index1:bond_index2),&
+!                                              velocities(:,bond_index1:bond_index2),&
+!                                              velocity_out,dTRVenergies)
+!		TRVenergies1 = TRVenergies1 + dTRVenergies
+!		TRVenergies1(3) = TRVenergies1(3) + &
+!                                  HOPotential(coords(:,bond_index1),coords(:,bond_index2))
+!	end do
+!	do n = 1, Natoms
+!		if (all(BONDING_DATA /= n)) TRVenergies1(n) = TRVenergies1(n) + KineticEnergy(velocities(:,n))
+!	end do
+!
+!	velocity_in = velocities(:,1)
+
+	coords_initial = coords
+	velocities_initial = velocities
 
         !Always calculate the variables before accelearting
         call getVar3(coords,Natoms,vals(1))
@@ -591,7 +621,7 @@ subroutine checkMultipleTrajectories(filechannels,ScatteringAngle, TRVenergies1,
 
 		!Check for a frame in the grid
 		!Set the default value beforehand though
-                min_rmsd = .200100d0
+                min_rmsd = default_rmsd
                 call checkState(vals,coords,approx_gradient,min_rmsd,&
                          filechannels,number_of_frames,order,neighbor_check)
 
@@ -608,17 +638,33 @@ subroutine checkMultipleTrajectories(filechannels,ScatteringAngle, TRVenergies1,
 
         end do
 
-	!TRVenergies are the translational, rotational, and vibrational
-	!speeds of the incoming H at the end
-	!velocity_out is the velocity of the incoming H at the end
-	!Right now, this is not generic (only works for H - H2)
-	call decompose_two_velocities(coords(:,2:3),velocities(:,2:3),velocity_out,TRVenergies2)
-	TRVenergies2(3) = TRVenergies2(3) + HOPotential(coords(:,2),coords(3,:))
-	velocity_out = velocities(:,1)
+!	!TRVenergies are the translational, rotational, and vibrational
+!	!speeds of the incoming H at the end
+!	!velocity_out is the velocity of the incoming H at the end
+!
+!	TRVenergies2 = 0.0d0
+!	do n = 1, Nbonds
+!		bond_index1 = BONDING_DATA(n,1)
+!		bond_index2 = BONDING_DATA(n,2)
+!		call decompose_two_velocities(coords(:,bond_index1:bond_index2),&
+!                                              velocities(:,bond_index1:bond_index2),&
+!                                              velocity_out,dTRVenergies)
+!		TRVenergies2 = TRVenergies2 + dTRVenergies
+!		TRVenergies2(3) = TRVenergies2(3) + &
+!                                  HOPotential(coords(:,bond_index1),coords(:,bond_index2))
+!	end do
+!	do n = 1, Natoms
+!		if (all(BONDING_DATA /= n)) TRVenergies2(n) = TRVenergies2(n) + KineticEnergy(velocities(:,n))
+!	end do
+!
+!	velocity_out = velocities(:,1)
 
-        !We also record the scattering angle of the trajectory
-        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
-                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
+	coords_final = coords
+	velocities_final = velocities
+
+!        !We also record the scattering angle of the trajectory
+!        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
+!                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
 
 end subroutine checkMultipleTrajectories
 
@@ -768,8 +814,10 @@ subroutine Acceleration(vals,coords,gradient)
         real(dp), dimension(3,Natoms), intent(out) :: gradient
 
 	!Indexing of the atoms of the frame
-        integer :: bond_index
-        integer :: index1, index2, bond_index1, bond_index2
+        integer :: index1, index2
+        integer :: bond_index, bond_index1, bond_index2
+        integer :: value_index, value_index1, value_index2
+	logical :: bond_flag, value_flag
 
 	!Set the gradient to zero (we add on per pair of interactions)
         gradient = 0.0d0
@@ -779,25 +827,54 @@ subroutine Acceleration(vals,coords,gradient)
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 	bond_index = 1
+	bond_flag = .true.
 	bond_index1 = BONDING_DATA(1,1)
 	bond_index2 = BONDING_DATA(1,2)
+
+	value_index = 1
+	value_flag = .true.
+	value_index1 = BONDING_VALUE_DATA(1,1)
+	value_index2 = BONDING_VALUE_DATA(1,2)
 
 	do index1 = 1, Natoms
 		do index2 = index1+1, Natoms
 
-			if ((index1 == bond_index1).and.(index2 == bond_index2)) then
-				bond_index = bond_index + 1
-				bond_index1 = BONDING_DATA(bond_index,1)
-				bond_index2 = BONDING_DATA(bond_index,2)
-
+			if ((bond_flag).and.(index1 == bond_index1).and.(index2 == bond_index2)) then
                                 !Remark: the optional 5th argument is the distance between
                                 !        coord1 and coord2 (so it doesn't have to recalculate)
 				!Right now, this is also not generic
 		                call BondedForce(coords(:,index1),coords(:,index2),&
 		                             gradient(:,index1),gradient(:,index2))
+
+				bond_index = bond_index + 1
+				if (bond_index > Nbonds) then
+					bond_flag = .false.
+					cycle
+				end if
+				bond_index1 = BONDING_DATA(bond_index,1)
+				bond_index2 = BONDING_DATA(bond_index,2)
+
 			else
+				if ((value_flag).and.(index1==value_index1).and.(index2==value_index2)) then
+                                !Remark: the optional 5th argument is the distance between
+                                !        coord1 and coord2 (so it doesn't have to recalculate)
+				!Right now, this is also not generic
                                 call NonBondedForce(coords(:,index1),coords(:,index2),&
-                                                gradient(:,index1),gradient(:,index2),vals(index2-1))
+                                                gradient(:,index1),gradient(:,index2),&
+                                                vals(BONDING_VALUE_DATA(value_index,3)))
+
+				value_index = value_index + 1
+				if (value_index > Nvar_eff) then
+					value_flag = .false.
+					cycle
+				end if
+				value_index1 = BONDING_VALUE_DATA(value_index,1)
+				value_index2 = BONDING_VALUE_DATA(value_index,2)
+
+				else
+                                call NonBondedForce(coords(:,index1),coords(:,index2),&
+                                                gradient(:,index1),gradient(:,index2))
+				end if
 			end if
 		end do
 	end do

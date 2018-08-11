@@ -83,18 +83,19 @@ implicit none
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
-character(trajectories_text_length*100) :: trajectories_text
 character(6) :: Ntraj_text
 character(6) :: Nthreshold_text
 character(6) :: reject_text
+character(12) :: prefix_text
 
 !New Trajectory Parameters
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
-real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
+real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3
 real(dp) :: scattering_angle
 real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
+real(dp),dimension(3,3) :: coords_initial,velocities_initial,coords_final,velocities_final
 real(dp) :: totalEnergy
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
 
@@ -105,6 +106,9 @@ integer,allocatable :: filechannels(:)
 !Timing
 real :: r1, r2, system_clock_rate
 integer :: c1, c2, cr
+
+!Incremental Integers
+integer :: i, j, k
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -158,26 +162,25 @@ print *, ""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
 !This is for top-level heat map generation (for each of the grids)
 if (heatmap_flag) then
 	print *, "   Making plot: ", "TopLevel_HeatMap"
 	print *, ""
-	call analyzeHeatMaps1()
+	call analyzeHeatMaps2()
 end if
 
 !This is for scattering angle plots (from each of the grids)
 if (trueSA_flag) then
 	print *, "   Making plot: ", "trueScatteringAngleDistribution"
 	print *, ""
-	call getScatteringAngles1("Initial"//trajectoriesfile,8,"trueScatteringAngleDistribution.jpg")
+	call getScatteringAngles1("Initial","trueScatteringAngleDistribution.jpg")
 end if
 
 !This is for the energy decomposition plots
 if (trueED_flag) then
 	print *, "   Making plot: ", "trueEnergyDecompositionDistribution"
 	print *, ""
-	call getEnergyAngles("Initial"//trajectoriesfile,8,11,12,13,"trueEnergyDecompositionDistribution.jpg")
+	call getTRVimages("Initial","trueEnergyDecompositionDistribution.jpg")
 end if
 
 
@@ -190,6 +193,9 @@ end if
 !This is for checking trajectories against the grid
 !Currently, this is the main use of this program
 if (testtraj_flag) then
+
+print *, ""
+print *, "Trajectory Creation ... Start"
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -205,6 +211,7 @@ allocate(filechannels(Ngrid_total))
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 
+prefix_text = reject_text//Nthreshold_text
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -236,7 +243,7 @@ if (useolddata_flag) then
 	!This also assumes they were numbered correctly (usually a safe assumption)
         open(trajectorieschannel,file=gridpath0//trajectories,action="read")
         do
-                read(trajectorieschannel,FMT="(A50)",iostat=iostate) trajectories_text
+                read(trajectorieschannel,*,iostat=iostate)
                 if (iostate /= 0) exit
                 initial_n_testtraj = initial_n_testtraj + 1
         end do
@@ -244,7 +251,7 @@ if (useolddata_flag) then
 
         !Second, we check how many lines are on the trajectories file
         Ntraj = 1
-        open(trajectorieschannel,file=gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile)
+        open(trajectorieschannel,file=gridpath0//Ngrid_text//prefix_text//trajectoriesfile)
         do
                 read(trajectorieschannel,*,iostat=iostate)
                 if (iostate /= 0) exit
@@ -261,9 +268,9 @@ if (useolddata_flag) then
                 print *, "          DATA INCONGRUENCE "
                 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 if (Ntraj > initial_n_testtraj) print *, "    trajectory files missing for "//&
-                                                         Ngrid_text//reject_text//Nthreshold_text//" ... .dat"
+                                                         Ngrid_text//prefix_text//" ... .dat"
                 if (Ntraj < initial_n_testtraj) print *, "    trajectories file corrupted for "//&
-                                                         Ngrid_text//reject_text//Nthreshold_text
+                                                         Ngrid_text//prefix_text
                 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 print *, ""
                 print *, "    Program exited disgracefully"
@@ -278,7 +285,7 @@ if (useolddata_flag) then
 else
 
         !We need to make a new one of these trajectory files altogether
-        call system("rm "//gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile)
+        call system("rm "//gridpath0//Ngrid_text//prefix_text//trajectoriesfile)
 end if
 
 
@@ -336,7 +343,14 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 		INITIAL_BOND_DATA(n,:) = (/ initial_bond_distance,initial_rotational_speed,&
                            initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)
+
 	end do
+
+	open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//initialfile,&
+                          position="append")
+	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(i,j),j=1,5),i=1,Nbonds)
+        close(filechannel1)
+
 
 	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
 	!The trajectory number will uniquely identify one trajectory from another
@@ -353,17 +367,19 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 		filechannels(Ngrid) = 1000 + 69 * Ngrid
 		open(filechannels(Ngrid),file=gridpath0//Ngrid_text//"/"//&
-                                              reject_text//Nthreshold_text//'_'//Ntraj_text//".dat")
+                                              prefix_text//'_'//Ntraj_text//".dat")
 	end do
 
 	!Then write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkMultipleGrids uses filechannel1 to open files in the grid
-	call checkMultipleTrajectories(filechannels(1:Ngrid_max),scattering_angle,TRVenergies1,TRVenergies2)
+!	call checkMultipleTrajectories(filechannels(1:Ngrid_max),scattering_angle,TRVenergies1,TRVenergies2)
+	call checkMultipleTrajectories(filechannels(1:Ngrid_max),coords_initial,velocities_initial,&
+                                                                 coords_final,velocities_final)
 
 	!Also let's see how long a single trajectory takes
 	call system_clock(c2)
 	call CPU_time(r2)
-	dTRVenergies = TRVenergies2 - TRVenergies1
+!	dTRVenergies = abs(TRVenergies2 - TRVenergies1)
 	print *, "        CPU Time: ", r2 - r1
 	print *, "       Wall Time: ", (c2 - c1) * system_clock_rate
 
@@ -373,9 +389,15 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	end do
 
         !This is all recorded in the trajectoriesfile of the grid
-        open(filechannel1,file=gridpath0//Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile,position="append")
-        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2,&
-                              dTRVenergies(1),dTRVenergies(2),dTRVenergies(3)
+!        open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//trajectoriesfile,position="append")
+!        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2,&
+!                              dTRVenergies(1),dTRVenergies(2),dTRVenergies(3)
+	open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//timeslicefile,position="append")
+	write(filechannel1,FMTtimeslice) &
+                              ((coords_initial(i,j),i=1,3),j=1,Natoms),&
+                              ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
+			      ((coords_final(i,j),i=1,3),j=1,Natoms),&
+                              ((velocities_final(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
 
@@ -419,19 +441,16 @@ print *, ""
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 if (percentthreshold_flag) then
-	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//reject_text//Nthreshold_text
+	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//prefix_text
 	print *, ""
-	call getRMSDThresholds1(1,"PercentRMSDThreshold_"//&
-                                                   Ngrid_text//reject_text//Nthreshold_text)
+	call getRMSDThresholds1(prefix_text,"PercentRMSDThreshold_"//Ngrid_text//prefix_text)
 end if
 
 Ntraj = Ntesttraj
 if (testtrajSA_flag) then
-	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//reject_text//Nthreshold_text
+	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//prefix_text
 	print *, ""
-	call getScatteringAngles2(Ngrid_text//reject_text//Nthreshold_text//trajectoriesfile,&
-                                               3,4,5,"TestScatteringAngleDistribution_"//&
-                                               Ngrid_text//reject_text//Nthreshold_text)
+	call getScatteringAngles2(Ngrid_text//prefix_text,"TestScatteringAngleDistribution")
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
