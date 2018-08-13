@@ -60,7 +60,7 @@ overcrowd0=00050
 Ntraj_max=0100
 
 #The number of grids to add to a new library
-Ngrid_max=4
+Ngrid_max=1
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change

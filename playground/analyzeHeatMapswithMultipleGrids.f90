@@ -133,11 +133,7 @@ do Ngrid = 1, Ngrid_total
         write(filechannel1,*) 'set pm3d interpolate 1,1'
         write(filechannel1,*) 'splot "'//gridpath0//temporaryfile3//'" u 1:2:3 w pm3d'
         close(filechannel1)
-<<<<<<< HEAD
         call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
-=======
-        call system("gnuplot < "//gridpath0//gnuplotfile)
->>>>>>> 3d7357319039e3d54d7aef6e7fac536797075dde
         
 end do
 

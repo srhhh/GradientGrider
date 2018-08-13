@@ -17,7 +17,8 @@ module PARAMETERS
 !character(44),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
 !character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
  character(48),parameter :: path_to_source = "/home/kazuumi/Desktop/GradientGrider/playground/"
- character(42),parameter :: path_to_gnuplot= "/lus/scratch/usr/ruisun/gnuplot-5.2.4/bin/"
+!character(42),parameter :: path_to_gnuplot= "/lus/scratch/usr/ruisun/gnuplot-5.2.4/bin/"
+ character(0),parameter :: path_to_gnuplot= ""
 
 
 
