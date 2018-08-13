@@ -467,10 +467,10 @@ implicit none
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: prefix_filename
 real,dimension(3) :: TRVenergies
-integer,dimension(3) :: TRVenergies_rounded
+integer,dimension(4) :: TRVenergies_rounded
 
 !BOUNDS FOR THE ENERGY AND ANGULAR DATA
-real(dp) :: translational_max, rotational_max, vibrational_max
+real(dp) :: translational_max, rotational_max, vibrational_max, rovibrational_max
 real(dp) :: energy_max
 real(dp) :: bin_width
 
@@ -494,6 +494,7 @@ integer :: i, j, k
 rotational_max = 0.0d0
 translational_max = 0.0d0
 vibrational_max = 0.0d0
+rovibrational_max = 0.0d0
 old_filename = "" 
 
 !This data was made during creation (or should have been!) so all we need to do
@@ -514,12 +515,13 @@ do Ngrid = 1, Ngrid_total
 		translational_max = max(translational_max,TRVenergies(1))
 		rotational_max = max(rotational_max,TRVenergies(2))
 		vibrational_max = max(vibrational_max,TRVenergies(3))
+		rovibrational_max = max(rovibrational_max,TRVenergies(2)+TRVenergies(3))
 	end do
 	close(filechannel1)
 
 	!Assume that the minimum value is zero
 	!(Although that may not be the case for future initial conditions!)
-	energy_max = max(rotational_max, translational_max, vibrational_max)
+	energy_max = max(rotational_max, translational_max, vibrational_max,rovibrational_max)
 	bin_width = energy_max / (TRV_Nbins)
 
 
@@ -537,13 +539,14 @@ do Ngrid = 1, Ngrid_total
 	do i = 1, Ntraj_max
 		read(filechannel1,FMTtrv) (TRVenergies(j),j=1,3)
 
-		TRVenergies_rounded = ceiling(TRVenergies / bin_width)
-		do j = 1, 3
-			if (TRVenergies(j) > TRV_Nbins) TRVenergies(j) = TRV_Nbins
-			if (TRVenergies(j) == 0) TRVenergies(j) = 1
+		TRVenergies_rounded(1:3) = ceiling(TRVenergies / bin_width)
+		TRVenergies_rounded(4) = ceiling((TRVenergies(2)+TRVenergies(3)) / bin_width)
+		do j = 1, 4
+			if (TRVenergies_rounded(j) > TRV_Nbins) TRVenergies_rounded(j) = TRV_Nbins
+			if (TRVenergies_rounded(j) == 0) TRVenergies_rounded(j) = 1
 		end do
 
-		write(filechannel2,FMT=*) (TRVenergies_rounded(j),j=1,3)
+		write(filechannel2,FMT=*) (TRVenergies_rounded(j),j=1,4)
 	end do
 	close(filechannel1)
 	close(filechannel2)
@@ -553,7 +556,7 @@ do Ngrid = 1, Ngrid_total
         open(gnuplotchannel,file=gridpath0//gnuplotfile)
         write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
         write(gnuplotchannel,*) 'set output "'//gridpath0//trim(adjustl(Ntraj_text))//JPGfilename//'"'
-        write(gnuplotchannel,*) 'set multiplot layout 3,1'
+        write(gnuplotchannel,*) 'set multiplot layout 4,1'
         write(gnuplotchannel,*) 'set title "Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                                 ' Trajectories"'
         write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
@@ -570,16 +573,16 @@ do Ngrid = 1, Ngrid_total
         write(gnuplotchannel,*) 'set autoscale y'
         write(gnuplotchannel,*) 'plot "'//trim(adjustl(old_filename))//&
                                 '" u (bin_width*(($1)-0.5)):(1.0) smooth frequency with boxes'
+        write(gnuplotchannel,*) 'set title "Rovibrational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
+                                ' Trajectories"'
+        write(gnuplotchannel,*) 'plot "'//trim(adjustl(old_filename))//&
+                                '" u (bin_width*(($4)-0.5)):(1.0) smooth frequency with boxes'
         write(gnuplotchannel,*) 'set title "Rotational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                                 ' Trajectories"'
-        write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-        write(gnuplotchannel,*) 'set autoscale y'
         write(gnuplotchannel,*) 'plot "'//trim(adjustl(old_filename))//&
                                 '" u (bin_width*(($2)-0.5)):(1.0) smooth frequency with boxes'
         write(gnuplotchannel,*) 'set title "Vibrational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                                 ' Trajectories"'
-        write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-        write(gnuplotchannel,*) 'set autoscale y'
         write(gnuplotchannel,*) 'plot "'//trim(adjustl(old_filename))//&
                                 '" u (bin_width*(($3)-0.5)):(1.0) smooth frequency with boxes'
         close(gnuplotchannel)

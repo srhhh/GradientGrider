@@ -253,7 +253,8 @@ real,parameter :: trajectory_CPU_time_max = 60.0
 !The number of grids we will make
 integer :: Ngrid_max = 1
 !The number of trajectories to make before checking the grid-making progress
-integer,parameter :: Ngrid_check = max(Ntraj_max/10,1)
+integer,parameter :: Ngrid_check_min = 1
+integer,parameter :: Ngrid_check = max(Ntraj_max/10,Ngrid_check_min)
 
 
 

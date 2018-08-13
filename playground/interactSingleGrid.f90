@@ -995,10 +995,6 @@ if (key1 < overcrowd1) then
                         old_gradient = gradient
                         old_U = U
                 end if
-print *, ""
-print *, "subcell: ", subcell
-print *, "indexer: ", indexer
-print *, "   key1: ", key1
         
         	stop_flag = .true.
         
@@ -1026,10 +1022,6 @@ print *, "   key1: ", key1
         
                         index2_1 = var2_index + i
                         index2_2 = var2_index - i
-print *, ""
-print *, "original subcell: ", var1_round0+var1_round1, "_", var2_round0+var2_round1
-print *, "original indexer: ", indexer
-print *, "original    key1: ", key1
         
                         if (index1_1 < scaling1_0) then
 
@@ -1044,10 +1036,7 @@ print *, "original    key1: ", key1
                                 var2_round = var2_round0 + var2_round1
                                 write(var1_filename,FMT=FMTorder1) var1_round
                                 write(var2_filename,FMT=FMTorder1) var2_round
-                                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
-print *, "subcell: ", subcell
-print *, "indexer: ", indexer
-print *, "   key1: ", key1
+                                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
         
                 		call getRMSD(subcell,modulo(key1,key_start),coords,min_rmsd,gradient,U)
         
@@ -1067,10 +1056,7 @@ print *, "   key1: ", key1
                                 var2_round = var2_round0 + var2_round1
                                 write(var1_filename,FMT=FMTorder1) var1_round
                                 write(var2_filename,FMT=FMTorder1) var2_round
-                                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
-print *, "subcell: ", subcell
-print *, "indexer: ", indexer
-print *, "   key1: ", key1
+                                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
         
                 		call getRMSD(subcell,modulo(key1,key_start),coords,min_rmsd,gradient,U)
         
@@ -1090,10 +1076,7 @@ print *, "   key1: ", key1
                                 var2_round = var2_round0 + index2_1 * multiplier2_1
                                 write(var1_filename,FMT=FMTorder1) var1_round
                                 write(var2_filename,FMT=FMTorder1) var2_round
-                                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
-print *, "subcell: ", subcell
-print *, "indexer: ", indexer
-print *, "   key1: ", key1
+                                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
         
                 		call getRMSD(subcell,modulo(key1,key_start),coords,min_rmsd,gradient,U)
         
@@ -1113,10 +1096,7 @@ print *, "   key1: ", key1
                                 var2_round = var2_round0 + index2_2 * multiplier2_1
                                 write(var1_filename,FMT=FMTorder1) var1_round
                                 write(var2_filename,FMT=FMTorder1) var2_round
-                                subcell = gridpath2//trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
-print *, "subcell: ", subcell
-print *, "indexer: ", indexer
-print *, "   key1: ", key1
+                                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
         
                 		call getRMSD(subcell,modulo(key1,key_start),coords,min_rmsd,gradient,U)
         

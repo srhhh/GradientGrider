@@ -372,14 +372,12 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!Then write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkMultipleGrids uses filechannel1 to open files in the grid
-!	call checkMultipleTrajectories(filechannels(1:Ngrid_max),scattering_angle,TRVenergies1,TRVenergies2)
 	call checkMultipleTrajectories(filechannels(1:Ngrid_max),coords_initial,velocities_initial,&
                                                                  coords_final,velocities_final)
 
 	!Also let's see how long a single trajectory takes
 	call system_clock(c2)
 	call CPU_time(r2)
-!	dTRVenergies = abs(TRVenergies2 - TRVenergies1)
 	print *, "        CPU Time: ", r2 - r1
 	print *, "       Wall Time: ", (c2 - c1) * system_clock_rate
 
@@ -388,10 +386,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 		close(filechannels(Ngrid))
 	end do
 
-        !This is all recorded in the trajectoriesfile of the grid
-!        open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//trajectoriesfile,position="append")
-!        write(filechannel1,*) r2-r1,(c2-c1)*system_clock_rate,scattering_angle, initial_bond_angle1, initial_bond_angle2,&
-!                              dTRVenergies(1),dTRVenergies(2),dTRVenergies(3)
+	!The only data that is recorded is the first and last frame of the trajectory
 	open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//timeslicefile,position="append")
 	write(filechannel1,FMTtimeslice) &
                               ((coords_initial(i,j),i=1,3),j=1,Natoms),&
@@ -410,9 +405,9 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	if (testtrajRMSD_flag) then
 		open(gnuplotchannel,file=gridpath0//gnuplotfile)
-		write(gnuplotchannel,*) 'set term jpeg size 600, 600'
+		write(gnuplotchannel,*) 'set term pngcairo size 600, 600'
 		write(gnuplotchannel,*) 'set output "'//gridpath0//Ngrid_text//'/RMSD'//&
-                                                        reject_text//Ntraj_text//'.jpg"'
+                                                        reject_text//Ntraj_text//'.png"'
 		write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 		write(gnuplotchannel,*) 'unset key'
 		write(gnuplotchannel,*) 'bin_width = 0.001'
@@ -437,9 +432,12 @@ print *, ""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
+!Finally, do a post-creation timeslice-to-SA conversions here
+!We use the SA often so we do this at the beginning
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
+call postProcess(Ngrid_text//prefix_text)
+
 if (percentthreshold_flag) then
 	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//prefix_text
 	print *, ""
