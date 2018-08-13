@@ -51,7 +51,7 @@ write(filechannel1,*) 'set view map'
 write(filechannel1,*) 'set pm3d interpolate 1,1'
 write(filechannel1,*) 'splot "'//path_to_grid//temporaryfile3//'" u 1:2:3 w pm3d'
 close(filechannel1)
-call system("gnuplot < "//path_to_grid//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//path_to_grid//gnuplotfile)
 
 end subroutine mapCell
 

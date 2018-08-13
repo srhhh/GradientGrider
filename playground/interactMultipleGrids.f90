@@ -319,7 +319,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 
                 end if
                 !Rinse and repeat
-                if (index1_2 > 0) then
+                if (index1_2 .ge. 0) then
                 
                         var1_round = var1_round0 + index1_2 * multiplier1_1
                         var2_round = var2_round0 + var2_round1
@@ -350,9 +350,8 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 
                         number_of_frames = number_of_frames + population
                 end if
-                
                 !Rinse and repeat
-                if (index2_2 > 0) then
+                if (index2_2 .ge. 0) then
                 
                         var1_round = var1_round0 + var1_round1
                         var2_round = var2_round0 + index2_2 * multiplier2_1
@@ -480,7 +479,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 end if
                 
                 !Rinse and repeat
-                if (index1_2 > 0) then
+                if (index1_2 .ge. 0) then
                 
                         var1_round = index1_2 * multiplier1_0
                         var2_round = var2_round0
@@ -513,7 +512,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 end if
                 
                 !Rinse and repeat
-                if (index2_2 > 0) then
+                if (index2_2 .ge. 0) then
                 
                         var1_round = var1_round0
                         var2_round = index2_2 * multiplier2_0

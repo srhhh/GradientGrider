@@ -17,6 +17,7 @@ module PARAMETERS
 !character(44),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
 !character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
  character(48),parameter :: path_to_source = "/home/kazuumi/Desktop/GradientGrider/playground/"
+ character(42),parameter :: path_to_gnuplot= "/lus/scratch/usr/ruisun/gnuplot-5.2.4/bin/"
 
 
 
@@ -40,6 +41,16 @@ character(14),parameter :: parametersfile = "PARAMETERS.f90"
 character(11),parameter :: gnuplotfile = "gnuplotfile"
 !File for storing trajectory data from across many grids
 character(23),parameter :: cumulativefile = "cumulative_trajectories"
+!File for storing the first and last frames of multiple trajectories
+character(13),parameter :: timeslicefile = "timeslice.dat"
+!File for storing information on the grid over multiple trajectories
+character(15),parameter :: informaticsfile = "informatics.dat"
+!File for storing scattering angle data over multiple trajectories
+character(15),parameter :: SAfile = "SA_trajectories.dat"
+!File for storing initial bonding data over multiple trajectories
+character(22),parameter :: initialfile = "initbonds_trajectories.dat"
+!File for storing TRV energy changes
+character(16),parameter :: TRVfile = "TRV_trajectories.dat"
 
 !Files where, when done, we save the counters with the numbers of frames
 !inside each subcell, as well as other information
@@ -64,6 +75,7 @@ integer,parameter :: frameschannel = 72
 integer,parameter :: filechannel1 = 73
 integer,parameter :: filechannel2 = 74
 integer,parameter :: filechannel3 = 75
+integer,parameter :: filechannel4 = 76
 integer,parameter :: gnuplotchannel = 77
 
 
@@ -85,6 +97,13 @@ character(6),parameter :: FMT6_pos_real0 = "(F6.5)"
 character(6),parameter :: FMT6_pos_real1 = "(F6.4)"
 character(6),parameter :: FMT6_neg_real1 = "(F6.3)"
 character(6),parameter :: FMT6_pos_int = "(I0.6)"
+character(6),parameter :: Nbond_text = "000001"
+character(17),parameter :: FMTinitial = "("//Nbond_text//"(5(F8.4)))"
+character(6),parameter :: Natom_text = "000003"
+character(19),parameter :: FMTtimeslice = "("//Natom_text//"(12(F12.7)))"
+character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"
+character(15),parameter :: FMTsa = "((F6.4),(F8.4))"
+character(9),parameter :: FMTtrv = "(3(F9.6))"
 
 integer,parameter :: trajectory_text_length = 5
 integer,parameter :: scaling1_text_length = 3
@@ -93,8 +112,8 @@ integer,parameter :: overcrowd0_text_length = 5
 integer,parameter :: Ngrid_text_length = 3
 integer,parameter :: gridpath_length = 68
 character(gridpath_length),parameter :: gridpath0 = ""
-integer, parameter :: trajectories_text_length = gridpath_length +&
-                                                 4 + len(trajectoriesfile) + 1
+integer, parameter :: SAfiles_text_length = gridpath_length +&
+                                                 4 + 12 + len(SAfile) + 1
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                      VARIABLES
@@ -235,7 +254,8 @@ real,parameter :: trajectory_CPU_time_max = 60.0
 !The number of grids we will make
 integer :: Ngrid_max = 1
 !The number of trajectories to make before checking the grid-making progress
-integer,parameter :: Ngrid_check = max(Ntraj_max/10,1)
+integer,parameter :: Ngrid_check_min = 1
+integer,parameter :: Ngrid_check = max(Ntraj_max/10,Ngrid_check_min)
 
 
 

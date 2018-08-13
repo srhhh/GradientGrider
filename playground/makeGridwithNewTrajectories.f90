@@ -69,6 +69,7 @@ character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(6) :: reject_text
 character(6) :: Nthreshold_text
+character(12) :: prefix_text
 
 !Trajectory Variables
 real(dp) :: trajectory_CPU_time,trajectory_wall_time
@@ -83,6 +84,10 @@ real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_sp
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
 
+!Trajectory Output
+real(dp),dimension(3,3) :: coords_initial, velocities_initial
+real(dp),dimension(3,3) :: coords_final, velocities_final
+
 !Timing Variables
 real :: r1,r2
 integer :: seed,c1,c2,cr
@@ -92,7 +97,7 @@ real :: grid_wall_time,checktrajectory_wall_time
 character(10) :: grid_wall_time_text, checktrajectory_wall_time_text
 
 !Incremental Integers
-integer :: n, m
+integer :: n, m, l
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -122,6 +127,7 @@ if (reject_flag) then
 else
 	reject_text = "accept"
 end if
+prefix_text = reject_text//Nthreshold_text
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -250,11 +256,14 @@ do Ngrid = 1, Ngrid_max
 			initial_rotation_angle = random_num1*pi2
 
 			!All of this is stored for later use in the InitialSetup of runTrajectory
-			INITIAL_BOND_DATA(Nbonds,:) = (/ initial_bond_distance,initial_rotational_speed,&
+			INITIAL_BOND_DATA(m,:) = (/ initial_bond_distance,initial_rotational_speed,&
 	                                        initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)
 		end do
 
-                totalEnergy = initial_translational_KE + initial_energy_H2
+                open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//initialfile,&
+                                  position="append")
+                write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(m,l),l=1,5),m=1,Nbonds)
+                close(filechannel1)
 
                 open(progresschannel,file=gridpath1//progressfile,position="append")
                 write(progresschannel,*) ""
@@ -278,23 +287,18 @@ do Ngrid = 1, Ngrid_max
 		!Right now it is spaced so that we get (at most) ten graphs over the period of its creation
                 if (modulo(n,Ngrid_check) == 0) then
 
-			!Remark: ScatteringAngles2 checks the trajectoriesfile INSIDE the Ngrid/ subdirectory
-			call getScatteringAngles2(Ngrid_text//"/Initial"//trajectoriesfile,8,9,10,&
-                                                  "InitialScatteringAngleDistribution_"&
-			                          //Ngrid_text)
-
 			!Remark: output of checkTrajectory is in the checkstatefile
 			call system_clock(trajectory_t0)
-			call checkTrajectory(scattering_angle,TRVenergies1,TRVenergies1)
+!			call checkTrajectory(scattering_angle,TRVenergies1,TRVenergies1)
+	                call checkTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
 			call system_clock(trajectory_t1)
 			checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
 
-			
-			write(checkstateTrajectory,FMT=FMT6_pos_int) Ntraj
 			open(gnuplotchannel,file=gridpath1//gnuplotfile)
-			write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-			write(gnuplotchannel,*) 'set output "'//gridpath1//'checkTrajectory_'//reject_text//Nthreshold_text//&
-			                         '_'//checkstateTrajectory//'.jpg"'
+			write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+			write(checkstateTrajectory,FMT=FMT6_pos_int) Ntraj
+			write(gnuplotchannel,*) 'set output "'//gridpath1//'checkTrajectory_'//prefix_text//&
+			                         '_'//checkstateTrajectory//'.png"'
 			write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
 			write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
 			write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
@@ -307,47 +311,57 @@ do Ngrid = 1, Ngrid_max
 			write(gnuplotchannel,*) 'set lmargin 1'
 			write(gnuplotchannel,*) 'set rmargin 1'
 			write(gnuplotchannel,*) 'set multiplot layout 4,1 margins 0.15,0.95,.1,.95 spacing 0,0 title '//&
-						'"Trajectory '//trim(adjustl(checkstateTrajectory))//' of '//gridpath0//'"'
+						'"Trajectory '//trim(adjustl(checkstateTrajectory))//'"'
 			write(gnuplotchannel,*) 'unset key'
 			write(gnuplotchannel,*) 'unset xlabel'
 			write(angle1descriptor,FMT=FMT6_neg_real1) initial_bond_angle1
 			write(angle2descriptor,FMT=FMT6_pos_real1) initial_bond_angle2
 			write(bond1descriptor,FMT=FMT6_pos_real1) initial_bond_distance
-			write(scatteringdescriptor,FMT=FMT6_pos_real1) scattering_angle
 			write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
 			write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//&
                                                 ' radians" at screen 0.6, 0.955'
 			write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//&
                                                 ' A" at screen 0.6, 0.94'
-			write(gnuplotchannel,*) 'set label 3 "Scattering Angle: '//scatteringdescriptor//&
-                                                ' rand" at screen 0.6, 0.925'
-			write(gnuplotchannel,*) 'set label 4 "Total Wall Time: '//checktrajectory_wall_time_text//&
+			write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
                                                 ' s" at screen 0.6, 0.910'
-			write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
-			write(gnuplotchannel,*) 'set yrange [0:11]'
-			write(gnuplotchannel,*) 'set ytics 2'
-			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:7 w lines'
+!			write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
+!			write(gnuplotchannel,*) 'set yrange [0:11]'
+!			write(gnuplotchannel,*) 'set ytics 2'
+!			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:7 w lines'
+!			write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
+!			write(gnuplotchannel,*) 'set yrange [0:11]'
+!			write(gnuplotchannel,*) 'set ytics 2'
+!			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:8 w lines'
+!			write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
+!			write(gnuplotchannel,*) 'set yrange [0:0.02]'
+!			write(gnuplotchannel,*) 'set ytics 0.005'
+!			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:($9+$10) w lines'
+			write(gnuplotchannel,*) 'set ylabel "Number of Frames Checked"'
+			write(gnuplotchannel,*) 'set xlabel "Timestep"'
+			write(gnuplotchannel,*) 'set autoscale y'
+			write(gnuplotchannel,*) 'set ytics 5'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:1 w lines'
 			write(gnuplotchannel,*) 'unset label 1'
 			write(gnuplotchannel,*) 'unset label 2'
 			write(gnuplotchannel,*) 'unset label 3'
-			write(gnuplotchannel,*) 'unset label 4'
-			write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
-			write(gnuplotchannel,*) 'set yrange [0:11]'
-			write(gnuplotchannel,*) 'set ytics 2'
-			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:8 w lines'
-			write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
-			write(gnuplotchannel,*) 'set yrange [0:0.02]'
-			write(gnuplotchannel,*) 'set ytics 0.005'
-			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:($9+$10) w lines'
+			write(gnuplotchannel,*) 'set ylabel "Order of Cell Checked"'
+			write(gnuplotchannel,*) 'set xlabel "Timestep"'
+			write(gnuplotchannel,*) 'set yrange [-1.1:1.1]'
+			write(gnuplotchannel,*) 'set ytics 1'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:2 w lines'
+			write(gnuplotchannel,*) 'set ylabel "Number of Cells Checked"'
+			write(gnuplotchannel,*) 'set xlabel "Timestep"'
+			write(gnuplotchannel,*) 'set yrange [0:5]'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:3 w lines'
 			write(gnuplotchannel,*) 'set xtics'
 			write(gnuplotchannel,*) 'set ylabel "Timestep RMSD (A)"'
 			write(gnuplotchannel,*) 'set xlabel "Timestep"'
 			write(gnuplotchannel,*) 'set yrange [0:.2002]'
-			write(gnuplotchannel,*) 'set ytics .02'
+			write(gnuplotchannel,*) 'set ytics .04'
 			write(gnuplotchannel,*) 'unset key'
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:5 w lines'
 			close(gnuplotchannel)
-			call system("gnuplot < "//gridpath1//gnuplotfile)
+			call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
 			
                 end if
 
@@ -360,13 +374,12 @@ do Ngrid = 1, Ngrid_max
 		!We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
-                call addTrajectory(scattering_angle,TRVenergies1,TRVenergies2)
+                call addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
 
                 call CPU_time(r2)
                 call system_clock(c2)
                 trajectory_CPU_time = r2 - r1
                 trajectory_wall_time = (c2 -c1) * system_clock_rate
-		dTRVenergies = abs(TRVenergies2 - TRVenergies1)
 
 		!If there have been a large number of subdivisions (so many that our array will go
 		!out of bounds) then we stop; we also stop if it is taking too long
@@ -382,18 +395,23 @@ do Ngrid = 1, Ngrid_max
                                                 trajectory_wall_time
                 write(progresschannel,*) "                       CPU Time: ",&
                                                 trajectory_CPU_time
-                write(progresschannel,*) "               Scattering Angle: ",&
-                                                scattering_angle
                 close(progresschannel)
 
-		!This is all recorded in the trajectoriesfile of the grid
-                open(filechannel1,file=gridpath1//"Initial"//trajectoriesfile,position="append")
-                write(filechannel1,*) Ntraj, header1-header1_old, header2-header2_old, Nfile,&
-                                      trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps),&
-                                      Norder1*100.0/real(steps),&
-				      scattering_angle,initial_bond_angle1,initial_bond_angle2,&
-				      dTRVenergies(1),dTRVenergies(2),dTRVenergies(3)
+		!There is an informatics files for data on the grid while creating
+		open(filechannel1,file=gridpath1//"Initial"//informaticsfile,position="append")
+		write(filechannel1,FMTinformatics) trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps), &
+		                                   Ntraj,header1-header1_old,header2-header2_old,Nfile,Norder1*100.0/steps
+		close(filechannel1)
+
+		!There is a timeslice file for snapshots of the trajectory at the beginning and end
+		open(filechannel1,file=gridpath1//"Initial"//timeslicefile,position="append")
+		write(filechannel1,FMTtimeslice) &
+                                                 ((coords_initial(l,m),l=1,3),m=1,Natoms),&
+                                                 ((velocities_initial(l,m),l=1,3),m=1,Natoms),&
+         				         ((coords_final(l,m),l=1,3),m=1,Natoms),&
+                                                 ((velocities_final(l,m),l=1,3),m=1,Natoms)
                 close(filechannel1)
+
 		header1_old = header1
 		header2_old = header2
 		header3_old = header3
@@ -423,8 +441,8 @@ do Ngrid = 1, Ngrid_max
 	!Now that we are done with a grid, we can see how much time the grid creation took
 	!There is also some other interesting data
 	open(gnuplotchannel,file=gridpath1//gnuplotfile)
-	write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-	write(gnuplotchannel,*) 'set output "'//gridpath1//'GridCreationGraph.jpg"'
+	write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+	write(gnuplotchannel,*) 'set output "'//gridpath1//'GridCreationGraph.png"'
 	write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
 	write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
 	write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
@@ -440,30 +458,28 @@ do Ngrid = 1, Ngrid_max
 	write(gnuplotchannel,*) 'unset key'
 	write(gnuplotchannel,*) 'unset xlabel'
 	write(gnuplotchannel,*) 'set ylabel "Number of Files"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:4 w lines'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:6 w lines'
 	write(gnuplotchannel,*) 'set ylabel "Number of Calls to DivyUp"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:2 w lines, '//&
-	                           '"'//gridpath1//"Initial"//trajectoriesfile//'" u 1:3 w lines'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:4 w lines, '//&
+	                           '"'//gridpath1//"Initial"//informaticsfile//'" u 3:5 w lines'
 	write(gnuplotchannel,*) 'set ylabel "Percentage of Frames added to Order 1"'
 	write(gnuplotchannel,*) 'set yrange [0:100]'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:7 w lines'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:7 w lines'
 	write(gnuplotchannel,*) 'set autoscale y'
 	write(gnuplotchannel,*) 'set ylabel "Wall Time (sec)"'
 	write(grid_wall_time_text,FMT="(F10.2)") grid_wall_time
 	write(gnuplotchannel,*) 'set label 1 "Total Wall Time (including grid checking): '//&
                                 trim(adjustl(grid_wall_time_text))//' s" at graph 0.025,0.9'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:6 w lines'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:2 w lines'
 	write(gnuplotchannel,*) 'set xtics'
 	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
 	write(gnuplotchannel,*) 'set autoscale y'
 	write(gnuplotchannel,*) 'unset label 1'
 	write(gnuplotchannel,*) 'set ylabel "CPU Time (sec)"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//trajectoriesfile//'" u 1:5 w lines'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:1 w lines'
 	close(gnuplotchannel)
-	call system("gnuplot < "//gridpath1//gnuplotfile)
+	call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
 	
-	!Also, make a scattering angle plot
-	call getScatteringAngles2(Ngrid_text//"/Initial"//trajectoriesfile,8,9,10,"InitialScatteringAngleDistribution_"//Ngrid_text)
 	
 	
 	
@@ -495,6 +511,12 @@ do Ngrid = 1, Ngrid_max
 	close(filechannel1)
 	
 	
+	!Finally, do a post-creation timeslice-to-SA conversions here
+	!We use the SA often so we do this at the beginning
+	call postProcess(Ngrid_text//"/Initial")
+
+	!Also, make a scattering angle plot
+	call getScatteringAngles2(Ngrid_text//"/Initial","InitialScatteringAngleDistribution_"//Ngrid_text)
 	
 end do
 
