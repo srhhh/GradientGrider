@@ -103,6 +103,10 @@ real(dp),parameter :: initial_translational_KE = (1.0d0)*eV/RU_energy
  real(dp),parameter :: collision_distance = 9.5d0
 real(dp),parameter :: collision_skew = HOr0_hydrogen*0.0d0
 
+!Each atom index corresponds to a zero or a one
+!A one indicates it is 'incoming'
+!A zero indicates it is 'to-be-collided'
+integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -112,6 +116,10 @@ real(dp),parameter :: collision_skew = HOr0_hydrogen*0.0d0
 integer,parameter :: Nbonds = 1
 integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, 3 /),&
                                                                                   (/ Nbonds, 2 /))
+integer,parameter :: Nvar_eff = 2
+integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2, 1, &
+                                                                           1, 3, 2 /), &
+                                                                                  (/ Nvar_eff, 3 /))
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -166,7 +174,7 @@ velocities_parallel(:,2) = dot_product(velocities(:,2),&
 velocities_orthogonal = velocities - velocities_parallel
 
 orthogonal_vector = velocities_orthogonal(:,1) + velocities_orthogonal(:,2)
-orthogonal_vector = orthogonal_vector / sqrt(sum(orthogonal_vector**2))
+if (all(orthogonal_vector /= 0.0d0)) orthogonal_vector = orthogonal_vector / sqrt(sum(orthogonal_vector**2))
 
 velocities_ortho1(:,1) = dot_product(velocities_orthogonal(:,1),&
                                      orthogonal_vector) * orthogonal_vector
@@ -198,6 +206,7 @@ TRVenergies(2) = sum(velocity_rotation**2)
 TRVenergies(3) = sum(velocity_vibration**2)
 
 TRVenergies = mass_hydrogen*TRVenergies
+!Note: now they are TOTAL KINETIC ENERGIES
 
 end subroutine decompose_two_velocities
 
@@ -301,7 +310,11 @@ subroutine InitialSetup3(coords,velocities)
         real(dp), dimension(3) :: bond_vector,rotation_vector,rotation0_vector,rotation90_vector
         real(dp) :: initial_bond_distance,initial_rotational_speed,initial_rotation_angle
         real(dp) :: initial_bond_angle1,initial_bond_angle2
+	real(dp) :: incoming_speed
         integer :: i, atom1, atom2
+
+	coords = 0.0d0
+	velocities = 0.0d0
 
         do i = 1, Nbonds
                 initial_bond_distance = INITIAL_BOND_DATA(i,1)
@@ -340,12 +353,17 @@ subroutine InitialSetup3(coords,velocities)
                 velocities(:,atom2) = -rotation_vector
         end do
 
-        !Extra stuff that is specific to this reaction (NOT GENERIC!!)
-        coords(:,1) = (/ 0.0d0, 0.0d0, 0.0d0 /)
-        coords(:,2) = coords(:,2) + (/ collision_distance, collision_skew, 0.0d0 /)
-        coords(:,3) = coords(:,3) + (/ collision_distance, collision_skew, 0.0d0 /)
+	incoming_speed = sqrt(2*initial_translational_KE/(mass_hydrogen*sum(COLLISION_DATA)))
 
-        velocities(:,1) = (/ sqrt(2*initial_translational_KE/mass_hydrogen), 0.0d0, 0.0d0 /)
+	do i = 1, Natoms
+		if (COLLISION_DATA(i) == 1) then
+			velocities(:,i) = velocities(:,i) + &
+                        (/ incoming_speed, 0.0d0, 0.0d0 /)
+		else
+			coords(:,i) = coords(:,i) + &
+			(/ collision_distance, collision_skew, 0.0d0 /)
+		end if
+	end do
 
 end subroutine InitialSetup3
 
@@ -353,7 +371,7 @@ end subroutine InitialSetup3
 subroutine NonBondedForce(coords1,coords2,gradient1,gradient2,r)
         implicit none
         real(dp), dimension(3), intent(in) :: coords1,coords2
-        real(dp), dimension(3), intent(out) :: gradient1,gradient2
+        real(dp), dimension(3), intent(inout) :: gradient1,gradient2
         real(dp),optional,intent(in) :: r
         real(dp), dimension(3) :: coords_distance,velocity_change
         real(dp) :: distance12,distance_squared,stretch_factor
@@ -382,7 +400,7 @@ end subroutine NonBondedForce
 subroutine BondedForce(coords1,coords2,gradient1,gradient2,r)
         implicit none
         real(dp), dimension(3), intent(in) :: coords1,coords2
-        real(dp), dimension(3), intent(out) :: gradient1,gradient2
+        real(dp), dimension(3), intent(inout) :: gradient1,gradient2
         real(dp),optional,intent(in) :: r
         real(dp), dimension(3) :: coords_distance,velocity_change
         real(dp) :: distance12,distance_squared

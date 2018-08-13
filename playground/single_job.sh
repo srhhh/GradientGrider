@@ -57,17 +57,17 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0100
 
 #The number of grids to add to a new library
-Ngrid_max=8
+Ngrid_max=4
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
 #what you want each individual one to do
-heatmap_flag=.true.
-trueSA_flag=.true.
-trueED_flag=.true.
+heatmap_flag=.false.
+trueSA_flag=.false.
+trueED_flag=.false.
 testtraj_flag=.true.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
@@ -81,7 +81,7 @@ threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=700
+Ntrajectories=050
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -91,13 +91,16 @@ Ntrajectories=700
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID=integrity_HH
+newGRID=testing_HH_again
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1
+#How often you want to check the progress of the new grid's creation
+#(has an intrinsic minimum of Ntraj_max/10)
+newGRID_check_min=30
 
 #The number of post-grid analyses you would like done
-Nanalyses=3
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -138,6 +141,7 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
      s|scaling2_text_length = [0-9]*|scaling2_text_length = ${#scaling2_0}|
      s|overcrowd0_text_length = [0-9]*|overcrowd0_text_length = ${#overcrowd0}|
      s|gridpath_length = .*|gridpath_length = $((${#gridPATH}+1))|
+     s|Ngrid_check_min = .*|Ngrid_check_min = $newGRID_check_min|
      s|gridpath0 = .*|gridpath0 = \"$gridPATH/\"|
      s|$oldPARAMETERS\\.f90|$newPARAMETERS.f90|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
 

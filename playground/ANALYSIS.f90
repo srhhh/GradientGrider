@@ -21,6 +21,7 @@ logical,parameter :: heatmap_flag = .true.
 logical,parameter :: trueSA_flag = .false.
 logical,parameter :: trueED_flag = .false.
 integer,parameter :: SA_Nbins = 50
+integer,parameter :: TRV_Nbins = 50
 integer :: Ncovergence
 
 !Set .true. to generate trajectories with molecular dynamics
@@ -53,6 +54,7 @@ logical,parameter :: testtraj_flag = .true.
       !Set the threshold RMSD to be used for any rejection method
       !real(dp),parameter :: !threshold_rmsd! = !.200100d0
       real(dp),parameter :: threshold_rmsd = .00100d0
+      real(dp),parameter :: default_rmsd = .200100d0
 
       !Set .true. to generate trajectories using md-calculated gradients
       !Otherwise, the program will use the above threshold as a rejection

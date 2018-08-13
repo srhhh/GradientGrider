@@ -360,6 +360,108 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
 
 
+
+
+
+
+allocate(angle_energy_bins(angleBins,energyBins))
+angle_energy_bins = 0
+sizeEnergyBin = TranslationalEnergy_max / (energyBins)
+sizeAngleBin = pi2 / (angleBins)
+do Ngrid = 1, Ngrid_total
+        write(variable_length_text,FMT="(I5)") Ngrid_text_length
+        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+        open(filechannel1,file=gridpath0//Ngrid_text//"/"//prefix_filename//SAfile)
+        
+        do j = 1, Ntraj_max
+        
+                read(filechannel1,FMTsa) ScatteringAngle_real, TranslationalEnergy_real
+        
+        	ScatteringAngle = ceiling(ScatteringAngle_real / sizeAngleBin)
+        	TranslationalEnergy = ceiling((TranslationalEnergy_real)/ sizeEnergyBin)
+        
+        	if (ScatteringAngle > angleBins) ScatteringAngle = angleBins
+        	if (ScatteringAngle == 0) ScatteringAngle = 1
+        
+        	if (TranslationalEnergy > energyBins) TranslationalEnergy = energyBins
+        	if (TranslationalEnergy == 0) TranslationalEnergy = 1
+        
+        	angle_energy_bins(ScatteringAngle,TranslationalEnergy) = &
+                           angle_energy_bins(ScatteringAngle,TranslationalEnergy) + 1
+        end do
+        close(filechannel1)
+end do
+
+occurence_max = maxval(angle_energy_bins)
+
+open(filechannel1,file=gridpath0//temporaryfile1)
+do i = 1, angleBins
+	do j = 1, energyBins
+		write(filechannel1,FMT=*) i*sizeAngleBin, j*sizeEnergyBin, angle_energy_bins(i,j)
+	end do
+	write(filechannel1,FMT=*) ""
+end do
+close(filechannel1)
+
+!This is the gnuplot code to make the plots
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath0//'HeatMap_'//trim(adjustl(Ntraj_text))//&
+                        prefix_filename//JPGfilename//'"'
+write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" offset 0,2'
+write(gnuplotchannel,*) 'set lmargin at screen 0.05'
+write(gnuplotchannel,*) 'set rmargin at screen 0.85'
+write(gnuplotchannel,*) 'set bmargin at screen 0.1'
+write(gnuplotchannel,*) 'set tmargin at screen 0.9'
+write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set multiplot'
+write(gnuplotchannel,*) 'set parametric'
+write(gnuplotchannel,*) 'set isosamples 500'
+write(gnuplotchannel,*) 'unset border'
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'unset ytics'
+write(gnuplotchannel,*) 'set angles radian'
+write(gnuplotchannel,*) 'r = ', TranslationalEnergy_max
+write(gnuplotchannel,*) 'rmax = r*1.1'
+write(gnuplotchannel,*) 'pi = 3.14159'
+!write(gnuplotchannel,*) 'set palette rgb 7, 5, 15'
+write(variable_length_text,FMT="(I5)") occurence_max
+write(gnuplotchannel,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//'/2]'
+write(gnuplotchannel,*) 'set cblabel "Frequency"'
+!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model XYZ '
+!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model HSV'
+!write(gnuplotchannel,*) 'set palette rgbformulae 3, 2, 2'
+write(gnuplotchannel,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
+write(gnuplotchannel,*) '     1 1 0.6471 0 )'
+write(gnuplotchannel,*) 'scaling_factor = 1.0'
+write(gnuplotchannel,*) 'set xrange[-rmax:rmax]'
+write(gnuplotchannel,*) 'set yrange[-rmax:rmax]'
+write(gnuplotchannel,*) 'set colorbox user origin 0.9,0.1 size 0.03,0.8'
+write(gnuplotchannel,*) 'splot "'//gridpath0//temporaryfile1//'" u ($2*cos($1)):($2*sin($1)):3'
+write(gnuplotchannel,*) 'set style line 11 lc rgb "black" lw 2'
+write(gnuplotchannel,*) 'set grid polar ls 11'
+write(gnuplotchannel,*) 'set polar'
+write(gnuplotchannel,*) 'set rrange[0:rmax]'
+!write(gnuplotchannel,*) 'unset raxis'
+!write(gnuplotchannel,*) 'set rlabel "Translational Energy Change (eV)"'
+!write(gnuplotchannel,*) 'set rtics format "" scale 0'
+write(gnuplotchannel,*) 'set rtics r / 4'
+write(gnuplotchannel,*) 'unset parametric'
+write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (rmax*scaling_factor)*cos(i*pi/180),'//&
+                        ' first (rmax*scaling_factor)*sin(i*pi/180)\'
+write(gnuplotchannel,*) 'center sprintf(''%d'', i)'
+write(gnuplotchannel,*) 'plot NaN w l'
+write(gnuplotchannel,*) 'unset multiplot'
+close(gnuplotchannel)
+
+!And then we just input it into gnuplot.exe
+call system("gnuplot < "//gridpath0//gnuplotfile)
+
+
+
+
+
 end subroutine getScatteringAngles1
 
 
