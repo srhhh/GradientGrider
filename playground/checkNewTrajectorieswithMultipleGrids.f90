@@ -87,6 +87,7 @@ character(6) :: Ntraj_text
 character(6) :: Nthreshold_text
 character(6) :: reject_text
 character(12) :: prefix_text
+character(150) :: old_filename
 
 !New Trajectory Parameters
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
@@ -171,16 +172,64 @@ end if
 
 !This is for scattering angle plots (from each of the grids)
 if (trueSA_flag) then
-	print *, "   Making plot: ", "trueScatteringAngleDistribution"
+	print *, "   Making plot: ", "InitialScatteringAngleDistribution"
 	print *, ""
-	call getScatteringAngles1("Initial","trueScatteringAngleDistribution.jpg")
+	
+	TranslationalEnergy_max = 0.0d0
+	
+	old_filename = ""
+	do Ngrid = 1, Ngrid_total
+	        Ntraj = Ngrid*Ntraj_max
+	        write(Ntraj_text,FMT="(I6)") Ntraj
+		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+
+	        if (trim(adjustl(old_filename)) /= "") then
+	                call system("cp "//trim(adjustl(old_filename))//" "//&
+	                            gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SAfile)
+	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SAfile
+	        else
+	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SAfile
+	                call system("rm "//trim(adjustl(old_filename)))
+	        end if
+	
+	        !Also, make a TRV plot
+	        call getScatteringAngles1(Ngrid_text//"/Initial", trim(adjustl(Ntraj_text))//"ScatteringAngleDistribution")
+	end do
 end if
+
+Ntraj = Ngrid_total * Ntraj_max
+call getConvergenceImage()
 
 !This is for the energy decomposition plots
 if (trueED_flag) then
-	print *, "   Making plot: ", "trueEnergyDecompositionDistribution"
+	print *, "   Making plots: ", "InitialEnergyDecompositionDistribution"
 	print *, ""
-	call getTRVimages("Initial","trueEnergyDecompositionDistribution.jpg")
+	
+	rotational_max = 0.0d0
+	translational_max = 0.0d0
+	vibrational_max = 0.0d0
+	rovibrational_max = 0.0d0
+	
+	old_filename = ""
+	do Ngrid = 1, Ngrid_total
+	        Ntraj = Ngrid*Ntraj_max
+	        write(Ntraj_text,FMT="(I6)") Ntraj
+		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
+
+	        if (trim(adjustl(old_filename)) /= "") then
+	                call system("cp "//trim(adjustl(old_filename))//" "//&
+	                            gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//TRVfile)
+	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//TRVfile
+	        else
+	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//TRVfile
+	                call system("rm "//trim(adjustl(old_filename)))
+	        end if
+	
+	        !Also, make a TRV plot
+	        call getTRVimages(Ngrid_text//"/Initial", trim(adjustl(Ntraj_text))//"InitialEnergyDecompositionDistribution")
+	end do 
 end if
 
 
@@ -436,6 +485,7 @@ print *, ""
 !We use the SA often so we do this at the beginning
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
+Ntraj = Ntesttraj
 call postProcess(Ngrid_text//prefix_text)
 
 if (percentthreshold_flag) then
@@ -444,11 +494,20 @@ if (percentthreshold_flag) then
 	call getRMSDThresholds1(prefix_text,"PercentRMSDThreshold_"//Ngrid_text//prefix_text)
 end if
 
-Ntraj = Ntesttraj
 if (testtrajSA_flag) then
 	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//prefix_text
 	print *, ""
-	call getScatteringAngles2(Ngrid_text//prefix_text,"TestScatteringAngleDistribution")
+	
+	call getScatteringAngles2(Ngrid_text//prefix_text,"TestScatteringAngleDistribution_"//&
+                                  Ngrid_text//prefix_text)
+end if
+
+if (testtrajTRV_flag) then
+	print *, "   Making plot: ", "TestEnergyDecompositionDistribution_"//Ngrid_text//prefix_text
+	print *, ""
+	
+	call getTRVimages(Ngrid_text//prefix_text,"TestEnergyDecompositionDistribution_"//&
+                          Ngrid_text//prefix_text)
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

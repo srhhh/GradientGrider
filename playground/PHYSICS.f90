@@ -134,6 +134,12 @@ integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,
 
 real(dp),dimension(Nbonds,5) :: INITIAL_BOND_DATA
 
+real(dp) :: vibrational_max
+real(dp) :: translational_max
+real(dp) :: rotational_max
+real(dp) :: rovibrational_max
+real(dp) :: TranslationalEnergy_max
+
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

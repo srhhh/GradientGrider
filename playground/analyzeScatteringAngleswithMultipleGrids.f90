@@ -47,14 +47,6 @@ use ANALYSIS
 use FUNCTIONS
 implicit none
 
-!SCATTERING ANGLE BINNING
-integer :: Nsamples, Nsamples_max
-real :: bin_width, binMean, binSD,binRMSD
-real,allocatable :: binAverage(:)
-integer,allocatable :: binTotal(:,:),sampleSize(:)
-integer :: binTally
-real :: binThreshold = 1.0
-
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: prefix_filename
 
@@ -72,7 +64,6 @@ character(150) :: old_filename
 !SCATTERING ANGLES
 real(dp),dimension(3,3) :: coords_initial,velocities_initial,coords_final,velocities_final
 real(dp) :: ScatteringAngle_real, TranslationalEnergy_real
-real(dp) :: TranslationalEnergy_max
 integer :: scatteringAngle, TranslationalEnergy
 
 !HEAT MAP VARIABLES
@@ -81,6 +72,7 @@ real(dp) :: sizeEnergyBin,sizeAngleBin
 integer :: energyBins = 100
 integer :: angleBins = 100
 integer :: occurence_max
+real :: bin_width
 
 !I/O HANDLING
 integer :: iostate
@@ -89,81 +81,188 @@ integer :: iostate
 integer :: i, j, k
 
 
+!The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
+write(Ntraj_text,FMT="(I6)") Ntraj
+
+open(filechannel1,file=gridpath0//prefix_filename//SAfile)
+open(filechannel2,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SAfile,position="append")
+do
+	read(filechannel1,FMT=FMTsa,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real
+	if (iostate /= 0) exit
+
+	TranslationalEnergy_max = max(TranslationalEnergy_max,TranslationalEnergy_real)
+end do
+close(filechannel1)
+
+allocate(angle_energy_bins(angleBins,energyBins))
+angle_energy_bins = 0
+sizeEnergyBin = TranslationalEnergy_max / (energyBins)
+sizeAngleBin = pi2 / (angleBins)
+
+open(filechannel1,file=gridpath0//prefix_filename//SAfile)
+open(filechannel2,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SAfile,position="append")
+do
+        read(filechannel1,FMT=FMTsa,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real
+	if (iostate /= 0) exit
+
+	ScatteringAngle = ceiling(ScatteringAngle_real / sizeAngleBin)
+	TranslationalEnergy = ceiling((TranslationalEnergy_real)/ sizeEnergyBin)
+
+	if (ScatteringAngle > angleBins) ScatteringAngle = angleBins
+	if (ScatteringAngle == 0) ScatteringAngle = 1
+
+	if (TranslationalEnergy > energyBins) TranslationalEnergy = energyBins
+	if (TranslationalEnergy == 0) TranslationalEnergy = 1
+
+	angle_energy_bins(ScatteringAngle,TranslationalEnergy) = &
+                   angle_energy_bins(ScatteringAngle,TranslationalEnergy) + 1
+
+	write(filechannel2,FMT=*) scatteringAngle
+end do
+close(filechannel1)
+close(filechannel2)
+
+
+!This is the gnuplot code to make the plots
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath0//prefix_filename//JPGfilename//'.png"'
+write(gnuplotchannel,*) 'set title "Scattering Angle Distribution of '//trim(adjustl(Ntraj_text))//&
+                        ' Trajectories"'
+write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'pi = 3.14159265'
+write(variable_length_text,FMT="(F5.4)") sizeAngleBin
+write(gnuplotchannel,*) 'box_width = '//variable_length_text
+write(gnuplotchannel,*) 'set boxwidth box_width'
+write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
+write(gnuplotchannel,*) 'set ylabel "Occurence"'
+write(gnuplotchannel,*) 'set xrange [0:pi]'
+write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//&
+                        trim(adjustl(Ntraj_text))//SAfile//&
+                        '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
+close(gnuplotchannel)
+
+!And then we just input it into gnuplot.exe
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+
+occurence_max = maxval(angle_energy_bins)
+open(filechannel1,file=gridpath0//temporaryfile1)
+do i = 1, angleBins
+	do j = 1, energyBins
+		write(filechannel1,FMT=*) i*sizeAngleBin, j*sizeEnergyBin, angle_energy_bins(i,j)
+	end do
+	write(filechannel1,FMT=*) ""
+end do
+close(filechannel1)
+
+!This is the gnuplot code to make the plots
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath0//prefix_filename//'HeatMap_'//&
+                        JPGfilename//'.png"'
+write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" offset 0,2'
+write(gnuplotchannel,*) 'set lmargin at screen 0.05'
+write(gnuplotchannel,*) 'set rmargin at screen 0.85'
+write(gnuplotchannel,*) 'set bmargin at screen 0.1'
+write(gnuplotchannel,*) 'set tmargin at screen 0.9'
+write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set multiplot'
+write(gnuplotchannel,*) 'set parametric'
+write(gnuplotchannel,*) 'set isosamples 500'
+write(gnuplotchannel,*) 'unset border'
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'unset ytics'
+write(gnuplotchannel,*) 'set angles radian'
+write(gnuplotchannel,*) 'r = ', TranslationalEnergy_max
+write(gnuplotchannel,*) 'rmax = r*1.1'
+write(gnuplotchannel,*) 'pi = 3.14159'
+!write(gnuplotchannel,*) 'set palette rgb 7, 5, 15'
+write(variable_length_text,FMT="(I5)") occurence_max
+write(gnuplotchannel,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//'/2]'
+write(gnuplotchannel,*) 'set cblabel "Frequency"'
+!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model XYZ '
+!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model HSV'
+!write(gnuplotchannel,*) 'set palette rgbformulae 3, 2, 2'
+write(gnuplotchannel,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
+write(gnuplotchannel,*) '     1 1 0.6471 0 )'
+write(gnuplotchannel,*) 'scaling_factor = 1.0'
+write(gnuplotchannel,*) 'set xrange[-rmax:rmax]'
+write(gnuplotchannel,*) 'set yrange[-rmax:rmax]'
+write(gnuplotchannel,*) 'set colorbox user origin 0.9,0.1 size 0.03,0.8'
+write(gnuplotchannel,*) 'splot "'//gridpath0//temporaryfile1//'" u ($2*cos($1)):($2*sin($1)):3'
+write(gnuplotchannel,*) 'set style line 11 lc rgb "black" lw 2'
+write(gnuplotchannel,*) 'set grid polar ls 11'
+write(gnuplotchannel,*) 'set polar'
+write(gnuplotchannel,*) 'set rrange[0:rmax]'
+!write(gnuplotchannel,*) 'unset raxis'
+!write(gnuplotchannel,*) 'set rlabel "Translational Energy Change (eV)"'
+!write(gnuplotchannel,*) 'set rtics format "" scale 0'
+write(gnuplotchannel,*) 'set rtics r / 4'
+write(gnuplotchannel,*) 'unset parametric'
+write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (rmax*scaling_factor)*cos(i*pi/180),'//&
+                        ' first (rmax*scaling_factor)*sin(i*pi/180)\'
+write(gnuplotchannel,*) 'center sprintf(''%d'', i)'
+write(gnuplotchannel,*) 'plot NaN w l'
+write(gnuplotchannel,*) 'unset multiplot'
+close(gnuplotchannel)
+
+!And then we just input it into gnuplot.exe
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+
+end subroutine getScatteringAngles1
+
+
+
+
+
+
+
+
+
+subroutine getConvergenceImage()
+use PARAMETERS
+use ANALYSIS
+use FUNCTIONS
+implicit none
+
+!SCATTERING ANGLE BINNING
+integer :: Nsamples, Nsamples_max
+real :: bin_width, binMean, binSD,binRMSD
+real,allocatable :: binAverage(:)
+integer,allocatable :: binTotal(:,:),sampleSize(:)
+integer :: binTally
+real :: binThreshold = 1.0
+
+!FORMATTING OF JPG FILES
+character(5) :: variable_length_text
+character(5) :: variable_length_text1, variable_length_text2
+character(Ngrid_text_length) :: Ngrid_text
+character(Ngrid_text_length+1) :: folder_text
+character(6) :: Ntraj_text
+
+!SCATTERING ANGLE VARIABLES
+integer :: scatteringAngle
+
+!INCREMENTAL INTEGER
+integer :: i
+
 bin_width = pi / SA_Nbins
 Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj
 allocate(binTotal(SA_Nbins,Nsamples_max),binAverage(SA_Nbins),sampleSize(Nsamples_max))
-
-!This data was made during creation (or should have been!) so all we need to do
-!is merge, read, and plot them
-TranslationalEnergy_max = 0.0d0
-old_filename = ""
-do Ngrid = 1, Ngrid_total
-
-	write(variable_length_text,FMT="(I5)") Ngrid_text_length
-        !The folders are named starting from 001 by increments of 1
-        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-
-        !The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
-        write(Ntraj_text,FMT="(I6)") Ngrid * Ntraj_max
-
-	if (trim(adjustl(old_filename)) /= "") then
-        	call system("cp "//trim(adjustl(old_filename))//" "//&
-                            gridpath0//"/"//Ngrid_text//"/"//trim(adjustl(Ntraj_text))//SAfile)
-        	old_filename = gridpath0//"/"//Ngrid_text//"/"//trim(adjustl(Ntraj_text))//SAfile
-	else
-        	old_filename = gridpath0//"/"//Ngrid_text//"/"//trim(adjustl(Ntraj_text))//SAfile
-        	call system("rm "//trim(adjustl(old_filename)))
-	end if
-
-
-	open(filechannel1,file=gridpath0//Ngrid_text//"/"//prefix_filename//SAfile)
-	open(filechannel2,file=trim(adjustl(old_filename)),position="append")
-	do i = (Ngrid-1)*Ntraj_max+1, Ngrid*Ntraj_max
-		read(filechannel1,FMTsa) ScatteringAngle_real, TranslationalEnergy_real
-
-		TranslationalEnergy_max = max(TranslationalEnergy_max,TranslationalEnergy_real)
-
-		scatteringAngle = ceiling(ScatteringAngle_real / bin_width)
-                if (scatteringAngle > SA_Nbins) scatteringAngle = SA_Nbins
-
-		write(filechannel2,FMT=*) scatteringAngle
-	end do
-	close(filechannel1)
-	close(filechannel2)
-
-
-        !This is the gnuplot code to make the plots
-        open(gnuplotchannel,file=gridpath0//gnuplotfile)
-        write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-        write(gnuplotchannel,*) 'set output "'//gridpath0//trim(adjustl(Ntraj_text))//JPGfilename//'"'
-        write(gnuplotchannel,*) 'set title "Scattering Angle Distribution of '//trim(adjustl(Ntraj_text))//&
-                                ' Trajectories"'
-        write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-        write(gnuplotchannel,*) 'unset key'
-	write(gnuplotchannel,*) 'pi = 3.14159265'
-	write(variable_length_text,FMT="(F5.4)") bin_width
-	write(gnuplotchannel,*) 'box_width = '//variable_length_text
-	write(gnuplotchannel,*) 'set boxwidth box_width'
-        write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
-        write(gnuplotchannel,*) 'set ylabel "Occurence"'
-        write(gnuplotchannel,*) 'set xrange [0:pi]'
-        write(gnuplotchannel,*) 'set autoscale y'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//'/'//&
-                                trim(adjustl(Ntraj_text))//SAfile//&
-                                '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
-        close(gnuplotchannel)
-
-        !And then we just input it into gnuplot.exe
-        call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
-
-end do
-
 
 !Now we want a reference distribution
 !This will be the distribution of ALL trajectories
 binTotal = 0
 sampleSize = 0
-open(filechannel1,file=gridpath0//Ngrid_text//"/"//trim(adjustl(Ntraj_text))//SAfile,action="read")
+write(Ntraj_text,FMT="(I6)") Ntraj
+write(variable_length_text,FMT="(I5)") Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
+open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SAfile,action="read")
 do Nsamples = 1, Nsamples_max
         do i = 1, Ntesttraj
                 read(filechannel1,FMT=*) scatteringAngle
@@ -221,13 +320,14 @@ deallocate(binAverage,binTotal,sampleSize)
 
 !We have everything we need to draw the distribution with error bars
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
-write(gnuplotchannel,*) "set terminal jpeg size 1200,1200"
+write(gnuplotchannel,*) "set terminal pngcairo size 1200,1200"
 write(variable_length_text,FMT="(I5)") Ntesttraj
-write(gnuplotchannel,*) 'set output "'//gridpath0//'Adjustedto'//&
-                        trim(adjustl(variable_length_text))//JPGfilename//'"'
+write(gnuplotchannel,*) 'set output "'//gridpath0//'Convergence'//&
+                        trim(adjustl(variable_length_text))//'SA'//Ngrid_text//'.png"'
 write(gnuplotchannel,*) 'set multiplot layout 2,1'
 write(variable_length_text,FMT="(I5)") Ntesttraj
-write(gnuplotchannel,*) 'set title "Convergence of the '//trim(adjustl(variable_length_text))//' Scattering Angle Distribution"'
+write(gnuplotchannel,*) 'set title "Convergence of the '//trim(adjustl(variable_length_text))//&
+                        ' Scattering Angle Distribution with '//Ngrid_text//' Grids"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set xlabel "Number of Trajectories"'
 write(gnuplotchannel,*) 'set ylabel "RMSD of the Distribution Over a Running Average"'
@@ -258,103 +358,7 @@ close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
-
-
-
-
-allocate(angle_energy_bins(angleBins,energyBins))
-angle_energy_bins = 0
-sizeEnergyBin = TranslationalEnergy_max / (energyBins)
-sizeAngleBin = pi2 / (angleBins)
-do Ngrid = 1, Ngrid_total
-        write(variable_length_text,FMT="(I5)") Ngrid_text_length
-        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-        open(filechannel1,file=gridpath0//Ngrid_text//"/"//prefix_filename//SAfile)
-        
-        do j = 1, Ntraj_max
-        
-                read(filechannel1,FMTsa) ScatteringAngle_real, TranslationalEnergy_real
-        
-        	ScatteringAngle = ceiling(ScatteringAngle_real / sizeAngleBin)
-        	TranslationalEnergy = ceiling((TranslationalEnergy_real)/ sizeEnergyBin)
-        
-        	if (ScatteringAngle > angleBins) ScatteringAngle = angleBins
-        	if (ScatteringAngle == 0) ScatteringAngle = 1
-        
-        	if (TranslationalEnergy > energyBins) TranslationalEnergy = energyBins
-        	if (TranslationalEnergy == 0) TranslationalEnergy = 1
-        
-        	angle_energy_bins(ScatteringAngle,TranslationalEnergy) = &
-                           angle_energy_bins(ScatteringAngle,TranslationalEnergy) + 1
-        end do
-        close(filechannel1)
-end do
-
-occurence_max = maxval(angle_energy_bins)
-
-open(filechannel1,file=gridpath0//temporaryfile1)
-do i = 1, angleBins
-	do j = 1, energyBins
-		write(filechannel1,FMT=*) i*sizeAngleBin, j*sizeEnergyBin, angle_energy_bins(i,j)
-	end do
-	write(filechannel1,FMT=*) ""
-end do
-close(filechannel1)
-
-!This is the gnuplot code to make the plots
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
-write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath0//'HeatMap_'//trim(adjustl(Ntraj_text))//&
-                        prefix_filename//JPGfilename//'"'
-write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" offset 0,2'
-write(gnuplotchannel,*) 'set lmargin at screen 0.05'
-write(gnuplotchannel,*) 'set rmargin at screen 0.85'
-write(gnuplotchannel,*) 'set bmargin at screen 0.1'
-write(gnuplotchannel,*) 'set tmargin at screen 0.9'
-write(gnuplotchannel,*) 'set pm3d map'
-write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'set multiplot'
-write(gnuplotchannel,*) 'set parametric'
-write(gnuplotchannel,*) 'set isosamples 500'
-write(gnuplotchannel,*) 'unset border'
-write(gnuplotchannel,*) 'unset xtics'
-write(gnuplotchannel,*) 'unset ytics'
-write(gnuplotchannel,*) 'set angles radian'
-write(gnuplotchannel,*) 'r = ', TranslationalEnergy_max
-write(gnuplotchannel,*) 'rmax = r*1.1'
-write(gnuplotchannel,*) 'pi = 3.14159'
-!write(gnuplotchannel,*) 'set palette rgb 7, 5, 15'
-write(variable_length_text,FMT="(I5)") occurence_max
-write(gnuplotchannel,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//'/2]'
-write(gnuplotchannel,*) 'set cblabel "Frequency"'
-!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model XYZ '
-!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model HSV'
-!write(gnuplotchannel,*) 'set palette rgbformulae 3, 2, 2'
-write(gnuplotchannel,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
-write(gnuplotchannel,*) '     1 1 0.6471 0 )'
-write(gnuplotchannel,*) 'scaling_factor = 1.0'
-write(gnuplotchannel,*) 'set xrange[-rmax:rmax]'
-write(gnuplotchannel,*) 'set yrange[-rmax:rmax]'
-write(gnuplotchannel,*) 'set colorbox user origin 0.9,0.1 size 0.03,0.8'
-write(gnuplotchannel,*) 'splot "'//gridpath0//temporaryfile1//'" u ($2*cos($1)):($2*sin($1)):3'
-write(gnuplotchannel,*) 'set style line 11 lc rgb "black" lw 2'
-write(gnuplotchannel,*) 'set grid polar ls 11'
-write(gnuplotchannel,*) 'set polar'
-write(gnuplotchannel,*) 'set rrange[0:rmax]'
-!write(gnuplotchannel,*) 'unset raxis'
-!write(gnuplotchannel,*) 'set rlabel "Translational Energy Change (eV)"'
-!write(gnuplotchannel,*) 'set rtics format "" scale 0'
-write(gnuplotchannel,*) 'set rtics r / 4'
-write(gnuplotchannel,*) 'unset parametric'
-write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (rmax*scaling_factor)*cos(i*pi/180),'//&
-                        ' first (rmax*scaling_factor)*sin(i*pi/180)\'
-write(gnuplotchannel,*) 'center sprintf(''%d'', i)'
-write(gnuplotchannel,*) 'plot NaN w l'
-write(gnuplotchannel,*) 'unset multiplot'
-close(gnuplotchannel)
-
-!And then we just input it into gnuplot.exe
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+end subroutine getConvergenceImage
 
 
 
@@ -364,105 +368,6 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
 
 
-allocate(angle_energy_bins(angleBins,energyBins))
-angle_energy_bins = 0
-sizeEnergyBin = TranslationalEnergy_max / (energyBins)
-sizeAngleBin = pi2 / (angleBins)
-do Ngrid = 1, Ngrid_total
-        write(variable_length_text,FMT="(I5)") Ngrid_text_length
-        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-        open(filechannel1,file=gridpath0//Ngrid_text//"/"//prefix_filename//SAfile)
-        
-        do j = 1, Ntraj_max
-        
-                read(filechannel1,FMTsa) ScatteringAngle_real, TranslationalEnergy_real
-        
-        	ScatteringAngle = ceiling(ScatteringAngle_real / sizeAngleBin)
-        	TranslationalEnergy = ceiling((TranslationalEnergy_real)/ sizeEnergyBin)
-        
-        	if (ScatteringAngle > angleBins) ScatteringAngle = angleBins
-        	if (ScatteringAngle == 0) ScatteringAngle = 1
-        
-        	if (TranslationalEnergy > energyBins) TranslationalEnergy = energyBins
-        	if (TranslationalEnergy == 0) TranslationalEnergy = 1
-        
-        	angle_energy_bins(ScatteringAngle,TranslationalEnergy) = &
-                           angle_energy_bins(ScatteringAngle,TranslationalEnergy) + 1
-        end do
-        close(filechannel1)
-end do
-
-occurence_max = maxval(angle_energy_bins)
-
-open(filechannel1,file=gridpath0//temporaryfile1)
-do i = 1, angleBins
-	do j = 1, energyBins
-		write(filechannel1,FMT=*) i*sizeAngleBin, j*sizeEnergyBin, angle_energy_bins(i,j)
-	end do
-	write(filechannel1,FMT=*) ""
-end do
-close(filechannel1)
-
-!This is the gnuplot code to make the plots
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
-write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath0//'HeatMap_'//trim(adjustl(Ntraj_text))//&
-                        prefix_filename//JPGfilename//'"'
-write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" offset 0,2'
-write(gnuplotchannel,*) 'set lmargin at screen 0.05'
-write(gnuplotchannel,*) 'set rmargin at screen 0.85'
-write(gnuplotchannel,*) 'set bmargin at screen 0.1'
-write(gnuplotchannel,*) 'set tmargin at screen 0.9'
-write(gnuplotchannel,*) 'set pm3d map'
-write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'set multiplot'
-write(gnuplotchannel,*) 'set parametric'
-write(gnuplotchannel,*) 'set isosamples 500'
-write(gnuplotchannel,*) 'unset border'
-write(gnuplotchannel,*) 'unset xtics'
-write(gnuplotchannel,*) 'unset ytics'
-write(gnuplotchannel,*) 'set angles radian'
-write(gnuplotchannel,*) 'r = ', TranslationalEnergy_max
-write(gnuplotchannel,*) 'rmax = r*1.1'
-write(gnuplotchannel,*) 'pi = 3.14159'
-!write(gnuplotchannel,*) 'set palette rgb 7, 5, 15'
-write(variable_length_text,FMT="(I5)") occurence_max
-write(gnuplotchannel,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//'/2]'
-write(gnuplotchannel,*) 'set cblabel "Frequency"'
-!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model XYZ '
-!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model HSV'
-!write(gnuplotchannel,*) 'set palette rgbformulae 3, 2, 2'
-write(gnuplotchannel,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
-write(gnuplotchannel,*) '     1 1 0.6471 0 )'
-write(gnuplotchannel,*) 'scaling_factor = 1.0'
-write(gnuplotchannel,*) 'set xrange[-rmax:rmax]'
-write(gnuplotchannel,*) 'set yrange[-rmax:rmax]'
-write(gnuplotchannel,*) 'set colorbox user origin 0.9,0.1 size 0.03,0.8'
-write(gnuplotchannel,*) 'splot "'//gridpath0//temporaryfile1//'" u ($2*cos($1)):($2*sin($1)):3'
-write(gnuplotchannel,*) 'set style line 11 lc rgb "black" lw 2'
-write(gnuplotchannel,*) 'set grid polar ls 11'
-write(gnuplotchannel,*) 'set polar'
-write(gnuplotchannel,*) 'set rrange[0:rmax]'
-!write(gnuplotchannel,*) 'unset raxis'
-!write(gnuplotchannel,*) 'set rlabel "Translational Energy Change (eV)"'
-!write(gnuplotchannel,*) 'set rtics format "" scale 0'
-write(gnuplotchannel,*) 'set rtics r / 4'
-write(gnuplotchannel,*) 'unset parametric'
-write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (rmax*scaling_factor)*cos(i*pi/180),'//&
-                        ' first (rmax*scaling_factor)*sin(i*pi/180)\'
-write(gnuplotchannel,*) 'center sprintf(''%d'', i)'
-write(gnuplotchannel,*) 'plot NaN w l'
-write(gnuplotchannel,*) 'unset multiplot'
-close(gnuplotchannel)
-
-!And then we just input it into gnuplot.exe
-call system("gnuplot < "//gridpath0//gnuplotfile)
-
-
-
-
-
-end subroutine getScatteringAngles1
 
 
 subroutine getScatteringAngles2(prefix_filename,JPGfilename)
@@ -488,8 +393,8 @@ inquire(file=gridpath0//'Adjusted'//cumulativefile//'.dat',exist=grid_is_done)
 
 !This is the gnuplot code to make the plots
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
-write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'"'
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.png"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'pi = 3.14159265'
 write(variable_length_text,FMT="(I0.5)") SA_Nbins
@@ -512,10 +417,9 @@ write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'set ylabel "Scattering Angle Occurence"'
 write(gnuplotchannel,*) 'set yrange [0:]'
 
-write(Ntraj_text,FMT="(I6)") Ntesttraj
 if (grid_is_done) then
-        write(gnuplotchannel,*) 'plot "'//gridpath0//trim(adjustl(Ntraj_text))//SAfile//&
-                                '" u (box_width*($1-0.5)):(1.0) smooth frequency w boxes, \'
+        write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SAfile//&
+                                '" u (rounded($1)):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2:3 w yerrorbars'
@@ -572,7 +476,6 @@ real,dimension(3) :: TRVenergies
 integer,dimension(4) :: TRVenergies_rounded
 
 !BOUNDS FOR THE ENERGY AND ANGULAR DATA
-real(dp) :: translational_max, rotational_max, vibrational_max, rovibrational_max
 real(dp) :: energy_max
 real(dp) :: bin_width
 
@@ -593,26 +496,14 @@ integer :: iostate
 !Incremental Integers
 integer :: i, j, k
 
-rotational_max = 0.0d0
-translational_max = 0.0d0
-vibrational_max = 0.0d0
-rovibrational_max = 0.0d0
-old_filename = "" 
-
-!This data was made during creation (or should have been!) so all we need to do
-!is merge, read, and plot them
-do Ngrid = 1, Ngrid_total
-
-	write(variable_length_text,FMT="(I5)") Ngrid_text_length
-        !The folders are named starting from 001 by increments of 1
-        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 
         !The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
-        write(Ntraj_text,FMT="(I6)") Ngrid * Ntraj_max
+        write(Ntraj_text,FMT="(I6)") Ntraj
 
-	open(filechannel1,file=gridpath0//Ngrid_text//"/"//prefix_filename//TRVfile)
-	do i = (Ngrid-1)*Ntraj_max+1, Ngrid*Ntraj_max
-		read(filechannel1,FMTtrv) (TRVenergies(j),j=1,3)
+	open(filechannel1,file=gridpath0//prefix_filename//TRVfile)
+	do
+		read(filechannel1,FMT=FMTtrv,iostat=iostate) (TRVenergies(j),j=1,3)
+		if (iostate /= 0) exit
 
 		translational_max = max(translational_max,TRVenergies(1))
 		rotational_max = max(rotational_max,TRVenergies(2))
@@ -626,20 +517,11 @@ do Ngrid = 1, Ngrid_total
 	energy_max = max(rotational_max, translational_max, vibrational_max,rovibrational_max)
 	bin_width = energy_max / (TRV_Nbins)
 
-
-	if (trim(adjustl(old_filename)) /= "") then
-        	call system("cp "//trim(adjustl(old_filename))//" "//&
-                            gridpath0//"/"//Ngrid_text//"/"//trim(adjustl(Ntraj_text))//TRVfile)
-        	old_filename = gridpath0//"/"//Ngrid_text//"/"//trim(adjustl(Ntraj_text))//TRVfile
-	else
-        	old_filename = gridpath0//"/"//Ngrid_text//"/"//trim(adjustl(Ntraj_text))//TRVfile
-        	call system("rm "//trim(adjustl(old_filename)))
-	end if
-
-	open(filechannel1,file=gridpath0//Ngrid_text//"/"//prefix_filename//TRVfile)
-	open(filechannel2,file=trim(adjustl(old_filename)),position="append")
-	do i = 1, Ntraj_max
-		read(filechannel1,FMTtrv) (TRVenergies(j),j=1,3)
+	open(filechannel1,file=gridpath0//prefix_filename//TRVfile)
+	open(filechannel2,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//TRVfile,position="append")
+	do
+		read(filechannel1,FMT=FMTtrv,iostat=iostate) (TRVenergies(j),j=1,3)
+		if (iostate /= 0) exit
 
 		TRVenergies_rounded(1:3) = ceiling(TRVenergies / bin_width)
 		TRVenergies_rounded(4) = ceiling((TRVenergies(2)+TRVenergies(3)) / bin_width)
@@ -657,10 +539,8 @@ do Ngrid = 1, Ngrid_total
         !This is the gnuplot code to make the plots
         open(gnuplotchannel,file=gridpath0//gnuplotfile)
         write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-        write(gnuplotchannel,*) 'set output "'//gridpath0//trim(adjustl(Ntraj_text))//JPGfilename//'"'
+        write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'"'
         write(gnuplotchannel,*) 'set multiplot layout 4,1'
-        write(gnuplotchannel,*) 'set title "Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
-                                ' Trajectories"'
         write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
         write(gnuplotchannel,*) 'unset key'
 	write(variable_length_text,FMT="(I5)") TRV_Nbins
@@ -673,26 +553,28 @@ do Ngrid = 1, Ngrid_total
         write(gnuplotchannel,*) 'set ylabel "Occurence"'
         write(gnuplotchannel,*) 'set xrange [0:energy_max]'
         write(gnuplotchannel,*) 'set autoscale y'
-        write(gnuplotchannel,*) 'plot "'//trim(adjustl(old_filename))//&
+        write(gnuplotchannel,*) 'set title "Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
+                                ' Trajectories"'
+        write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//TRVfile//&
                                 '" u (bin_width*(($1)-0.5)):(1.0) smooth frequency with boxes'
         write(gnuplotchannel,*) 'set title "Rovibrational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                                 ' Trajectories"'
-        write(gnuplotchannel,*) 'plot "'//trim(adjustl(old_filename))//&
+        write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//TRVfile//&
                                 '" u (bin_width*(($4)-0.5)):(1.0) smooth frequency with boxes'
         write(gnuplotchannel,*) 'set title "Rotational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                                 ' Trajectories"'
-        write(gnuplotchannel,*) 'plot "'//trim(adjustl(old_filename))//&
+        write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//TRVfile//&
                                 '" u (bin_width*(($2)-0.5)):(1.0) smooth frequency with boxes'
         write(gnuplotchannel,*) 'set title "Vibrational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                                 ' Trajectories"'
-        write(gnuplotchannel,*) 'plot "'//trim(adjustl(old_filename))//&
+        write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//TRVfile//&
                                 '" u (bin_width*(($3)-0.5)):(1.0) smooth frequency with boxes'
         close(gnuplotchannel)
 
         !And then we just input it into gnuplot.exe
         call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
-end do
+
 
 end subroutine getTRVimages
 
@@ -721,7 +603,7 @@ integer :: i, j, k
 
 	open(filechannel1,file=gridpath0//prefix_filename//timeslicefile)
 	open(filechannel2,file=gridpath0//prefix_filename//SAfile)
-	do k = 1, Ntraj_max
+	do k = 1, Ntraj
 		read(filechannel1,FMTtimeslice) &
                         ((coords_initial(i,j),i=1,3),j=1,Natoms),&
                         ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
@@ -767,7 +649,7 @@ integer :: i, j, k
 	open(filechannel1,file=gridpath0//prefix_filename//timeslicefile)
 	open(filechannel2,file=gridpath0//prefix_filename//initialfile)
 	open(filechannel3,file=gridpath0//prefix_filename//TRVfile)
-	do k = 1, Ntraj_max
+	do k = 1, Ntraj
 		read(filechannel1,FMTtimeslice) &
                         ((coords_initial(i,j),i=1,3),j=1,Natoms),&
                         ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
@@ -841,7 +723,7 @@ integer :: i, j, k
 	open(filechannel2,file=gridpath0//prefix_filename//initialfile)
 	open(filechannel3,file=gridpath0//prefix_filename//TRVfile)
 	open(filechannel4,file=gridpath0//prefix_filename//SAfile)
-	do k = 1, Ntraj_max
+	do k = 1, Ntraj
 		read(filechannel1,FMTtimeslice) &
                         ((coords_initial(i,j),i=1,3),j=1,Natoms),&
                         ((velocities_initial(i,j),i=1,3),j=1,Natoms),&

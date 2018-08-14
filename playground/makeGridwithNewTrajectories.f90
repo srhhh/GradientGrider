@@ -339,7 +339,7 @@ do Ngrid = 1, Ngrid_max
 			write(gnuplotchannel,*) 'set ylabel "Number of Frames Checked"'
 			write(gnuplotchannel,*) 'set xlabel "Timestep"'
 			write(gnuplotchannel,*) 'set autoscale y'
-			write(gnuplotchannel,*) 'set ytics 5'
+			write(gnuplotchannel,*) 'set ytics'
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:1 w lines'
 			write(gnuplotchannel,*) 'unset label 1'
 			write(gnuplotchannel,*) 'unset label 2'
@@ -401,6 +401,12 @@ do Ngrid = 1, Ngrid_max
 		open(filechannel1,file=gridpath1//"Initial"//informaticsfile,position="append")
 		write(filechannel1,FMTinformatics) trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps), &
 		                                   Ntraj,header1-header1_old,header2-header2_old,Nfile,Norder1*100.0/steps
+		close(filechannel1)
+
+		!This is a temporary file to store information on how fast
+		!Children level cells are filling up
+		open(filechannel1,file=gridpath1//"maxframesorder1.dat",position="append")
+		write(filechannel1,FMT=*) Ntraj, maxval(counter1), overcrowd1
 		close(filechannel1)
 
 		!There is a timeslice file for snapshots of the trajectory at the beginning and end
@@ -481,6 +487,17 @@ do Ngrid = 1, Ngrid_max
 	call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
 	
 	
+	open(gnuplotchannel,file=gridpath1//gnuplotfile)
+	write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+	write(gnuplotchannel,*) 'set output "'//gridpath1//'MaxFramesOfOrder1.png"'
+	write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
+	write(gnuplotchannel,*) 'unset key'
+	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
+	write(gnuplotchannel,*) 'set ylabel "Max Number of Frames in Order 1 Cells (Subcells)"'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//'maxframesorder1.dat" u 1:2 w lines'!,\'
+!	write(gnuplotchannel,*) '     "'//gridpath1//'maxframesorder1.dat" u 1:3 w lines'
+	close(gnuplotchannel)
+	call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
 	
 	
 	
@@ -517,7 +534,7 @@ do Ngrid = 1, Ngrid_max
 
 	!Also, make a scattering angle plot
 	call getScatteringAngles2(Ngrid_text//"/Initial","InitialScatteringAngleDistribution_"//Ngrid_text)
-	
+
 end do
 
 print *, ""
