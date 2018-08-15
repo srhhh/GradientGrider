@@ -146,8 +146,8 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 	!Coordinates, Velocities, and Variables
 	real(dp), dimension(3,Natoms) :: coords,gradient,velocities
 	real(dp), dimension(Nvar) :: vals
-	real(dp),dimension(3,3),intent(out) :: coords_initial,velocities_initial
-	real(dp),dimension(3,3),intent(out) :: coords_final,velocities_final
+	real(dp),dimension(3,Natoms),intent(out) :: coords_initial,velocities_initial
+	real(dp),dimension(3,Natoms),intent(out) :: coords_final,velocities_final
 	integer :: bond_index1, bond_index2
 
 	!Incremental Integer
@@ -179,7 +179,7 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 		!Just for bug-testing
                 if (.false.) then !(modulo(steps,50) == 0) then
                         open(filechannel1,file=gridpath0//trajectoryfile,position="append")
-                        write(filechannel1,'(I1)') 3
+                        write(filechannel1,'(I6)') Natoms
                         write(filechannel1,*) ""
 			do n = 1, Natoms
                         write(filechannel1,'(A1,3F10.6)') 'H',&
@@ -302,8 +302,8 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
         real(dp), dimension(3,Natoms) :: coords,velocities
         real(dp), dimension(3,Natoms) :: gradient, approx_gradient
         real(dp), dimension(Nvar) :: vals
-	real(dp), dimension(3,3), intent(out) :: coords_initial, velocities_initial 
-	real(dp), dimension(3,3), intent(out) :: coords_final, velocities_final 
+	real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
+	real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
 	integer :: bond_index1, bond_index2
 
         !Various other variables
@@ -353,7 +353,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 
 	!Get the trajectory file open for trajectory visualization
         open(filechannel1,file=gridpath1//trajectoryfile)
-        write(filechannel1,'(I1)') 3
+        write(filechannel1,'(I6)') Natoms
         write(filechannel1,*) ""
 	do n = 1, Natoms
         	write(filechannel1,'(A1,3F10.6)') 'H',&
@@ -369,7 +369,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                 !Every 10 frames, print to an xyz file for visualization
                  if (modulo(steps,10) == 0) then
                         open(filechannel1,file=gridpath1//trajectoryfile,position="append")
-                        write(filechannel1,'(I1)') 3
+                        write(filechannel1,'(I6)') Natoms
                         write(filechannel1,*) ""
 			do n = 1, Natoms
                         	write(filechannel1,'(A1,3F10.6)') 'H',&
@@ -396,7 +396,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                 !Check for similar frames in the grid
 		!Always set a default value; in this case, set min_rmsd_prime a default value
                 min_rmsd_prime = default_rmsd
-                call checkState(coords,approx_gradient,min_rmsd_prime,&
+                call checkState(vals,coords,approx_gradient,min_rmsd_prime,&
                                 number_of_frames,order,neighbor_check)
                 min_rmsd = min_rmsd_prime
 
@@ -535,8 +535,8 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
         !Coordinates, Velocities, and Variables
         real(dp),dimension(3,Natoms) :: coords,velocities
         real(dp),dimension(3,Natoms) :: gradient,approx_gradient
-        real(dp),dimension(3,3),intent(out) :: coords_initial, velocities_initial
-        real(dp),dimension(3,3),intent(out) :: coords_final, velocities_final
+        real(dp),dimension(3,Natoms),intent(out) :: coords_initial, velocities_initial
+        real(dp),dimension(3,Natoms),intent(out) :: coords_final, velocities_final
 	real(dp),dimension(Nvar) :: vals
 	
 	integer :: bond_index1, bond_index2
@@ -595,7 +595,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 		!Just for bug-testing
                 if (.false.) then !(modulo(steps,50) == 1) then
                         open(filechannel1,file=gridpath0//trajectoryfile,position="append")
-                        write(filechannel1,'(I1)') 3
+                        write(filechannel1,'(I6)') Natoms
                         write(filechannel1,*) ""
 			do n = 1, Natoms
                         	write(filechannel1,'(A1,3F10.6)') 'H',&

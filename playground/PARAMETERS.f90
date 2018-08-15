@@ -85,8 +85,8 @@ integer,parameter :: gnuplotchannel = 77
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 character(14),parameter :: FMT1 = "(2(1x,F14.10))"          !For two variables
-character(15),parameter :: FMT2 = "(36(1x,F14.10))"         !For six atoms, coords and gradient
-character(15),parameter :: FMT3 = "(18(1x,F14.10))"         !For six atoms, coords or gradient
+character(22) :: FMT2         !For six atoms, coords and gradient
+character(22) :: FMT3         !For six atoms, coords or gradient
 character(4),parameter :: FMT4 = "(I4)"                     !For subcell names
 character(4),parameter :: FMT5 = "(I9)"                     !For number of substates
 character(7),parameter :: FMT6 = "(F12.8)"                  !For RMSD
@@ -98,10 +98,10 @@ character(6),parameter :: FMT6_pos_real0 = "(F6.5)"
 character(6),parameter :: FMT6_pos_real1 = "(F6.4)"
 character(6),parameter :: FMT6_neg_real1 = "(F6.3)"
 character(6),parameter :: FMT6_pos_int = "(I0.6)"
-character(6),parameter :: Nbond_text = "000001"
-character(17),parameter :: FMTinitial = "("//Nbond_text//"(5(F8.4)))"
-character(6),parameter :: Natom_text = "000003"
-character(19),parameter :: FMTtimeslice = "("//Natom_text//"(12(F12.7)))"
+character(6) :: Nbond_text
+character(17) :: FMTinitial
+character(6) :: Natom_text
+character(19) :: FMTtimeslice
 character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"
 character(15),parameter :: FMTsa = "((F6.4),(F8.4))"
 character(9),parameter :: FMTtrv = "(3(F9.6))"

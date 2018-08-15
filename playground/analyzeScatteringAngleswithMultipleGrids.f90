@@ -152,7 +152,7 @@ occurence_max = maxval(angle_energy_bins)
 open(filechannel1,file=gridpath0//temporaryfile1)
 do i = 1, angleBins
 	do j = 1, energyBins
-		write(filechannel1,FMT=*) i*sizeAngleBin, j*sizeEnergyBin, angle_energy_bins(i,j)
+		write(filechannel1,FMT=*) (i-0.5)*sizeAngleBin, (j-0.5)*sizeEnergyBin, angle_energy_bins(i,j)
 	end do
 	write(filechannel1,FMT=*) ""
 end do

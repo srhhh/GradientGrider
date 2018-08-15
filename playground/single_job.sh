@@ -57,10 +57,10 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0200
+Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=2
+Ngrid_max=4
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -81,7 +81,7 @@ threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=050
+Ntrajectories=350
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -91,7 +91,7 @@ Ntrajectories=050
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID=testing_HH_again
+newGRID="testing_HH2"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1
@@ -100,7 +100,7 @@ newGRID_flag=1
 newGRID_check_min=30
 
 #The number of post-grid analyses you would like done
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)

@@ -58,6 +58,26 @@ call getDistanceSquared(coords(:,1),coords(:,3),var4)
 var4 = sqrt(var4)
 end subroutine getVar4
 
+!Variables five and six are the distance between atoms 1 and 3 and 2 and 4, respectively
+subroutine getVar5(coords,Natoms,var5)
+implicit none
+integer, intent(in) :: Natoms
+real(dp), dimension(3,Natoms), intent(in) :: coords
+real(dp), intent(out) :: var5
+
+call getDistanceSquared(coords(:,1),coords(:,3),var5)
+var5 = sqrt(var5)
+end subroutine getVar5
+
+subroutine getVar6(coords,Natoms,var6)
+implicit none
+integer, intent(in) :: Natoms
+real(dp), dimension(3,Natoms), intent(in) :: coords
+real(dp), intent(out) :: var6
+
+call getDistanceSquared(coords(:,2),coords(:,4),var6)
+var6 = sqrt(var6)
+end subroutine getVar6
 
 
 

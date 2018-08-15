@@ -841,7 +841,7 @@ end subroutine addState
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkState(coords,gradient,min_rmsd,&
+subroutine checkState(vals,coords,gradient,min_rmsd,&
                       number_of_frames,order,neighbor_check)
 use VARIABLES
 use PARAMETERS
@@ -851,11 +851,11 @@ integer,intent(out),optional :: order,number_of_frames,neighbor_check
 integer :: var1_index,var2_index,indexer,index1_1,index1_2,index2_1,index2_2
 integer :: key0,key1,key2,key3
 logical :: stop_flag
-real(dp) :: var1,var2
 real :: var1_cell,var2_cell,var1_round,var2_round
 real :: var1_round0,var2_round0,var1_round1,var2_round1,var1_round2,var2_round2,var1_round3,var2_round3
 real(dp), dimension(Ncoords), intent(in) :: coords
 real(dp), dimension(3,Natoms), intent(out) :: gradient
+real(dp), dimension(Nvar),intent(in) :: vals
 real(dp), dimension(3,Natoms) :: old_gradient
 real(dp), dimension(3,3) :: U, old_U
 real(dp), intent(inout) :: min_rmsd
@@ -880,10 +880,6 @@ old_gradient = gradient
 old_U = 0.0d0
 stop_flag = .false.
 
-! Get the variables corresponding to frame
-call getVar3(coords,Natoms,var1)
-call getVar4(coords,Natoms,var2)
-
 !The coordinates, as they are formatted in getCells and addCells, are the wrong
 !shape for ls_rmsd. Thus, we reshape them first
 
@@ -893,8 +889,8 @@ call getVar4(coords,Natoms,var2)
 
 !var_cell keeps track of the child subcell portion of the decimal
 !and throws away the parent subcell portion of the decimal
-var1_cell = var1
-var2_cell = var2
+var1_cell = vals(1)
+var2_cell = vals(2)
 
 !var_index keeps track of the index of the child subcell
 !inside of its parent subcell

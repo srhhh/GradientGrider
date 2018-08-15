@@ -94,6 +94,8 @@ do Ngrid = 1, Ngrid_total
 
         !Iterate through these cells
         open(filechannel1,file=gridpath0//temporaryfile3)
+	occurence_max = 0
+
         do i = 1, bounds1
         var1 = i * multiplier1_0
         indexer0 = bounds2*(i-1)
@@ -123,8 +125,9 @@ do Ngrid = 1, Ngrid_total
         write(filechannel1,*) 'set terminal pngcairo size 1600,1300'
         write(filechannel1,*) 'set output "'//gridpath1//'HeatMap_TopLevel_Detailed1.png"'
         write(filechannel1,*) 'unset key'
-        write(filechannel1,*) 'set palette rgbformula -7,2,-7'
-        write(filechannel1,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//'/2]'
+        write(filechannel1,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
+        write(filechannel1,*) '     1 1 0.6471 0 )'
+        write(filechannel1,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//']'
         write(filechannel1,*) 'set cblabel "Population"'
         write(filechannel1,*) 'set xlabel "Var1 (A)"'
         write(filechannel1,*) 'set ylabel "Var2 (A)"'

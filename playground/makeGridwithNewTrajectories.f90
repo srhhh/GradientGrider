@@ -61,6 +61,7 @@ use PARAMETERS
 use FUNCTIONS
 use VARIABLES
 use ANALYSIS
+use PHYSICS
 use analyzeScatteringAngleswithMultipleGrids
 implicit none
 
@@ -85,8 +86,8 @@ real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
 
 !Trajectory Output
-real(dp),dimension(3,3) :: coords_initial, velocities_initial
-real(dp),dimension(3,3) :: coords_final, velocities_final
+real(dp),dimension(3,Natoms) :: coords_initial, velocities_initial
+real(dp),dimension(3,Natoms) :: coords_final, velocities_final
 
 !Timing Variables
 real :: r1,r2
@@ -115,6 +116,14 @@ seed = rand(seed)
 !Print statement
 print *, "Creation of directory ", gridpath0
 print *, ""
+
+write(Nbond_text,FMT="(I0.6)") Nbonds
+write(Natom_text,FMT="(I0.6)") Natoms
+write(FMTinitial,FMT="(A17)") "("//Nbond_text//"(5(F8.4)))"
+write(FMTtimeslice,FMT="(A19)") "("//Natom_text//"(12(F12.7)))"
+write(FMT2,FMT="(A22)") "("//Natom_text//"(6(1x,F14.10)))"
+write(FMT3,FMT="(A22)") "("//Natom_text//"(3(1x,F14.10)))"  
+
 
 !Initialize the clock
 call system_clock(count_rate=cr)
@@ -240,6 +249,7 @@ do Ngrid = 1, Ngrid_max
 				exit
 			end do
 
+
 			!The ratio of vib:rot energy of the H2
 			!Right now, we set it to all vibrational
 			random_num2 = 1.0d0
@@ -270,9 +280,12 @@ do Ngrid = 1, Ngrid_max
                 write(progresschannel,*) ""
                 write(progresschannel,*) "Starting trajectory ", Ntraj+1
                 write(progresschannel,*) "  Initial Conditions: "
-                write(progresschannel,*) "  		Bond Distance: ", initial_bond_distance
-                write(progresschannel,*) "  		 Bond Angle 1: ", initial_bond_angle1
-                write(progresschannel,*) "  		 Bond Angle 2: ", initial_bond_angle2
+		do m = 1, Nbonds
+	                write(progresschannel,*) "          BOND ", m, ":"
+	                write(progresschannel,*) "  		Bond Distance: ", INITIAL_BOND_DATA(m,1)
+	                write(progresschannel,*) "  		 Bond Angle 1: ", INITIAL_BOND_DATA(m,4)
+	                write(progresschannel,*) "  		 Bond Angle 2: ", INITIAL_BOND_DATA(m,5)
+		end do
                 close(progresschannel)
 
 
@@ -314,16 +327,16 @@ do Ngrid = 1, Ngrid_max
 						'"Trajectory '//trim(adjustl(checkstateTrajectory))//'"'
 			write(gnuplotchannel,*) 'unset key'
 			write(gnuplotchannel,*) 'unset xlabel'
-			write(angle1descriptor,FMT=FMT6_neg_real1) initial_bond_angle1
-			write(angle2descriptor,FMT=FMT6_pos_real1) initial_bond_angle2
-			write(bond1descriptor,FMT=FMT6_pos_real1) initial_bond_distance
-			write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
-			write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//&
-                                                ' radians" at screen 0.6, 0.955'
-			write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//&
-                                                ' A" at screen 0.6, 0.94'
-			write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
-                                                ' s" at screen 0.6, 0.910'
+!			write(angle1descriptor,FMT=FMT6_neg_real1) initial_bond_angle1
+!			write(angle2descriptor,FMT=FMT6_pos_real1) initial_bond_angle2
+!			write(bond1descriptor,FMT=FMT6_pos_real1) initial_bond_distance
+!			write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
+!			write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//&
+!                                                ' radians" at screen 0.6, 0.955'
+!			write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//&
+!                                                ' A" at screen 0.6, 0.94'
+!			write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
+!                                                ' s" at screen 0.6, 0.910'
 !			write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
 !			write(gnuplotchannel,*) 'set yrange [0:11]'
 !			write(gnuplotchannel,*) 'set ytics 2'
@@ -341,9 +354,9 @@ do Ngrid = 1, Ngrid_max
 			write(gnuplotchannel,*) 'set autoscale y'
 			write(gnuplotchannel,*) 'set ytics'
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:1 w lines'
-			write(gnuplotchannel,*) 'unset label 1'
-			write(gnuplotchannel,*) 'unset label 2'
-			write(gnuplotchannel,*) 'unset label 3'
+!			write(gnuplotchannel,*) 'unset label 1'
+!			write(gnuplotchannel,*) 'unset label 2'
+!			write(gnuplotchannel,*) 'unset label 3'
 			write(gnuplotchannel,*) 'set ylabel "Order of Cell Checked"'
 			write(gnuplotchannel,*) 'set xlabel "Timestep"'
 			write(gnuplotchannel,*) 'set yrange [-1.1:1.1]'

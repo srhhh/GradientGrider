@@ -87,11 +87,11 @@ real(dp), parameter :: temperature = 200.0d0
 real(dp), parameter :: upsilon_max = 5.0d0
 					!Vibrational Quantum Number Cutoff
 real(dp), parameter :: vib_frequency = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))/pi2
-real(dp), parameter :: theta_vib = hbar * pi2 * HOke_hydrogen / kb
+real(dp), parameter :: theta_vib = (hbar/(RU_energy*RU_time)) * pi2 * HOke_hydrogen / (kb / RU_energy)
 					!Vibrational Constant
 real(dp), parameter :: upsilon_factor1 = theta_vib / temperature
 real(dp), parameter :: upsilon_factor2 = 1.0 - exp(-upsilon_factor1)
-real(dp), parameter :: epsilon_factor = hbar * pi2 * vib_frequency
+real(dp), parameter :: epsilon_factor = (hbar/(RU_energy*RU_time)) * pi2 * vib_frequency
 					!Some scaling factors
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -107,6 +107,7 @@ real(dp),parameter :: collision_skew = HOr0_hydrogen*0.0d0
 !A one indicates it is 'incoming'
 !A zero indicates it is 'to-be-collided'
 integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
+!integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -114,12 +115,23 @@ integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 integer,parameter :: Nbonds = 1
-integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, 3 /),&
+integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, &
+                                                                   3 /),&
                                                                                   (/ Nbonds, 2 /))
 integer,parameter :: Nvar_eff = 2
-integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2, 1, &
-                                                                           1, 3, 2 /), &
+integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,    &
+                                                                           2, 3,    &
+                                                                           1, 2/),  &
                                                                                   (/ Nvar_eff, 3 /))
+!integer,parameter :: Nbonds = 2
+!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
+!                                                                   2, 4 /),        (/ Nbonds, 2 /))
+!
+!integer,parameter :: Nvar_eff = 2
+!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
+!                                                                           3, 4,    &
+!                                                                           1, 2 /), &
+!                                                                                   (/ Nvar_eff, 3 /)) 
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

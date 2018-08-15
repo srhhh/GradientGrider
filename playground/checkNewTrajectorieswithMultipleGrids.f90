@@ -96,7 +96,7 @@ real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_ener
 real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3
 real(dp) :: scattering_angle
 real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
-real(dp),dimension(3,3) :: coords_initial,velocities_initial,coords_final,velocities_final
+real(dp),dimension(3,Natoms) :: coords_initial,velocities_initial,coords_final,velocities_final
 real(dp) :: totalEnergy
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
 
