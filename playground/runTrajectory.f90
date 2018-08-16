@@ -317,27 +317,6 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-!	!TRVenergies are the translational, rotational, and vibrational
-!	!speeds of the incoming H from the get-go
-!	!velocity_in is the velocity of the incoming H from the get-go
-!
-!	TRVenergies1 = 0.0d0
-!	do n = 1, Nbonds
-!		bond_index1 = BONDING_DATA(n,1)
-!		bond_index2 = BONDING_DATA(n,2)
-!		call decompose_two_velocities(coords(:,bond_index1:bond_index2),&
-!                                              velocities(:,bond_index1:bond_index2),&
-!                                              velocity_out,dTRVenergies)
-!		TRVenergies1 = TRVenergies1 + dTRVenergies
-!		TRVenergies1(3) = TRVenergies1(3) + &
-!                                  HOPotential(coords(:,bond_index1),coords(:,bond_index2))
-!	end do
-!	do n = 1, Natoms
-!		if (all(BONDING_DATA /= n)) TRVenergies1(n) = TRVenergies1(n) + KineticEnergy(velocities(:,n))
-!	end do
-!
-!	velocity_in = velocities(:,1)
-
 	coords_initial = coords
 	velocities_initial = velocities
 
@@ -428,33 +407,8 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
         end do
 	close(filechannel2)
 
-!	!TRVenergies are the translational, rotational, and vibrational
-!	!speeds of the incoming H at the end
-!	!velocity_out is the velocity of the incoming H at the end
-!
-!	TRVenergies2 = 0.0d0
-!	do n = 1, Nbonds
-!		bond_index1 = BONDING_DATA(n,1)
-!		bond_index2 = BONDING_DATA(n,2)
-!		call decompose_two_velocities(coords(:,bond_index1:bond_index2),&
-!                                              velocities(:,bond_index1:bond_index2),&
-!                                              velocity_out,dTRVenergies)
-!		TRVenergies2 = TRVenergies2 + dTRVenergies
-!		TRVenergies2(3) = TRVenergies2(3) + &
-!                                  HOPotential(coords(:,bond_index1),coords(:,bond_index2))
-!	end do
-!	do n = 1, Natoms
-!		if (all(BONDING_DATA /= n)) TRVenergies2(n) = TRVenergies1(n) + KineticEnergy(velocities(:,n))
-!	end do
-!
-!	velocity_out = velocities(:,1)
-
 	coords_final = coords
 	velocities_final = velocities
-
-!        !We also record the scattering angle of the trajectory
-!        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
-!                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
 
 end subroutine checkTrajectory
 
@@ -555,27 +509,6 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
-!	!TRVenergies are the translational, rotational, and vibrational
-!	!speeds of the incoming H from the get-go
-!	!velocity_in is the velocity of the incoming H from the get-go
-!
-!	TRVenergies1 = 0.0d0
-!	do n = 1, Nbonds
-!		bond_index1 = BONDING_DATA(n,1)
-!		bond_index2 = BONDING_DATA(n,2)
-!		call decompose_two_velocities(coords(:,bond_index1:bond_index2),&
-!                                              velocities(:,bond_index1:bond_index2),&
-!                                              velocity_out,dTRVenergies)
-!		TRVenergies1 = TRVenergies1 + dTRVenergies
-!		TRVenergies1(3) = TRVenergies1(3) + &
-!                                  HOPotential(coords(:,bond_index1),coords(:,bond_index2))
-!	end do
-!	do n = 1, Natoms
-!		if (all(BONDING_DATA /= n)) TRVenergies1(n) = TRVenergies1(n) + KineticEnergy(velocities(:,n))
-!	end do
-!
-!	velocity_in = velocities(:,1)
-
 	coords_initial = coords
 	velocities_initial = velocities
 
@@ -638,33 +571,8 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 
         end do
 
-!	!TRVenergies are the translational, rotational, and vibrational
-!	!speeds of the incoming H at the end
-!	!velocity_out is the velocity of the incoming H at the end
-!
-!	TRVenergies2 = 0.0d0
-!	do n = 1, Nbonds
-!		bond_index1 = BONDING_DATA(n,1)
-!		bond_index2 = BONDING_DATA(n,2)
-!		call decompose_two_velocities(coords(:,bond_index1:bond_index2),&
-!                                              velocities(:,bond_index1:bond_index2),&
-!                                              velocity_out,dTRVenergies)
-!		TRVenergies2 = TRVenergies2 + dTRVenergies
-!		TRVenergies2(3) = TRVenergies2(3) + &
-!                                  HOPotential(coords(:,bond_index1),coords(:,bond_index2))
-!	end do
-!	do n = 1, Natoms
-!		if (all(BONDING_DATA /= n)) TRVenergies2(n) = TRVenergies2(n) + KineticEnergy(velocities(:,n))
-!	end do
-!
-!	velocity_out = velocities(:,1)
-
 	coords_final = coords
 	velocities_final = velocities
-
-!        !We also record the scattering angle of the trajectory
-!        ScatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
-!                          sqrt(sum(velocity_in**2) * sum(velocity_out**2)))
 
 end subroutine checkMultipleTrajectories
 

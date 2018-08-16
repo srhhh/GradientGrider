@@ -90,7 +90,7 @@ real(dp), parameter :: vib_frequency = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))
 real(dp), parameter :: theta_vib = (hbar/(RU_energy*RU_time)) * pi2 * HOke_hydrogen / (kb / RU_energy)
 					!Vibrational Constant
 real(dp), parameter :: upsilon_factor1 = theta_vib / temperature
-real(dp), parameter :: upsilon_factor2 = 1.0 - exp(-upsilon_factor1)
+real(dp), parameter :: upsilon_factor2 = 1.0d0 - exp(-upsilon_factor1)
 real(dp), parameter :: epsilon_factor = (hbar/(RU_energy*RU_time)) * pi2 * vib_frequency
 					!Some scaling factors
 

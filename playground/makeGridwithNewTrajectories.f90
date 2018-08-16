@@ -330,13 +330,13 @@ do Ngrid = 1, Ngrid_max
 !			write(angle1descriptor,FMT=FMT6_neg_real1) initial_bond_angle1
 !			write(angle2descriptor,FMT=FMT6_pos_real1) initial_bond_angle2
 !			write(bond1descriptor,FMT=FMT6_pos_real1) initial_bond_distance
-!			write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
+ 			write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
 !			write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//&
 !                                                ' radians" at screen 0.6, 0.955'
 !			write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//&
 !                                                ' A" at screen 0.6, 0.94'
-!			write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
-!                                                ' s" at screen 0.6, 0.910'
+ 			write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
+                                                 ' s" at screen 0.6, 0.910'
 !			write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
 !			write(gnuplotchannel,*) 'set yrange [0:11]'
 !			write(gnuplotchannel,*) 'set ytics 2'
@@ -356,7 +356,7 @@ do Ngrid = 1, Ngrid_max
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:1 w lines'
 !			write(gnuplotchannel,*) 'unset label 1'
 !			write(gnuplotchannel,*) 'unset label 2'
-!			write(gnuplotchannel,*) 'unset label 3'
+ 			write(gnuplotchannel,*) 'unset label 3'
 			write(gnuplotchannel,*) 'set ylabel "Order of Cell Checked"'
 			write(gnuplotchannel,*) 'set xlabel "Timestep"'
 			write(gnuplotchannel,*) 'set yrange [-1.1:1.1]'
