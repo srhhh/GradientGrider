@@ -65,10 +65,10 @@ Ngrid_max=1
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
 #what you want each individual one to do
-heatmap_flag=.true.
-trueSA_flag=.true.
-trueED_flag=.true.
-testtraj_flag=.false.
+heatmap_flag=.false.
+trueSA_flag=.false.
+trueED_flag=.false.
+testtraj_flag=.true.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
@@ -94,7 +94,7 @@ Ntrajectories=350
 newGRID="testing_HH2"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 newGRID_check_min=30

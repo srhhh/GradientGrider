@@ -104,7 +104,7 @@ character(6) :: Natom_text
 character(19) :: FMTtimeslice
 character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"
 character(15),parameter :: FMTsa = "((F6.4),(F8.4))"
-character(9),parameter :: FMTtrv = "(3(F9.6))"
+character(10),parameter :: FMTtrv = "(3(F11.6))"
 
 integer,parameter :: trajectory_text_length = 5
 integer,parameter :: scaling1_text_length = 3

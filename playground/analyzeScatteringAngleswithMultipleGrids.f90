@@ -505,10 +505,10 @@ integer :: i, j, k
 		read(filechannel1,FMT=FMTtrv,iostat=iostate) (TRVenergies(j),j=1,3)
 		if (iostate /= 0) exit
 
-		translational_max = max(translational_max,TRVenergies(1))
-		rotational_max = max(rotational_max,TRVenergies(2))
-		vibrational_max = max(vibrational_max,TRVenergies(3))
-		rovibrational_max = max(rovibrational_max,TRVenergies(2)+TRVenergies(3))
+		translational_max = max(translational_max,abs(TRVenergies(1)))
+		rotational_max = max(rotational_max,abs(TRVenergies(2)))
+		vibrational_max = max(vibrational_max,abs(TRVenergies(3)))
+		rovibrational_max = max(rovibrational_max,abs(TRVenergies(2)+TRVenergies(3)))
 	end do
 	close(filechannel1)
 
@@ -523,8 +523,8 @@ integer :: i, j, k
 		read(filechannel1,FMT=FMTtrv,iostat=iostate) (TRVenergies(j),j=1,3)
 		if (iostate /= 0) exit
 
-		TRVenergies_rounded(1:3) = ceiling(TRVenergies / bin_width)
-		TRVenergies_rounded(4) = ceiling((TRVenergies(2)+TRVenergies(3)) / bin_width)
+		TRVenergies_rounded(1:3) = ceiling(abs(TRVenergies) / bin_width)
+		TRVenergies_rounded(4) = ceiling(abs(TRVenergies(2)+TRVenergies(3)) / bin_width)
 		do j = 1, 4
 			if (TRVenergies_rounded(j) > TRV_Nbins) TRVenergies_rounded(j) = TRV_Nbins
 			if (TRVenergies_rounded(j) == 0) TRVenergies_rounded(j) = 1
@@ -755,7 +755,7 @@ integer :: i, j, k
 			end if
 		end do
 
-		dTRVenergies = abs(TRVenergies1 - TRVenergies2)
+		dTRVenergies = TRVenergies2 - TRVenergies1
 		write(filechannel3,FMTtrv) (dTRVenergies(i),i=1,3)
 
 		speed_out = sqrt(sum(velocities_final(:,1)**2))
