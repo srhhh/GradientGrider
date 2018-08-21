@@ -93,6 +93,7 @@ character(150) :: old_filename
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
+real(dp) :: bond_period_elapsed
 real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3
 real(dp) :: scattering_angle
 real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
@@ -178,10 +179,14 @@ end if
 
 !This is for scattering angle plots (from each of the grids)
 if (trueSA_flag) then
-	print *, "   Making plot: ", "InitialScatteringAngleDistribution"
+	print *, "   Making plot: ", "InitialSATRVDistribution"
 	print *, ""
 	
-	TranslationalEnergy_max = 0.0d0
+	max_TranslationalEnergy = 0.0d0
+        max_absenergychange = 0.0
+        min_absenergychange = 1.0e9
+        max_relenergychange = 0.0
+        min_relenergychange = 1.0e9
 	
 	old_filename = ""
 	do Ngrid = 1, Ngrid_total
@@ -192,52 +197,20 @@ if (trueSA_flag) then
 
 	        if (trim(adjustl(old_filename)) /= "") then
 	                call system("cp "//trim(adjustl(old_filename))//" "//&
-	                            gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SAfile)
-	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SAfile
+	                            gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile)
+	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
 	        else
-	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SAfile
+	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
 	                call system("rm "//trim(adjustl(old_filename)))
 	        end if
 	
 	        !Also, make a TRV plot
-	        call getScatteringAngles1(Ngrid_text//"/Initial", trim(adjustl(Ntraj_text))//"ScatteringAngleDistribution")
+	        call getScatteringAngles1(Ngrid_text//"/Initial", trim(adjustl(Ntraj_text))//"SATRVDistribution")
 	end do
 end if
 
 Ntraj = Ngrid_total * Ntraj_max
 call getConvergenceImage()
-
-!This is for the energy decomposition plots
-if (trueED_flag) then
-	print *, "   Making plots: ", "InitialEnergyDecompositionDistribution"
-	print *, ""
-	
-	rotational_max = 0.0d0
-	translational_max = 0.0d0
-	vibrational_max = 0.0d0
-	rovibrational_max = 0.0d0
-	
-	old_filename = ""
-	do Ngrid = 1, Ngrid_total
-	        Ntraj = Ngrid*Ntraj_max
-	        write(Ntraj_text,FMT="(I6)") Ntraj
-		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-
-	        if (trim(adjustl(old_filename)) /= "") then
-	                call system("cp "//trim(adjustl(old_filename))//" "//&
-	                            gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//TRVfile)
-	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//TRVfile
-	        else
-	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//TRVfile
-	                call system("rm "//trim(adjustl(old_filename)))
-	        end if
-	
-	        !Also, make a TRV plot
-	        call getTRVimages(Ngrid_text//"/Initial", trim(adjustl(Ntraj_text))//"InitialEnergyDecompositionDistribution")
-	end do 
-end if
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -393,17 +366,20 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	        initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
 	        initial_rotation_angle = random_num1*pi2
 
+		bond_period_elapsed = rand()
+
 		totalEnergy = initial_translational_KE + initial_vibrational_energy + &
                               initial_rotational_energy
 
 		INITIAL_BOND_DATA(n,:) = (/ initial_bond_distance,initial_rotational_speed,&
-                           initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)
+                           initial_rotation_angle,initial_bond_angle1,initial_bond_angle2,&
+                           bond_period_elapsed /)
 
 	end do
 
 	open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//initialfile,&
                           position="append")
-	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(i,j),j=1,5),i=1,Nbonds)
+	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(i,j),j=1,6),i=1,Nbonds)
         close(filechannel1)
 
 
@@ -506,14 +482,6 @@ if (testtrajSA_flag) then
 	
 	call getScatteringAngles2(Ngrid_text//prefix_text,"TestScatteringAngleDistribution_"//&
                                   Ngrid_text//prefix_text)
-end if
-
-if (testtrajTRV_flag) then
-	print *, "   Making plot: ", "TestEnergyDecompositionDistribution_"//Ngrid_text//prefix_text
-	print *, ""
-	
-	call getTRVimages(Ngrid_text//prefix_text,"TestEnergyDecompositionDistribution_"//&
-                          Ngrid_text//prefix_text)
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

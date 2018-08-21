@@ -87,6 +87,7 @@ real(dp), parameter :: temperature = 200.0d0
 real(dp), parameter :: upsilon_max = 5.0d0
 					!Vibrational Quantum Number Cutoff
 real(dp), parameter :: vib_frequency = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))/pi2
+integer, parameter  :: vib_period = floor((1.0 / vib_frequency) / dt)
 real(dp), parameter :: theta_vib = (hbar/(RU_energy*RU_time)) * pi2 * HOke_hydrogen / (kb / RU_energy)
 					!Vibrational Constant
 real(dp), parameter :: upsilon_factor1 = theta_vib / temperature
@@ -103,35 +104,37 @@ real(dp),parameter :: initial_translational_KE = (1.0d0)*eV/RU_energy
  real(dp),parameter :: collision_distance = 9.5d0
 real(dp),parameter :: collision_skew = HOr0_hydrogen*0.0d0
 
+!For the COLLISION_DATA:
 !Each atom index corresponds to a zero or a one
 !A one indicates it is 'incoming'
 !A zero indicates it is 'to-be-collided'
-integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
-!integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !			BONDAGE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer,parameter :: Nbonds = 1
-integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, &
-                                                                   3 /),&
-                                                                                  (/ Nbonds, 2 /))
-integer,parameter :: Nvar_eff = 2
-integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,    &
-                                                                           2, 3,    &
-                                                                           1, 2/),  &
-                                                                                  (/ Nvar_eff, 3 /))
-!integer,parameter :: Nbonds = 2
-!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
-!                                                                   2, 4 /),        (/ Nbonds, 2 /))
-!
+!integer,parameter :: Nbonds = 1
+!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, &
+!                                                                   3 /),&
+!                                                                                  (/ Nbonds, 2 /))
 !integer,parameter :: Nvar_eff = 2
-!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
-!                                                                           3, 4,    &
-!                                                                           1, 2 /), &
-!                                                                                   (/ Nvar_eff, 3 /)) 
+!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,    &
+!                                                                           2, 3,    &
+!                                                                           1, 2/),  &
+!                                                                                  (/ Nvar_eff, 3 /))
+!integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
+
+integer,parameter :: Nbonds = 2
+integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
+                                                                   2, 4 /),        (/ Nbonds, 2 /))
+
+integer,parameter :: Nvar_eff = 2
+integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
+                                                                           3, 4,    &
+                                                                           1, 2 /), &
+                                                                                   (/ Nvar_eff, 3 /)) 
+integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -144,13 +147,27 @@ integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,
 !                RANDOM COLLISION SETTINGS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-real(dp),dimension(Nbonds,5) :: INITIAL_BOND_DATA
+real(dp),dimension(Nbonds,6) :: INITIAL_BOND_DATA
 
 real(dp) :: vibrational_max
 real(dp) :: translational_max
 real(dp) :: rotational_max
 real(dp) :: rovibrational_max
 real(dp) :: TranslationalEnergy_max
+
+real :: max_absenergychange, min_absenergychange
+real :: max_relenergychange, min_relenergychange
+real :: abs_energychange, rel_energychange
+real :: max_TranslationalEnergy
+
+real(dp) :: sizeEnergyBin,sizeAngleBin
+real(dp) :: sizeAbsEnergyBin,sizeRelEnergyBin
+real(dp) :: sizeDeltaEnergyBin
+integer,parameter :: energyBins = 100                  !This is for the SA heat map
+integer,parameter :: angleBins = 200                   !Same
+integer,parameter :: scatteringangleBins = 50          !This is for the regular histogram
+                                                       !  (Note: make this a divisor of angleBins)
+integer,parameter :: energychangeBins = 50             !Same
 
 
 
@@ -355,9 +372,9 @@ subroutine InitialSetup3(coords,velocities)
                 call cross(bond_vector,rotation0_vector,rotation90_vector)
 
                 !Calculate the coordinates of the atoms via the distance, skew, and bond vector
-                bond_vector = initial_bond_distance * bond_vector
-                coords(:,atom1) = bond_vector/2
-                coords(:,atom2) = -bond_vector/2
+                bond_vector = initial_bond_distance * bond_vector / 2
+                coords(:,atom1) = bond_vector
+                coords(:,atom2) = -bond_vector
 
                 !Calculate the direction the bond is spinning given the two
                 !orthogonal vectors

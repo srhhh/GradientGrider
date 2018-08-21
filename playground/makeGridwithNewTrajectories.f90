@@ -84,6 +84,7 @@ real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3,i,j
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
+real(dp) :: bond_period_elapsed
 
 !Trajectory Output
 real(dp),dimension(3,Natoms) :: coords_initial, velocities_initial
@@ -241,9 +242,11 @@ do Ngrid = 1, Ngrid_max
 			do
 				!This picks a random value between zero and some very high upper limit
 				random_num1 = rand() * upsilon_max
-				random_num2 = rand() * upsilon_factor2
+!				random_num2 = rand() * upsilon_factor2
+				random_num2 = rand()
 
-				if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
+!				if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
+				if (exp(-random_num1 * upsilon_factor1) * upsilon_factor2 < random_num2) cycle
 
 				initial_energy_H2 = (random_num1 + 0.5d0) * epsilon_factor
 				exit
@@ -263,16 +266,19 @@ do Ngrid = 1, Ngrid_max
 			! RS: Please use the momentum of inertia and angular velocity to define rotation
 			!	KF: must work on this in the future
 			initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
-			initial_rotation_angle = random_num1*pi2
+			initial_rotation_angle = random_num1*pi2 - pi
+
+			bond_period_elapsed = rand()
 
 			!All of this is stored for later use in the InitialSetup of runTrajectory
 			INITIAL_BOND_DATA(m,:) = (/ initial_bond_distance,initial_rotational_speed,&
-	                                        initial_rotation_angle,initial_bond_angle1,initial_bond_angle2 /)
+	                                        initial_rotation_angle,initial_bond_angle1,initial_bond_angle2,&
+                                                bond_period_elapsed /)
 		end do
 
                 open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//initialfile,&
                                   position="append")
-                write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(m,l),l=1,5),m=1,Nbonds)
+                write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(m,l),l=1,6),m=1,Nbonds)
                 close(filechannel1)
 
                 open(progresschannel,file=gridpath1//progressfile,position="append")
@@ -318,7 +324,8 @@ do Ngrid = 1, Ngrid_max
 			write(gnuplotchannel,*) 'set style line 4 lc rgb "orange" pt 9'
 			write(gnuplotchannel,*) 'set style line 5 lc rgb "yellow" pt 11'
 			write(gnuplotchannel,*) 'set style line 6 lc rgb "pink" pt 20'
-			write(gnuplotchannel,*) 'unset xtics'
+			write(gnuplotchannel,*) 'set format x ""'
+!			write(gnuplotchannel,*) 'unset xtics'
 			write(gnuplotchannel,*) 'set tmargin 0'
 			write(gnuplotchannel,*) 'set bmargin 0'
 			write(gnuplotchannel,*) 'set lmargin 1'
@@ -358,19 +365,20 @@ do Ngrid = 1, Ngrid_max
 !			write(gnuplotchannel,*) 'unset label 2'
  			write(gnuplotchannel,*) 'unset label 3'
 			write(gnuplotchannel,*) 'set ylabel "Order of Cell Checked"'
-			write(gnuplotchannel,*) 'set xlabel "Timestep"'
 			write(gnuplotchannel,*) 'set yrange [-1.1:1.1]'
 			write(gnuplotchannel,*) 'set ytics 1'
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:2 w lines'
 			write(gnuplotchannel,*) 'set ylabel "Number of Cells Checked"'
-			write(gnuplotchannel,*) 'set xlabel "Timestep"'
 			write(gnuplotchannel,*) 'set yrange [0:5]'
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:3 w lines'
-			write(gnuplotchannel,*) 'set xtics'
+!			write(gnuplotchannel,*) 'set xtics'
 			write(gnuplotchannel,*) 'set ylabel "Timestep RMSD (A)"'
 			write(gnuplotchannel,*) 'set xlabel "Timestep"'
-			write(gnuplotchannel,*) 'set yrange [0:.2002]'
-			write(gnuplotchannel,*) 'set ytics .04'
+			write(gnuplotchannel,*) 'set format x'
+!			write(gnuplotchannel,*) 'set yrange [0:.2002]'
+			write(gnuplotchannel,*) 'set autoscale y'
+			write(gnuplotchannel,*) 'set logscale y'
+			write(gnuplotchannel,*) 'set ytics (".01" .01, ".001" .001, ".0001" .0001)'
 			write(gnuplotchannel,*) 'unset key'
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:5 w lines'
 			close(gnuplotchannel)

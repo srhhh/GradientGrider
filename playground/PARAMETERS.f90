@@ -52,6 +52,8 @@ character(15),parameter :: SAfile = "SA_trajectories.dat"
 character(22),parameter :: initialfile = "initbonds_trajectories.dat"
 !File for storing TRV energy changes
 character(16),parameter :: TRVfile = "TRV_trajectories.dat"
+!File for both Eenrgy Decomposition and Scattering Angle over multiple trajectories
+character(18),parameter :: SATRVfile = "SATRV_trajectories.dat"
 
 !Files where, when done, we save the counters with the numbers of frames
 !inside each subcell, as well as other information
@@ -105,6 +107,7 @@ character(19) :: FMTtimeslice
 character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"
 character(15),parameter :: FMTsa = "((F6.4),(F8.4))"
 character(10),parameter :: FMTtrv = "(3(F11.6))"
+character(24),parameter :: FMTdata = "((F6.4),(F8.4),2(F11.6))"
 
 integer,parameter :: trajectory_text_length = 5
 integer,parameter :: scaling1_text_length = 3
@@ -121,7 +124,7 @@ integer, parameter :: SAfiles_text_length = gridpath_length +&
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !The number of atoms in the system
-integer,parameter :: Natoms = 3
+integer,parameter :: Natoms = 4
 integer,parameter :: Ncoords = Natoms*3
 
 !The number of variables in use

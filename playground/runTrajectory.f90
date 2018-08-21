@@ -43,8 +43,8 @@
 !
 !       CALLS                           MODULE
 !
-!		getVar3				VARIABLES
-!		getVar4				VARIABLES
+!		getVar5				VARIABLES
+!		getVar6				VARIABLES
 !
 !		InitialSetup3			PHYSICS
 !
@@ -162,8 +162,8 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 
 	!Always calculate the variables before accelerating
 	!because we can reuse these calculations
-	call getVar3(coords,Natoms,vals(1))
-	call getVar4(coords,Natoms,vals(2))
+	call getVar5(coords,Natoms,vals(1))
+	call getVar6(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -171,6 +171,20 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 
 	!Update the velocities
 	velocities = velocities + 0.5d0 * gradient
+
+	!To randomize the periods of the bond, I let the scene go on
+	!for a small period of time (need to standardize this later)
+	do n = 1, Nbonds
+		do steps = 1, int(INITIAL_BOND_DATA(n,6)*vib_period)
+			coords = coords + dt * velocities
+			call Acceleration(vals,coords,gradient)
+			velocities = velocities + 0.5d0 * gradient
+		end do
+
+		!And then reset the bond
+		coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
+		coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+	end do
 
 	!Now we go into the mainloop
 	!We have a hard cap of Nsteps timesteps
@@ -199,8 +213,8 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 		coords = coords + dt * velocities
 
 		!Always calculate the variables before adding a frame or accelerating
-		call getVar3(coords,Natoms,vals(1))
-		call getVar4(coords,Natoms,vals(2))
+		call getVar5(coords,Natoms,vals(1))
+		call getVar6(coords,Natoms,vals(2))
 
                 !Accelerate and update gradients
                 call Acceleration(vals,coords,gradient)
@@ -321,14 +335,28 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 	velocities_initial = velocities
 
 	!Always calculate the variables before accelerating
-        call getVar3(coords,Natoms,vals(1))
-        call getVar4(coords,Natoms,vals(2))
+        call getVar5(coords,Natoms,vals(1))
+        call getVar6(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
 
 	!Update the velocities
         velocities = velocities + 0.5d0 * gradient
+
+	!To randomize the periods of the bond, I let the scene go on
+	!for a small period of time (need to standardize this later)
+	do n = 1, Nbonds
+		do steps = 1, int(INITIAL_BOND_DATA(n,6)*vib_period)
+			coords = coords + dt * velocities
+			call Acceleration(vals,coords,gradient)
+			velocities = velocities + 0.5d0 * gradient
+		end do
+
+		!And then reset the bond
+		coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
+		coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+	end do
 
 	!Get the trajectory file open for trajectory visualization
         open(filechannel1,file=gridpath1//trajectoryfile)
@@ -369,8 +397,8 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-                call getVar3(coords,Natoms,vals(1))
-                call getVar4(coords,Natoms,vals(2))
+                call getVar5(coords,Natoms,vals(1))
+                call getVar6(coords,Natoms,vals(2))
 
                 !Check for similar frames in the grid
 		!Always set a default value; in this case, set min_rmsd_prime a default value
@@ -513,14 +541,24 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	velocities_initial = velocities
 
         !Always calculate the variables before accelearting
-        call getVar3(coords,Natoms,vals(1))
-        call getVar4(coords,Natoms,vals(2))
+        call getVar5(coords,Natoms,vals(1))
+        call getVar6(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
 
 	!Update the velocities
         velocities = velocities + 0.5d0 * gradient
+
+	!Get the trajectory file open for trajectory visualization
+        open(filechannel1,file=gridpath1//trajectoryfile)
+        write(filechannel1,'(I6)') Natoms
+        write(filechannel1,*) ""
+	do n = 1, Natoms
+        	write(filechannel1,'(A1,3F10.6)') 'H',&
+              		coords(1,n), coords(2,n), coords(3,n)
+        end do
+        close(filechannel1)
 
 	!Start the main loop
         do steps = 1, Nsteps
@@ -549,8 +587,8 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-                call getVar3(coords,Natoms,vals(1))
-                call getVar4(coords,Natoms,vals(2))
+                call getVar5(coords,Natoms,vals(1))
+                call getVar6(coords,Natoms,vals(2))
 
 		!Check for a frame in the grid
 		!Set the default value beforehand though
