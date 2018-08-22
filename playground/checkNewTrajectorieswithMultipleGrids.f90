@@ -87,7 +87,8 @@ character(6) :: Ntraj_text
 character(6) :: Nthreshold_text
 character(6) :: reject_text
 character(12) :: prefix_text
-character(150) :: old_filename
+character(150) :: old_filename, new_filename
+character(1) :: answer
 
 !New Trajectory Parameters
 real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
@@ -129,7 +130,7 @@ seed = rand(seed)
 
 write(Nbond_text,FMT="(I0.6)") Nbonds
 write(Natom_text,FMT="(I0.6)") Natoms
-write(FMTinitial,FMT="(A17)") "("//Nbond_text//"(5(F8.4)))"
+write(FMTinitial,FMT="(A17)") "("//Nbond_text//"(6(F8.4)))"
 write(FMTtimeslice,FMT="(A19)") "("//Natom_text//"(12(F12.7)))"
 write(FMT2,FMT="(A22)") "("//Natom_text//"(6(1x,F14.10)))"
 write(FMT3,FMT="(A22)") "("//Natom_text//"(3(1x,F14.10)))"
@@ -196,12 +197,13 @@ if (trueSA_flag) then
 		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 
 	        if (trim(adjustl(old_filename)) /= "") then
-	                call system("cp "//trim(adjustl(old_filename))//" "//&
-	                            gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile)
-	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
+	                new_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
+	                call system("cat "//trim(adjustl(old_filename))//" "//&
+	                            gridpath0//Ngrid_text//"/Initial"//SATRVfile//" > "//trim(adjustl(new_filename)))
+	                old_filename = new_filename
 	        else
 	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
-	                call system("rm "//trim(adjustl(old_filename)))
+	                call system("cp "//gridpath0//Ngrid_text//"/Initial"//SATRVfile//" "//trim(adjustl(old_filename)))
 	        end if
 	
 	        !Also, make a TRV plot
@@ -279,7 +281,7 @@ if (useolddata_flag) then
 
         !Second, we check how many lines are on the trajectories file
         Ntraj = 1
-        open(trajectorieschannel,file=gridpath0//Ngrid_text//prefix_text//trajectoriesfile)
+        open(trajectorieschannel,file=gridpath0//Ngrid_text//prefix_text//timeslicefile)
         do
                 read(trajectorieschannel,*,iostat=iostate)
                 if (iostate /= 0) exit
@@ -297,14 +299,33 @@ if (useolddata_flag) then
                 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 if (Ntraj > initial_n_testtraj) print *, "    trajectory files missing for "//&
                                                          Ngrid_text//prefix_text//" ... .dat"
-                if (Ntraj < initial_n_testtraj) print *, "    trajectories file corrupted for "//&
+                if (Ntraj < initial_n_testtraj) print *, "    timeslice file corrupted for "//&
                                                          Ngrid_text//prefix_text
                 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-                print *, ""
-                print *, "    Program exited disgracefully"
-                print *, ""
-                return
-        end if
+		print *, ""
+		
+		if ((Ntraj < Ntesttraj).or.(initial_n_testtraj < Ntesttraj)) then
+		do
+			print *, "    corrupted data interrupts trajectory indexing;"
+			print *, "    overwrite corrupted data?    (y/n)"
+			print *, ""
+			read (*,*) answer
+			if ((answer == "y").or.(answer == "n")) exit
+		end do
+		if (answer == "n") then
+	                print *, ""
+	                print *, "    Program exited disgracefully"
+	                print *, ""
+	                return
+		else
+			initial_n_testtraj = Ntraj
+		end if
+		else
+			print *, "    going along with analysis on uncorrupted data"
+		end if
+                print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+		print *, ""
+	end if
 
         print *, "     Total Number of Trajectories Saved: ", initial_n_testtraj - 1, " out of ", Ntesttraj
         print *, ""

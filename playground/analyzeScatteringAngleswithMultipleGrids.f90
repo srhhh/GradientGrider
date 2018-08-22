@@ -85,7 +85,6 @@ integer :: i, j, k
 write(Ntraj_text,FMT="(I6)") Ntraj
 
 open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
-open(filechannel2,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SATRVfile,position="append")
 do
 	read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real,&
                                                     abs_energychange, rel_energychange
@@ -110,8 +109,8 @@ sizeDeltaEnergyBin = (max(max_absenergychange,max_relenergychange) - &
 sizeEnergyBin = max_TranslationalEnergy / (energyBins)
 sizeAngleBin = pi / (angleBins)
 
-open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
-open(filechannel2,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SATRVfile,position="append")
+open(filechannel1,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SATRVfile)
+open(filechannel2,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile)
 do
         read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real, &
 						      abs_energychange, rel_energychange
@@ -164,7 +163,7 @@ write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//&
-                        trim(adjustl(Ntraj_text))//SATRVfile//&
+                        trim(adjustl(Ntraj_text))//binnedSATRVfile//&
                         '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
 
 write(gnuplotchannel,*) 'min_E = ', min(min_relenergychange,min_absenergychange)
@@ -178,12 +177,12 @@ write(gnuplotchannel,*) "set format x '%.4f'"
 write(gnuplotchannel,*) 'set ylabel "Absolute Translational Energy Change"'
 write(gnuplotchannel,*) 'set title "Absolute Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
-write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SATRVfile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile//&
                         '" u (box_width*($3-0.5)+min_E):(1.0) smooth frequency w boxes'
 write(gnuplotchannel,*) 'set title "Relative Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
 write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
-write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SATRVfile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile//&
                         '" u (box_width*($4-0.5)+min_E):(1.0) smooth frequency w boxes'
 
 
@@ -316,7 +315,7 @@ sampleSize = 0
 write(Ntraj_text,FMT="(I6)") Ntraj
 write(variable_length_text,FMT="(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile,action="read")
+open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//binnedSATRVfile,action="read")
 do Nsamples = 1, Nsamples_max
         do i = 1, Ntesttraj
                 read(filechannel1,FMT=*) scatteringAngle, speed_out, &
@@ -851,9 +850,9 @@ real(dp) :: relTranslationalEnergy1, relTranslationalEnergy2
 real(dp) :: absTranslationalEnergy1, absTranslationalEnergy2
 
 !TRAJECTORY DATA
-real(dp),dimension(Nbonds,5) :: initial_bonding_data
-real(dp),dimension(3,3) :: coords_initial,velocities_initial
-real(dp),dimension(3,3) :: coords_final,velocities_final
+real(dp),dimension(Nbonds,6) :: initial_bonding_data
+real(dp),dimension(3,Natoms) :: coords_initial,velocities_initial
+real(dp),dimension(3,Natoms) :: coords_final,velocities_final
 real(dp),dimension(3) :: velocity_in, velocity_out
 real(dp),dimension(3) :: velocity1, velocity2
 real(dp),dimension(3) :: velocity1_CM, velocity2_CM
@@ -873,7 +872,7 @@ integer :: i, j, k
                         ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
                         ((coords_final(i,j),i=1,3),j=1,Natoms),&
                         ((velocities_final(i,j),i=1,3),j=1,Natoms)
-		read(filechannel2,FMTinitial) ((initial_bonding_data(i,j),j=1,5),i=1,Nbonds)
+		read(filechannel2,FMTinitial) ((initial_bonding_data(i,j),j=1,6),i=1,Nbonds)
 
 		relTranslationalEnergy1 = 0.0d0
 		relTranslationalEnergy2 = 0.0d0
@@ -884,7 +883,7 @@ integer :: i, j, k
 		velocity2_CM = 0.0d0
 		do i = 1, Natoms
 			velocity1_CM = velocity1_CM + velocities_initial(:,i)
-			velocity2_CM = velocity2_CM + velocities_initial(:,i)
+			velocity2_CM = velocity2_CM + velocities_final(:,i)
 		end do
 		velocity1_CM = velocity1_CM / Natoms
 		velocity2_CM = velocity2_CM / Natoms
@@ -921,14 +920,31 @@ integer :: i, j, k
 
 			if (COLLISION_DATA(i) == 1) then
 				velocity_in = velocity_in + velocities_initial(:,i)
+print *, i
+print *, velocities_final(:,i)
+print *, velocity_out
+			else
 				velocity_out = velocity_out + velocities_final(:,i)
+print *, i
+print *, velocities_final(:,i)
+print *, velocity_out
 			end if
 		end do
-		velocity_in = velocity_in / sum(COLLISION_DATA)
-		velocity_out = velocity_out / sum(COLLISION_DATA)
+		velocity_in = velocity_in / (sum(COLLISION_DATA))
+		velocity_out = velocity_out / (Natoms - sum(COLLISION_DATA))
 
 		speed_out = sqrt(sum((velocity_out)**2))
 		speed_in = sqrt(sum((velocity_in)**2))
+
+
+if (speed_out == 0.0d0) then
+print *, "final velocity_out:", velocity_out
+print *, Natoms, sum(COLLISION_DATA)
+do i= 1, Natoms
+print *, i, COLLISION_DATA(i), velocities_final(:,i)
+end do
+end if
+
 		scatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
                                   (speed_in * speed_out))
 		write(filechannel3,FMTdata) scatteringAngle, speed_out, &

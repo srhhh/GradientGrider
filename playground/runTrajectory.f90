@@ -550,15 +550,19 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	!Update the velocities
         velocities = velocities + 0.5d0 * gradient
 
-	!Get the trajectory file open for trajectory visualization
-        open(filechannel1,file=gridpath1//trajectoryfile)
-        write(filechannel1,'(I6)') Natoms
-        write(filechannel1,*) ""
-	do n = 1, Natoms
-        	write(filechannel1,'(A1,3F10.6)') 'H',&
-              		coords(1,n), coords(2,n), coords(3,n)
-        end do
-        close(filechannel1)
+	!To randomize the periods of the bond, I let the scene go on
+	!for a small period of time (need to standardize this later)
+	do n = 1, Nbonds
+		do steps = 1, int(INITIAL_BOND_DATA(n,6)*vib_period)
+			coords = coords + dt * velocities
+			call Acceleration(vals,coords,gradient)
+			velocities = velocities + 0.5d0 * gradient
+		end do
+
+		!And then reset the bond
+		coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
+		coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+	end do
 
 	!Start the main loop
         do steps = 1, Nsteps

@@ -57,7 +57,7 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0050
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -91,7 +91,7 @@ Ntrajectories=050
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="test_HH2_Aug20"
+newGRID="test_H2H2_Aug22"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1

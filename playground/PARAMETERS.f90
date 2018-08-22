@@ -54,6 +54,7 @@ character(22),parameter :: initialfile = "initbonds_trajectories.dat"
 character(16),parameter :: TRVfile = "TRV_trajectories.dat"
 !File for both Eenrgy Decomposition and Scattering Angle over multiple trajectories
 character(18),parameter :: SATRVfile = "SATRV_trajectories.dat"
+character(24),parameter :: binnedSATRVfile = "binnedSATRV_trajectories.dat"
 
 !Files where, when done, we save the counters with the numbers of frames
 !inside each subcell, as well as other information

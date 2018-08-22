@@ -120,11 +120,10 @@ print *, ""
 
 write(Nbond_text,FMT="(I0.6)") Nbonds
 write(Natom_text,FMT="(I0.6)") Natoms
-write(FMTinitial,FMT="(A17)") "("//Nbond_text//"(5(F8.4)))"
+write(FMTinitial,FMT="(A17)") "("//Nbond_text//"(6(F8.4)))"
 write(FMTtimeslice,FMT="(A19)") "("//Natom_text//"(12(F12.7)))"
 write(FMT2,FMT="(A22)") "("//Natom_text//"(6(1x,F14.10)))"
 write(FMT3,FMT="(A22)") "("//Natom_text//"(3(1x,F14.10)))"  
-
 
 !Initialize the clock
 call system_clock(count_rate=cr)
