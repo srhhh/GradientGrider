@@ -377,7 +377,7 @@ do Ngrid = 1, Ngrid_max
 !			write(gnuplotchannel,*) 'set yrange [0:.2002]'
 			write(gnuplotchannel,*) 'set autoscale y'
 			write(gnuplotchannel,*) 'set logscale y'
-			write(gnuplotchannel,*) 'set ytics (".01" .01, ".001" .001, ".0001" .0001)'
+			write(gnuplotchannel,*) 'set ytics (".1" .1, ".01" .01, ".001" .001, ".0001" .0001)'
 			write(gnuplotchannel,*) 'unset key'
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:5 w lines'
 			close(gnuplotchannel)

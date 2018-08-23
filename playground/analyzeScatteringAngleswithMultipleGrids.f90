@@ -276,11 +276,16 @@ end subroutine getScatteringAngles1
 
 
 
-subroutine getConvergenceImage()
+subroutine getConvergenceImage(lowerlimit,upperlimit,SATRVcolumn,SATRVname)
 use PARAMETERS
 use ANALYSIS
 use FUNCTIONS
 implicit none
+
+real,intent(in) :: lowerlimit, upperlimit
+character(*),intent(in) :: SATRVname
+integer,intent(in) :: SATRVcolumn
+integer,dimension(4) :: SATRVdata
 
 !SCATTERING ANGLE BINNING
 integer :: Nsamples, Nsamples_max
@@ -297,14 +302,10 @@ character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(6) :: Ntraj_text
 
-!SCATTERING ANGLE VARIABLES
-integer :: scatteringAngle, speed_out
-integer :: AbsEnergyChange, RelEnergyChange
-
 !INCREMENTAL INTEGER
 integer :: i
 
-bin_width = pi / scatteringangleBins
+bin_width = (upperlimit-lowerlimit) / scatteringangleBins
 Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj
 allocate(binTotal(scatteringangleBins,Nsamples_max),binAverage(scatteringangleBins),sampleSize(Nsamples_max))
 
@@ -318,9 +319,9 @@ write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_tot
 open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//binnedSATRVfile,action="read")
 do Nsamples = 1, Nsamples_max
         do i = 1, Ntesttraj
-                read(filechannel1,FMT=*) scatteringAngle, speed_out, &
-                         AbsEnergyChange, RelEnergyChange
-                binTotal(scatteringAngle,Nsamples) = binTotal(scatteringAngle,Nsamples) + 1
+                read(filechannel1,FMT=*) SATRVdata
+                binTotal(SATRVdata(SATRVcolumn),Nsamples) = &
+                         binTotal(SATRVdata(SATRVcolumn),Nsamples) + 1
         end do
         sampleSize(Nsamples) = Nsamples
 end do
@@ -377,11 +378,11 @@ open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) "set terminal pngcairo size 1200,1200"
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set output "'//gridpath0//'Convergence'//&
-                        trim(adjustl(variable_length_text))//'SA'//Ngrid_text//'.png"'
+                        trim(adjustl(variable_length_text))//SATRVname//Ngrid_text//'.png"'
 write(gnuplotchannel,*) 'set multiplot layout 2,1'
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set title "Convergence of the '//trim(adjustl(variable_length_text))//&
-                        ' Scattering Angle Distribution with '//Ngrid_text//' Grids"'
+                        ' '//SATRVname//' Distribution with '//Ngrid_text//' Grids"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set xlabel "Number of Trajectories"'
 write(gnuplotchannel,*) 'set ylabel "RMSD of the Distribution Over a Running Average"'
@@ -396,15 +397,20 @@ write(gnuplotchannel,*) 'set label 1 "Convergence Threshold" at first '//&
 write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:2 w lines, \'
 write(gnuplotchannel,*) '     "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:3 w lines lc -1'
 write(variable_length_text,FMT="(I5)") Ntesttraj
-write(gnuplotchannel,*) 'set title "Final Scattering Angle Distribution for '//&
+write(gnuplotchannel,*) 'set title "Final '//SATRVname//' Distribution for '//&
                         trim(adjustl(variable_length_text))//' Trajectories"'
+if (SATRVname == "ScatteringAngle") then
 write(gnuplotchannel,*) 'pi = 3.14159265'
 write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
+write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
+else
+write(gnuplotchannel,*) 'set xrange [', lowerlimit, ':', upperlimit, ']'
+write(gnuplotchannel,*) 'set xlabel "Energy (eV)"'
+end if
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set autoscale y'
-write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
 write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'unset label 1'
@@ -920,14 +926,8 @@ integer :: i, j, k
 
 			if (COLLISION_DATA(i) == 1) then
 				velocity_in = velocity_in + velocities_initial(:,i)
-print *, i
-print *, velocities_final(:,i)
-print *, velocity_out
 			else
 				velocity_out = velocity_out + velocities_final(:,i)
-print *, i
-print *, velocities_final(:,i)
-print *, velocity_out
 			end if
 		end do
 		velocity_in = velocity_in / (sum(COLLISION_DATA))
@@ -935,15 +935,6 @@ print *, velocity_out
 
 		speed_out = sqrt(sum((velocity_out)**2))
 		speed_in = sqrt(sum((velocity_in)**2))
-
-
-if (speed_out == 0.0d0) then
-print *, "final velocity_out:", velocity_out
-print *, Natoms, sum(COLLISION_DATA)
-do i= 1, Natoms
-print *, i, COLLISION_DATA(i), velocities_final(:,i)
-end do
-end if
 
 		scatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
                                   (speed_in * speed_out))

@@ -101,7 +101,7 @@ real(dp), parameter :: epsilon_factor = (hbar/(RU_energy*RU_time)) * pi2 * vib_f
 
 real(dp),parameter :: initial_translational_KE = (1.0d0)*eV/RU_energy
 !real(dp),parameter :: collision_distance = Morser0_hydrogen*5.0
- real(dp),parameter :: collision_distance = 9.5d0
+ real(dp),parameter :: collision_distance = 8.5d0
 real(dp),parameter :: collision_skew = HOr0_hydrogen*0.0d0
 
 !For the COLLISION_DATA:

@@ -57,7 +57,7 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0050
+Ntraj_max=0300
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -81,7 +81,7 @@ threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=050
+Ntrajectories=100
 
 ###############################################################################################################################################
 ###############################################################################################################################################

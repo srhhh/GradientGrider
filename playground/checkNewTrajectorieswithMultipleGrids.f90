@@ -212,7 +212,8 @@ if (trueSA_flag) then
 end if
 
 Ntraj = Ngrid_total * Ntraj_max
-call getConvergenceImage()
+call getConvergenceImage(0.0, real(pi), 1, "ScatteringAngle")
+call getConvergenceImage(min_relenergychange,max_relenergychange,4,"RelativeEnergyChange")
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
