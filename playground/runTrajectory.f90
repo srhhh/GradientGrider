@@ -43,8 +43,8 @@
 !
 !       CALLS                           MODULE
 !
-!		getVar5				VARIABLES
-!		getVar6				VARIABLES
+!		getVar3				VARIABLES
+!		getVar4				VARIABLES
 !
 !		InitialSetup3			PHYSICS
 !
@@ -162,8 +162,8 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 
 	!Always calculate the variables before accelerating
 	!because we can reuse these calculations
-	call getVar5(coords,Natoms,vals(1))
-	call getVar6(coords,Natoms,vals(2))
+	call getVar3(coords,Natoms,vals(1))
+	call getVar4(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -213,8 +213,8 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 		coords = coords + dt * velocities
 
 		!Always calculate the variables before adding a frame or accelerating
-		call getVar5(coords,Natoms,vals(1))
-		call getVar6(coords,Natoms,vals(2))
+		call getVar3(coords,Natoms,vals(1))
+		call getVar4(coords,Natoms,vals(2))
 
                 !Accelerate and update gradients
                 call Acceleration(vals,coords,gradient)
@@ -335,8 +335,8 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 	velocities_initial = velocities
 
 	!Always calculate the variables before accelerating
-        call getVar5(coords,Natoms,vals(1))
-        call getVar6(coords,Natoms,vals(2))
+        call getVar3(coords,Natoms,vals(1))
+        call getVar4(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -397,8 +397,8 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-                call getVar5(coords,Natoms,vals(1))
-                call getVar6(coords,Natoms,vals(2))
+                call getVar3(coords,Natoms,vals(1))
+                call getVar4(coords,Natoms,vals(2))
 
                 !Check for similar frames in the grid
 		!Always set a default value; in this case, set min_rmsd_prime a default value
@@ -541,8 +541,8 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	velocities_initial = velocities
 
         !Always calculate the variables before accelearting
-        call getVar5(coords,Natoms,vals(1))
-        call getVar6(coords,Natoms,vals(2))
+        call getVar3(coords,Natoms,vals(1))
+        call getVar4(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -591,8 +591,8 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-                call getVar5(coords,Natoms,vals(1))
-                call getVar6(coords,Natoms,vals(2))
+                call getVar3(coords,Natoms,vals(1))
+                call getVar4(coords,Natoms,vals(2))
 
 		!Check for a frame in the grid
 		!Set the default value beforehand though

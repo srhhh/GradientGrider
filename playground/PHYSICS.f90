@@ -114,27 +114,27 @@ real(dp),parameter :: collision_skew = HOr0_hydrogen*0.0d0
 !			BONDAGE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!integer,parameter :: Nbonds = 1
-!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, &
-!                                                                   3 /),&
-!                                                                                  (/ Nbonds, 2 /))
-!integer,parameter :: Nvar_eff = 2
-!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,    &
-!                                                                           2, 3,    &
-!                                                                           1, 2/),  &
-!                                                                                  (/ Nvar_eff, 3 /))
-!integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
-
-integer,parameter :: Nbonds = 2
-integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
-                                                                   2, 4 /),        (/ Nbonds, 2 /))
-
+integer,parameter :: Nbonds = 1
+integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, &
+                                                                   3 /),&
+                                                                                  (/ Nbonds, 2 /))
 integer,parameter :: Nvar_eff = 2
-integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
-                                                                           3, 4,    &
-                                                                           1, 2 /), &
-                                                                                   (/ Nvar_eff, 3 /)) 
-integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
+integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,    &
+                                                                           2, 3,    &
+                                                                           1, 2/),  &
+                                                                                  (/ Nvar_eff, 3 /))
+integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
+
+!integer,parameter :: Nbonds = 2
+!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
+!                                                                   2, 4 /),        (/ Nbonds, 2 /))
+!
+!integer,parameter :: Nvar_eff = 2
+!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
+!                                                                           3, 4,    &
+!                                                                           1, 2 /), &
+!                                                                                   (/ Nvar_eff, 3 /)) 
+!integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

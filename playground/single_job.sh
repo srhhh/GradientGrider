@@ -91,7 +91,7 @@ Ntrajectories=100
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="test_H2H2_Aug22"
+newGRID="test_HH2_Aug22"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1
