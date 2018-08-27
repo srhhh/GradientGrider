@@ -175,7 +175,7 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 	!To randomize the periods of the bond, I let the scene go on
 	!for a small period of time (need to standardize this later)
 	do n = 1, Nbonds
-		do steps = 1, int(INITIAL_BOND_DATA(n,6)*vib_period)
+		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
 			coords = coords + dt * velocities
 			call Acceleration(vals,coords,gradient)
 			velocities = velocities + 0.5d0 * gradient
@@ -347,7 +347,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 	!To randomize the periods of the bond, I let the scene go on
 	!for a small period of time (need to standardize this later)
 	do n = 1, Nbonds
-		do steps = 1, int(INITIAL_BOND_DATA(n,6)*vib_period)
+		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
 			coords = coords + dt * velocities
 			call Acceleration(vals,coords,gradient)
 			velocities = velocities + 0.5d0 * gradient
@@ -553,7 +553,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	!To randomize the periods of the bond, I let the scene go on
 	!for a small period of time (need to standardize this later)
 	do n = 1, Nbonds
-		do steps = 1, int(INITIAL_BOND_DATA(n,6)*vib_period)
+		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
 			coords = coords + dt * velocities
 			call Acceleration(vals,coords,gradient)
 			velocities = velocities + 0.5d0 * gradient

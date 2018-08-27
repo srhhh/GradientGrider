@@ -109,6 +109,7 @@ integer,allocatable :: filechannels(:)
 !Timing
 real :: r1, r2, system_clock_rate
 integer :: c1, c2, cr
+integer,dimension(3) :: now
 
 !Incremental Integers
 integer :: i, j, k
@@ -124,6 +125,8 @@ integer :: i, j, k
 !And we print the seed in case there's some bug that we need to reproduce
 call system_clock(seed)
 print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
 print *, "   RNG seed: ", seed
 print *, ""
 seed = rand(seed)
@@ -160,6 +163,8 @@ close(trajectorieschannel)
 Ngrid_total = min(Ngrid_cap, Ngrid_max)
 
 print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
 print *, "Analysis on directory ", gridpath0
 print *, "Deciding on using ", Ngrid_total, " grids"
 print *, ""
@@ -173,6 +178,8 @@ print *, ""
 
 !This is for top-level heat map generation (for each of the grids)
 if (heatmap_flag) then
+	call itime(now)
+	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "TopLevel_HeatMap"
 	print *, ""
 	call analyzeHeatMaps2()
@@ -180,6 +187,8 @@ end if
 
 !This is for scattering angle plots (from each of the grids)
 if (trueSA_flag) then
+	call itime(now)
+	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "InitialSATRVDistribution"
 	print *, ""
 	
@@ -226,6 +235,8 @@ call getConvergenceImage(min_relenergychange,max_relenergychange,4,"RelativeEner
 if (testtraj_flag) then
 
 print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
 print *, "Trajectory Creation ... Start"
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -315,6 +326,8 @@ if (useolddata_flag) then
 		end do
 		if (answer == "n") then
 	                print *, ""
+			call itime(now)
+			write(6,FMT=FMTnow) now
 	                print *, "    Program exited disgracefully"
 	                print *, ""
 	                return
@@ -366,7 +379,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 			random_r3 = random_r2 + random_num3**2
 			if (random_r3 > 0.25d0) cycle
 			random_r2 = sqrt(random_r2)
-			initial_bond_angle1 = acos(random_num1 / random_r2)
+			initial_bond_angle1 = atan2(random_num1, random_r2)
 			initial_bond_angle2 = atan2(random_r2,random_num3)
 			exit
 		end do
@@ -393,7 +406,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 		totalEnergy = initial_translational_KE + initial_vibrational_energy + &
                               initial_rotational_energy
 
-		INITIAL_BOND_DATA(n,:) = (/ initial_bond_distance,initial_rotational_speed,&
+		INITIAL_BOND_DATA(:,n) = (/ initial_bond_distance,initial_rotational_speed,&
                            initial_rotation_angle,initial_bond_angle1,initial_bond_angle2,&
                            bond_period_elapsed /)
 
@@ -401,7 +414,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//initialfile,&
                           position="append")
-	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(i,j),j=1,6),i=1,Nbonds)
+	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
         close(filechannel1)
 
 
@@ -493,12 +506,16 @@ Ntraj = Ntesttraj
 call postProcess(Ngrid_text//prefix_text)
 
 if (percentthreshold_flag) then
+	call itime(now)
+	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//prefix_text
 	print *, ""
 	call getRMSDThresholds1(prefix_text,"PercentRMSDThreshold_"//Ngrid_text//prefix_text)
 end if
 
 if (testtrajSA_flag) then
+	call itime(now)
+	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//prefix_text
 	print *, ""
 	
@@ -518,6 +535,8 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
 print *, "Successfully exited analysis"
 print *, ""
 

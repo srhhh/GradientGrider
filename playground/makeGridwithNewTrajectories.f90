@@ -97,6 +97,7 @@ real :: system_clock_rate
 integer :: grid_t0, grid_t1, trajectory_t0, trajectory_t1
 real :: grid_wall_time,checktrajectory_wall_time
 character(10) :: grid_wall_time_text, checktrajectory_wall_time_text
+integer,dimension(3) :: now
 
 !Incremental Integers
 integer :: n, m, l
@@ -110,11 +111,15 @@ integer :: n, m, l
 !Get a random seed and print it in case there's a problem you need to replicate
 call system_clock(seed)
 print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
 print *, "     RNG Seed: ", seed
-print *, ""
 seed = rand(seed)
 
 !Print statement
+print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
 print *, "Creation of directory ", gridpath0
 print *, ""
 
@@ -163,7 +168,9 @@ do Ngrid = 1, Ngrid_max
 	!Gridpath2 is the directory housing the files with coordinates and gradients
         call system("mkdir "//gridpath2)
 
-	print *, "           Making grid ", Ngrid_text
+	call itime(now)
+	write(6,FMT=FMTnow) now
+	print *, "           Making grid ", Ngrid_text 
 	print *, ""
 
 	!Inside the directory, we monitor the progress of the grid's creation
@@ -270,14 +277,14 @@ do Ngrid = 1, Ngrid_max
 			bond_period_elapsed = rand()
 
 			!All of this is stored for later use in the InitialSetup of runTrajectory
-			INITIAL_BOND_DATA(m,:) = (/ initial_bond_distance,initial_rotational_speed,&
+			INITIAL_BOND_DATA(:,m) = (/ initial_bond_distance,initial_rotational_speed,&
 	                                        initial_rotation_angle,initial_bond_angle1,initial_bond_angle2,&
                                                 bond_period_elapsed /)
 		end do
 
                 open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//initialfile,&
                                   position="append")
-                write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(m,l),l=1,6),m=1,Nbonds)
+                write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(l,m),l=1,6),m=1,Nbonds)
                 close(filechannel1)
 
                 open(progresschannel,file=gridpath1//progressfile,position="append")
@@ -287,9 +294,9 @@ do Ngrid = 1, Ngrid_max
                 write(progresschannel,*) "  Initial Conditions: "
 		do m = 1, Nbonds
 	                write(progresschannel,*) "          BOND ", m, ":"
-	                write(progresschannel,*) "  		Bond Distance: ", INITIAL_BOND_DATA(m,1)
-	                write(progresschannel,*) "  		 Bond Angle 1: ", INITIAL_BOND_DATA(m,4)
-	                write(progresschannel,*) "  		 Bond Angle 2: ", INITIAL_BOND_DATA(m,5)
+	                write(progresschannel,*) "  		Bond Distance: ", INITIAL_BOND_DATA(1,m)
+	                write(progresschannel,*) "  		 Bond Angle 1: ", INITIAL_BOND_DATA(4,m)
+	                write(progresschannel,*) "  		 Bond Angle 2: ", INITIAL_BOND_DATA(5,m)
 		end do
                 close(progresschannel)
 
@@ -555,9 +562,13 @@ do Ngrid = 1, Ngrid_max
 	!Also, make a scattering angle plot
 	call getScatteringAngles2(Ngrid_text//"/Initial","InitialScatteringAngleDistribution_"//Ngrid_text)
 
+        !Also, make an initial bond distribution plot
+        call getInitialimages(Ngrid_text//"/Initial","InitialBondDistribution_"//Ngrid_text)
 end do
 
 print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
 print *, "Successfully exited grid creation"
 print *, ""
 

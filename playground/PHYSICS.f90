@@ -147,7 +147,7 @@ integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
 !                RANDOM COLLISION SETTINGS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-real(dp),dimension(Nbonds,6) :: INITIAL_BOND_DATA
+real(dp),dimension(6,Nbonds) :: INITIAL_BOND_DATA
 
 real(dp) :: vibrational_max
 real(dp) :: translational_max
@@ -352,11 +352,11 @@ subroutine InitialSetup3(coords,velocities)
 	velocities = 0.0d0
 
         do i = 1, Nbonds
-                initial_bond_distance = INITIAL_BOND_DATA(i,1)
-                initial_rotational_speed = INITIAL_BOND_DATA(i,2)
-                initial_rotation_angle = INITIAL_BOND_DATA(i,3)
-                initial_bond_angle1 = INITIAL_BOND_DATA(i,4)
-                initial_bond_angle2 = INITIAL_BOND_DATA(i,5)
+                initial_bond_distance = INITIAL_BOND_DATA(1,i)
+                initial_rotational_speed = INITIAL_BOND_DATA(2,i)
+                initial_rotation_angle = INITIAL_BOND_DATA(3,i)
+                initial_bond_angle1 = INITIAL_BOND_DATA(4,i)
+                initial_bond_angle2 = INITIAL_BOND_DATA(5,i)
 
                 atom1 = BONDING_DATA(i,1)
                 atom2 = BONDING_DATA(i,2)

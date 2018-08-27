@@ -109,6 +109,7 @@ character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"
 character(15),parameter :: FMTsa = "((F6.4),(F8.4))"
 character(10),parameter :: FMTtrv = "(3(F11.6))"
 character(24),parameter :: FMTdata = "((F6.4),(F8.4),2(F11.6))"
+character(33),parameter :: FMTnow = "('Time: ',I2.2,':',I2.2,':',I2.2)"
 
 integer,parameter :: trajectory_text_length = 5
 integer,parameter :: scaling1_text_length = 3

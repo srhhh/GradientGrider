@@ -57,10 +57,10 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0300
+Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=1
+Ngrid_max=6
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -68,7 +68,7 @@ Ngrid_max=1
 heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
-testtraj_flag=.true.
+testtraj_flag=.false.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
@@ -81,7 +81,7 @@ threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=100
+Ntrajectories=700
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -91,7 +91,7 @@ Ntrajectories=100
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="test_H2H2_Aug22"
+newGRID="H2H2_Aug26"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1

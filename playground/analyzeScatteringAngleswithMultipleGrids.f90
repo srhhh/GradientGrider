@@ -228,7 +228,7 @@ write(gnuplotchannel,*) 'rmax = r*1.1'
 write(gnuplotchannel,*) 'pi = 3.14159'
 !write(gnuplotchannel,*) 'set palette rgb 7, 5, 15'
 write(variable_length_text,FMT="(I5)") occurence_max
-write(gnuplotchannel,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//'/2]'
+write(gnuplotchannel,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//']'
 write(gnuplotchannel,*) 'set cblabel "Frequency"'
 !write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model XYZ '
 !write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model HSV'
@@ -462,9 +462,9 @@ min_r0 = 1.0e9
 open(filechannel1,file=gridpath0//prefix_filename//initialfile)
 do
 	read(filechannel1,iostat=iostate,FMT=FMTinitial) INITIAL_BOND_DATA
+	if (iostate /= 0) exit
 	max_r0 = max(max_r0,INITIAL_BOND_DATA(1,1))
 	min_r0 = min(min_r0,INITIAL_BOND_DATA(1,1))
-	if (iostate /= 0) exit
 end do
 close(filechannel1)
 
@@ -500,19 +500,8 @@ write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 write(Ntraj_text,FMT="(I6)") Ntraj
-if (include_initials .and. grid_is_done) then
-        write(gnuplotchannel,*) 'set multiplot layout 5,1 title '//&
-                                '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
-else if ((.not.(include_initials)) .and. grid_is_done) then
-        write(gnuplotchannel,*) 'set multiplot layout 2,1 title '//&
-                                '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
-else if (include_initials .and. (.not.(grid_is_done))) then
-        write(gnuplotchannel,*) 'set multiplot layout 6,1 title '//&
-                                '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
-else
-        write(gnuplotchannel,*) 'set multiplot layout 3,1 title '//&
-                                '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
-end if
+write(gnuplotchannel,*) 'set multiplot layout 3,1 title '//&
+                        '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'set ylabel "Scattering Angle Occurence"'
@@ -548,26 +537,105 @@ else
                                 '" u (rounded($4)):(1.0) smooth frequency w boxes'
 end if
 
-if (include_initials) then
+close(gnuplotchannel)
+
+!And then we just input it into gnuplot.exe
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+end subroutine getScatteringAngles2
+
+
+
+
+
+subroutine getInitialimages(prefix_filename,JPGfilename)
+use PARAMETERS
+use ANALYSIS
+use FUNCTIONS
+use PHYSICS
+implicit none
+
+!FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
+character(*),intent(in) :: prefix_filename
+character(*),intent(in) :: JPGfilename
+
+!FORMATTING OF JPG FILES
+character(5) :: variable_length_text
+character(5) :: variable_length_text1, variable_length_text2
+character(Ngrid_text_length) :: Ngrid_text
+character(Ngrid_text_length+1) :: folder_text
+character(6) :: Ntraj_text
+character(150) :: old_filename
+
+integer :: iostate
+real :: r0
+real :: max_r0
+real :: min_r0
+real :: average_r0
+real :: average_Evib
+integer :: total_bonds
+integer :: i
+
+average_r0 = 0.0
+average_Evib = 0.0
+max_r0 = 0.0
+min_r0 = 1.0e9
+total_bonds = 0
+open(filechannel1,file=gridpath0//prefix_filename//initialfile)
+do
+	read(filechannel1,iostat=iostate,FMT=FMTinitial) INITIAL_BOND_DATA
+	if (iostate /= 0) exit
+	do i = 1, Nbonds
+		r0 = INITIAL_BOND_DATA(1,i)
+		max_r0 = max(max_r0,r0)
+		min_r0 = min(min_r0,r0)
+		average_r0 = average_r0 + r0
+		average_Evib = average_Evib + (r0 - HOr0_hydrogen)**2
+		total_bonds = total_bonds + 1
+	end do
+end do
+close(filechannel1)
+
+average_r0 = average_r0 / total_bonds
+average_Evib = 0.5 * HOke_hydrogen * average_Evib / total_bonds
+
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo enhanced size 1200,1200'
+write(gnuplotchannel,*) 'set encoding utf8'
+write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.png"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'pi = 3.14159265'
+write(gnuplotchannel,*) 'set style histogram clustered gap 1'
+write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+write(gnuplotchannel,*) 'box_width = pi / ', SA_Nbins
+write(gnuplotchannel,*) 'set label 1 "Average r0: ', average_r0, ' A" at screen 0.8,0.9'
+write(gnuplotchannel,*) 'set label 2 "Temperature: ', (RU_energy/kb)*average_Evib, ' K" at screen 0.8,0.85'
+write(Ntraj_text,FMT="(I6)") Ntraj
+write(gnuplotchannel,*) 'set multiplot layout ', Nbonds,',3 title '//&
+                        '"Initial Bond Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
+do i = 1, Nbonds
 write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence"'
 write(gnuplotchannel,*) 'box_width = 2 * pi /', SA_Nbins
 write(gnuplotchannel,*) 'set boxwidth box_width'
+write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set xrange [-pi:pi]'
 write(gnuplotchannel,*) 'set xlabel "Angle (rad)"'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
+write(Ntraj_text,FMT="(I6)") i*6 - 2
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-                        '" u (rounded($4'//&
+                        '" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'set ylabel "Initial H2 Phi Occurence"'
 write(gnuplotchannel,*) 'box_width = pi /', SA_Nbins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
+write(Ntraj_text,FMT="(I6)") i*6 - 1
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded($5'//&
+			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'min_r0 = ', min_r0
 write(gnuplotchannel,*) 'max_r0 = ', max_r0
@@ -582,29 +650,18 @@ write(gnuplotchannel,*) 'set ylabel "Initial H2 Bond Length"'
 write(gnuplotchannel,*) 'set xrange [min_r0:max_r0]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set bmargin 3'
+write(Ntraj_text,FMT="(I6)") i*6 - 5
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded($1'//&
+			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
-end if
-
-
+end do
 close(gnuplotchannel)
 
 !And then we just input it into gnuplot.exe
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
-end subroutine getScatteringAngles2
 
-
-
-
-
-
-
-
-
-
-
+end subroutine getInitialimages
 
 
 
