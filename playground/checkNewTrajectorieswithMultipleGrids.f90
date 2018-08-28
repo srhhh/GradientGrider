@@ -220,9 +220,10 @@ if (trueSA_flag) then
 	end do
 end if
 
-Ntraj = Ngrid_total * Ntraj_max
+Ntraj = Ngrid_total * Ntesttraj
 call getConvergenceImage(0.0, real(pi), 1, "ScatteringAngle")
 call getConvergenceImage(min_relenergychange,max_relenergychange,4,"RelativeEnergyChange")
+call getConvergenceImage(min_absenergychange,max_absenergychange,3,"AbsoluteEnergyChange")
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -282,24 +282,6 @@ do Ngrid = 1, Ngrid_max
                                                 bond_period_elapsed /)
 		end do
 
-                open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//initialfile,&
-                                  position="append")
-                write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(l,m),l=1,6),m=1,Nbonds)
-                close(filechannel1)
-
-                open(progresschannel,file=gridpath1//progressfile,position="append")
-                write(progresschannel,*) ""
-                write(progresschannel,*) ""
-                write(progresschannel,*) "Starting trajectory ", Ntraj+1
-                write(progresschannel,*) "  Initial Conditions: "
-		do m = 1, Nbonds
-	                write(progresschannel,*) "          BOND ", m, ":"
-	                write(progresschannel,*) "  		Bond Distance: ", INITIAL_BOND_DATA(1,m)
-	                write(progresschannel,*) "  		 Bond Angle 1: ", INITIAL_BOND_DATA(4,m)
-	                write(progresschannel,*) "  		 Bond Angle 2: ", INITIAL_BOND_DATA(5,m)
-		end do
-                close(progresschannel)
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -363,7 +345,6 @@ do Ngrid = 1, Ngrid_max
 !			write(gnuplotchannel,*) 'set ytics 0.005'
 !			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:($9+$10) w lines'
 			write(gnuplotchannel,*) 'set ylabel "Number of Frames Checked"'
-			write(gnuplotchannel,*) 'set xlabel "Timestep"'
 			write(gnuplotchannel,*) 'set autoscale y'
 			write(gnuplotchannel,*) 'set ytics'
 			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:1 w lines'
@@ -411,11 +392,29 @@ do Ngrid = 1, Ngrid_max
 		!If there have been a large number of subdivisions (so many that our array will go
 		!out of bounds) then we stop; we also stop if it is taking too long
                 if ((header1 == header1_max).or.&
-                   (trajectory_CPU_time > trajectory_CPU_time_max)) exit
+                   (trajectory_CPU_time > trajectory_CPU_time_max)) then
+			Ntraj_allowed = min(Ntraj_allowed,Ntraj)
+			exit
+		end if
 
-		!Otherwise, we consider this a successful trajectory addition
                 Ntraj = Ntraj + 1
+
+                open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//initialfile,&
+                                  position="append")
+                write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(l,m),l=1,6),m=1,Nbonds)
+                close(filechannel1)
+
                 open(progresschannel,file=gridpath1//progressfile,position="append")
+                write(progresschannel,*) ""
+                write(progresschannel,*) ""
+                write(progresschannel,*) "Starting trajectory ", Ntraj
+                write(progresschannel,*) "  Initial Conditions: "
+		do m = 1, Nbonds
+	                write(progresschannel,*) "          BOND ", m, ":"
+	                write(progresschannel,*) "  		Bond Distance: ", INITIAL_BOND_DATA(1,m)
+	                write(progresschannel,*) "  		 Bond Angle 1: ", INITIAL_BOND_DATA(4,m)
+	                write(progresschannel,*) "  		 Bond Angle 2: ", INITIAL_BOND_DATA(5,m)
+		end do
                 write(progresschannel,*) "Finished trajectory ", Ntraj
                 write(progresschannel,*) "        Now we have ", Nfile, " files"
                 write(progresschannel,*) "                      Wall Time: ",&

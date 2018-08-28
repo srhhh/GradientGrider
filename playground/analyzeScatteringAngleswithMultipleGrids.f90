@@ -85,10 +85,9 @@ integer :: i, j, k
 write(Ntraj_text,FMT="(I6)") Ntraj
 
 open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
-do
+do i = 1, Ntraj
 	read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real,&
                                                     abs_energychange, rel_energychange
-	if (iostate /= 0) exit
 
 	max_TranslationalEnergy = max(TranslationalEnergy_real, max_TranslationalEnergy)
 
@@ -111,10 +110,9 @@ sizeAngleBin = pi / (angleBins)
 
 open(filechannel1,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SATRVfile)
 open(filechannel2,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile)
-do
+do i = 1, Ntraj
         read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real, &
 						      abs_energychange, rel_energychange
-	if (iostate /= 0) exit
 
 	ScatteringAngle = ceiling(ScatteringAngle_real / sizeAngleBin)
 	TranslationalEnergy = ceiling((TranslationalEnergy_real)/ sizeEnergyBin)
@@ -184,8 +182,6 @@ write(gnuplotchannel,*) 'set title "Relative Translational Energy Change Distrib
 write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile//&
                         '" u (box_width*($4-0.5)+min_E):(1.0) smooth frequency w boxes'
-
-
 close(gnuplotchannel)
 
 !And then we just input it into gnuplot.exe
@@ -306,7 +302,7 @@ character(6) :: Ntraj_text
 integer :: i
 
 bin_width = (upperlimit-lowerlimit) / scatteringangleBins
-Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj
+Nsamples_max = (Ngrid_total * Ntesttraj) / Ntesttraj
 allocate(binTotal(scatteringangleBins,Nsamples_max),binAverage(scatteringangleBins),sampleSize(Nsamples_max))
 
 !Now we want a reference distribution
@@ -318,7 +314,7 @@ write(variable_length_text,FMT="(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//binnedSATRVfile,action="read")
 do Nsamples = 1, Nsamples_max
-        do i = 1, Ntesttraj
+        do i = 1, Nconvergence
                 read(filechannel1,FMT=*) SATRVdata
                 binTotal(SATRVdata(SATRVcolumn),Nsamples) = &
                          binTotal(SATRVdata(SATRVcolumn),Nsamples) + 1
@@ -335,7 +331,7 @@ end do
 !For this, we will get a running average distribution by adding Ntesttraj trajectories at a time
 !When the running average converges then we stop and see the variance
 binTally = 0
-open(filechannel1,file=gridpath0//"RMSD"//cumulativefile//".dat",action="write")
+open(filechannel1,file=gridpath0//"RMSD"//SATRVname//cumulativefile//".dat",action="write")
 do Nsamples = 1, Nsamples_max
         binRMSD = 0.0
         do i = 1, scatteringangleBins
@@ -362,7 +358,7 @@ close(filechannel1)
 
 !Now we must do the laborious job of binning these
 !Each bin has its own average and standard deviation based on how many samples we took
-open(filechannel1,file=gridpath0//"Adjusted"//cumulativefile//".dat")
+open(filechannel1,file=gridpath0//"Adjusted"//SATRVname//cumulativefile//".dat")
 do i = 1, scatteringangleBins
         binMean = binAverage(i)
         binSD = sqrt(sum((binTotal(i,1:Nsamples) - binMean)**2)/(Nsamples - 1))
@@ -394,8 +390,8 @@ write(variable_length_text1,FMT="(I5)") Ntesttraj
 write(variable_length_text2,FMT="(F5.3)") binThreshold
 write(gnuplotchannel,*) 'set label 1 "Convergence Threshold" at first '//&
                         variable_length_text1//','//variable_length_text2
-write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:2 w lines, \'
-write(gnuplotchannel,*) '     "'//gridpath0//'RMSD'//cumulativefile//'.dat" u 1:3 w lines lc -1'
+write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat" u 1:2 w lines, \'
+write(gnuplotchannel,*) '     "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat" u 1:3 w lines lc -1'
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set title "Final '//SATRVname//' Distribution for '//&
                         trim(adjustl(variable_length_text))//' Trajectories"'
@@ -414,8 +410,8 @@ write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'unset label 1'
-write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2 w boxes, \'
-write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u 1:2 w boxes, \'
+write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u 1:2:3 w yerrorbars'
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
@@ -450,23 +446,10 @@ character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(6) :: Ntraj_text
 character(6) :: boxwidth_text
-logical :: grid_is_done, include_initials
+logical :: grid_is_done
 
 integer :: iostate
-real :: max_r0
-real :: min_r0
 real :: speed_out, ScatteringAngle
-
-max_r0 = 0.0
-min_r0 = 1.0e9
-open(filechannel1,file=gridpath0//prefix_filename//initialfile)
-do
-	read(filechannel1,iostat=iostate,FMT=FMTinitial) INITIAL_BOND_DATA
-	if (iostate /= 0) exit
-	max_r0 = max(max_r0,INITIAL_BOND_DATA(1,1))
-	min_r0 = min(min_r0,INITIAL_BOND_DATA(1,1))
-end do
-close(filechannel1)
 
 max_absenergychange = 0.0
 min_absenergychange = 1.0e9
@@ -485,8 +468,7 @@ end do
 close(filechannel1)
 
 
-include_initials = .false.
-inquire(file=gridpath0//'Adjusted'//cumulativefile//'.dat',exist=grid_is_done)
+inquire(file=gridpath0//'AdjustedScatteringAngle'//cumulativefile//'.dat',exist=grid_is_done)
 
 !This is the gnuplot code to make the plots
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
@@ -514,12 +496,15 @@ write(gnuplotchannel,*) "set format x '%.1P π'"
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($1)):(1.0) smooth frequency w boxes, \'
-        write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2 w boxes'//&
+        write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedScatteringAngle'//&
+				cumulativefile//'.dat" u 1:2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
-        write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+        write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedScatteringAngle'//&
+				cumulativefile//'.dat" u 1:2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($1)):(1.0) smooth frequency w boxes'
+end if
         write(gnuplotchannel,*) 'min_E = ', min(min_relenergychange,min_absenergychange)
         write(gnuplotchannel,*) 'max_E = ', max(max_relenergychange,max_absenergychange)
         write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
@@ -530,13 +515,31 @@ else
         write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
         write(gnuplotchannel,*) "set format x '%.4f'"
         write(gnuplotchannel,*) 'set ylabel "Absolute Translational Energy Change"'
+if (grid_is_done) then
+        write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
+                                '" u (rounded($3)):(1.0) smooth frequency w boxes, \'
+        write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedAbsoluteEnergyChange'//&
+				cumulativefile//'.dat" u 1:2 w boxes'//&
+                                       ' fs transparent solid 0.5 noborder, \'
+        write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedAbsoluteEnergyChange'//&
+				cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($3)):(1.0) smooth frequency w boxes'
+end if
         write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
+if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($4)):(1.0) smooth frequency w boxes'
+else
+        write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
+                                '" u (rounded($4)):(1.0) smooth frequency w boxes, \'
+        write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedRelativeEnergyChange'//&
+				cumulativefile//'.dat" u 1:2 w boxes'//&
+                                       ' fs transparent solid 0.5 noborder, \'
+        write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedRelativeEnergyChange'//&
+				cumulativefile//'.dat" u 1:2:3 w yerrorbars'
 end if
-
 close(gnuplotchannel)
 
 !And then we just input it into gnuplot.exe
@@ -600,7 +603,7 @@ average_r0 = average_r0 / total_bonds
 average_Evib = 0.5 * HOke_hydrogen * average_Evib / total_bonds
 
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
-write(gnuplotchannel,*) 'set term pngcairo enhanced size 1200,1200'
+write(gnuplotchannel,*) 'set term pngcairo enhanced size 3600,1200'
 write(gnuplotchannel,*) 'set encoding utf8'
 write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.png"'
 write(gnuplotchannel,*) 'unset key'
