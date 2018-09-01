@@ -108,7 +108,7 @@ character(19) :: FMTtimeslice
 character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"
 character(15),parameter :: FMTsa = "((F6.4),(F8.4))"
 character(10),parameter :: FMTtrv = "(3(F11.6))"
-character(24),parameter :: FMTdata = "((F6.4),(F8.4),2(F11.6))"
+character(32),parameter :: FMTdata = "((F6.4),(F8.4),2(F11.6),(F13.9))"
 character(33),parameter :: FMTnow = "('Time: ',I2.2,':',I2.2,':',I2.2)"
 
 integer,parameter :: trajectory_text_length = 5
@@ -126,7 +126,7 @@ integer, parameter :: SAfiles_text_length = gridpath_length +&
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !The number of atoms in the system
-integer,parameter :: Natoms = 3
+integer,parameter :: Natoms = 4
 integer,parameter :: Ncoords = Natoms*3
 
 !The number of variables in use
@@ -301,7 +301,7 @@ character(6) :: angle1descriptor,angle2descriptor,bond1descriptor,scatteringdesc
 !                    TRAJECTORY
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer :: Ntraj,Nfile,steps,Norder1
+integer :: Ntraj,Ntraj_allowed,Nfile,steps,Norder1
 logical :: header_max_flag
 
 

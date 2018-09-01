@@ -85,6 +85,7 @@ real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_sp
 real(dp) :: initial_bond_angle1, initial_bond_angle2
 real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
 real(dp) :: bond_period_elapsed
+real(dp) :: probJ_max, J_factor3
 
 !Trajectory Output
 real(dp),dimension(3,Natoms) :: coords_initial, velocities_initial
@@ -243,7 +244,7 @@ do Ngrid = 1, Ngrid_max
 				exit
 			end do
 
- 			!The energy of the H2 should be some random value
+ 			!The vibrational energy of the H2 should be some random value
 			!that follows the boltzmann distribution at this temperature
 			do
 				!This picks a random value between zero and some very high upper limit
@@ -254,26 +255,30 @@ do Ngrid = 1, Ngrid_max
 !				if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
 				if (exp(-random_num1 * upsilon_factor1) * upsilon_factor2 < random_num2) cycle
 
-				initial_energy_H2 = (random_num1 + 0.5d0) * epsilon_factor
+				initial_vibrational_energy = (random_num1 + 0.5d0) * epsilon_factor
+				exit
+			end do
+			initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
+			J_factor3 = J_factor1 / (initial_bond_distance**2)
+			probJ_max = sqrt(2*J_factor3) * exp(J_factor3*0.25d0 - 0.5d0)
+
+ 			!The rotational energy of the H2 should be some random value
+			!that follows the boltzmann distribution at this temperature
+			do
+				!This picks a random value between zero and some very high upper limit
+				random_num1 = rand() * J_max
+				random_num2 = rand() * probJ_max
+
+				if ((2*random_num1 + 1.0d0) * J_factor3 * exp(-random_num1 * (random_num1 + 1.0d0) * &
+                                    J_factor3) < random_num2) cycle
+
+				initial_rotational_energy = (random_num1) * (random_num1 + 1.0d0) * J_factor2
 				exit
 			end do
 
-
-			!The ratio of vib:rot energy of the H2
-			!Right now, we set it to all vibrational
-			random_num2 = 1.0d0
-			initial_vibrational_energy = random_num2*initial_energy_H2
-			initial_rotational_energy = initial_energy_H2 - initial_vibrational_energy
-
-			!Right now, we make all vibrational energy be potential energy
-			!by simply increasing the bond length to match the required energy
-			initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
 			random_num1 = rand()
-			! RS: Please use the momentum of inertia and angular velocity to define rotation
-			!	KF: must work on this in the future
 			initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
 			initial_rotation_angle = random_num1*pi2 - pi
-
 			bond_period_elapsed = rand()
 
 			!All of this is stored for later use in the InitialSetup of runTrajectory

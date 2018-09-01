@@ -197,6 +197,8 @@ if (trueSA_flag) then
         min_absenergychange = 1.0e9
         max_relenergychange = 0.0
         min_relenergychange = 1.0e9
+	max_rotenergychange = 0.0
+	min_rotenergychange = 1.0e9
 	
 	old_filename = ""
 	do Ngrid = 1, Ngrid_total
@@ -224,6 +226,7 @@ Ntraj = Ngrid_total * Ntesttraj
 call getConvergenceImage(0.0, real(pi), 1, "ScatteringAngle")
 call getConvergenceImage(min_relenergychange,max_relenergychange,4,"RelativeEnergyChange")
 call getConvergenceImage(min_absenergychange,max_absenergychange,3,"AbsoluteEnergyChange")
+call getConvergenceImage(min_rotenergychange,max_rotenergychange,5,"RotationalEnergyChange")
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

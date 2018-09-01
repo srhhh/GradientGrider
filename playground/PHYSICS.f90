@@ -94,6 +94,12 @@ real(dp), parameter :: upsilon_factor1 = theta_vib / temperature
 real(dp), parameter :: upsilon_factor2 = 1.0d0 - exp(-upsilon_factor1)
 real(dp), parameter :: epsilon_factor = (hbar/(RU_energy*RU_time)) * pi2 * vib_frequency
 					!Some scaling factors
+real(dp), parameter :: J_max = 10.0d0
+					!Rotational Quantum Number Cutoff
+real(dp), parameter :: J_factor1 = (hbar**2 / (kb * temperature * mass_hydrogen)) / ((RU_energy * RU_time**2))
+real(dp), parameter :: J_factor2 = (hbar**2 / (mass_hydrogen)) / (((RU_energy * RU_time)**2))
+					!Some scaling factors
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                  COLLISION PARAMETERS
@@ -114,27 +120,27 @@ real(dp),parameter :: collision_skew = HOr0_hydrogen*0.00d0
 !			BONDAGE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer,parameter :: Nbonds = 1
-integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, &
-                                                                   3 /),&
-                                                                                  (/ Nbonds, 2 /))
-integer,parameter :: Nvar_eff = 2
-integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,    &
-                                                                           2, 3,    &
-                                                                           1, 2/),  &
-                                                                                  (/ Nvar_eff, 3 /))
-integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
-
-!integer,parameter :: Nbonds = 2
-!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
-!                                                                   2, 4 /),        (/ Nbonds, 2 /))
-!
+!integer,parameter :: Nbonds = 1
+!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, &
+!                                                                   3 /),&
+!                                                                                  (/ Nbonds, 2 /))
 !integer,parameter :: Nvar_eff = 2
-!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
-!                                                                           3, 4,    &
-!                                                                           1, 2 /), &
-!                                                                                   (/ Nvar_eff, 3 /)) 
-!integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
+!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,    &
+!                                                                           2, 3,    &
+!                                                                           1, 2/),  &
+!                                                                                  (/ Nvar_eff, 3 /))
+!integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
+
+integer,parameter :: Nbonds = 2
+integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
+                                                                   2, 4 /),        (/ Nbonds, 2 /))
+
+integer,parameter :: Nvar_eff = 2
+integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
+                                                                           3, 4,    &
+                                                                           1, 2 /), &
+                                                                                   (/ Nvar_eff, 3 /)) 
+integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -157,11 +163,12 @@ real(dp) :: TranslationalEnergy_max
 
 real :: max_absenergychange, min_absenergychange
 real :: max_relenergychange, min_relenergychange
+real :: max_rotenergychange, min_rotenergychange
 real :: abs_energychange, rel_energychange
 real :: max_TranslationalEnergy
 
 real(dp) :: sizeEnergyBin,sizeAngleBin
-real(dp) :: sizeAbsEnergyBin,sizeRelEnergyBin
+real(dp) :: sizeAbsEnergyBin,sizeRelEnergyBin,sizeRotEnergyBin
 real(dp) :: sizeDeltaEnergyBin
 integer,parameter :: energyBins = 100                  !This is for the SA heat map
 integer,parameter :: angleBins = 200                   !Same
@@ -296,6 +303,22 @@ real(dp) function KineticEnergy(velocity)
         KineticEnergy = 0.5d0*mass_hydrogen*speed_squared
 
 end function KineticEnergy
+
+real(dp) function RotationalEnergy(coords1,coords2,velocity1,velocity2)
+	implicit none
+	real(dp),dimension(3),intent(in) :: coords1,coords2,velocity1,velocity2
+	real(dp),dimension(3) :: CM_vector, bond_vector, angular_momentum1, angular_momentum2
+
+	CM_vector = 0.5 * (coords1 + coords2)
+	bond_vector = coords1 - CM_vector
+
+	call cross(bond_vector,velocity1,angular_momentum1)
+	call cross(-bond_vector,velocity2,angular_momentum2)
+
+	RotationalEnergy = 0.25 * mass_hydrogen * sum((angular_momentum1 + &
+                           angular_momentum2)**2) / (sum(coords1)**2)
+
+end function RotationalEnergy
 
 
 real(dp) function MorsePotential(coords1,coords2)
