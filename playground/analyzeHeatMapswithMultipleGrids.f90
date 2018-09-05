@@ -96,12 +96,12 @@ do Ngrid = 1, Ngrid_total
         open(filechannel1,file=gridpath0//temporaryfile3)
 	occurence_max = 0
 
-        do i = 1, bounds1
-        var1 = i * multiplier1_0
-        indexer0 = bounds2*(i-1)
+        do i = 1, bounds2
+        var2 = i * multiplier2_0
+        indexer0 = bounds1*(i-1)
         
-        do j = 1, bounds2
-        var2 = j * multiplier2_0
+        do j = 1, bounds1
+        var1 = j * multiplier1_0
         
                 population = counter0(indexer0 + j)
 		if (population < overcrowd0) then
@@ -118,6 +118,30 @@ do Ngrid = 1, Ngrid_total
                 write(filechannel1,*) ""
         end do
         close(filechannel1)
+        
+!
+!        do i = 1, bounds1
+!        var1 = i * multiplier1_0
+!        indexer0 = bounds2*(i-1)
+!        
+!        do j = 1, bounds2
+!        var2 = j * multiplier2_0
+!        
+!                population = counter0(indexer0 + j)
+!		if (population < overcrowd0) then
+!                	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
+!			cycle
+!        	else
+!			indexer1 = population / key_start
+!			population = sum(counter1(indexer1+1:indexer1+17))
+!                	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
+!
+!			occurence_max = max(occurence_max,population)
+!		end if
+!        end do
+!                write(filechannel1,*) ""
+!        end do
+!        close(filechannel1)
         
         !Write to the plot
         write(variable_length_text,FMT="(I5)") occurence_max

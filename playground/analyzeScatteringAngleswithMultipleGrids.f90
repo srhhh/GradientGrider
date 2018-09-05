@@ -103,6 +103,7 @@ close(filechannel1)
 
 allocate(angle_energy_bins(angleBins,energyBins))
 angle_energy_bins = 0
+
 sizeAbsEnergyBin = (max_absenergychange-min_absenergychange) / energychangeBins
 sizeRelEnergyBin = (max_relenergychange-min_relenergychange) / energychangeBins
 sizeRotEnergyBin = (max_rotenergychange-min_rotenergychange) / energychangeBins
@@ -1088,14 +1089,14 @@ integer :: i, j, k
 		velocity_in = velocity_in / (sum(COLLISION_DATA))
 		velocity_out = velocity_out / (Natoms - sum(COLLISION_DATA))
 
-print *, "Initial:"
-print *, "AbsTrans:", absTranslationalEnergy1
-print *, "RelTrans:", relTranslationalEnergy1
-print *, "     Rot:", RotationalEnergy1
-print *, "Final:"
-print *, "AbsTrans:", absTranslationalEnergy2
-print *, "RelTrans:", relTranslationalEnergy2
-print *, "     Rot:", RotationalEnergy2
+!print *, "Initial:"
+!print *, "AbsTrans:", absTranslationalEnergy1
+!print *, "RelTrans:", relTranslationalEnergy1
+!print *, "     Rot:", RotationalEnergy1
+!print *, "Final:"
+!print *, "AbsTrans:", absTranslationalEnergy2
+!print *, "RelTrans:", relTranslationalEnergy2
+!print *, "     Rot:", RotationalEnergy2
 
 		speed_out = sqrt(sum((velocity_out)**2))
 		speed_in = sqrt(sum((velocity_in)**2))

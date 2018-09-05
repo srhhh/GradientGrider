@@ -82,7 +82,7 @@ real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass
 !real(dp), parameter :: temperature_factor = exp(0.5d0*upsilon_factor1)
 !real(dp), parameter :: temperature_scaling = (1.0d0-temperature_factor)*upsilon_max/temperature_factor
 
-real(dp), parameter :: temperature = 200.0d0
+real(dp), parameter :: temperature = 300.0d0
 					!Kelvin
 real(dp), parameter :: upsilon_max = 5.0d0
 					!Vibrational Quantum Number Cutoff
@@ -131,16 +131,25 @@ real(dp),parameter :: collision_skew = HOr0_hydrogen*0.00d0
 !                                                                                  (/ Nvar_eff, 3 /))
 !integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
 
+!integer,parameter :: Nbonds = 2
+!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
+!                                                                   2, 4 /),        (/ Nbonds, 2 /))
+!
+!integer,parameter :: Nvar_eff = 2
+!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
+!                                                                           3, 4,    &
+!                                                                           1, 2 /), &
+!                                                                                   (/ Nvar_eff, 3 /)) 
+!integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
+
 integer,parameter :: Nbonds = 2
 integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
                                                                    2, 4 /),        (/ Nbonds, 2 /))
 
-integer,parameter :: Nvar_eff = 2
-integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
-                                                                           3, 4,    &
-                                                                           1, 2 /), &
-                                                                                   (/ Nvar_eff, 3 /)) 
+integer,parameter :: Nvar_eff = 0
+integer,dimension(Nvar_eff,3) :: BONDING_VALUE_DATA
 integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
+
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -319,6 +328,22 @@ real(dp) function RotationalEnergy(coords1,coords2,velocity1,velocity2)
                            angular_momentum2)**2) / (sum(coords1)**2)
 
 end function RotationalEnergy
+
+subroutine VelocityBondAngle(coords1,coords2,velocity1,velocity2,theta1,theta2)
+	implicit none
+	real(dp),dimension(3),intent(in) :: coords1, coords2, velocity1, velocity2
+	real(dp),intent(out) :: theta1, theta2
+	real(dp),dimension(3) :: CM_vector, bond_vector
+	real(dp) :: bond_length
+
+	CM_vector = 0.5 * (coords1 + coords2)
+	bond_vector = coords1 - CM_vector
+	bond_length = sum(bond_vector**2)
+
+	theta1 = acos(dot_product(bond_vector,velocity1) / sqrt(bond_length * sum(velocity1**2)))
+	theta2 = acos(dot_product(-bond_vector,velocity2) / sqrt(bond_length * sum(velocity2**2)))
+
+end subroutine VelocityBondAngle
 
 
 real(dp) function MorsePotential(coords1,coords2)

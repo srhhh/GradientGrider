@@ -216,6 +216,16 @@ do Ngrid = 1, Ngrid_max
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+	!$OMP PARALLEL
+	!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(n,m,random_num1,random_num2,random_num3,random_r2,random_r3,&
+	!				       initial_bond_angle1,initial_bond_angle2,initial_bond_distance,&
+	!				       bond_period_elapsed,initial_vibrational_energy,J_factor3,probJ_max,&
+	!				       initial_rotational_angle,initial_rotational_speed,&
+	!				       INITIAL_BOND_DATA,steps,&
+	!				       coords_initial,velocities_initial,coords_final,velocities_final,&
+	!				       trajectory_CPU_time,trajectory_wall_time,r1,r2,c1,c2)
+	!$OMP DO
+
         do n = 1, Ntraj_max
 
 		!Get some random initial conditions for the trajectory
@@ -261,6 +271,7 @@ do Ngrid = 1, Ngrid_max
 			initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
 			J_factor3 = J_factor1 / (initial_bond_distance**2)
 			probJ_max = sqrt(2*J_factor3) * exp(J_factor3*0.25d0 - 0.5d0)
+			J_factor3 = 85.3d0 / temperature
 
  			!The rotational energy of the H2 should be some random value
 			!that follows the boltzmann distribution at this temperature
@@ -297,7 +308,7 @@ do Ngrid = 1, Ngrid_max
 		!This big if-statement is if we want to monitor our grid creation
 		!The check only happens every Ngrid_check
 		!Right now it is spaced so that we get (at most) ten graphs over the period of its creation
-                if (modulo(n,Ngrid_check) == 0) then
+                if ((.true.).and.(modulo(n,Ngrid_check) == 0)) then
 
 			!Remark: output of checkTrajectory is in the checkstatefile
 			call system_clock(trajectory_t0)
@@ -323,7 +334,7 @@ do Ngrid = 1, Ngrid_max
 			write(gnuplotchannel,*) 'set bmargin 0'
 			write(gnuplotchannel,*) 'set lmargin 1'
 			write(gnuplotchannel,*) 'set rmargin 1'
-			write(gnuplotchannel,*) 'set multiplot layout 4,1 margins 0.15,0.95,.1,.95 spacing 0,0 title '//&
+			write(gnuplotchannel,*) 'set multiplot layout 6,1 margins 0.15,0.95,.1,.95 spacing 0,0 title '//&
 						'"Trajectory '//trim(adjustl(checkstateTrajectory))//'"'
 			write(gnuplotchannel,*) 'unset key'
 			write(gnuplotchannel,*) 'unset xlabel'
@@ -337,14 +348,14 @@ do Ngrid = 1, Ngrid_max
 !                                                ' A" at screen 0.6, 0.94'
  			write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
                                                  ' s" at screen 0.6, 0.910'
-!			write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
-!			write(gnuplotchannel,*) 'set yrange [0:11]'
-!			write(gnuplotchannel,*) 'set ytics 2'
-!			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:7 w lines'
-!			write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
-!			write(gnuplotchannel,*) 'set yrange [0:11]'
-!			write(gnuplotchannel,*) 'set ytics 2'
-!			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:8 w lines'
+			write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
+			write(gnuplotchannel,*) 'set yrange [0:11]'
+			write(gnuplotchannel,*) 'set ytics 2'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:7 w lines'
+			write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
+			write(gnuplotchannel,*) 'set yrange [0:11]'
+			write(gnuplotchannel,*) 'set ytics 2'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:8 w lines'
 !			write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
 !			write(gnuplotchannel,*) 'set yrange [0:0.02]'
 !			write(gnuplotchannel,*) 'set ytics 0.005'
@@ -384,6 +395,23 @@ do Ngrid = 1, Ngrid_max
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+		!$OMP CRITICAL
+
+                open(progresschannel,file=gridpath1//progressfile,position="append")
+                write(progresschannel,*) ""
+                write(progresschannel,*) ""
+                write(progresschannel,*) "Starting trajectory ", n
+                write(progresschannel,*) "  Initial Conditions: "
+		do m = 1, Nbonds
+	                write(progresschannel,*) "          BOND ", m, ":"
+	                write(progresschannel,*) "  		Bond Distance: ", INITIAL_BOND_DATA(1,m)
+	                write(progresschannel,*) "  		 Bond Angle 1: ", INITIAL_BOND_DATA(4,m)
+	                write(progresschannel,*) "  		 Bond Angle 2: ", INITIAL_BOND_DATA(5,m)
+		end do
+                close(progresschannel)
+
+		!$OMP END CRITICAL
+
 		!We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
@@ -404,23 +432,19 @@ do Ngrid = 1, Ngrid_max
 
                 Ntraj = Ntraj + 1
 
+		!$OMP CRITICAL
+
                 open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//initialfile,&
                                   position="append")
                 write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(l,m),l=1,6),m=1,Nbonds)
                 close(filechannel1)
 
+		!$OMP END CRITICAL
+
+		!$OMP CRITICAL
+
                 open(progresschannel,file=gridpath1//progressfile,position="append")
-                write(progresschannel,*) ""
-                write(progresschannel,*) ""
-                write(progresschannel,*) "Starting trajectory ", Ntraj
-                write(progresschannel,*) "  Initial Conditions: "
-		do m = 1, Nbonds
-	                write(progresschannel,*) "          BOND ", m, ":"
-	                write(progresschannel,*) "  		Bond Distance: ", INITIAL_BOND_DATA(1,m)
-	                write(progresschannel,*) "  		 Bond Angle 1: ", INITIAL_BOND_DATA(4,m)
-	                write(progresschannel,*) "  		 Bond Angle 2: ", INITIAL_BOND_DATA(5,m)
-		end do
-                write(progresschannel,*) "Finished trajectory ", Ntraj
+                write(progresschannel,*) "Finished trajectory ", n
                 write(progresschannel,*) "        Now we have ", Nfile, " files"
                 write(progresschannel,*) "                      Wall Time: ",&
                                                 trajectory_wall_time
@@ -428,17 +452,29 @@ do Ngrid = 1, Ngrid_max
                                                 trajectory_CPU_time
                 close(progresschannel)
 
+		!$OMP END CRITICAL
+
+		!$OMP CRITICAL
+
 		!There is an informatics files for data on the grid while creating
 		open(filechannel1,file=gridpath1//"Initial"//informaticsfile,position="append")
 		write(filechannel1,FMTinformatics) trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps), &
 		                                   Ntraj,header1-header1_old,header2-header2_old,Nfile,Norder1*100.0/steps
 		close(filechannel1)
 
+		!$OMP END CRITICAL
+
+		!$OMP CRITICAL
+
 		!This is a temporary file to store information on how fast
 		!Children level cells are filling up
 		open(filechannel1,file=gridpath1//"maxframesorder1.dat",position="append")
 		write(filechannel1,FMT=*) Ntraj, maxval(counter1), overcrowd1
 		close(filechannel1)
+
+		!$OMP END CRITICAL
+
+		!$OMP CRITICAL
 
 		!There is a timeslice file for snapshots of the trajectory at the beginning and end
 		open(filechannel1,file=gridpath1//"Initial"//timeslicefile,position="append")
@@ -449,10 +485,16 @@ do Ngrid = 1, Ngrid_max
                                                  ((velocities_final(l,m),l=1,3),m=1,Natoms)
                 close(filechannel1)
 
+		!$OMP END CRITICAL
+
 		header1_old = header1
 		header2_old = header2
 		header3_old = header3
         end do
+
+	!$OMP END PARALLEL
+	!$OMP END DO NOWAIT
+
 
 	!Grid Timing
 	call system_clock(grid_t1)

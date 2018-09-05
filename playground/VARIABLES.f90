@@ -7,33 +7,83 @@ implicit none
 
 contains
 
-!Variable one is the squared distance between the hydrogen and the midpoint of the bond
-subroutine getVar1(coordsH,coords_bond,var1)
+!Variable one is the distance between the midpoints of two bonds (ONLY FOR H2 - H2)
+subroutine getVar1(coords,Natoms,var1)
 implicit none
-real(dp), dimension(3),intent(in) :: coordsH,coords_bond
+integer,intent(in) :: Natoms
+real(dp), dimension(3,Natoms),intent(in) :: coords
 real(dp), intent(out) :: var1
+real(dp) :: length1, length2, length3, length4
 
-!Later, consider using the squared value instead (less computationally heavy)
-call getDistanceSquared(coordsH,coords_bond,var1)
-var1 =sqrt(var1)
+!call getDistanceSquared(coords(:,1)+coords(:,2),coords(:,3)+coords(:,4),var1)
+!var1 = 0.5 * sqrt(var1)
+
+call getDistanceSquared(coords(:,1),coords(:,3),length1)
+call getDistanceSquared(coords(:,2),coords(:,4),length2)
+call getDistanceSquared(coords(:,1),coords(:,4),length3)
+call getDistanceSquared(coords(:,2),coords(:,3),length4)
+var1 = sqrt(min(length1,length2,length3,length4))
 
 end subroutine getVar1
 
-!Variable two is the cosine of the angle between the H - bond_midpoint vector and
-!						 the bond_mindpoint - bond_endpoint vector
+!Variable two is the cosine of the angle between the first H2 bond vector and
+!						 the second H2 bond vector
 !but shifted over by one, so that all values are positive
-subroutine getVar2(coords,Natoms,coords_bond,H_bond_distance,var2)
+subroutine getVar2(coords,Natoms,var2)
 implicit none
 integer, intent(in) :: Natoms
-real(dp), intent(in) :: H_bond_distance
 real(dp), dimension(3,Natoms), intent(in) :: coords
-real(dp), dimension(3),intent(in) :: coords_bond
+real(dp), dimension(3) :: bond_vector1, bond_vector2, bond_CM_vector
+real(dp) :: bond1_length, bond2_length, bond_CM_length
+real(dp), dimension(4) :: bond_lengths       !NOTE: This is not generic yet
+integer :: bond_pair
 real(dp), intent(out) :: var2
 
-call getDistanceSquared(coords_bond,coords(:,3),var2)
-var2 = dot_product(coords(:,3)-coords_bond, coords_bond) / &
-                 (H_bond_distance*sqrt(var2)) + 1
+call getDistanceSquared(coords(:,1),coords(:,3),bond_lengths(1))
+call getDistanceSquared(coords(:,2),coords(:,4),bond_lengths(2))
+call getDistanceSquared(coords(:,1),coords(:,4),bond_lengths(3))
+call getDistanceSquared(coords(:,2),coords(:,3),bond_lengths(4))
 
+bond_pair = minloc(bond_lengths,dim=1)
+
+if (bond_pair == 1) then
+	bond_vector1 = coords(:,2) - coords(:,1)
+	bond_vector2 = coords(:,4) - coords(:,3)
+	bond1_length = sum(bond_vector1**2)
+	bond2_length = sum(bond_vector2**2)
+
+else if (bond_pair == 2) then
+	bond_vector1 = coords(:,1) - coords(:,2)
+	bond_vector2 = coords(:,3) - coords(:,4)
+	bond1_length = sum(bond_vector1**2)
+	bond2_length = sum(bond_vector2**2)
+
+else if (bond_pair == 3) then
+	bond_vector1 = coords(:,2) - coords(:,1)
+	bond_vector2 = coords(:,3) - coords(:,4)
+	bond1_length = sum(bond_vector1**2)
+	bond2_length = sum(bond_vector2**2)
+
+else
+	bond_vector1 = coords(:,1) - coords(:,2)
+	bond_vector2 = coords(:,4) - coords(:,3)
+	bond1_length = sum(bond_vector1**2)
+	bond2_length = sum(bond_vector2**2)
+
+end if
+
+!bond_vector1 = coords(:,2) - coords(:,1)
+!bond_vector2 = coords(:,4) - coords(:,3)
+!!bond_CM_vector = 0.5*(coords(:,1)+coords(:,2)-coords(:,3)-coords(:,4))
+!!
+!bond1_length = sum(bond_vector1**2)
+!bond2_length = sum(bond_vector2**2)
+!!bond_CM_length = sum(bond_CM_vector**2)
+!!
+!!var2 = abs(dot_product(bond_vector1,bond_CM_vector)/sqrt(bond1_length*bond_CM_length)) + &
+!!       abs(dot_product(bond_vector2,bond_CM_vector)/sqrt(bond2_length*bond_CM_length))
+!
+var2 = 1.0d0 + dot_product(bond_vector1,bond_vector2)/sqrt(bond1_length*bond2_length)
 
 end subroutine getVar2
 

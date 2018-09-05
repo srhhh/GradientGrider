@@ -43,8 +43,8 @@
 !
 !       CALLS                           MODULE
 !
-!		getVar5				VARIABLES
-!		getVar6				VARIABLES
+!		getVar1				VARIABLES
+!		getVar2				VARIABLES
 !
 !		InitialSetup3			PHYSICS
 !
@@ -162,8 +162,8 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 
 	!Always calculate the variables before accelerating
 	!because we can reuse these calculations
-	call getVar5(coords,Natoms,vals(1))
-	call getVar6(coords,Natoms,vals(2))
+	call getVar1(coords,Natoms,vals(1))
+	call getVar2(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -213,8 +213,8 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 		coords = coords + dt * velocities
 
 		!Always calculate the variables before adding a frame or accelerating
-		call getVar5(coords,Natoms,vals(1))
-		call getVar6(coords,Natoms,vals(2))
+		call getVar1(coords,Natoms,vals(1))
+		call getVar2(coords,Natoms,vals(2))
 
                 !Accelerate and update gradients
                 call Acceleration(vals,coords,gradient)
@@ -335,8 +335,8 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 	velocities_initial = velocities
 
 	!Always calculate the variables before accelerating
-        call getVar5(coords,Natoms,vals(1))
-        call getVar6(coords,Natoms,vals(2))
+        call getVar1(coords,Natoms,vals(1))
+        call getVar2(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -397,8 +397,8 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-                call getVar5(coords,Natoms,vals(1))
-                call getVar6(coords,Natoms,vals(2))
+                call getVar1(coords,Natoms,vals(1))
+                call getVar2(coords,Natoms,vals(2))
 
                 !Check for similar frames in the grid
 		!Always set a default value; in this case, set min_rmsd_prime a default value
@@ -541,8 +541,8 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	velocities_initial = velocities
 
         !Always calculate the variables before accelearting
-        call getVar5(coords,Natoms,vals(1))
-        call getVar6(coords,Natoms,vals(2))
+        call getVar1(coords,Natoms,vals(1))
+        call getVar2(coords,Natoms,vals(2))
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -591,8 +591,8 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-                call getVar5(coords,Natoms,vals(1))
-                call getVar6(coords,Natoms,vals(2))
+                call getVar1(coords,Natoms,vals(1))
+                call getVar2(coords,Natoms,vals(2))
 
 		!Check for a frame in the grid
 		!Set the default value beforehand though
@@ -782,9 +782,13 @@ subroutine Acceleration(vals,coords,gradient)
 	bond_index2 = BONDING_DATA(1,2)
 
 	value_index = 1
-	value_flag = .true.
-	value_index1 = BONDING_VALUE_DATA(1,1)
-	value_index2 = BONDING_VALUE_DATA(1,2)
+	if (Nvar_eff > 0) then
+		value_flag = .true.
+		value_index1 = BONDING_VALUE_DATA(1,1)
+		value_index2 = BONDING_VALUE_DATA(1,2)
+	else
+		value_flag = .false.
+	end if
 
 	do index1 = 1, Natoms
 		do index2 = index1+1, Natoms
