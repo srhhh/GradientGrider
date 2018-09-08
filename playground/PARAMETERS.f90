@@ -153,9 +153,11 @@ real,parameter :: spacing3 = 0.1         !Not in use
 !There are some outliers; making a maximum throws these away
 !real,parameter :: max_var2 = 10.0	!Angstroms
 real,parameter :: max_var1 = 10.0       !Angstroms
-real,parameter :: max_var2 = 2.0	!Unitless (cos(angle) + 1 \in [0,2])
+real,parameter :: max_var2 = 12.0	!Angstroms (cos(angle) + 1 \in [0,2])
+!real,parameter :: max_var2 = 2.0	!Unitless (cos(angle) + 1 \in [0,2])
 integer,parameter :: bounds1 = ceiling(max_var1/spacing1)+400 !if var > max_var every 500 steps
-integer,parameter :: bounds2 = ceiling(max_var2/spacing2)	!For the cos(theta) definition
+integer,parameter :: bounds2 = ceiling(max_var2/spacing2)+400 !if var > max_var every 500 steps
+!integer,parameter :: bounds2 = ceiling(max_var2/spacing2)	!For the cos(theta) definition
 !integer,parameter :: bounds2 = ceiling(max_var1/spacing1)+400 !This 4 is a cushioning because we only check
 !Consequently, we know the maximum number of cells in the grid
 integer, parameter :: counter0_max = bounds1*bounds2

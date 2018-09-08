@@ -214,7 +214,6 @@ do i = 1, angleBins
 	do j = 1, energyBins
 		write(filechannel1,FMT=*) (i-1)*sizeAngleBin, (j-1)*sizeEnergyBin, angle_energy_bins(i,j)
 	end do
-	write(filechannel1,FMT=*) i*sizeAngleBin, j*sizeEnergyBin, 0
 	write(filechannel1,FMT=*) ""
 end do
 close(filechannel1)

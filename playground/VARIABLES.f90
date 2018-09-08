@@ -33,57 +33,52 @@ subroutine getVar2(coords,Natoms,var2)
 implicit none
 integer, intent(in) :: Natoms
 real(dp), dimension(3,Natoms), intent(in) :: coords
-real(dp), dimension(3) :: bond_vector1, bond_vector2, bond_CM_vector
-real(dp) :: bond1_length, bond2_length, bond_CM_length
-real(dp), dimension(4) :: bond_lengths       !NOTE: This is not generic yet
-integer :: bond_pair
+!real(dp), dimension(3) :: bond_vector1, bond_vector2, bond_CM_vector
+!real(dp) :: bond1_length, bond2_length, bond_CM_length
+!real(dp), dimension(4) :: bond_lengths       !NOTE: This is not generic yet
+!integer :: bond_pair
+real(dp) :: length1, length2, length3, length4
 real(dp), intent(out) :: var2
 
-call getDistanceSquared(coords(:,1),coords(:,3),bond_lengths(1))
-call getDistanceSquared(coords(:,2),coords(:,4),bond_lengths(2))
-call getDistanceSquared(coords(:,1),coords(:,4),bond_lengths(3))
-call getDistanceSquared(coords(:,2),coords(:,3),bond_lengths(4))
+call getDistanceSquared(coords(:,1),coords(:,3),length1)
+call getDistanceSquared(coords(:,2),coords(:,4),length2)
+call getDistanceSquared(coords(:,1),coords(:,4),length3)
+call getDistanceSquared(coords(:,2),coords(:,3),length4)
+var2 = sqrt(max(length1,length2,length3,length4))
 
-bond_pair = minloc(bond_lengths,dim=1)
-
-if (bond_pair == 1) then
-	bond_vector1 = coords(:,2) - coords(:,1)
-	bond_vector2 = coords(:,4) - coords(:,3)
-	bond1_length = sum(bond_vector1**2)
-	bond2_length = sum(bond_vector2**2)
-
-else if (bond_pair == 2) then
-	bond_vector1 = coords(:,1) - coords(:,2)
-	bond_vector2 = coords(:,3) - coords(:,4)
-	bond1_length = sum(bond_vector1**2)
-	bond2_length = sum(bond_vector2**2)
-
-else if (bond_pair == 3) then
-	bond_vector1 = coords(:,2) - coords(:,1)
-	bond_vector2 = coords(:,3) - coords(:,4)
-	bond1_length = sum(bond_vector1**2)
-	bond2_length = sum(bond_vector2**2)
-
-else
-	bond_vector1 = coords(:,1) - coords(:,2)
-	bond_vector2 = coords(:,4) - coords(:,3)
-	bond1_length = sum(bond_vector1**2)
-	bond2_length = sum(bond_vector2**2)
-
-end if
-
-!bond_vector1 = coords(:,2) - coords(:,1)
-!bond_vector2 = coords(:,4) - coords(:,3)
-!!bond_CM_vector = 0.5*(coords(:,1)+coords(:,2)-coords(:,3)-coords(:,4))
-!!
-!bond1_length = sum(bond_vector1**2)
-!bond2_length = sum(bond_vector2**2)
-!!bond_CM_length = sum(bond_CM_vector**2)
-!!
-!!var2 = abs(dot_product(bond_vector1,bond_CM_vector)/sqrt(bond1_length*bond_CM_length)) + &
-!!       abs(dot_product(bond_vector2,bond_CM_vector)/sqrt(bond2_length*bond_CM_length))
+!call getDistanceSquared(coords(:,1),coords(:,3),bond_lengths(1))
+!call getDistanceSquared(coords(:,2),coords(:,4),bond_lengths(2))
+!call getDistanceSquared(coords(:,1),coords(:,4),bond_lengths(3))
+!call getDistanceSquared(coords(:,2),coords(:,3),bond_lengths(4))
+!bond_pair = minloc(bond_lengths,dim=1)
 !
-var2 = 1.0d0 + dot_product(bond_vector1,bond_vector2)/sqrt(bond1_length*bond2_length)
+!if (bond_pair == 1) then
+!	bond_vector1 = coords(:,2) - coords(:,1)
+!	bond_vector2 = coords(:,4) - coords(:,3)
+!	bond1_length = sum(bond_vector1**2)
+!	bond2_length = sum(bond_vector2**2)
+!
+!else if (bond_pair == 2) then
+!	bond_vector1 = coords(:,1) - coords(:,2)
+!	bond_vector2 = coords(:,3) - coords(:,4)
+!	bond1_length = sum(bond_vector1**2)
+!	bond2_length = sum(bond_vector2**2)
+!
+!else if (bond_pair == 3) then
+!	bond_vector1 = coords(:,2) - coords(:,1)
+!	bond_vector2 = coords(:,3) - coords(:,4)
+!	bond1_length = sum(bond_vector1**2)
+!	bond2_length = sum(bond_vector2**2)
+!
+!else
+!	bond_vector1 = coords(:,1) - coords(:,2)
+!	bond_vector2 = coords(:,4) - coords(:,3)
+!	bond1_length = sum(bond_vector1**2)
+!	bond2_length = sum(bond_vector2**2)
+!
+!end if
+!
+!var2 = 1.0d0 + dot_product(bond_vector1,bond_vector2)/sqrt(bond1_length*bond2_length)
 
 end subroutine getVar2
 

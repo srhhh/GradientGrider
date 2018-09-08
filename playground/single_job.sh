@@ -60,7 +60,7 @@ overcrowd0=00050
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=1
+Ngrid_max=4
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -91,7 +91,7 @@ Ntrajectories=700
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Sep4_Var12_test2"
+newGRID="H2H2_Sep5_VarMaxMin"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1
