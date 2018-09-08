@@ -54,13 +54,13 @@ scaling1_0=004
 scaling2_0=004
 
 #The number of frames a parent-level cell accepts before it is subdivided
-overcrowd0=00050
+overcrowd0=00200
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0100
 
 #The number of grids to add to a new library
-Ngrid_max=4
+Ngrid_max=1
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -81,7 +81,7 @@ threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=700
+Ntrajectories=100
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -91,7 +91,7 @@ Ntrajectories=700
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Sep5_VarMaxMin"
+newGRID="H2H2_Sep7_VarMaxMin"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1

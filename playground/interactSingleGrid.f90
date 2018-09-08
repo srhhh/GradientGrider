@@ -445,7 +445,7 @@ indexer = bounds1 * var2_index + var1_index + 1
 
 !Increment by one to signify adding a frame;
 !key keeps track of population AND the index of the next counter
-key = counter0(indexer) + 1
+key = counter0(indexer) + 8
 
 !If its not overcrowded, we need to add frames
 if (key < overcrowd0) then
@@ -461,7 +461,7 @@ if (key < overcrowd0) then
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         !If this is the first time in the cell, this file has to be made
-        if (key == 1) then
+        if (key == 8) then
                 descriptor0 = "new"
                 Nfile = Nfile + 1
 
@@ -470,7 +470,7 @@ if (key < overcrowd0) then
         end if
 
         !Add the frame
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status=trim(descriptor0))
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -481,13 +481,7 @@ if (key < overcrowd0) then
         return
 
 !If the cell is overcrowded (by that exact number) then we need to subdivide it
-else if (key == overcrowd0) then
-
-        !Adding by a large number (key_start) assures the portion of the integer
-        !that holds the index of the next counter (header1 value)
-        !is not incremented by an increment of key
-        key = key + key_start*header1
-        counter0(indexer) = key
+else if (key <= population_max) then
 
         !The filename is the sum of the decimal portions of each order
         var1_round = var1_round0
@@ -498,12 +492,18 @@ else if (key == overcrowd0) then
 
         !For more information on how this works, see the subroutine above
         call divyUp(subcell,FMTorder1,var1_round,var2_round,SP0,MP1,&
-                    header1-1,counter1,counter1_max,overcrowd0-1)
+                    header1-1,counter1,counter1_max,key-8)
+
+        !Adding by a large number (key_start) assures the portion of the integer
+        !that holds the index of the next counter (header1 value)
+        !is not incremented by an increment of key
+        key = key + key_start*header1
+        counter0(indexer) = key
 
         !We still need to add the frame
         !Because we are adding the frame AFTER subdividing, we need to continue on to the
         !next order; that is why there is no return at the end of this conditional
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status="old")
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -549,7 +549,7 @@ var2_round1 = multiplier2_1 * var2_index
 ! And by multiplying by resolution (scaling1*scaling2), we assure that each
 ! subcell of the parent subcell gets its own unique index
 indexer = resolution_0*int(key/key_start-1) + scaling1_0*var2_index + var1_index + 1
-key = counter1(indexer) + 1
+key = counter1(indexer) + 8
 
 if (key < overcrowd1) then
 
@@ -562,14 +562,14 @@ if (key < overcrowd1) then
         write(var2_filename,FMT=FMTorder1) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        if (key == 1) then
+        if (key == 8) then
                 descriptor0 = "new"
                 Nfile = Nfile + 1
         else
                 descriptor0 = "old"
         end if
 
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status=trim(descriptor0))
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -578,10 +578,7 @@ if (key < overcrowd1) then
 
         return
 
-else if (key == overcrowd1) then
-
-        key = key + key_start*header2
-        counter1(indexer) = key
+else if (key <= population_max) then
 
         var1_round = var1_round0 + var1_round1
         var2_round = var2_round0 + var2_round1
@@ -591,9 +588,12 @@ else if (key == overcrowd1) then
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call divyUp(subcell,FMTorder2,var1_round,var2_round,SP1,MP2,&
-                    header2-1,counter2,counter2_max,overcrowd1-1)
+                    header2-1,counter2,counter2_max,key-8)
 
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        key = key + key_start*header2
+        counter1(indexer) = key
+
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status="old")
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -626,7 +626,7 @@ var1_round2 = multiplier1_2 * var1_index
 var2_round2 = multiplier2_2 * var2_index
 
 indexer = resolution_1*int(key/key_start-1) + scaling1_1*var2_index + var1_index + 1
-key = counter2(indexer) + 1
+key = counter2(indexer) + 8
 
 if (key < overcrowd2) then
 
@@ -639,14 +639,14 @@ if (key < overcrowd2) then
         write(var2_filename,FMT=FMTorder2) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        if (key == 1) then
+        if (key == 8) then
                 descriptor0 = "new"
                 Nfile = Nfile + 1
         else
                 descriptor0 = "old"
         end if
 
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status=trim(descriptor0))
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -655,10 +655,7 @@ if (key < overcrowd2) then
 
         return
 
-else if (key == overcrowd2) then
-
-        key = key + key_start*header3
-        counter2(indexer) = key
+else if (key <= population_max) then
 
         var1_round = var1_round0 + var1_round1 + var1_round2
         var2_round = var2_round0 + var2_round1 + var2_round2
@@ -668,14 +665,17 @@ else if (key == overcrowd2) then
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call divyUp(subcell,FMTorder3,var1_round,var2_round,SP2,MP3,&
-                    header3-1,counter3,counter3_max,overcrowd2-1)
+                    header3-1,counter3,counter3_max,key-8)
+
+        key = key + key_start*header3
+        counter2(indexer) = key
 
 !Just for testing purposes
  open(progresschannel,file=trim(gridpath2)//trim(progressfile),position="append")
  write(progresschannel,*) "divyUp on subcell: ", trim(subcell)
  close(progresschannel)
 
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status="old")
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -704,7 +704,7 @@ var1_index = int(var1_cell * divisor1_3)
 var2_index = int(var2_cell * divisor2_3)
 
 indexer = resolution_2*int(key/key_start-1) + scaling1_2*var2_index + var1_index + 1
-key = counter3(indexer) + 1
+key = counter3(indexer) + 8
 
 if (key < overcrowd3) then
 
@@ -720,23 +720,21 @@ if (key < overcrowd3) then
         write(var2_filename,FMT=FMTorder3) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        if (key == 1) then
+        if (key == 8) then
                 descriptor0 = "new"
                 Nfile = Nfile + 1
         else
                 descriptor0 = "old"
         end if
 
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status=trim(descriptor0))
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
 !        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
 !        close(filechannel1)
 
-else if (key == overcrowd3) then
-
-        counter3(indexer) = key
+else if (key <= population_max) then
 
         var1_round = var1_round0 + var1_round1 + var1_round2 + var1_round3
         var2_round = var2_round0 + var2_round1 + var2_round2 + var2_round3
@@ -745,7 +743,9 @@ else if (key == overcrowd3) then
         write(var2_filename,FMT=FMTorder3) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        counter3(indexer) = key
+
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append")
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -764,7 +764,7 @@ else
         write(var2_filename,FMT=FMTorder3) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-	addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
 !        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append")
 !        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 !        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -1595,12 +1595,12 @@ implicit none
 real(dp),dimension(Nvar),intent(in) :: vals
 real(dp),dimension(3,Natoms),intent(in) :: coords,gradient
 character(*),intent(in) :: filename
-integer :: i
+integer :: i, j, k
 integer, dimension(Natoms) :: permutation
 
-open(filechannel1,file=filename)
-do i = 1, Nindistinguishables
-	permutation = INDISTINGUISHABLES(i,:)
+open(filechannel1,file=filename,position="append")
+do k = 1, Nindistinguishables
+	permutation = INDISTINGUISHABLES(k,:)
 	write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
 	write(filechannel1,FMT=FMT3,advance="no") ((coords(i,permutation(j)),i=1,3),j=1,Natoms)
 	write(filechannel1,FMT=FMT3) ((gradient(i,permutation(j)),i=1,3),j=1,Natoms)

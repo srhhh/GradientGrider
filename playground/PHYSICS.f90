@@ -151,10 +151,10 @@ integer,dimension(Nvar_eff,3) :: BONDING_VALUE_DATA
 integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
 
 integer,parameter :: Nindistinguishables = 8
-integer,dimension(8,4)parameter :: INDISTINGUISHABLES = reshape((/ 1, 2, 1, 2, 3, 4, 3, 4, &
-							           2, 1, 2, 1, 4, 3, 4, 3, &
-							           3, 3, 4, 4, 1, 1, 2, 2, &
-							           4, 4, 3, 3, 2, 2, 1, 1 /), 	(/ 8, 4 /))
+integer,dimension(8,4),parameter :: INDISTINGUISHABLES = reshape((/ 1, 2, 1, 2, 3, 4, 3, 4, &
+							            2, 1, 2, 1, 4, 3, 4, 3, &
+							            3, 3, 4, 4, 1, 1, 2, 2, &
+							            4, 4, 3, 3, 2, 2, 1, 1 /), 	(/ 8, 4 /))
 
 
 
