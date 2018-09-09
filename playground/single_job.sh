@@ -54,7 +54,7 @@ scaling1_0=004
 scaling2_0=004
 
 #The number of frames a parent-level cell accepts before it is subdivided
-overcrowd0=00200
+overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
 Ntraj_max=0100
@@ -91,7 +91,7 @@ Ntrajectories=100
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Sep7_VarMaxMin"
+newGRID="H2H2_Sep9_VarMaxMin_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1

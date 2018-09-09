@@ -162,8 +162,10 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 
 	!Always calculate the variables before accelerating
 	!because we can reuse these calculations
-	call getVar1(coords,Natoms,vals(1))
-	call getVar2(coords,Natoms,vals(2))
+!	call getVar1(coords,Natoms,vals(1))
+!	call getVar2(coords,Natoms,vals(2))
+
+	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -213,8 +215,10 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 		coords = coords + dt * velocities
 
 		!Always calculate the variables before adding a frame or accelerating
-		call getVar1(coords,Natoms,vals(1))
-		call getVar2(coords,Natoms,vals(2))
+!		call getVar1(coords,Natoms,vals(1))
+!		call getVar2(coords,Natoms,vals(2))
+
+		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
                 !Accelerate and update gradients
                 call Acceleration(vals,coords,gradient)
@@ -313,7 +317,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
         implicit none
 
         !Coordinates, Velocities, and Variables
-        real(dp), dimension(3,Natoms) :: coords,velocities
+        real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
         real(dp), dimension(3,Natoms) :: gradient, approx_gradient
         real(dp), dimension(Nvar) :: vals
 	real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
@@ -335,8 +339,10 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 	velocities_initial = velocities
 
 	!Always calculate the variables before accelerating
-        call getVar1(coords,Natoms,vals(1))
-        call getVar2(coords,Natoms,vals(2))
+!        call getVar1(coords,Natoms,vals(1))
+!        call getVar2(coords,Natoms,vals(2))
+
+	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -397,13 +403,18 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-                call getVar1(coords,Natoms,vals(1))
-                call getVar2(coords,Natoms,vals(2))
+!                call getVar1(coords,Natoms,vals(1))
+!                call getVar2(coords,Natoms,vals(2))
+
+		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+		do n = 1, Natoms
+			coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
+		end do
 
                 !Check for similar frames in the grid
 		!Always set a default value; in this case, set min_rmsd_prime a default value
                 min_rmsd_prime = default_rmsd
-                call checkState(vals,coords,approx_gradient,min_rmsd_prime,&
+                call checkState(vals,coords_labelled,approx_gradient,min_rmsd_prime,&
                                 number_of_frames,order,neighbor_check)
                 min_rmsd = min_rmsd_prime
 
@@ -412,7 +423,9 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                 if ((min_rmsd .ge. threshold_rmsd) .or. (reject_flag)) then
                         call Acceleration(vals,coords,gradient)
                 else
-                        gradient = approx_gradient
+			do n = 1, Natoms
+				gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+			end do
                 end if
 
 		!Calculate the potential and kinetic energy
@@ -515,7 +528,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
         implicit none
 
         !Coordinates, Velocities, and Variables
-        real(dp),dimension(3,Natoms) :: coords,velocities
+        real(dp),dimension(3,Natoms) :: coords,coords_labelled,velocities
         real(dp),dimension(3,Natoms) :: gradient,approx_gradient
         real(dp),dimension(3,Natoms),intent(out) :: coords_initial, velocities_initial
         real(dp),dimension(3,Natoms),intent(out) :: coords_final, velocities_final
@@ -541,8 +554,10 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	velocities_initial = velocities
 
         !Always calculate the variables before accelearting
-        call getVar1(coords,Natoms,vals(1))
-        call getVar2(coords,Natoms,vals(2))
+!        call getVar1(coords,Natoms,vals(1))
+!        call getVar2(coords,Natoms,vals(2))
+
+	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
         !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
@@ -591,13 +606,18 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-                call getVar1(coords,Natoms,vals(1))
-                call getVar2(coords,Natoms,vals(2))
+!                call getVar1(coords,Natoms,vals(1))
+!                call getVar2(coords,Natoms,vals(2))
+
+		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+		do n = 1, Natoms
+			coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
+		end do
 
 		!Check for a frame in the grid
 		!Set the default value beforehand though
                 min_rmsd = default_rmsd
-                call checkState(vals,coords,approx_gradient,min_rmsd,&
+                call checkState(vals,coords_labelled,approx_gradient,min_rmsd,&
                          filechannels,number_of_frames,order,neighbor_check)
 
                 !Update the gradient with either the approximation or by acclerating
@@ -605,7 +625,9 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
                 if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                         call Acceleration(vals,coords,gradient)
                 else
-                        gradient = approx_gradient
+			do n = 1, Natoms
+				gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+			end do
                 end if
 
                 !Update the velocities
