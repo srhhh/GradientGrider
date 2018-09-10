@@ -305,8 +305,13 @@ character(6) :: angle1descriptor,angle2descriptor,bond1descriptor,scatteringdesc
 !                    TRAJECTORY
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer :: Ntraj,Ntraj_allowed,Nfile,steps,Norder1
+integer :: Ntraj,Ntraj_allowed,Nfile,steps,heatmap_steps,Norder1
 logical :: header_max_flag
+
+!Set .true. to generate top-level heat map GIFS over time for each grid
+logical,parameter :: heatmap_evolution_flag = .true.
+integer,parameter :: heatmap_evolution_steps = 100
+
 
 
 

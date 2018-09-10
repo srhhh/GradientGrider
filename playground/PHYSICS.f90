@@ -480,6 +480,134 @@ subroutine InitialSetup3(coords,velocities)
 end subroutine InitialSetup3
 
 
+subroutine InitialSetup4(coords,velocities)
+	use PARAMETERS
+        implicit none
+        real(dp), dimension(3,Natoms), intent(out) :: velocities,coords
+        real(dp), dimension(3) :: bond_vector,rotation_vector,rotation0_vector,rotation90_vector
+        real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3
+        real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
+        real(dp) :: initial_bond_angle1, initial_bond_angle2
+        real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
+        real(dp) :: bond_period_elapsed
+        real(dp) :: probJ_max, J_factor3
+	real(dp) :: incoming_speed
+        integer :: i, atom1, atom2
+
+
+	coords = 0.0d0
+	velocities = 0.0d0
+
+        do i = 1, Nbonds
+
+                !The orientation of the H2 should be some random
+                !point in the unit sphere
+                do
+                        !First get a random point in the unit cube
+                        !centered at zero
+                        random_num1 = rand() - 0.5d0
+                        random_num2 = rand() - 0.5d0
+                        random_num3 = rand() - 0.5d0
+                        random_r2 = random_num1**2 + random_num2**2
+                        random_r3 = random_r2 + random_num3**2
+
+                        !If the point lies outside of the cube, reject it
+                        if (random_r3 > 0.25d0) cycle
+                        random_r2 = sqrt(random_r2)
+
+                        !But if it lies in the sphere, use its direction (angles)
+                        initial_bond_angle1 = atan2(random_num1,random_num2)
+                        initial_bond_angle2 = atan2(random_r2,random_num3)
+                        exit
+                end do
+
+                !The vibrational energy of the H2 should be some random value
+                !that follows the boltzmann distribution at this temperature
+                do
+                        !This picks a random value between zero and some very high upper limit
+                        random_num1 = rand() * upsilon_max
+!                               random_num2 = rand() * upsilon_factor2
+                        random_num2 = rand()
+
+!                               if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
+                        if (exp(-random_num1 * upsilon_factor1) * upsilon_factor2 < random_num2) cycle
+
+                        initial_vibrational_energy = (random_num1 + 0.5d0) * epsilon_factor
+                        exit
+                end do
+                initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
+                J_factor3 = J_factor1 / (initial_bond_distance**2)
+                probJ_max = sqrt(2*J_factor3) * exp(J_factor3*0.25d0 - 0.5d0)
+!                J_factor3 = 85.3d0 / temperature
+
+                !The rotational energy of the H2 should be some random value
+                !that follows the boltzmann distribution at this temperature
+                do
+                        !This picks a random value between zero and some very high upper limit
+                        random_num1 = rand() * J_max
+                        random_num2 = rand() * probJ_max
+
+                        if ((2*random_num1 + 1.0d0) * J_factor3 * exp(-random_num1 * (random_num1 + 1.0d0) * &
+                            J_factor3) < random_num2) cycle
+
+                        initial_rotational_energy = (random_num1) * (random_num1 + 1.0d0) * J_factor2
+                        exit
+                end do
+
+                random_num1 = rand()
+                initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
+                initial_rotation_angle = random_num1*pi2 - pi
+                bond_period_elapsed = rand()
+
+                !Now we actually change the physical location of coordinates to reflect this bonding
+                atom1 = BONDING_DATA(i,1)
+                atom2 = BONDING_DATA(i,2)
+
+                !Figure out which direction the bond is going
+                bond_vector = (/ sin(initial_bond_angle1)*cos(initial_bond_angle2),&
+                                 sin(initial_bond_angle1)*sin(initial_bond_angle2),&
+                                 cos(initial_bond_angle1) /)
+
+                !And two orthogonal vectors that are both perpendicular to the bond
+                rotation0_vector =  (/ bond_vector(2), -bond_vector(1), 0.0d0 /) / &
+                                       sqrt(bond_vector(2)**2 + bond_vector(1)**2)
+                call cross(bond_vector,rotation0_vector,rotation90_vector)
+
+                !Calculate the coordinates of the atoms via the distance, skew, and bond vector
+                bond_vector = initial_bond_distance * bond_vector / 2
+                coords(:,atom1) = bond_vector
+                coords(:,atom2) = -bond_vector
+
+                !Calculate the direction the bond is spinning given the two
+                !orthogonal vectors
+                rotation_vector = ( sin(initial_rotation_angle) * rotation0_vector + &
+                                    cos(initial_rotation_angle) * rotation90_vector ) * &
+                                  initial_rotational_speed
+
+                !With the translational, vibrational, and rotational vectors and speeds
+                !Calculate the velocities of the atoms
+                velocities(:,atom1) = rotation_vector
+                velocities(:,atom2) = -rotation_vector
+        end do
+
+	incoming_speed = sqrt(2*initial_translational_KE/(mass_hydrogen*sum(COLLISION_DATA)))
+
+	do i = 1, Natoms
+		if (COLLISION_DATA(i) == 1) then
+			velocities(:,i) = velocities(:,i) + &
+                        (/ incoming_speed, 0.0d0, 0.0d0 /)
+		else
+			coords(:,i) = coords(:,i) + &
+			(/ collision_distance, collision_skew, 0.0d0 /)
+		end if
+	end do
+
+end subroutine InitialSetup4
+
+
+
+
+
 subroutine NonBondedForce(coords1,coords2,gradient1,gradient2,r)
         implicit none
         real(dp), dimension(3), intent(in) :: coords1,coords2

@@ -180,7 +180,7 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
 			coords = coords + dt * velocities
 			call Acceleration(vals,coords,gradient)
-			velocities = velocities + 0.5d0 * gradient
+			velocities = velocities + gradient
 		end do
 
 		!And then reset the bond
@@ -356,7 +356,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
 			coords = coords + dt * velocities
 			call Acceleration(vals,coords,gradient)
-			velocities = velocities + 0.5d0 * gradient
+			velocities = velocities + gradient
 		end do
 
 		!And then reset the bond
@@ -571,7 +571,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
 			coords = coords + dt * velocities
 			call Acceleration(vals,coords,gradient)
-			velocities = velocities + 0.5d0 * gradient
+			velocities = velocities + gradient
 		end do
 
 		!And then reset the bond
@@ -858,6 +858,315 @@ subroutine Acceleration(vals,coords,gradient)
 	return
 
 end subroutine Acceleration
+
+
+
+
+subroutine addMultipleTrajectories()
+	use VARIABLES
+	use PHYSICS
+	use PARAMETERS
+	use interactSingleGrid
+	use analyzeHeatMapswithMultipleGrids
+        implicit none
+
+	!Coordinates, Velocities, and Variables
+	real(dp), dimension(3,Natoms,Ntraj_max) :: coords,gradient,velocities
+	real(dp), dimension(3,Natoms) :: coords_initial,velocities_initial
+	real(dp), dimension(Nvar,Ntraj_max) :: vals
+	logical,dimension(Ntraj_max) :: TRAJECTORIES_FLAG
+	integer :: current_cell
+	character(5) :: variable_length_text
+
+	!Incremental Integer
+	integer :: n,m
+
+        !Initialize the scene
+	Norder1 = 0
+	TRAJECTORIES_FLAG = .true.
+
+	if (heatmap_evolution_flag) then
+		call system("mkdir "//gridpath1//"png")
+		heatmap_steps = 0
+	end if
+
+	!$OMP PARALLEL
+	do n = 1, Ntraj_max
+	        call InitialSetup4(coords(:,:,n),velocities(:,:,n))
+		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
+	        call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
+	end do
+	!$OMP END PARALLEL
+
+        !Accelerate the velcocities for a half step (verlet)
+	velocities = velocities + 0.5d0 * gradient
+
+	!To randomize the periods of the bond, I let the scene go on
+	!for a small period of time (need to standardize this later)
+	!$OMP PARALLEL
+	do m = 1, Ntraj_max
+	coords_initial = coords(:,:,m)
+	velocities_initial = velocities(:,:,m)
+
+	do n = 1, Nbonds
+		do steps = 1, int(rand()*vib_period)
+			coords(:,:,m) = coords(:,:,m) + dt * velocities(:,:,m)
+			call Acceleration(vals(:,m),coords(:,:,m),gradient(:,:,m))
+			velocities(:,:,m) = velocities(:,:,m) + gradient(:,:,m)
+		end do
+
+		!And then reset the bond
+		coords(:,BONDING_DATA(n,1),m) = coords_initial(:,BONDING_DATA(n,1))
+		coords(:,BONDING_DATA(n,2),m) = coords_initial(:,BONDING_DATA(n,2))
+		velocities(:,BONDING_DATA(n,1),m) = velocities_initial(:,BONDING_DATA(n,1))
+		velocities(:,BONDING_DATA(n,2),m) = velocities_initial(:,BONDING_DATA(n,2))
+	end do
+	end do
+	!$OMP END PARALLEL
+
+	!Now we go into the mainloop
+	!We have a hard cap of Nsteps timesteps
+        do steps = 1, Nsteps
+
+		!Just for bug-testing
+                if (.false.) then !(modulo(steps,50) == 0) then
+                        open(filechannel1,file=gridpath0//trajectoryfile,position="append")
+                        write(filechannel1,'(I6)') Natoms
+                        write(filechannel1,*) ""
+			do n = 1, Natoms
+                        write(filechannel1,'(A1,3F10.6)') 'H',&
+                                coords(1,n,1), coords(2,n,1), coords(3,n,1)
+			end do
+			close(filechannel1)
+                end if
+
+                if (heatmap_evolution_flag .and. (modulo(steps,heatmap_evolution_steps) == 0)) then
+			heatmap_steps = heatmap_steps + 1
+			write(variable_length_text,'(I0.5)') heatmap_steps
+			call analyzeHeatMaps2(counter0,counter1,"png/"//variable_length_text//".png")
+                end if
+ 
+		do n = 1, Ntraj_max
+			if (.not.TRAJECTORIES_FLAG(n)) cycle
+
+	                !Check every 500 steps if we are out-of-bounds
+	                if (modulo(steps,500) == 1) then      
+	 			if ((vals(1,n)>max_var1) .or. (vals(2,n)>max_var2)) then
+	 				TRAJECTORIES_FLAG(n) = .false.
+	 			end if
+
+				if (.not.(any(TRAJECTORIES_FLAG))) header_max_flag = .true.
+	                endif
+		end do
+
+		!$OMP PARALLEL
+		do n = 1, Ntraj_max
+			if (.not.TRAJECTORIES_FLAG(n)) cycle
+	
+	                !Update the coordinates with the velocities
+			coords(:,:,n) = coords(:,:,n) + dt * velocities(:,:,n)
+	
+			!Update the variables
+			call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
+	
+	                !Accelerate and update gradients
+	                call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
+	
+			!Add the frame to the grid
+	        	call addState(vals(:,n),coords(:,:,n),gradient(:,:,n))
+	
+			!If there are too many subdivisions and counter0 will get out-of-bounds
+			!we would have to call this to exit
+	                if (header_max_flag) exit
+	
+			!Update the velocities(:,:,n)
+			velocities(:,:,n) = velocities(:,:,n) + gradient(:,:,n)
+		end do
+		!$OMP END PARALLEL
+
+	        if (header_max_flag) then
+			heatmap_steps = heatmap_steps + 1
+			write(variable_length_text,'(I0.5)') heatmap_steps
+			call analyzeHeatMaps2(counter0,counter1,"png/"//variable_length_text//".png")
+			exit
+		end if
+        end do
+
+	if (heatmap_evolution_flag) then
+		call system("convert -delay 20 -loop 0 "//gridpath1//"png/*.png "//gridpath1//"heatmap_evolution.gif")
+	end if
+
+end subroutine addMultipleTrajectories
+
+
+
+subroutine addMultipleTrajectories2()
+	use VARIABLES
+	use PHYSICS
+	use PARAMETERS
+	use interactSingleGrid
+	use analyzeHeatMapswithMultipleGrids
+        implicit none
+
+	!Coordinates, Velocities, and Variables
+	real(dp), dimension(3,Natoms,Ntraj_max) :: coords,gradient,velocities
+	real(dp), dimension(3,Natoms) :: coords_initial,velocities_initial
+	real(dp), dimension(Nvar,Ntraj_max) :: vals
+	integer,dimension(counter0_max) :: TRAJECTORIES0
+	integer,dimension(resolution_0) :: TRAJECTORIES1
+	integer,dimension(Ntraj_max) :: NEIGHBOR_LIST
+	logical,dimension(Ntraj_max) :: TRAJECTORIES_FLAG
+	integer :: current_cell
+	integer :: var1_index, var2_index,indexer
+	real :: var1_round0, var2_round0
+	character(5) :: variable_length_text
+
+	!Incremental Integer
+	integer :: n,m
+
+        !Initialize the scene
+	Norder1 = 0
+	TRAJECTORIES_FLAG = .true.
+
+	if (heatmap_evolution_flag) then
+		call system("mkdir "//gridpath1//"png")
+		heatmap_steps = 0
+	end if
+
+	do n = 1, Ntraj_max
+	        call InitialSetup4(coords(:,:,n),velocities(:,:,n))
+		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
+	        call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
+	end do
+
+        !Accelerate the velcocities for a half step (verlet)
+	velocities = velocities + 0.5d0 * gradient
+
+	!To randomize the periods of the bond, I let the scene go on
+	!for a small period of time (need to standardize this later)
+	!$OMP PARALLEL
+	do m = 1, Ntraj_max
+	coords_initial = coords(:,:,m)
+	velocities_initial = velocities(:,:,m)
+
+	do n = 1, Nbonds
+		do steps = 1, int(rand()*vib_period)
+			coords(:,:,m) = coords(:,:,m) + dt * velocities(:,:,m)
+			call Acceleration(vals(:,m),coords(:,:,m),gradient(:,:,m))
+			velocities(:,:,m) = velocities(:,:,m) + gradient(:,:,m)
+		end do
+
+		!And then reset the bond
+		coords(:,BONDING_DATA(n,1),m) = coords_initial(:,BONDING_DATA(n,1))
+		coords(:,BONDING_DATA(n,2),m) = coords_initial(:,BONDING_DATA(n,2))
+		velocities(:,BONDING_DATA(n,1),m) = velocities_initial(:,BONDING_DATA(n,1))
+		velocities(:,BONDING_DATA(n,2),m) = velocities_initial(:,BONDING_DATA(n,2))
+	end do
+	end do
+	!$OMP END PARALLEL
+
+	TRAJECTORIES0 = 0
+	current_cell = 0
+	NEIGHBOR_LIST = 0
+	!$OMP PARALLEL
+	do n = 1, Ntraj_max
+		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
+
+		var1_index = int(vals(1,n) * divisor1_0)
+		var2_index = int(vals(2,n) * divisor2_0)
+		
+		var1_round0 = multiplier1_0 * var1_index
+		var2_round0 = multiplier2_0 * var2_index
+		
+		indexer = bounds1 * var2_index + var1_index + 1
+
+		if (TRAJECTORIES0(indexer) == 0) then
+			current_cell = current_cell + 1
+			NEIGHBOR_LIST(n) = -indexer
+			TRAJECTORIES0(indexer) = n
+		else
+			NEIGHBOR_LIST(n) = TRAJECTORIES0(indexer)
+			TRAJECTORIES0(indexer) = n
+		end if
+	end do
+	!$OMP END PARALLEL
+
+	!Now we go into the mainloop
+	!We have a hard cap of Nsteps timesteps
+        do
+
+		!Just for bug-testing
+                if (.false.) then !(modulo(steps,50) == 0) then
+                        open(filechannel1,file=gridpath0//trajectoryfile,position="append")
+                        write(filechannel1,'(I6)') Natoms
+                        write(filechannel1,*) ""
+			do n = 1, Natoms
+                        write(filechannel1,'(A1,3F10.6)') 'H',&
+                                coords(1,n,1), coords(2,n,1), coords(3,n,1)
+			end do
+			close(filechannel1)
+                end if
+
+                if (heatmap_evolution_flag .and. (modulo(steps,heatmap_evolution_steps) == 0)) then
+			heatmap_steps = heatmap_steps + 1
+			write(variable_length_text,'(I0.5)') heatmap_steps
+			call analyzeHeatMaps2(counter0,counter1,"png/"//variable_length_text//".png")
+                end if
+ 
+                !Check every 500 steps if we are out-of-bounds
+                if (modulo(steps,500) == 1) then      
+		do n = 1, Ntraj_max
+			if (.not.TRAJECTORIES_FLAG(n)) cycle
+
+			if ((vals(1,n)>max_var1) .or. (vals(2,n)>max_var2)) then
+				TRAJECTORIES_FLAG(n) = .false.
+				NEIGHBOR_LIST(n) = 0
+			end if
+
+			if (.not.(any(TRAJECTORIES_FLAG))) header_max_flag = .true.
+		end do
+                endif
+
+		do
+			if (.not.TRAJECTORIES_FLAG(n)) cycle
+	
+	                !Update the coordinates with the velocities
+			coords(:,:,n) = coords(:,:,n) + dt * velocities(:,:,n)
+	
+			!Update the variables
+			call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
+	
+	                !Accelerate and update gradients
+	                call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
+	
+			!Add the frame to the grid
+	        	call addState(vals(:,n),coords(:,:,n),gradient(:,:,n))
+	
+			!If there are too many subdivisions and counter0 will get out-of-bounds
+			!we would have to call this to exit
+	                if (header_max_flag) exit
+	
+			!Update the velocities(:,:,n)
+			velocities(:,:,n) = velocities(:,:,n) + gradient(:,:,n)
+		end do
+
+	        if (header_max_flag) then
+			heatmap_steps = heatmap_steps + 1
+			write(variable_length_text,'(I0.5)') heatmap_steps
+			call analyzeHeatMaps2(counter0,counter1,"png/"//variable_length_text//".png")
+			exit
+		end if
+        end do
+
+	if (heatmap_evolution_flag) then
+		call system("convert -delay 20 -loop 0 "//gridpath1//"png/*.png "//gridpath1//"heatmap_evolution.gif")
+	end if
+
+end subroutine addMultipleTrajectories2
+
+
+
+
 
 
 

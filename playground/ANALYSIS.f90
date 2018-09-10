@@ -13,7 +13,7 @@ integer,parameter :: Ngrid_cap = 1
 !The number of grids we will end up using (never more than Ngrid_cap)
 integer :: Ngrid_total
 
-!Set .true. to generate top-level heat maps for each grid
+!Set .true. to generate top-level heat maps for each complete grid
 logical,parameter :: heatmap_flag = .true.
 
 !Set .true. to generate the scattering angle plots of the trajectories

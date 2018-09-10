@@ -47,7 +47,7 @@ end subroutine analyzeHeatMaps1
 
 
 
-subroutine analyzeHeatMaps2()
+subroutine analyzeHeatMaps2(counter0_optional,counter1_optional,filename_optional)
 use PARAMETERS
 use mapCellData
 use ANALYSIS
@@ -58,6 +58,10 @@ character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(6) :: Ntraj_text
+
+integer,dimension(counter0_max),optional :: counter0_optional
+integer,dimension(counter1_max),optional :: counter1_optional
+character(*),optional :: filename_optional
 
 integer :: occurence_max
 integer :: indexer0, indexer1
@@ -71,7 +75,8 @@ integer :: iostate
 integer :: i, j, n
 
 
-do Ngrid = 1, Ngrid_total
+
+do Ngrid = 1, max(Ngrid_total,1)
 
         !The folders are named starting from 001 by increments of 1
         write(variable_length_text,FMT="(I5)") Ngrid_text_length
@@ -80,21 +85,28 @@ do Ngrid = 1, Ngrid_total
 
 	!This heat map will look only at counters 0 and 1 to make a heat map
 
-        open(filechannel1,file=gridpath1//counter0file)
-        do n = 1, counter0_max
-        read(filechannel1,FMT="(I8)") counter0(n)
-        end do
-        close(filechannel1)
+	!If the counters are already open, then no need to read them off again
+	if ((present(counter0_optional)).and.(present(counter1_optional)).and.(present(filename_optional))) then
+		counter0 = counter0_optional
+		counter1 = counter1_optional
 
-        open(filechannel1,file=gridpath1//counter1file)
-        do n = 1, counter1_max
-        read(filechannel1,FMT="(I8)") counter1(n)
-        end do
-        close(filechannel1)
+	else
+	        open(filechannel1,file=gridpath1//counter0file)
+	        do n = 1, counter0_max
+		        read(filechannel1,FMT="(I8)") counter0(n)
+	        end do
+	        close(filechannel1)
+	
+	        open(filechannel1,file=gridpath1//counter1file)
+	        do n = 1, counter1_max
+		        read(filechannel1,FMT="(I8)") counter1(n)
+	        end do
+	        close(filechannel1)
+	end if
 
         !Iterate through these cells
         open(filechannel1,file=gridpath0//temporaryfile3)
-	occurence_max = 0
+	occurence_max = overcrowd0
 
         do i = 1, bounds2
         var2 = i * multiplier2_0
@@ -147,7 +159,11 @@ do Ngrid = 1, Ngrid_total
         write(variable_length_text,FMT="(I5)") occurence_max
         open(filechannel1,file=gridpath0//gnuplotfile)
         write(filechannel1,*) 'set terminal pngcairo size 1600,1300'
-        write(filechannel1,*) 'set output "'//gridpath1//'HeatMap_TopLevel_Detailed1.png"'
+	if ((present(counter0_optional)).and.(present(counter1_optional)).and.(present(filename_optional))) then
+        	write(filechannel1,*) 'set output "'//gridpath1//filename_optional//'"'
+	else
+	        write(filechannel1,*) 'set output "'//gridpath1//'HeatMap_TopLevel_Detailed1.png"'
+	end if
         write(filechannel1,*) 'unset key'
         write(filechannel1,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
         write(filechannel1,*) '     1 1 0.6471 0 )'
@@ -161,6 +177,9 @@ do Ngrid = 1, Ngrid_total
         write(filechannel1,*) 'splot "'//gridpath0//temporaryfile3//'" u 1:2:3 w pm3d'
         close(filechannel1)
         call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+	!If we only have one counter (that was provided) just exit early
+	if ((present(counter0_optional)).and.(present(counter1_optional)).and.(present(filename_optional))) exit
         
 end do
 

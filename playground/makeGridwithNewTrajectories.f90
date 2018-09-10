@@ -63,6 +63,7 @@ use VARIABLES
 use ANALYSIS
 use PHYSICS
 use analyzeScatteringAngleswithMultipleGrids
+use analyzeHeatMapswithMultipleGrids
 implicit none
 
 !Grid Directory/File Formatting Strings
@@ -226,6 +227,18 @@ do Ngrid = 1, Ngrid_max
 	!				       trajectory_CPU_time,trajectory_wall_time,r1,r2,c1,c2)
 	!$OMP DO
 
+
+
+
+
+!!! TEST !!!
+!call addMultipleTrajectories()
+!exit
+!!!!!!!!!!!!
+
+
+
+
         do n = 1, Ntraj_max
 
 		!Get some random initial conditions for the trajectory
@@ -271,7 +284,7 @@ do Ngrid = 1, Ngrid_max
 			initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
 			J_factor3 = J_factor1 / (initial_bond_distance**2)
 			probJ_max = sqrt(2*J_factor3) * exp(J_factor3*0.25d0 - 0.5d0)
-			J_factor3 = 85.3d0 / temperature
+!			J_factor3 = 85.3d0 / temperature
 
  			!The rotational energy of the H2 should be some random value
 			!that follows the boltzmann distribution at this temperature
@@ -619,3 +632,4 @@ print *, "Successfully exited grid creation"
 print *, ""
 
 end program makeGridwithNewTrajectories
+
