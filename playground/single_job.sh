@@ -57,10 +57,10 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=1
+Ngrid_max=4
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -87,7 +87,7 @@ threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=100
+Ntrajectories=700
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -97,7 +97,7 @@ Ntrajectories=100
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Sep10_VarMaxMin_test3"
+newGRID="H2H2_Sep12_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1

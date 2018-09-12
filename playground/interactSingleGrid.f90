@@ -451,9 +451,6 @@ key = counter0(indexer) + 1 !Nindistinguishables
 !If its not overcrowded, we need to add frames
 if (key < overcrowd0) then
 
-        !keep track of the population
-        counter0(indexer) = key
-
         !The filename is the sum of the decimal portions of each order
         var1_round = var1_round0
         var2_round = var2_round0
@@ -473,8 +470,10 @@ if (key < overcrowd0) then
         !Add the frame
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter0(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter0(indexer) = key
         end if
 
         !Return because we have not yet overcrowded the cell
@@ -498,15 +497,16 @@ else if (key <= population_max) then
         !that holds the index of the next counter (header1 value)
         !is not incremented by an increment of key
         key = key + key_start*header1
-        counter0(indexer) = key
 
         !We still need to add the frame
         !Because we are adding the frame AFTER subdividing, we need to continue on to the
         !next order; that is why there is no return at the end of this conditional
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter0(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter0(indexer) = key
         end if
 
         !Incrementing header insures that the index this subcell is granted in the next counter is unique
@@ -552,8 +552,6 @@ key = counter1(indexer) + 1 !Nindistinguishables
 
 if (key < overcrowd1) then
 
-        counter1(indexer) = key
-
         var1_round = var1_round0 + var1_round1
         var2_round = var2_round0 + var2_round1
 
@@ -570,8 +568,10 @@ if (key < overcrowd1) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter1(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter1(indexer) = key
         end if
 
         return
@@ -589,12 +589,13 @@ else if (key <= population_max) then
                     header2-1,counter2,counter2_max,key-1) !Nindistinguishables)
 
         key = key + key_start*header2
-        counter1(indexer) = key
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter1(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter1(indexer) = key
         end if
 
         header2 = header2 + 1
@@ -627,8 +628,6 @@ key = counter2(indexer) + 1 !Nindistinguishables
 
 if (key < overcrowd2) then
 
-        counter2(indexer) = key
-
         var1_round = var1_round0 + var1_round1 + var1_round2
         var2_round = var2_round0 + var2_round1 + var2_round2
 
@@ -645,8 +644,10 @@ if (key < overcrowd2) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter2(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter2(indexer) = key
         end if
 
         return
@@ -664,7 +665,6 @@ else if (key <= population_max) then
                     header3-1,counter3,counter3_max,key-1) !Nindistinguishables)
 
         key = key + key_start*header3
-        counter2(indexer) = key
 
 !Just for testing purposes
  open(progresschannel,file=trim(gridpath2)//trim(progressfile),position="append")
@@ -673,8 +673,10 @@ else if (key <= population_max) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter2(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter2(indexer) = key
         end if
 
         header3 = header3 + 1
@@ -703,8 +705,6 @@ key = counter3(indexer) + 1 !Nindistinguishables
 
 if (key < overcrowd3) then
 
-        counter3(indexer) = key
-
         var1_round3 = multiplier1_3 * var1_index
         var2_round3 = multiplier2_3 * var2_index
 
@@ -724,8 +724,10 @@ if (key < overcrowd3) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter3(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter3(indexer) = key
         end if
 
 else if (key <= population_max) then
@@ -737,12 +739,12 @@ else if (key <= population_max) then
         write(var2_filename,FMT=FMTorder3) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        counter3(indexer) = key
-
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter3(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter3(indexer) = key
         end if
 
 !This means the current griding is probably not granular enough
@@ -759,8 +761,10 @@ else
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter3(indexer) = key + Nindistinguishables - 1
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        	counter3(indexer) = key
         end if
 
 end if
