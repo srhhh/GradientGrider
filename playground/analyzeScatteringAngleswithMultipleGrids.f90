@@ -421,11 +421,15 @@ write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
 else
-write(gnuplotchannel,*) 'set xrange [', lowerlimit, ':', upperlimit, ']'
+write(gnuplotchannel,*) 'E_min = ', lowerlimit
+write(gnuplotchannel,*) 'E_max = ', upperlimit
+write(gnuplotchannel,*) 'set xrange [E_min:E_max]'
+write(gnuplotchannel,*) 'set xtics E_min, 10*(E_max-E_min)/',SA_Nbins,', E_max'
+write(gnuplotchannel,*) "set format x '%.3f'"
 write(gnuplotchannel,*) 'set xlabel "Energy (eV)"'
 end if
-write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'unset label 1'
@@ -529,16 +533,16 @@ else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($1)):(1.0) smooth frequency w boxes'
 end if
-        write(gnuplotchannel,*) 'min_E = ', min(min_relenergychange,min_absenergychange)
-        write(gnuplotchannel,*) 'max_E = ', max(max_relenergychange,max_absenergychange)
+        write(gnuplotchannel,*) 'min_E = .001 * ', min(min_relenergychange,min_absenergychange)
+        write(gnuplotchannel,*) 'max_E = .001 * ', max(max_relenergychange,max_absenergychange)
         write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
         write(gnuplotchannel,*) 'set boxwidth box_width'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
-        write(gnuplotchannel,*) 'set xlabel "Energy (eV)"'
+	write(gnuplotchannel,*) 'bin_number(x) = floor(.001*x/box_width)'
+        write(gnuplotchannel,*) 'set xlabel "Energy (meV)"'
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
-        write(gnuplotchannel,*) "set format x '%.4f'"
+        write(gnuplotchannel,*) "set format x '%.3f'"
         write(gnuplotchannel,*) 'set ylabel "Absolute Translational Energy Change"'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
@@ -566,14 +570,15 @@ else
                                 '" u (rounded($4)):(1.0) smooth frequency w boxes'
 end if
         write(gnuplotchannel,*) 'set ylabel "Rotational Translational Energy Change"'
-        write(gnuplotchannel,*) 'min_E = ', min_rotenergychange
-        write(gnuplotchannel,*) 'max_E = ', max_rotenergychange
+        write(gnuplotchannel,*) 'min_E = .001 * ', min_rotenergychange
+        write(gnuplotchannel,*) 'max_E = .001 * ', max_rotenergychange
         write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
-        write(gnuplotchannel,*) "set format x '%.8f'"
+        write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
+        write(gnuplotchannel,*) "set format x '%.3f'"
         write(gnuplotchannel,*) 'set boxwidth box_width'
+	write(gnuplotchannel,*) 'bin_number(x) = floor(.001*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($5)):(1.0) smooth frequency w boxes, \'

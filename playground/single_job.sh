@@ -80,14 +80,14 @@ testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.010000d0
-threshold_rmsd1=.010000d0
+threshold_rmsd1=.100000d0
 threshold_rmsd2=.001000d0
 threshold_rmsd3=.005000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 testtrajSA_flag=.true.
-Ntrajectories=700
+Ntrajectories=350
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -100,13 +100,13 @@ Ntrajectories=700
 newGRID="H2H2_Sep12_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 newGRID_check_min=30
 
 #The number of post-grid analyses you would like done
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -219,7 +219,7 @@ cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS)+(.f90) $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
 
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 1/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/

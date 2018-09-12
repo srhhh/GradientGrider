@@ -1,5 +1,5 @@
-a.out : DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd_original.o mapCellData.o interactSingleGrid.o interactMultipleGrids.o runTrajectory.o analyzeHeatMapswithMultipleGrids.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
-	$(FC) -o a.out -O3 -fcheck="bound" DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd_original.o mapCellData.o interactSingleGrid.o interactMultipleGrids.o runTrajectory.o analyzeHeatMapswithMultipleGrids.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
+a.out : DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd_original.o mapCellData.o interactSingleGrid.o interactMultipleGrids.o analyzeHeatMapswithMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
+	$(FC) -o a.out -O3 -fcheck="bound" DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd_original.o mapCellData.o interactSingleGrid.o interactMultipleGrids.o analyzeHeatMapswithMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
 
 FC = gfortran
 SOURCE = /home/kazuumi/Desktop/GradientGrider/playground/
