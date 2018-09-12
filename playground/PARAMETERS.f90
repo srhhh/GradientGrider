@@ -252,6 +252,20 @@ integer,parameter :: key_start = population_max + 1
 !Not heavily tested in the newer updates so is deprecated (for now)
 logical,parameter :: force_Neighbors = .false.
 
+!If we want to add duplicate copies of a state (but permuted labels)
+!Then set this to .true.
+!Otherwise, all frames are relabelled to a specific format
+!Note: if true, this will fill up the grid much faster so a larger
+!value of overcrowd is recommended
+logical,parameter :: force_Duplicates = .false.
+
+!If force_Duplicate is set to false there is an additonal feature here
+!for the frame to be added to have no relabelling
+!Note: this makes it so that two indistinguishable frames
+!      possibly do not have the same RMSD or even cell index
+logical,parameter :: force_NoLabels = .false.
+
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                   MULTI-GRID PARAMETERS

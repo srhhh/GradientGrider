@@ -62,6 +62,12 @@ Ntraj_max=0100
 #The number of grids to add to a new library
 Ngrid_max=1
 
+#Whether to add duplicate copies or use a labelling scheme
+force_Duplicates=.false.
+
+#Whether to use the labelling scheme or drop it altogether
+force_NoLabels=.false.
+
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
 #what you want each individual one to do
@@ -91,7 +97,7 @@ Ntrajectories=100
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Sep9_VarMaxMin_test"
+newGRID="H2H2_Sep10_VarMaxMin_test3"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1
@@ -142,6 +148,8 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
      s|overcrowd0_text_length = [0-9]*|overcrowd0_text_length = ${#overcrowd0}|
      s|gridpath_length = .*|gridpath_length = $((${#gridPATH}+1))|
      s|Ngrid_check_min = .*|Ngrid_check_min = $newGRID_check_min|
+     s|force_Duplicates = .*|force_Duplicates = $force_Duplicates|
+     s|force_NoLabels = .*|force_NoLabels = $force_NoLabels|
      s|gridpath0 = .*|gridpath0 = \"$gridPATH/\"|
      s|$oldPARAMETERS\\.f90|$newPARAMETERS.f90|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
 

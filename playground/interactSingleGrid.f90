@@ -471,13 +471,11 @@ if (key < overcrowd0) then
         end if
 
         !Add the frame
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status=trim(descriptor0))
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
         !Return because we have not yet overcrowded the cell
         return
@@ -505,13 +503,11 @@ else if (key <= population_max) then
         !We still need to add the frame
         !Because we are adding the frame AFTER subdividing, we need to continue on to the
         !next order; that is why there is no return at the end of this conditional
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status="old")
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
         !Incrementing header insures that the index this subcell is granted in the next counter is unique
         header1 = header1 + 1
@@ -572,13 +568,11 @@ if (key < overcrowd1) then
                 descriptor0 = "old"
         end if
 
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status=trim(descriptor0))
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
         return
 
@@ -597,13 +591,11 @@ else if (key <= population_max) then
         key = key + key_start*header2
         counter1(indexer) = key
 
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status="old")
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
         header2 = header2 + 1
 
@@ -651,13 +643,11 @@ if (key < overcrowd2) then
                 descriptor0 = "old"
         end if
 
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status=trim(descriptor0))
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
         return
 
@@ -681,13 +671,11 @@ else if (key <= population_max) then
  write(progresschannel,*) "divyUp on subcell: ", trim(subcell)
  close(progresschannel)
 
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status="old")
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
         header3 = header3 + 1
 
@@ -734,13 +722,11 @@ if (key < overcrowd3) then
                 descriptor0 = "old"
         end if
 
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append",status=trim(descriptor0))
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
 else if (key <= population_max) then
 
@@ -753,13 +739,11 @@ else if (key <= population_max) then
 
         counter3(indexer) = key
 
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append")
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
 !This means the current griding is probably not granular enough
 print *, "A third-level subcell got overcrowded!"
@@ -773,13 +757,11 @@ else
         write(var2_filename,FMT=FMTorder3) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-	call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!	call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-!        open(filechannel1,file=gridpath2//trim(subcell)//".dat",position="append")
-!        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-!        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-!        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!        close(filechannel1)
+        if (force_Duplicates) then
+                call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        else
+                call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
+        end if
 
 end if
 
@@ -1630,13 +1612,18 @@ character(*),intent(in) :: filename
 integer :: i,j
 
 open(filechannel1,file=filename,position="append")
-write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-write(filechannel1,FMT=FMT3,advance="no") ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
-write(filechannel1,FMT=FMT3) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+if (force_NoLabels) then
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+else
+        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+        write(filechannel1,FMT=FMT3) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+end if
 close(filechannel1)
 
 end subroutine addSingle
-
 
 
 

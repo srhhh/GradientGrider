@@ -186,6 +186,8 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 		!And then reset the bond
 		coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
 		coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+		velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
+		velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
 	end do
 
 	!Now we go into the mainloop
@@ -362,6 +364,8 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 		!And then reset the bond
 		coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
 		coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+		velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
+		velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
 	end do
 
 	!Get the trajectory file open for trajectory visualization
@@ -407,25 +411,38 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 !                call getVar2(coords,Natoms,vals(2))
 
 		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-		do n = 1, Natoms
-			coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-		end do
 
-                !Check for similar frames in the grid
-		!Always set a default value; in this case, set min_rmsd_prime a default value
-                min_rmsd_prime = default_rmsd
-                call checkState(vals,coords_labelled,approx_gradient,min_rmsd_prime,&
-                                number_of_frames,order,neighbor_check)
-                min_rmsd = min_rmsd_prime
+                if ((force_Duplicates) .or. (force_NoLabels)) then
+                        min_rmsd = default_rmsd
+                        call checkState(vals,coords,approx_gradient,min_rmsd,&
+                                 number_of_frames,order,neighbor_check)
 
-                !Update the gradient either with the approximation or by accelerating
-		!This depends on the threshold and the rejection method
-                if ((min_rmsd .ge. threshold_rmsd) .or. (reject_flag)) then
-                        call Acceleration(vals,coords,gradient)
+                        if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                                call Acceleration(vals,coords,gradient)
+                        else
+                                gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+                        end if
+
                 else
-			do n = 1, Natoms
-				gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
-			end do
+                        do n = 1, Natoms
+                                coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
+                        end do
+
+                       !Check for a frame in the grid
+                       !Set the default value beforehand though
+                       min_rmsd = default_rmsd
+                       call checkState(vals,coords_labelled,approx_gradient,min_rmsd,&
+                                number_of_frames,order,neighbor_check)
+
+                       !Update the gradient with either the approximation or by acclerating
+                       !This is dependent on the threshold and the rejection method
+                       if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                               call Acceleration(vals,coords,gradient)
+                       else
+                               do n = 1, Natoms
+                                        gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+                               end do
+                       end if
                 end if
 
 		!Calculate the potential and kinetic energy
@@ -577,6 +594,8 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 		!And then reset the bond
 		coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
 		coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+		velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
+		velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
 	end do
 
 	!Start the main loop
@@ -610,24 +629,38 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 !                call getVar2(coords,Natoms,vals(2))
 
 		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-		do n = 1, Natoms
-			coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-		end do
 
-		!Check for a frame in the grid
-		!Set the default value beforehand though
-                min_rmsd = default_rmsd
-                call checkState(vals,coords_labelled,approx_gradient,min_rmsd,&
-                         filechannels,number_of_frames,order,neighbor_check)
+                if ((force_Duplicates) .or. (force_NoLabels)) then
+                        min_rmsd = default_rmsd
+                        call checkState(vals,coords,approx_gradient,min_rmsd,&
+                                 filechannels,number_of_frames,order,neighbor_check)
 
-                !Update the gradient with either the approximation or by acclerating
-		!This is dependent on the threshold and the rejection method
-                if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-                        call Acceleration(vals,coords,gradient)
+                        if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                                call Acceleration(vals,coords,gradient)
+                        else
+                                gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+                        end if
+
                 else
-			do n = 1, Natoms
-				gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
-			end do
+                        do n = 1, Natoms
+                                coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
+                        end do
+
+                       !Check for a frame in the grid
+                       !Set the default value beforehand though
+                               min_rmsd = default_rmsd
+                               call checkState(vals,coords_labelled,approx_gradient,min_rmsd,&
+                                        filechannels,number_of_frames,order,neighbor_check)
+
+                       !Update the gradient with either the approximation or by acclerating
+                       !This is dependent on the threshold and the rejection method
+                       if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                               call Acceleration(vals,coords,gradient)
+                       else
+                               do n = 1, Natoms
+                                        gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+                               end do
+                       end if
                 end if
 
                 !Update the velocities
