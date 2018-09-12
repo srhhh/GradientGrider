@@ -444,9 +444,8 @@ var2_round0 = multiplier2_0 * var2_index
 !indexer accesses the counter (so as to keep track of population) and is uniquely determined by var_index
 indexer = bounds1 * var2_index + var1_index + 1
 
-!Increment by one to signify adding a frame;
 !key keeps track of population AND the index of the next counter
-key = counter0(indexer) + 1 !Nindistinguishables
+key = counter0(indexer)
 
 !If its not overcrowded, we need to add frames
 if (key < overcrowd0) then
@@ -459,7 +458,7 @@ if (key < overcrowd0) then
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         !If this is the first time in the cell, this file has to be made
-        if (key == 1) then !(key == Nindistinguishables) then
+        if (key == 0) then !(key == Nindistinguishables) then
                 descriptor0 = "new"
                 Nfile = Nfile + 1
 
@@ -468,19 +467,20 @@ if (key < overcrowd0) then
         end if
 
         !Add the frame
+	!Increment by one (or N) to signify adding a frame (or multiple);
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter0(indexer) = key + Nindistinguishables - 1
+        	counter0(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter0(indexer) = key
+        	counter0(indexer) = key + 1
         end if
 
         !Return because we have not yet overcrowded the cell
         return
 
 !If the cell is overcrowded (by that exact number) then we need to subdivide it
-else if (key <= population_max) then
+else if (key < population_max) then
 
         !The filename is the sum of the decimal portions of each order
         var1_round = var1_round0
@@ -491,7 +491,7 @@ else if (key <= population_max) then
 
         !For more information on how this works, see the subroutine above
         call divyUp(subcell,FMTorder1,var1_round,var2_round,SP0,MP1,&
-                    header1-1,counter1,counter1_max,key-1) !Nindistinguishables)
+                    header1-1,counter1,counter1_max,key) !Nindistinguishables)
 
         !Adding by a large number (key_start) assures the portion of the integer
         !that holds the index of the next counter (header1 value)
@@ -503,10 +503,10 @@ else if (key <= population_max) then
         !next order; that is why there is no return at the end of this conditional
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter0(indexer) = key + Nindistinguishables - 1
+        	counter0(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter0(indexer) = key
+        	counter0(indexer) = key + 1
         end if
 
         !Incrementing header insures that the index this subcell is granted in the next counter is unique
@@ -548,7 +548,7 @@ var2_round1 = multiplier2_1 * var2_index
 ! And by multiplying by resolution (scaling1*scaling2), we assure that each
 ! subcell of the parent subcell gets its own unique index
 indexer = resolution_0*int(key/key_start-1) + scaling1_0*var2_index + var1_index + 1
-key = counter1(indexer) + 1 !Nindistinguishables
+key = counter1(indexer)
 
 if (key < overcrowd1) then
 
@@ -559,7 +559,7 @@ if (key < overcrowd1) then
         write(var2_filename,FMT=FMTorder1) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        if (key == 1) then !(key == Nindistinguishables) then
+        if (key == 0) then
                 descriptor0 = "new"
                 Nfile = Nfile + 1
         else
@@ -568,10 +568,10 @@ if (key < overcrowd1) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter1(indexer) = key + Nindistinguishables - 1
+        	counter1(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter1(indexer) = key
+        	counter1(indexer) = key + 1
         end if
 
         return
@@ -586,16 +586,16 @@ else if (key <= population_max) then
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call divyUp(subcell,FMTorder2,var1_round,var2_round,SP1,MP2,&
-                    header2-1,counter2,counter2_max,key-1) !Nindistinguishables)
+                    header2-1,counter2,counter2_max,key)
 
         key = key + key_start*header2
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter1(indexer) = key + Nindistinguishables - 1
+        	counter1(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter1(indexer) = key
+        	counter1(indexer) = key + 1
         end if
 
         header2 = header2 + 1
@@ -624,7 +624,7 @@ var1_round2 = multiplier1_2 * var1_index
 var2_round2 = multiplier2_2 * var2_index
 
 indexer = resolution_1*int(key/key_start-1) + scaling1_1*var2_index + var1_index + 1
-key = counter2(indexer) + 1 !Nindistinguishables
+key = counter2(indexer)
 
 if (key < overcrowd2) then
 
@@ -635,7 +635,7 @@ if (key < overcrowd2) then
         write(var2_filename,FMT=FMTorder2) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        if (key == 1) then !(key == Nindistinguishables) then
+        if (key == 0) then
                 descriptor0 = "new"
                 Nfile = Nfile + 1
         else
@@ -644,10 +644,10 @@ if (key < overcrowd2) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter2(indexer) = key + Nindistinguishables - 1
+        	counter2(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter2(indexer) = key
+        	counter2(indexer) = key + 1
         end if
 
         return
@@ -662,7 +662,7 @@ else if (key <= population_max) then
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call divyUp(subcell,FMTorder3,var1_round,var2_round,SP2,MP3,&
-                    header3-1,counter3,counter3_max,key-1) !Nindistinguishables)
+                    header3-1,counter3,counter3_max,key)
 
         key = key + key_start*header3
 
@@ -673,10 +673,10 @@ else if (key <= population_max) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter2(indexer) = key + Nindistinguishables - 1
+        	counter2(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter2(indexer) = key
+        	counter2(indexer) = key + 1
         end if
 
         header3 = header3 + 1
@@ -701,7 +701,7 @@ var1_index = int(var1_cell * divisor1_3)
 var2_index = int(var2_cell * divisor2_3)
 
 indexer = resolution_2*int(key/key_start-1) + scaling1_2*var2_index + var1_index + 1
-key = counter3(indexer) + 1 !Nindistinguishables
+key = counter3(indexer)
 
 if (key < overcrowd3) then
 
@@ -715,7 +715,7 @@ if (key < overcrowd3) then
         write(var2_filename,FMT=FMTorder3) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        if (key == 1) then !(key == Nindistinguishables) then
+        if (key == 0) then
                 descriptor0 = "new"
                 Nfile = Nfile + 1
         else
@@ -724,10 +724,10 @@ if (key < overcrowd3) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter3(indexer) = key + Nindistinguishables - 1
+        	counter3(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter3(indexer) = key
+        	counter3(indexer) = key + 1
         end if
 
 else if (key <= population_max) then
@@ -741,10 +741,10 @@ else if (key <= population_max) then
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter3(indexer) = key + Nindistinguishables - 1
+        	counter3(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter3(indexer) = key
+        	counter3(indexer) = key + 1
         end if
 
 !This means the current griding is probably not granular enough
@@ -761,10 +761,10 @@ else
 
         if (force_Duplicates) then
                 call addMultiples(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter3(indexer) = key + Nindistinguishables - 1
+        	counter3(indexer) = key + Nindistinguishables
         else
                 call addSingle(vals,coords,gradient,gridpath2//trim(subcell)//".dat")
-        	counter3(indexer) = key
+        	counter3(indexer) = key + 1
         end if
 
 end if
