@@ -321,7 +321,7 @@ character(6) :: Ntraj_text
 integer :: i
 
 bin_width = (upperlimit-lowerlimit) / scatteringangleBins
-Nsamples_max = (Ngrid_total * Ntesttraj) / Ntesttraj
+Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj
 allocate(binTotal(scatteringangleBins,Nsamples_max),binAverage(scatteringangleBins),sampleSize(Nsamples_max))
 
 !Now we want a reference distribution
