@@ -613,6 +613,12 @@ do Ngrid = 1, Ngrid_max
 	end do
 	close(filechannel1)
 	
+	max_absenergychange = 0.0
+	min_absenergychange = 1.0e9
+	max_relenergychange = 0.0
+	min_relenergychange = 1.0e9
+	max_rotenergychange = 0.0
+	min_rotenergychange = 1.0e9
 	
 	!Finally, do a post-creation timeslice-to-SA conversions here
 	!We use the SA often so we do this at the beginning

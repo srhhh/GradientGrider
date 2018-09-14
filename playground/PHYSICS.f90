@@ -202,7 +202,7 @@ real(dp) :: TranslationalEnergy_max
 real :: max_absenergychange, min_absenergychange
 real :: max_relenergychange, min_relenergychange
 real :: max_rotenergychange, min_rotenergychange
-real :: abs_energychange, rel_energychange
+real :: abs_energychange, rel_energychange, rot_energychange
 real :: max_TranslationalEnergy
 
 real(dp) :: sizeEnergyBin,sizeAngleBin

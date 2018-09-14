@@ -67,7 +67,6 @@ real(dp),dimension(3,3) :: coords_initial,velocities_initial,coords_final,veloci
 real(dp) :: ScatteringAngle_real, TranslationalEnergy_real
 integer :: ScatteringAngle, TranslationalEnergy
 integer :: AbsEnergyChange, RelEnergyChange, RotEnergyChange
-real(dp) :: rot_energychange
 
 !HEAT MAP VARIABLES
 integer,allocatable :: angle_energy_bins(:,:)
@@ -173,14 +172,15 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//&
                         trim(adjustl(Ntraj_text))//binnedSATRVfile//&
                         '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
 
-write(gnuplotchannel,*) 'min_E = ', min(min_relenergychange,min_absenergychange,min_rotenergychange)
-write(gnuplotchannel,*) 'max_E = ', max(max_relenergychange,max_absenergychange,max_rotenergychange)
+write(gnuplotchannel,*) 'scaling = 1000'
+write(gnuplotchannel,*) 'min_E = scaling * ', min(min_relenergychange,min_absenergychange,min_rotenergychange)
+write(gnuplotchannel,*) 'max_E = scaling * ', max(max_relenergychange,max_absenergychange,max_rotenergychange)
 write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xlabel "Energy (eV)"'
 write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
-write(gnuplotchannel,*) "set format x '%.4f'"
+write(gnuplotchannel,*) "set format x '%.3f'"
 write(gnuplotchannel,*) 'set ylabel "Absolute Translational Energy Change"'
 write(gnuplotchannel,*) 'set title "Absolute Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
@@ -194,8 +194,8 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj
 write(gnuplotchannel,*) 'set title "Rotational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
 write(gnuplotchannel,*) 'set ylabel "Rotational Energy Change"'
-write(gnuplotchannel,*) 'min_E = ', min_rotenergychange
-write(gnuplotchannel,*) 'max_E = ', max_rotenergychange
+write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
+write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
 write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
@@ -321,16 +321,16 @@ character(6) :: Ntraj_text
 integer :: i
 
 bin_width = (upperlimit-lowerlimit) / scatteringangleBins
-Nsamples_max = (Ngrid_total * Ntraj_max) / Ntesttraj
+Nsamples_max = (Ngrid_max * Ntraj_max) / Ntesttraj
 allocate(binTotal(scatteringangleBins,Nsamples_max),binAverage(scatteringangleBins),sampleSize(Nsamples_max))
 
 !Now we want a reference distribution
 !This will be the distribution of ALL trajectories
 binTotal = 0
 sampleSize = 0
-write(Ntraj_text,FMT="(I6)") Ngrid_total * Ntraj_max
+write(Ntraj_text,FMT="(I6)") Ngrid_max * Ntraj_max
 write(variable_length_text,FMT="(I5)") Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
+write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_max
 open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//binnedSATRVfile,action="read")
 do Nsamples = 1, Nsamples_max
         do i = 1, Ntesttraj
@@ -393,11 +393,11 @@ open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) "set terminal pngcairo size 1200,1200"
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set output "'//gridpath0//'Convergence'//&
-                        trim(adjustl(variable_length_text))//SATRVname//Ngrid_text//'.png"'
+                        trim(adjustl(variable_length_text))//SATRVname//'.png"'
 write(gnuplotchannel,*) 'set multiplot layout 2,1'
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set title "Convergence of the '//trim(adjustl(variable_length_text))//&
-                        ' '//SATRVname//' Distribution with '//Ngrid_text//' Grids"'
+                        ' '//SATRVname//' Distribution with '//trim(adjustl(Ngrid_text))//' Grids"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set xlabel "Number of Trajectories"'
 write(gnuplotchannel,*) 'set ylabel "RMSD of the Distribution Over a Running Average"'
@@ -415,26 +415,28 @@ write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set title "Final '//SATRVname//' Distribution for '//&
                         trim(adjustl(variable_length_text))//' Trajectories"'
 if (SATRVname == "ScatteringAngle") then
+write(gnuplotchannel,*) 'scaling = 1'
 write(gnuplotchannel,*) 'pi = 3.14159265'
 write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
 else
-write(gnuplotchannel,*) 'E_min = ', lowerlimit
-write(gnuplotchannel,*) 'E_max = ', upperlimit
+write(gnuplotchannel,*) 'scaling = 1000'
+write(gnuplotchannel,*) 'E_min = scaling * ', lowerlimit
+write(gnuplotchannel,*) 'E_max = scaling * ', upperlimit
 write(gnuplotchannel,*) 'set xrange [E_min:E_max]'
 write(gnuplotchannel,*) 'set xtics E_min, 10*(E_max-E_min)/',SA_Nbins,', E_max'
 write(gnuplotchannel,*) "set format x '%.3f'"
-write(gnuplotchannel,*) 'set xlabel "Energy (eV)"'
+write(gnuplotchannel,*) 'set xlabel "Energy (meV)"'
 end if
 write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'unset label 1'
-write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u 1:2 w boxes, \'
-write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u (scaling*($1)):2 w boxes, \'
+write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
@@ -473,28 +475,6 @@ logical :: grid_is_done
 
 integer :: iostate
 real :: speed_out, ScatteringAngle
-real :: rot_energychange
-
-max_absenergychange = 0.0
-min_absenergychange = 1.0e9
-max_relenergychange = 0.0
-min_relenergychange = 1.0e9
-max_rotenergychange = 0.0
-min_rotenergychange = 1.0e9
-open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
-do
-	read(filechannel1,iostat=iostate,FMT=FMTdata) ScatteringAngle, &
-           speed_out, abs_energychange, rel_energychange, rot_energychange
-	if (iostate /= 0) exit
-	max_absenergychange = max(abs_energychange,max_absenergychange)
-	min_absenergychange = min(abs_energychange,min_absenergychange)
-	max_relenergychange = max(rel_energychange,max_relenergychange)
-	min_relenergychange = min(rel_energychange,min_relenergychange)
-	max_rotenergychange = max(rot_energychange,max_rotenergychange)
-	min_rotenergychange = min(rot_energychange,min_rotenergychange)
-end do
-close(filechannel1)
-
 
 inquire(file=gridpath0//'AdjustedScatteringAngle'//cumulativefile//'.dat',exist=grid_is_done)
 
@@ -533,12 +513,13 @@ else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($1)):(1.0) smooth frequency w boxes'
 end if
-        write(gnuplotchannel,*) 'min_E = .001 * ', min(min_relenergychange,min_absenergychange)
-        write(gnuplotchannel,*) 'max_E = .001 * ', max(max_relenergychange,max_absenergychange)
+        write(gnuplotchannel,*) 'scaling = 1000'
+        write(gnuplotchannel,*) 'min_E = scaling * ', min(min_relenergychange,min_absenergychange)
+        write(gnuplotchannel,*) 'max_E = scaling * ', max(max_relenergychange,max_absenergychange)
         write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
         write(gnuplotchannel,*) 'set boxwidth box_width'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
-	write(gnuplotchannel,*) 'bin_number(x) = floor(.001*x/box_width)'
+	write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
         write(gnuplotchannel,*) 'set xlabel "Energy (meV)"'
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
@@ -548,10 +529,10 @@ if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($3)):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedAbsoluteEnergyChange'//&
-				cumulativefile//'.dat" u 1:2 w boxes'//&
+				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedAbsoluteEnergyChange'//&
-				cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($3)):(1.0) smooth frequency w boxes'
@@ -561,32 +542,32 @@ if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($4)):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedRelativeEnergyChange'//&
-				cumulativefile//'.dat" u 1:2 w boxes'//&
+				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedRelativeEnergyChange'//&
-				cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($4)):(1.0) smooth frequency w boxes'
 end if
         write(gnuplotchannel,*) 'set ylabel "Rotational Translational Energy Change"'
-        write(gnuplotchannel,*) 'min_E = .001 * ', min_rotenergychange
-        write(gnuplotchannel,*) 'max_E = .001 * ', max_rotenergychange
+        write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
+        write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
         write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
         write(gnuplotchannel,*) "set format x '%.3f'"
         write(gnuplotchannel,*) 'set boxwidth box_width'
-	write(gnuplotchannel,*) 'bin_number(x) = floor(.001*x/box_width)'
+	write(gnuplotchannel,*) 'bin_number(x) = floor(1000*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($5)):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedRotationalEnergyChange'//&
-				cumulativefile//'.dat" u 1:2 w boxes'//&
+				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedRotationalEnergyChange'//&
-				cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (rounded($5)):(1.0) smooth frequency w boxes'
@@ -1093,24 +1074,27 @@ integer :: i, j, k
 		velocity_in = velocity_in / (sum(COLLISION_DATA))
 		velocity_out = velocity_out / (Natoms - sum(COLLISION_DATA))
 
-!print *, "Initial:"
-!print *, "AbsTrans:", absTranslationalEnergy1
-!print *, "RelTrans:", relTranslationalEnergy1
-!print *, "     Rot:", RotationalEnergy1
-!print *, "Final:"
-!print *, "AbsTrans:", absTranslationalEnergy2
-!print *, "RelTrans:", relTranslationalEnergy2
-!print *, "     Rot:", RotationalEnergy2
-
 		speed_out = sqrt(sum((velocity_out)**2))
 		speed_in = sqrt(sum((velocity_in)**2))
 
 		scatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
                                   (speed_in * speed_out))
+
+		abs_energychange = abs(absTranslationalEnergy2 - absTranslationalEnergy1)
+		rel_energychange = abs(relTranslationalEnergy2 - relTranslationalEnergy1)
+		rot_energychange = abs(RotationalEnergy2 - RotationalEnergy1)
+
 		write(filechannel3,FMTdata) scatteringAngle, speed_out, &
-					  abs(absTranslationalEnergy2 - absTranslationalEnergy1), &
-					  abs(relTranslationalEnergy2 - relTranslationalEnergy1), &
-					  abs(RotationalEnergy2 - RotationalEnergy1)
+					  abs_energychange, &
+					  rel_energychange, &
+					  rot_energychange
+
+		max_absenergychange = max(abs_energychange,max_absenergychange)
+		min_absenergychange = min(abs_energychange,min_absenergychange)
+		max_relenergychange = max(rel_energychange,max_relenergychange)
+		min_relenergychange = min(rel_energychange,min_relenergychange)
+		max_rotenergychange = max(rot_energychange,max_rotenergychange)
+		min_rotenergychange = min(rot_energychange,min_rotenergychange)
 	end do
 	close(filechannel3)
 	close(filechannel2)

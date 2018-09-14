@@ -186,7 +186,7 @@ if (heatmap_flag) then
 end if
 
 !This is for scattering angle plots (from each of the grids)
-if (trueSA_flag) then
+if (.true.) then                     !(trueSA_flag) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "InitialSATRVDistribution"
@@ -216,17 +216,13 @@ if (trueSA_flag) then
 	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
 	                call system("cp "//gridpath0//Ngrid_text//"/Initial"//SATRVfile//" "//trim(adjustl(old_filename)))
 	        end if
+
+        	call postProcess(Ngrid_text//"/Initial")
 	
 	        !Also, make a TRV plot
 	        call getScatteringAngles1(Ngrid_text//"/Initial", trim(adjustl(Ntraj_text))//"SATRVDistribution")
 	end do
 end if
-
-Ntraj = Ngrid_total * Ntesttraj
-call getConvergenceImage(0.0, real(pi), 1, "ScatteringAngle")
-call getConvergenceImage(min_relenergychange,max_relenergychange,4,"RelativeEnergyChange")
-call getConvergenceImage(min_absenergychange,max_absenergychange,3,"AbsoluteEnergyChange")
-call getConvergenceImage(min_rotenergychange,max_rotenergychange,5,"RotationalEnergyChange")
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -508,6 +504,11 @@ write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 Ntraj = Ntesttraj
 call postProcess(Ngrid_text//prefix_text)
+
+call getConvergenceImage(0.0, real(pi), 1, "ScatteringAngle")
+call getConvergenceImage(min_relenergychange,max_relenergychange,4,"RelativeEnergyChange")
+call getConvergenceImage(min_absenergychange,max_absenergychange,3,"AbsoluteEnergyChange")
+call getConvergenceImage(min_rotenergychange,max_rotenergychange,5,"RotationalEnergyChange")
 
 if (percentthreshold_flag) then
 	call itime(now)
