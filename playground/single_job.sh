@@ -80,7 +80,7 @@ testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.010000d0
-threshold_rmsd1=.100000d0
+threshold_rmsd1=.050000d0
 threshold_rmsd2=.001000d0
 threshold_rmsd3=.005000d0
 threshold_rmsd4=.010000d0
@@ -219,7 +219,7 @@ cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS)+(.f90) $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
 
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 1/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 4/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/

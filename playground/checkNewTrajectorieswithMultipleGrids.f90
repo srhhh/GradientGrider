@@ -202,10 +202,15 @@ if (.true.) then                     !(trueSA_flag) then
 	
 	old_filename = ""
 	do Ngrid = 1, Ngrid_total
-	        Ntraj = Ngrid*Ntraj_max
-	        write(Ntraj_text,FMT="(I6)") Ntraj
 		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+
+		!First, post process
+	        Ntraj = Ntraj_max
+        	call postProcess(Ngrid_text//"/Initial")
+
+	        Ntraj = Ngrid*Ntraj_max
+	        write(Ntraj_text,FMT="(I6)") Ntraj
 
 	        if (trim(adjustl(old_filename)) /= "") then
 	                new_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
@@ -217,9 +222,7 @@ if (.true.) then                     !(trueSA_flag) then
 	                call system("cp "//gridpath0//Ngrid_text//"/Initial"//SATRVfile//" "//trim(adjustl(old_filename)))
 	        end if
 
-        	call postProcess(Ngrid_text//"/Initial")
-	
-	        !Also, make a TRV plot
+	        !Make an SA + TRV plot
 	        call getScatteringAngles1(Ngrid_text//"/Initial", trim(adjustl(Ntraj_text))//"SATRVDistribution")
 	end do
 end if
