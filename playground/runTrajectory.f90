@@ -420,7 +420,9 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                         if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                 call Acceleration(vals,coords,gradient)
                         else
-                                gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+	                        do n = 1, Natoms
+	                                gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+	                        end do
                         end if
 
                 else
