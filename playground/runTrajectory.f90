@@ -420,9 +420,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                         if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                 call Acceleration(vals,coords,gradient)
                         else
-	                        do n = 1, Natoms
-	                                gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
-	                        end do
+				gradient = approx_gradient
                         end if
 
                 else
@@ -442,7 +440,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                                call Acceleration(vals,coords,gradient)
                        else
                                do n = 1, Natoms
-                                        gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+                                        gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
                                end do
                        end if
                 end if
@@ -640,7 +638,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
                         if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                 call Acceleration(vals,coords,gradient)
                         else
-                                gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+				gradient = approx_gradient
                         end if
 
                 else
@@ -660,7 +658,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
                                call Acceleration(vals,coords,gradient)
                        else
                                do n = 1, Natoms
-                                        gradient(:,n) = approx_gradient(:,BOND_LABELLING_DATA(n))
+                                        gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
                                end do
                        end if
                 end if

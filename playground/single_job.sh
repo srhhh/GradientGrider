@@ -60,13 +60,13 @@ overcrowd0=00050
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=4
+Ngrid_max=1
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
 
 #Whether to use the labelling scheme or drop it altogether
-force_NoLabels=.true.
+force_NoLabels=.false.
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -79,8 +79,8 @@ useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.050000d0
-threshold_rmsd1=.050000d0
+threshold_rmsd=.010000d0
+threshold_rmsd1=.010000d0
 threshold_rmsd2=.001000d0
 threshold_rmsd3=.005000d0
 threshold_rmsd4=.010000d0
@@ -97,7 +97,7 @@ Ntrajectories=350
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Sep15_nolabel"
+newGRID="HH2_Sep15_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1
@@ -106,7 +106,7 @@ newGRID_flag=1
 newGRID_check_min=30
 
 #The number of post-grid analyses you would like done
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)

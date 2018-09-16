@@ -58,7 +58,7 @@ logical,parameter :: testtraj_flag = .true.
       !Set .true. to generate trajectories using md-calculated gradients
       !Otherwise, the program will use the above threshold as a rejection
       !method
-      logical,parameter :: reject_flag = .true.
+      logical :: reject_flag = .true.
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

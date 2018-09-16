@@ -323,9 +323,103 @@ do Ngrid = 1, Ngrid_max
 		!Right now it is spaced so that we get (at most) ten graphs over the period of its creation
                 if ((.true.).and.(modulo(n,Ngrid_check) == 0)) then
 
+reject_flag = (.not.(reject_flag))
+
+write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
+if (reject_flag) then
+	reject_text = "reject"
+else
+	reject_text = "accept"
+end if
+prefix_text = reject_text//Nthreshold_text
+
 			!Remark: output of checkTrajectory is in the checkstatefile
 			call system_clock(trajectory_t0)
-!			call checkTrajectory(scattering_angle,TRVenergies1,TRVenergies1)
+	                call checkTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
+			call system_clock(trajectory_t1)
+			checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
+
+			open(gnuplotchannel,file=gridpath1//gnuplotfile)
+			write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+			write(checkstateTrajectory,FMT=FMT6_pos_int) Ntraj
+			write(gnuplotchannel,*) 'set output "'//gridpath1//'checkTrajectory_'//prefix_text//&
+			                         '_'//checkstateTrajectory//'.png"'
+			write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
+			write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
+			write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
+			write(gnuplotchannel,*) 'set style line 4 lc rgb "orange" pt 9'
+			write(gnuplotchannel,*) 'set style line 5 lc rgb "yellow" pt 11'
+			write(gnuplotchannel,*) 'set style line 6 lc rgb "pink" pt 20'
+			write(gnuplotchannel,*) 'set format x ""'
+!			write(gnuplotchannel,*) 'unset xtics'
+			write(gnuplotchannel,*) 'set tmargin 0'
+			write(gnuplotchannel,*) 'set bmargin 0'
+			write(gnuplotchannel,*) 'set lmargin 1'
+			write(gnuplotchannel,*) 'set rmargin 1'
+			write(gnuplotchannel,*) 'set multiplot layout 6,1 margins 0.15,0.95,.1,.95 spacing 0,0 title '//&
+						'"Trajectory '//trim(adjustl(checkstateTrajectory))//'"'
+			write(gnuplotchannel,*) 'unset key'
+			write(gnuplotchannel,*) 'unset xlabel'
+!			write(angle1descriptor,FMT=FMT6_neg_real1) initial_bond_angle1
+!			write(angle2descriptor,FMT=FMT6_pos_real1) initial_bond_angle2
+!			write(bond1descriptor,FMT=FMT6_pos_real1) initial_bond_distance
+ 			write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
+!			write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//&
+!                                                ' radians" at screen 0.6, 0.955'
+!			write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//&
+!                                                ' A" at screen 0.6, 0.94'
+ 			write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
+                                                 ' s" at screen 0.6, 0.910'
+			write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
+			write(gnuplotchannel,*) 'set yrange [0:',max_var1,']'
+			write(gnuplotchannel,*) 'set ytics 2'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:7 w lines'
+			write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
+			write(gnuplotchannel,*) 'set yrange [0:',max_var2,']'
+			write(gnuplotchannel,*) 'set ytics 2'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:8 w lines'
+!			write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
+!			write(gnuplotchannel,*) 'set yrange [0:0.02]'
+!			write(gnuplotchannel,*) 'set ytics 0.005'
+!			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:($9+$10) w lines'
+			write(gnuplotchannel,*) 'set ylabel "Number of Frames Checked"'
+			write(gnuplotchannel,*) 'set autoscale y'
+			write(gnuplotchannel,*) 'set ytics autofreq'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:1 w lines'
+!			write(gnuplotchannel,*) 'unset label 1'
+!			write(gnuplotchannel,*) 'unset label 2'
+ 			write(gnuplotchannel,*) 'unset label 3'
+			write(gnuplotchannel,*) 'set ylabel "Order of Cell Checked"'
+			write(gnuplotchannel,*) 'set yrange [-1.1:1.1]'
+			write(gnuplotchannel,*) 'set ytics 1'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:2 w lines'
+			write(gnuplotchannel,*) 'set ylabel "Number of Cells Checked"'
+			write(gnuplotchannel,*) 'set yrange [0:5]'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:3 w lines'
+!			write(gnuplotchannel,*) 'set xtics'
+			write(gnuplotchannel,*) 'set ylabel "Timestep RMSD (A)"'
+			write(gnuplotchannel,*) 'set xlabel "Timestep"'
+			write(gnuplotchannel,*) 'set format x'
+!			write(gnuplotchannel,*) 'set yrange [0:.2002]'
+			write(gnuplotchannel,*) 'set autoscale y'
+			write(gnuplotchannel,*) 'set logscale y'
+			write(gnuplotchannel,*) 'set ytics (".1" .1, ".05" .05, ".01" .01, ".001" .001, ".0001" .0001)'
+			write(gnuplotchannel,*) 'unset key'
+			write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//'" u 4:5 w lines'
+			close(gnuplotchannel)
+			call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
+
+reject_flag = (.not.(reject_flag))
+
+write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
+if (reject_flag) then
+	reject_text = "reject"
+else
+	reject_text = "accept"
+end if
+prefix_text = reject_text//Nthreshold_text
+
+			call system_clock(trajectory_t0)
 	                call checkTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
 			call system_clock(trajectory_t1)
 			checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
