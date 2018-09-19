@@ -44,6 +44,11 @@ logical,parameter :: testtraj_flag = .true.
    !(Not recommended for large Ntesttraj or Ngrid_total_cap)
    logical,parameter :: testtrajRMSD_flag = .false.
 
+   !Set .true. to generate the checkTrajectory plots for each
+   !trajectory tested for each grid
+   !(Not recommended for large Ntesttraj or Ngrid_total_cap)
+   logical,parameter :: testtrajDetailedRMSD_flag = .true.
+
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD
    !One plot will be produced per grid

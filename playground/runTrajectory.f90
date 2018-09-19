@@ -599,6 +599,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	end do
 
 	!Start the main loop
+!	if (testtrajDetailedRMSD_flag) open(filechannel2,file=gridpath0//checkstatefile)
         do steps = 1, Nsteps
 
 		!Just for bug-testing
@@ -663,10 +664,29 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
                        end if
                 end if
 
+!if (testtrajDetailedRMSD_flag) then
+!
+!		!Calculate the potential and kinetic energy
+!		!(yes, making this nicer is next on the to-do list)
+!		!Right now, it is not generic (we only take into account 3 atoms)
+!	        U = MorsePotential(coords(:,1),coords(:,2))
+!	        U = U + MorsePotential(coords(:,1),coords(:,3))
+!	        U = U + HOPotential(coords(:,2),coords(:,3))
+!	        KE = KineticEnergy(velocities(:,1))
+!	        KE = KE + KineticEnergy(velocities(:,2))
+!	        KE = KE + KineticEnergy(velocities(:,3))
+!
+!		!Finally write to the data file all the important data values
+!		write(filechannel2,FMT=*) number_of_frames,order,neighbor_check,steps,&
+!                                          min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
+!end if
+
+
                 !Update the velocities
                 velocities = velocities + gradient
 
         end do
+!	if (testtrajDetailedRMSD_flag) close(filechannel2)
 
 	coords_final = coords
 	velocities_final = velocities

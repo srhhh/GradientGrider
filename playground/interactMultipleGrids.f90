@@ -190,6 +190,7 @@ subcell1search_max = 1
 
 !We start off with zero frames having been checked
 number_of_frames = 0
+neighbor_check = 0
 
 old_min_rmsd = min_rmsd
 old_gradient = gradient
