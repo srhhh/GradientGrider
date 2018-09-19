@@ -64,6 +64,10 @@ logical,parameter :: testtraj_flag = .true.
    !the trajectories for each grid
    logical,parameter :: testtrajSA_flag = .true.
 
+   !Set .true. to generate the scattering angle plots of
+   !the trajectories for each grid
+   logical,parameter :: testheatmapSA_flag = .true.
+
    !Set .true. to generate the energy decomposition plots of
    !the trajectories for each grid
    logical,parameter :: testtrajTRV_flag = .true.

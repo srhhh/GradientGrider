@@ -83,7 +83,7 @@ implicit none
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
-character(6) :: Ntraj_text
+character(trajectory_text_length) :: Ntraj_text
 character(6) :: Nthreshold_text
 character(6) :: reject_text
 character(12) :: prefix_text
@@ -210,7 +210,8 @@ if (.true.) then                     !(trueSA_flag) then
         	call postProcess(Ngrid_text//"/Initial")
 
 	        Ntraj = Ngrid*Ntraj_max
-	        write(Ntraj_text,FMT="(I6)") Ntraj
+		write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+		write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
 
 	        if (trim(adjustl(old_filename)) /= "") then
 	                new_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
@@ -223,7 +224,8 @@ if (.true.) then                     !(trueSA_flag) then
 	        end if
 
 	        !Make an SA + TRV plot
-	        call getScatteringAngles1(Ngrid_text//"/Initial", trim(adjustl(Ntraj_text))//"SATRVDistribution")
+	        call getScatteringAngles1(Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text)),&
+                                          "SATRVDistribution")
 	end do
 end if
 
@@ -423,7 +425,8 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
 	!The trajectory number will uniquely identify one trajectory from another
-	write(Ntraj_text,FMT=FMT6_pos_int) n_testtraj
+	write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+	write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") n_testtraj
 	
 	call system_clock(c1)
 	call CPU_time(r1)
@@ -506,6 +509,8 @@ print *, ""
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 Ntraj = Ntesttraj
+write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
 call postProcess(Ngrid_text//prefix_text)
 
 call getConvergenceImage(0.0, real(pi), 1, "ScatteringAngle")
@@ -529,6 +534,15 @@ if (testtrajSA_flag) then
 	
 	call getScatteringAngles2(Ngrid_text//prefix_text,"TestScatteringAngleDistribution_"//&
                                   Ngrid_text//prefix_text)
+end if
+
+if (testheatmapSA_flag) then
+	call itime(now)
+	write(6,FMT=FMTnow) now
+	print *, "   Making plot: ", "HeatMap_"//trim(adjustl(Ntraj_text))//"SATRVDistribution"
+	print *, ""
+
+	call getScatteringAngles1(Ngrid_text//prefix_text, "SATRVDistribution")
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

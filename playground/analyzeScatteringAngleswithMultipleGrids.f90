@@ -59,7 +59,7 @@ character(5) :: variable_length_text
 character(5) :: variable_length_text1, variable_length_text2
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
-character(6) :: Ntraj_text
+character(trajectory_text_length) :: Ntraj_text
 character(150) :: old_filename
 
 !SCATTERING ANGLES
@@ -82,23 +82,24 @@ integer :: i, j, k
 
 
 !The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
-write(Ntraj_text,FMT="(I6)") Ntraj
+write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
 
-open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
-do i = 1, Ntraj
-	read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real,&
-                                                    abs_energychange, rel_energychange, rot_energychange
-
-	max_TranslationalEnergy = max(TranslationalEnergy_real, max_TranslationalEnergy)
-
-        max_absenergychange = max(abs_energychange,max_absenergychange)
-        min_absenergychange = min(abs_energychange,min_absenergychange)
-        max_relenergychange = max(rel_energychange,max_relenergychange)
-        min_relenergychange = min(rel_energychange,min_relenergychange)
-	max_rotenergychange = max(rot_energychange,max_rotenergychange)
-	min_rotenergychange = min(rot_energychange,min_rotenergychange)
-end do
-close(filechannel1)
+!open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
+!do i = 1, Ntraj
+!	read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real,&
+!                                                    abs_energychange, rel_energychange, rot_energychange
+!
+!	max_TranslationalEnergy = max(TranslationalEnergy_real, max_TranslationalEnergy)
+!
+!        max_absenergychange = max(abs_energychange,max_absenergychange)
+!        min_absenergychange = min(abs_energychange,min_absenergychange)
+!        max_relenergychange = max(rel_energychange,max_relenergychange)
+!        min_relenergychange = min(rel_energychange,min_relenergychange)
+!	max_rotenergychange = max(rot_energychange,max_rotenergychange)
+!	min_rotenergychange = min(rot_energychange,min_rotenergychange)
+!end do
+!close(filechannel1)
 
 allocate(angle_energy_bins(angleBins,energyBins))
 angle_energy_bins = 0
@@ -112,8 +113,8 @@ sizeDeltaEnergyBin = (max(max_absenergychange,max_relenergychange,max_rotenergyc
 sizeEnergyBin = max_TranslationalEnergy / (energyBins)
 sizeAngleBin = pi / (angleBins)
 
-open(filechannel1,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//SATRVfile)
-open(filechannel2,file=gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile)
+open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
+open(filechannel2,file=gridpath0//prefix_filename//binnedSATRVfile)
 do i = 1, Ntraj
         read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real, &
 						      abs_energychange, rel_energychange, rot_energychange
@@ -168,8 +169,7 @@ write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set autoscale y'
-write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//&
-                        trim(adjustl(Ntraj_text))//binnedSATRVfile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
 
 write(gnuplotchannel,*) 'scaling = 1000'
@@ -184,12 +184,12 @@ write(gnuplotchannel,*) "set format x '%.3f'"
 write(gnuplotchannel,*) 'set ylabel "Absolute Translational Energy Change"'
 write(gnuplotchannel,*) 'set title "Absolute Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
-write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($3-0.5)+min_E):(1.0) smooth frequency w boxes'
 write(gnuplotchannel,*) 'set title "Relative Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
 write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
-write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($4-0.5)+min_E):(1.0) smooth frequency w boxes'
 write(gnuplotchannel,*) 'set title "Rotational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
@@ -200,7 +200,7 @@ write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
-write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//trim(adjustl(Ntraj_text))//binnedSATRVfile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($5-0.5)+min_E):(1.0) smooth frequency w boxes'
 close(gnuplotchannel)
 
@@ -1088,6 +1088,8 @@ integer :: i, j, k
 					  abs_energychange, &
 					  rel_energychange, &
 					  rot_energychange
+
+		max_TranslationalEnergy = max(speed_out,max_TranslationalEnergy)
 
 		max_absenergychange = max(abs_energychange,max_absenergychange)
 		min_absenergychange = min(abs_energychange,min_absenergychange)

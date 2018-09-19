@@ -60,7 +60,7 @@ overcrowd0=00050
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=1
+Ngrid_max=4
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -97,16 +97,16 @@ Ntrajectories=350
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Sep15_label"
+newGRID="H2H2_Sep12_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 newGRID_check_min=30
 
 #The number of post-grid analyses you would like done
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -157,7 +157,7 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
 #This first analysis simulates new trajectories and checks them with the grid
 #All of these variables can be changed;
 #Ntesttraj is how many trajectorie to simulate (important!)
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 1/
      s/heatmap_flag = .*/heatmap_flag = .true./
      s/trueSA_flag = .*/trueSA_flag = .true./
      s/trueED_flag = .*/trueED_flag = .true./
