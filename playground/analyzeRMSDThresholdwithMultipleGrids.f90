@@ -68,7 +68,7 @@ character(*), intent(in) :: prefix_filename
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
-character(6) :: Ntraj_text
+character(trajectory_text_length) :: Ntraj_text
 
 !I/O HANDLING
 integer :: iostate
@@ -78,15 +78,16 @@ integer :: n
 
 
 
-write(variable_length_text,"(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_total
+write(variable_length_text,"(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 
 !We will bin data by GRID, not by trajectory
 !So we uniquely name each output .dat and graph by the grid number
 open(filechannel1,file=gridpath0//"percent_rmsd"//Ngrid_text//".dat")
 do n_testtraj = 1, Ntesttraj
-        write(Ntraj_text,FMT="(I0.6)") n_testtraj
+        write(variable_length_text,"(I5)") trajectory_text_length
+        write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") n_testtraj
 
         !Read the trajectory (which has the rmsd) across all grids line-by-line
         frames = 0
