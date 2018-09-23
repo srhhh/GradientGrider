@@ -79,8 +79,8 @@ useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.010000d0
-threshold_rmsd1=.010000d0
+threshold_rmsd=.050000d0
+threshold_rmsd1=.050000d0
 threshold_rmsd2=.001000d0
 threshold_rmsd3=.005000d0
 threshold_rmsd4=.010000d0
@@ -97,7 +97,7 @@ Ntrajectories=350
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Sep19_label"
+newGRID="HH2_Sep15_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0

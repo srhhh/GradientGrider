@@ -85,22 +85,6 @@ integer :: i, j, k
 write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
 write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
 
-!open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
-!do i = 1, Ntraj
-!	read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real,&
-!                                                    abs_energychange, rel_energychange, rot_energychange
-!
-!	max_TranslationalEnergy = max(TranslationalEnergy_real, max_TranslationalEnergy)
-!
-!        max_absenergychange = max(abs_energychange,max_absenergychange)
-!        min_absenergychange = min(abs_energychange,min_absenergychange)
-!        max_relenergychange = max(rel_energychange,max_relenergychange)
-!        min_relenergychange = min(rel_energychange,min_relenergychange)
-!	max_rotenergychange = max(rot_energychange,max_rotenergychange)
-!	min_rotenergychange = min(rot_energychange,min_rotenergychange)
-!end do
-!close(filechannel1)
-
 allocate(angle_energy_bins(angleBins,energyBins))
 angle_energy_bins = 0
 

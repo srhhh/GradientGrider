@@ -15,81 +15,81 @@ integer,intent(in) :: Natoms, Nvar
 real(dp),dimension(3,Natoms),intent(in) :: coords
 real(dp),dimension(Nvar),intent(out) :: vals
 integer,dimension(Natoms),intent(inout) :: labelling
-!real(dp) :: length1,length2
-real(dp),dimension(4) :: lengths
-integer :: min1_length, min2_length, max_length
-integer :: i, start_label
+real(dp) :: length1,length2
+!real(dp),dimension(4) :: lengths
+!integer :: min1_length, min2_length, max_length
+!integer :: i, start_label
 
-!call getDistanceSquared(coords(:,1),coords(:,2),length1)
-!call getDistanceSquared(coords(:,1),coords(:,3),length2)
-!if (length1 < length2) then
-!	labelling(2) = 2
-!	labelling(3) = 3
-!	vals(1) = sqrt(length1)
-!	vals(2) = sqrt(length2)
-!else
-!	labelling(2) = 3
-!	labelling(3) = 2
-!	vals(1) = sqrt(length2)
-!	vals(2) = sqrt(length1)
+call getDistanceSquared(coords(:,1),coords(:,2),length1)
+call getDistanceSquared(coords(:,1),coords(:,3),length2)
+if (length1 < length2) then
+	labelling(2) = 2
+	labelling(3) = 3
+	vals(1) = sqrt(length1)
+	vals(2) = sqrt(length2)
+else
+	labelling(2) = 3
+	labelling(3) = 2
+	vals(1) = sqrt(length2)
+	vals(2) = sqrt(length1)
+end if
+
+!do i = 1, 4
+!	call getDistanceSquared(coords(:,BOND_LABELS_TENTATIVE(i,1)),&
+!				coords(:,BOND_LABELS_TENTATIVE(i,2)),lengths(i))
+!end do
+!
+!min1_length = minloc(lengths(1:2),1)
+!min2_length = 3 - min1_length
+!max_length = min2_length
+!do i = 3, 4
+!	if (lengths(i) < lengths(min2_length)) then
+!		if (lengths(i) < lengths(min1_length)) then
+!			min2_length = min1_length
+!			min1_length = i
+!		else
+!			min2_length = i
+!		end if
+!	else if (lengths(i) > lengths(max_length)) then
+!		max_length = i
+!	else
+!	end if
+!end do
+!
+!vals(1) = sqrt(lengths(min1_length))
+!vals(2) = sqrt(lengths(max_length))
+!
+!start_label = 0
+!do i = 1, 4
+!	if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
+!	  (any(BOND_LABELS_TENTATIVE(max_length,:) == i, 1))) then
+!		start_label = i
+!	end if
+!end do
+!
+!if (start_label == 0) then
+!	do i = 1, 4
+!		if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
+!		  (any(BOND_LABELS_TENTATIVE(min2_length,:) == i, 1))) then
+!			start_label = i
+!		end if
+!	end do
 !end if
-
-do i = 1, 4
-	call getDistanceSquared(coords(:,BOND_LABELS_TENTATIVE(i,1)),&
-				coords(:,BOND_LABELS_TENTATIVE(i,2)),lengths(i))
-end do
-
-min1_length = minloc(lengths(1:2),1)
-min2_length = 3 - min1_length
-max_length = min2_length
-do i = 3, 4
-	if (lengths(i) < lengths(min2_length)) then
-		if (lengths(i) < lengths(min1_length)) then
-			min2_length = min1_length
-			min1_length = i
-		else
-			min2_length = i
-		end if
-	else if (lengths(i) > lengths(max_length)) then
-		max_length = i
-	else
-	end if
-end do
-
-vals(1) = sqrt(lengths(min1_length))
-vals(2) = sqrt(lengths(max_length))
-
-start_label = 0
-do i = 1, 4
-	if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
-	  (any(BOND_LABELS_TENTATIVE(max_length,:) == i, 1))) then
-		start_label = i
-	end if
-end do
-
-if (start_label == 0) then
-	do i = 1, 4
-		if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
-		  (any(BOND_LABELS_TENTATIVE(min2_length,:) == i, 1))) then
-			start_label = i
-		end if
-	end do
-end if
-
-labelling(1) = start_label
-if (BOND_LABELS_TENTATIVE(min1_length,1) == start_label) then
-	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,2)
-else
-	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,1)
-end if
-
-if (BOND_LABELS_TENTATIVE(max_length,1) == start_label) then
-	labelling(3) = BOND_LABELS_TENTATIVE(max_length,2)
-else
-	labelling(3) = BOND_LABELS_TENTATIVE(max_length,1)
-end if
-
-labelling(4) = 10 - sum(labelling(1:3))
+!
+!labelling(1) = start_label
+!if (BOND_LABELS_TENTATIVE(min1_length,1) == start_label) then
+!	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,2)
+!else
+!	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,1)
+!end if
+!
+!if (BOND_LABELS_TENTATIVE(max_length,1) == start_label) then
+!	labelling(3) = BOND_LABELS_TENTATIVE(max_length,2)
+!else
+!	labelling(3) = BOND_LABELS_TENTATIVE(max_length,1)
+!end if
+!
+!labelling(4) = 10 - sum(labelling(1:3))
 
 end subroutine getVarsMaxMin
 
