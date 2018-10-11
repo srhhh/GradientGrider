@@ -189,7 +189,7 @@ if (heatmap_flag) then
 end if
 
 !This is for scattering angle plots (from each of the grids)
-if (.true.) then                     !(trueSA_flag) then
+if (trueSA_flag) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "InitialSATRVDistribution"
@@ -217,18 +217,17 @@ if (.true.) then                     !(trueSA_flag) then
 		write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
 
 	        if (trim(adjustl(old_filename)) /= "") then
-	                new_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
+	                new_filename = gridpath0//Ngrid_text//"/Initial"//Ntraj_text//SATRVfile
 	                call system("cat "//trim(adjustl(old_filename))//" "//&
-	                            gridpath0//Ngrid_text//"/Initial"//SATRVfile//" > "//trim(adjustl(new_filename)))
+	                            gridpath0//Ngrid_text//"/Initial"//SATRVfile//" > "//new_filename)
 	                old_filename = new_filename
 	        else
-	                old_filename = gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//SATRVfile
+	                old_filename = gridpath0//Ngrid_text//"/Initial"//Ntraj_text//SATRVfile
 	                call system("cp "//gridpath0//Ngrid_text//"/Initial"//SATRVfile//" "//trim(adjustl(old_filename)))
 	        end if
 
 	        !Make an SA + TRV plot
-	        call getScatteringAngles1(Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text)),&
-                                          "SATRVDistribution")
+	        call getScatteringAngles1(Ngrid_text//"/Initial"//Ntraj_text,"SATRVDistribution")
 	end do
 end if
 
@@ -510,6 +509,52 @@ print *, ""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+Ntraj = Ntesttraj
+max_TranslationalEnergy = 0.0d0
+max_absenergychange = 0.0
+min_absenergychange = 1.0e9
+max_relenergychange = 0.0
+min_relenergychange = 1.0e9
+max_rotenergychange = 0.0
+min_rotenergychange = 1.0e9
+call postProcess(Ngrid_text//prefix_text)
+
+!We need to redo the postProcess (and convergence) of each grid
+!in case the maximum and minimum of the trajectories just processed are different
+if (.true.) then                     !(trueSA_flag) then
+	call itime(now)
+	write(6,FMT=FMTnow) now
+	print *, "   Making plot: ", "InitialSATRVDistribution"
+	print *, ""
+
+	old_filename = ""
+	do Ngrid = 1, Ngrid_total
+		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+
+		!First, post process
+	        Ntraj = Ntraj_max
+        	call postProcess(Ngrid_text//"/Initial")
+
+	        Ntraj = Ngrid*Ntraj_max
+		write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+		write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
+
+	        if (trim(adjustl(old_filename)) /= "") then
+	                new_filename = gridpath0//Ngrid_text//"/Initial"//Ntraj_text//SATRVfile
+	                call system("cat "//trim(adjustl(old_filename))//" "//&
+	                            gridpath0//Ngrid_text//"/Initial"//SATRVfile//" > "//new_filename)
+	                old_filename = new_filename
+	        else
+	                old_filename = gridpath0//Ngrid_text//"/Initial"//Ntraj_text//SATRVfile
+	                call system("cp "//gridpath0//Ngrid_text//"/Initial"//SATRVfile//" "//trim(adjustl(old_filename)))
+	        end if
+
+	        !Make an SA + TRV plot
+	        call getScatteringAngles1(Ngrid_text//"/Initial"//Ntraj_text,"SATRVDistribution")
+	end do
+end if
+
 !Finally, do a post-creation timeslice-to-SA conversions here
 !We use the SA often so we do this at the beginning
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
@@ -517,12 +562,14 @@ write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_tot
 Ntraj = Ntesttraj
 write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
 write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
-call postProcess(Ngrid_text//prefix_text)
 
 call getConvergenceImage(0.0, real(pi), 1, "ScatteringAngle")
-call getConvergenceImage(min_relenergychange,max_relenergychange,4,"RelativeEnergyChange")
-call getConvergenceImage(min_absenergychange,max_absenergychange,3,"AbsoluteEnergyChange")
-call getConvergenceImage(min_rotenergychange,max_rotenergychange,5,"RotationalEnergyChange")
+call getConvergenceImage(min(min_relenergychange,min_absenergychange,min_rotenergychange),&
+                         max(max_relenergychange,max_relenergychange,max_rotenergychange),4,"RelativeEnergyChange")
+call getConvergenceImage(min(min_relenergychange,min_absenergychange,min_rotenergychange),&
+                         max(max_relenergychange,max_relenergychange,max_rotenergychange),3,"AbsoluteEnergyChange")
+call getConvergenceImage(min(min_relenergychange,min_absenergychange,min_rotenergychange),&
+                         max(max_relenergychange,max_relenergychange,max_rotenergychange),5,"RotationalEnergyChange")
 
 if (percentthreshold_flag) then
 	call itime(now)

@@ -73,6 +73,7 @@ integer,allocatable :: angle_energy_bins(:,:)
 integer :: occurence_max
 real :: bin_width
 integer :: angle_ratio = angleBins / scatteringangleBins
+integer :: angle_slice = 6!denominator for slicing the scattering angle plot
 
 !I/O HANDLING
 integer :: iostate
@@ -107,7 +108,7 @@ do i = 1, Ntraj
 	TranslationalEnergy = ceiling((TranslationalEnergy_real)/ sizeEnergyBin)
 	AbsEnergyChange = ceiling((abs_energychange)/sizeDeltaEnergyBin)
 	RelEnergyChange = ceiling((rel_energychange)/sizeDeltaEnergyBin)
-	RotEnergyChange = ceiling((rot_energychange)/sizeRotEnergyBin)
+	RotEnergyChange = ceiling((rot_energychange)/sizeDeltaEnergyBin)
 
 	if (ScatteringAngle > angleBins) ScatteringAngle = angleBins
 	if (ScatteringAngle == 0) ScatteringAngle = 1
@@ -178,8 +179,8 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
 write(gnuplotchannel,*) 'set title "Rotational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
 write(gnuplotchannel,*) 'set ylabel "Rotational Energy Change"'
-write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
-write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
+!write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
+!write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
 write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
@@ -194,7 +195,7 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
 occurence_max = maxval(angle_energy_bins)
 open(filechannel1,file=gridpath0//temporaryfile1)
-do i = 1, angleBins
+do i = 1, angleBins/angle_slice+1
 	do j = 1, energyBins
 		write(filechannel1,FMT=*) (i-1)*sizeAngleBin, (j-1)*sizeEnergyBin, angle_energy_bins(i,j)
 	end do
@@ -207,17 +208,18 @@ open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//prefix_filename//'HeatMap_'//&
                         JPGfilename//'.png"'
-write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" offset 0,2'
+write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" offset 0,-20'
+!write(gnuplotchannel,*) 'set lmargin at screen 0.05'
+!write(gnuplotchannel,*) 'set rmargin at screen 0.85'
+!write(gnuplotchannel,*) 'set bmargin at screen 0.1'
+!write(gnuplotchannel,*) 'set tmargin at screen 0.7705'
 write(gnuplotchannel,*) 'set lmargin at screen 0.05'
 write(gnuplotchannel,*) 'set rmargin at screen 0.85'
 write(gnuplotchannel,*) 'set bmargin at screen 0.1'
-write(gnuplotchannel,*) 'set tmargin at screen 0.7705'
 write(gnuplotchannel,*) 'set pm3d map'
 write(gnuplotchannel,*) 'set pm3d corners2color c1'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set multiplot'
-write(gnuplotchannel,*) 'set parametric'
-write(gnuplotchannel,*) 'set isosamples 500'
 write(gnuplotchannel,*) 'unset border'
 write(gnuplotchannel,*) 'unset xtics'
 write(gnuplotchannel,*) 'unset ytics'
@@ -234,31 +236,68 @@ write(gnuplotchannel,*) 'set cblabel "Frequency"'
 !write(gnuplotchannel,*) 'set palette rgbformulae 3, 2, 2'
 write(gnuplotchannel,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
 write(gnuplotchannel,*) '     1 1 0.6471 0 )'
-write(gnuplotchannel,*) 'scaling_factor = 1.0'
+write(gnuplotchannel,*) 'scaling_factor = 2.4'
 write(gnuplotchannel,*) 'set size ratio -1'
-write(gnuplotchannel,*) 'set xrange[-rmax:rmax]'
-write(gnuplotchannel,*) 'set yrange[0:rmax]'
-write(gnuplotchannel,*) 'set colorbox user origin 0.9,0.1 size 0.03,0.8'
-write(gnuplotchannel,*) 'splot "'//gridpath0//temporaryfile1//'" u ($2*cos($1)):($2*sin($1)):3'
+write(gnuplotchannel,*) 'set xrange[0:scaling_factor*rmax]'
+write(gnuplotchannel,*) 'set yrange[0:scaling_factor*rmax]'
+write(gnuplotchannel,*) 'set colorbox user origin 0.9,0.1 size 0.03,0.5'
+write(gnuplotchannel,*) 'set origin 0.0, 0.0'
+write(gnuplotchannel,*) 'splot "'//gridpath0//temporaryfile1//'" u (scaling_factor*$2*cos($1)):'//&
+                        '(scaling_factor*$2*sin($1)):3'
 write(gnuplotchannel,*) 'set style line 11 lc rgb "black" lw 2'
-write(gnuplotchannel,*) 'set grid polar ls 11'
-write(gnuplotchannel,*) 'set polar'
-write(gnuplotchannel,*) 'set rrange[0:rmax]'
-write(gnuplotchannel,*) 'set yrange[0:rmax]'
-write(gnuplotchannel,*) 'set size ratio -1'
-write(gnuplotchannel,*) 'set bmargin at screen 0.2295'
-write(gnuplotchannel,*) 'set tmargin at screen 0.9'
-!write(gnuplotchannel,*) 'unset raxis'
-!write(gnuplotchannel,*) 'set rlabel "Translational Energy Change (eV)"'
-!write(gnuplotchannel,*) 'set rtics format "" scale 0'
+!write(gnuplotchannel,*) 'set grid polar ls 11'
+!write(gnuplotchannel,*) 'set polar'
+!write(gnuplotchannel,*) 'set rrange[0:rmax]'
+!write(gnuplotchannel,*) 'set yrange[0:rmax]'
+!write(gnuplotchannel,*) 'set size ratio -1'
+!write(gnuplotchannel,*) 'set bmargin at screen 0.2295'
+!write(gnuplotchannel,*) 'set tmargin at screen 0.9'
+!!write(gnuplotchannel,*) 'unset raxis'
+!!write(gnuplotchannel,*) 'set rlabel "Translational Energy Change (eV)"'
+!!write(gnuplotchannel,*) 'set rtics format "" scale 0'
+!write(gnuplotchannel,*) 'unset title'
+!write(gnuplotchannel,*) 'set rtics r / 4'
+!write(gnuplotchannel,*) 'unset parametric'
+!write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (rmax*scaling_factor)*cos(i*pi/180),'//&
+!                        ' first (rmax*scaling_factor)*sin(i*pi/180)\'
+!write(gnuplotchannel,*) 'center sprintf(''%d'', i)'
+!write(gnuplotchannel,*) 'plot NaN w l'
+!write(gnuplotchannel,*) 'unset multiplot'
+write(gnuplotchannel,*) 'set samples 1000'
+write(gnuplotchannel,*) 'phi_max = pi/', angle_slice
+write(gnuplotchannel,*) 'dphi = phi_max/3'
+write(gnuplotchannel,*) 'dR = rmax/4'
+write(gnuplotchannel,*) 'set xr [0:rmax]'
+write(gnuplotchannel,*) 'set yr [0:rmax]'
+write(gnuplotchannel,*) 'set xtics out nomirror'
+write(gnuplotchannel,*) 'unset ytics'
+write(gnuplotchannel,*) 'set style line 42 lc rgb "black" dt 3'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set origin 0.08, 0.09'
+write(gnuplotchannel,*) 'set lmargin at screen 0.050'
+write(gnuplotchannel,*) 'set rmargin at screen 0.77'
+write(gnuplotchannel,*) 'set bmargin at screen 0.13'
 write(gnuplotchannel,*) 'unset title'
-write(gnuplotchannel,*) 'set rtics r / 4'
-write(gnuplotchannel,*) 'unset parametric'
-write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (rmax*scaling_factor)*cos(i*pi/180),'//&
-                        ' first (rmax*scaling_factor)*sin(i*pi/180)\'
-write(gnuplotchannel,*) 'center sprintf(''%d'', i)'
-write(gnuplotchannel,*) 'plot NaN w l'
-write(gnuplotchannel,*) 'unset multiplot'
+write(gnuplotchannel,*) "set format x '%.3f'"
+write(gnuplotchannel,*) 'set xtics 0, rmax/4, rmax'
+write(gnuplotchannel,*) 'set xlabel "Translational Energy (eV)"'
+write(gnuplotchannel,*) 'set for [i=0:phi_max/dphi+1] label at first (rmax*1.05)*cos(i*dphi),'//&
+                        ' first (rmax*1.05)*sin(i*dphi) center sprintf(''%d^o'',i*dphi*1.02*180/pi)'
+write(gnuplotchannel,*) 'plot for [i=1:ceil(rmax/dR)] "+" u (i*dR*cos($1*phi_max/rmax)):(i*dR*sin($1*phi_max/rmax))'//&
+                        ' w l ls 42'! scale 0.8, 0.8'
+write(gnuplotchannel,*) 'set origin 0.08, 0.09'
+write(gnuplotchannel,*) 'plot for [i=0:phi_max/dphi+1] "+" u ($1*cos(i*dphi)):($1*sin(i*dphi))'//&
+                        ' w l ls 42'! scale 0.8, 0.8'
+!write(gnuplotchannel,*) 'plot \'
+!write(gnuplotchannel,*) '    for [i=0:phi_max/dphi] (x>=0&&x<=rmax*cos(i*dphi))?tan(i*dphi)*x:1/0 w l ls 42'
+!write(gnuplotchannel,*) 'set polar'
+!write(gnuplotchannel,*) 'set trange [0:phi_max]'
+!write(gnuplotchannel,*) 'unset raxis'
+!write(gnuplotchannel,*) 'unset rtics'
+!write(gnuplotchannel,*) 'plot \'
+!write(gnuplotchannel,*) '    for [i=1:ceil(rmax/dR)] i*dR<=rmax?i*dR:1/0 w l ls 42'
+!write(gnuplotchannel,*) 'unset raxis'
+!write(gnuplotchannel,*) 'unset rtics'
 close(gnuplotchannel)
 
 !And then we just input it into gnuplot.exe
@@ -299,7 +338,7 @@ character(5) :: variable_length_text
 character(5) :: variable_length_text1, variable_length_text2
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
-character(6) :: Ntraj_text
+character(trajectory_text_length) :: Ntraj_text
 
 !INCREMENTAL INTEGER
 integer :: i
@@ -312,10 +351,11 @@ allocate(binTotal(scatteringangleBins,Nsamples_max),binAverage(scatteringangleBi
 !This will be the distribution of ALL trajectories
 binTotal = 0
 sampleSize = 0
-write(Ntraj_text,FMT="(I6)") Ngrid_max * Ntraj_max
-write(variable_length_text,FMT="(I5)") Ngrid_text_length
+write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_max * Ntraj_max
+write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_max
-open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//trim(adjustl(Ntraj_text))//binnedSATRVfile,action="read")
+open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//Ntraj_text//binnedSATRVfile,action="read")
 do Nsamples = 1, Nsamples_max
         do i = 1, Ntesttraj
                 read(filechannel1,FMT=*) SATRVdata
@@ -453,7 +493,7 @@ character(*), intent(in) :: JPGfilename
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
-character(6) :: Ntraj_text
+character(trajectory_text_length) :: Ntraj_text
 character(6) :: boxwidth_text
 logical :: grid_is_done
 
@@ -473,7 +513,8 @@ write(gnuplotchannel,*) 'box_width = pi / ', SA_Nbins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
-write(Ntraj_text,FMT="(I6)") Ntraj
+write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+write(Ntraj_text,FMT="(I0."//variable_length_text//")") Ntraj
 write(gnuplotchannel,*) 'set multiplot layout 4,1 title '//&
                         '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
@@ -498,8 +539,10 @@ else
                                 '" u (rounded($1)):(1.0) smooth frequency w boxes'
 end if
         write(gnuplotchannel,*) 'scaling = 1000'
-        write(gnuplotchannel,*) 'min_E = scaling * ', min(min_relenergychange,min_absenergychange)
-        write(gnuplotchannel,*) 'max_E = scaling * ', max(max_relenergychange,max_absenergychange)
+        write(gnuplotchannel,*) 'min_E = scaling * ', min(min_relenergychange,min_absenergychange,&
+                                                          min_rotenergychange)
+        write(gnuplotchannel,*) 'max_E = scaling * ', max(max_relenergychange,max_absenergychange,&
+                                                          max_rotenergychange)
         write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
         write(gnuplotchannel,*) 'set boxwidth box_width'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
@@ -535,8 +578,8 @@ else
                                 '" u (rounded($4)):(1.0) smooth frequency w boxes'
 end if
         write(gnuplotchannel,*) 'set ylabel "Rotational Translational Energy Change"'
-        write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
-        write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
+!        write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
+!        write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
         write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
