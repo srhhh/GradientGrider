@@ -156,7 +156,7 @@ do Ngrid = 1, max(Ngrid_total,1)
 !        close(filechannel1)
         
         !Write to the plot
-        write(variable_length_text,FMT="(I5)") occurence_max
+        write(variable_length_text,FMT="(I5)") floor(occurence_max*.9)
         open(filechannel1,file=gridpath0//gnuplotfile)
         write(filechannel1,*) 'set terminal pngcairo size 1600,1300'
 	if ((present(counter0_optional)).and.(present(counter1_optional)).and.(present(filename_optional))) then
@@ -169,8 +169,13 @@ do Ngrid = 1, max(Ngrid_total,1)
         write(filechannel1,*) '     1 1 0.6471 0 )'
         write(filechannel1,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//']'
         write(filechannel1,*) 'set cblabel "Population"'
-        write(filechannel1,*) 'set xlabel "Var1 (A)"'
-        write(filechannel1,*) 'set ylabel "Var2 (A)"'
+        write(filechannel1,*) 'set title "Configurational Heatmap of an H - H_2 System" font ",32" offset 0,3'
+        write(filechannel1,*) 'set xlabel "Var1 (A)" font ",28" offset 0,-2'
+        write(filechannel1,*) 'set xtics font ",24"'
+        write(filechannel1,*) 'set xrange [2:11]'
+        write(filechannel1,*) 'set ylabel "Var2 (A)" font ",28" offset -5,0'
+        write(filechannel1,*) 'set ytics font ",24"'
+        write(filechannel1,*) 'set yrange [2:12]'
         write(filechannel1,*) 'set cbtics'
         write(filechannel1,*) 'set view map'
         write(filechannel1,*) 'set pm3d interpolate 1,1'
