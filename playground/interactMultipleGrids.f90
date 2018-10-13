@@ -773,6 +773,7 @@ end subroutine getNeighbors
 subroutine getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
 
 use ls_rmsd_original
+use ANALYSIS
 use PARAMETERS
 implicit none
 integer,intent(out) :: population
@@ -801,16 +802,17 @@ do
 
         call rmsd_dp(Natoms,coords2,coords,1,candidate_U,x_center,y_center,min_rmsd)!,.false.,g)
 
+        !Increment the number of frames visited
+        population = population + 1
+
 	if (min_rmsd < old_min_rmsd) then
 		old_min_rmsd = min_rmsd
         	read(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
 		U = candidate_U
+                if (accept_first) exit
 	else
         	read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
 	end if
-
-        !Increment the number of frames visited
-        population = population + 1
 end do
 close(filechannel1)
 

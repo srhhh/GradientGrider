@@ -57,7 +57,7 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0700
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -79,13 +79,14 @@ useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.false.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.004000d0
-threshold_rmsd1=.004000d0
+threshold_rmsd=.050000d0
+threshold_rmsd1=.050000d0
 threshold_rmsd2=.001000d0
 threshold_rmsd3=.005000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
+accept_first=.true.
 testtrajSA_flag=.false.
 Ntrajectories=50
 
@@ -97,10 +98,10 @@ Ntrajectories=50
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Sep12_label"
+newGRID="H2H2_Oct12_test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 newGRID_check_min=30
@@ -168,6 +169,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 1/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s/accept_first = .*/accept_first = $accept_first/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 #DO NOT TOUCH THIS
@@ -230,6 +232,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 4/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s/accept_first = .*/accept_first = $accept_first/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -269,6 +272,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s/accept_first = .*/accept_first = $accept_first/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -306,6 +310,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s/accept_first = .*/accept_first = $accept_first/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -343,6 +348,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s/accept_first = .*/accept_first = $accept_first/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -380,6 +386,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s/accept_first = .*/accept_first = $accept_first/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/

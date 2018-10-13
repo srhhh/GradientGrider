@@ -1544,6 +1544,7 @@ end subroutine getNeighbors
 subroutine getRMSD(filename,population,coords,min_rmsd,gradient,U)
 
 use ls_rmsd_original
+use ANALYSIS
 use PARAMETERS
 implicit none
 integer,intent(in) :: population
@@ -1571,6 +1572,7 @@ do i = 1, population
 		min_rmsd = candidate_min_rmsd
 		U = candidate_U
         	read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+		if (accept_first) exit
 	else
         	read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
 	end if

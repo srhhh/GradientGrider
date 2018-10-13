@@ -65,6 +65,11 @@ logical,parameter :: testtraj_flag = .true.
       !method
       logical :: reject_flag = .true.
 
+      !If reject_flag is false (and we are accepting frames) then
+      !accept_first controls whether we use the first frame accepted
+      !or use the frame that is closest in RMSD
+      logical :: accept_first = .true.
+
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid
    logical,parameter :: testtrajSA_flag = .true.
