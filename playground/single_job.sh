@@ -60,7 +60,7 @@ overcrowd0=00050
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=1
+Ngrid_max=4
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -71,24 +71,24 @@ force_NoLabels=.false.
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
 #what you want each individual one to do
-heatmap_flag=.true.
+heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
-testtraj_flag=.false.
+testtraj_flag=.true.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
-percentthreshold_flag=.false.
+percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.050000d0
-threshold_rmsd1=.050000d0
+threshold_rmsd=.100000d0
+threshold_rmsd1=.100000d0
 threshold_rmsd2=.001000d0
 threshold_rmsd3=.005000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.true.
-testtrajSA_flag=.false.
-Ntrajectories=50
+testtrajSA_flag=.true.
+Ntrajectories=350
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -98,10 +98,10 @@ Ntrajectories=50
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Oct12_test"
+newGRID="H2H2_Oct10_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 newGRID_check_min=30
