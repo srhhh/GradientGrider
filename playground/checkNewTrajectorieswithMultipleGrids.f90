@@ -204,7 +204,7 @@ if (trueSA_flag) then
 	min_rotenergychange = 1.0e9
 	
 	old_filename = ""
-	do Ngrid = 1, Ngrid_total
+	do Ngrid = 1, Ngrid_max
 		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 
@@ -449,8 +449,8 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!Then write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkMultipleGrids uses filechannel1 to open files in the grid
-	call checkMultipleTrajectories(filechannels(1:Ngrid_max),coords_initial,velocities_initial,&
-                                                                 coords_final,velocities_final)
+	call checkMultipleTrajectories(filechannels(1:Ngrid_total),coords_initial,velocities_initial,&
+                                                                   coords_final,velocities_final)
 
 	!Also let's see how long a single trajectory takes
 	call system_clock(c2)
@@ -537,7 +537,7 @@ if (.true.) then                     !(trueSA_flag) then
 	print *, ""
 
 	old_filename = ""
-	do Ngrid = 1, Ngrid_total
+	do Ngrid = 1, Ngrid_max
 		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 

@@ -60,7 +60,7 @@ overcrowd0=00050
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=4
+Ngrid_max=12
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -79,15 +79,17 @@ useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.100000d0
-threshold_rmsd1=.100000d0
+threshold_rmsd=.004000d0
+threshold_rmsd1=.004000d0
 threshold_rmsd2=.001000d0
 threshold_rmsd3=.005000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
-accept_first=.true.
+accept_first=.false.
 testtrajSA_flag=.true.
+Ngrid_cap=4
+#Ngrid_cap=${Ngrid_max}
 Ntrajectories=350
 
 ###############################################################################################################################################
@@ -98,7 +100,7 @@ Ntrajectories=350
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Oct10_label"
+newGRID="HH2_Oct16_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -158,7 +160,7 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
 #This first analysis simulates new trajectories and checks them with the grid
 #All of these variables can be changed;
 #Ntesttraj is how many trajectorie to simulate (important!)
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 1/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = .true./
      s/trueSA_flag = .*/trueSA_flag = .true./
      s/trueED_flag = .*/trueED_flag = .true./
@@ -221,7 +223,7 @@ cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS)+(.f90) $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
 
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = 4/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
@@ -261,7 +263,7 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
@@ -299,7 +301,7 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
@@ -337,7 +339,7 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
@@ -375,7 +377,7 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_max/
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/

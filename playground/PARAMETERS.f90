@@ -126,7 +126,7 @@ integer, parameter :: SAfiles_text_length = gridpath_length +&
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !The number of atoms in the system
-integer,parameter :: Natoms = 4
+integer,parameter :: Natoms = 3
 integer,parameter :: Ncoords = Natoms*3
 
 !The number of variables in use
