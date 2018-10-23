@@ -123,8 +123,8 @@ write(gnuplotchannel,*) 'set bmargin 0'
 write(gnuplotchannel,*) 'set lmargin 1'
 write(gnuplotchannel,*) 'set rmargin 1'
 write(variable_length_text,"(I5)") Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-write(gnuplotchannel,*) 'set multiplot layout '//Ngrid_text(Ngrid_text_length:Ngrid_text_length)//&
+write(Ngrid_text,FMT="(I"//trim(adjustl(variable_length_text))//")") Ngrid_total
+write(gnuplotchannel,*) 'set multiplot layout '//trim(adjustl(Ngrid_text))//&
                         ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0'&
                         //' title "Trajectory RMSD Distribution with '//prefix_filename//' method'
 write(gnuplotchannel,*) 'set title "Percentages of Trajectories with RMSD Below Threshold"'

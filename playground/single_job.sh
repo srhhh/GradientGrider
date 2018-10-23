@@ -57,10 +57,10 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0500
+Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=2
+Ngrid_max=12
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -74,20 +74,20 @@ force_NoLabels=.false.
 heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
-testtraj_flag=.true.
+testtraj_flag=.false.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.004000d0
-threshold_rmsd1=.004000d0
+threshold_rmsd=.004010d0
+threshold_rmsd1=.004010d0
 threshold_rmsd2=.001000d0
 threshold_rmsd3=.005000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
-testtrajSA_flag=.true.
+testtrajSA_flag=.false.
 #Ngrid_cap=4
 Ngrid_cap=${Ngrid_max}
 Ntrajectories=350
@@ -100,16 +100,16 @@ Ntrajectories=350
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Oct22_label_500x2_formatted"
+newGRID="HH2_Oct16_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 newGRID_check_min=30
 
 #The number of post-grid analyses you would like done
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
