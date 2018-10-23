@@ -643,8 +643,8 @@ prefix_text = reject_text//Nthreshold_text
 	write(gnuplotchannel,*) 'set multiplot layout 5,1 margins 0.15,0.95,.1,.99 spacing 0,0 title "Creation of Grid '//Ngrid_text//'/"'
 	write(gnuplotchannel,*) 'unset key'
 	write(gnuplotchannel,*) 'unset xlabel'
-	write(gnuplotchannel,*) 'set ylabel "Number of Files"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:6 w lines'
+	write(gnuplotchannel,*) 'set ylabel "Number of Files (Thousands)"'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($6)/1000.0) w lines'
 	write(gnuplotchannel,*) 'set ylabel "Number of Calls to DivyUp"'
 	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:4 w lines, '//&
 	                           '"'//gridpath1//"Initial"//informaticsfile//'" u 3:5 w lines'
@@ -652,17 +652,17 @@ prefix_text = reject_text//Nthreshold_text
 	write(gnuplotchannel,*) 'set yrange [0:100]'
 	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:7 w lines'
 	write(gnuplotchannel,*) 'set autoscale y'
-	write(gnuplotchannel,*) 'set ylabel "Wall Time (sec)"'
+	write(gnuplotchannel,*) 'set ylabel "Wall Time (ms)"'
 	write(grid_wall_time_text,FMT="(F10.2)") grid_wall_time
 	write(gnuplotchannel,*) 'set label 1 "Total Wall Time (including grid checking): '//&
                                 trim(adjustl(grid_wall_time_text))//' s" at graph 0.025,0.9'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:2 w lines'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($2)*1000.0) w lines'
 	write(gnuplotchannel,*) 'set xtics'
 	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
 	write(gnuplotchannel,*) 'set autoscale y'
 	write(gnuplotchannel,*) 'unset label 1'
-	write(gnuplotchannel,*) 'set ylabel "CPU Time (sec)"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:1 w lines'
+	write(gnuplotchannel,*) 'set ylabel "CPU Time (ms)"'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($1)*1000.0) w lines'
 	close(gnuplotchannel)
 	call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
 	

@@ -244,10 +244,25 @@ divisor2 = MP(4)
 !          FRAME RETRIEVAL
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-open(filechannel1,file=gridpath2//trim(subcellParent)//".dat")
+!Open the file corresponding to the cell
+if (unreadable_flag) then
+        open(filechannel1,file=gridpath2//trim(subcellParent)//".dat",form="unformatted")
+else
+        open(filechannel1,file=gridpath2//trim(subcellParent)//".dat")
+end if
+
 do i=1, frames
-        read(filechannel1,FMT=FMT1,advance="no") (coords(i,l),l=1,Nvar)
-        read(filechannel1,FMT=FMT2)(coords(i,Nvar+l),l=1,6*Natoms)
+        !Read the cell's data
+        if (unreadable_flag) then
+                read(filechannel1) (coords(i,l),l=1,Nvar)
+                read(filechannel1) (coords(i,l),l=Nvar_next,Ncoordsvals)
+                read(filechannel1) (coords(i,l),l=Ncoordsvals_next,Ngradientcoordsvals)
+        else
+                read(filechannel1,FMT=FMT1,advance="no") (coords(i,l),l=1,Nvar)
+                read(filechannel1,FMT=FMT2) (coords(i,l),l=Nvar_next,Ngradientcoordsvals)
+        end if
+
+        !If any data is out of the cell, bring it back in
         vals(i,1) = int((coords(i,1) - var1_round) * divisor1)
         if (vals(i,1) < 0) vals(i,1) = 0
         if (vals(i,1) .ge. scaling1_0 ) vals(i,1) = scaling1_0 - 1
@@ -297,10 +312,22 @@ if ((index1/=recent_index1) .or. (index2/=recent_index2)) then
         write(var2_filename,FMT=FMTorder) var2_round + recent_index2*multiplier2
         subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-        open(filechannel1,file=gridpath2//trim(subcellChild)//".dat",status="new")
+        if (unreadable_flag) then
+                open(filechannel1,file=gridpath2//trim(subcellChild)//".dat",&
+                     status="new",form="unformatted")
+        else
+                open(filechannel1,file=gridpath2//trim(subcellChild)//".dat",status="new")
+        end if
+
         do i = recent_vals_index, sorting_index-1
-                 write(filechannel1,FMT=FMT1,advance="no") (coords(originalIndexes(i,1),l),l=1,Nvar)
-                 write(filechannel1,FMT=FMT2)(coords(originalIndexes(i,1),l),l=1+Nvar,Nvar+6*Natoms)
+                if (unreadable_flag) then
+                        write(filechannel1) (coords(originalIndexes(i,1),l),l=1,Nvar)
+                        write(filechannel1) (coords(originalIndexes(i,1),l),l=Nvar_next,Ncoordsvals)
+                        write(filechannel1) (coords(originalIndexes(i,1),l),l=Ncoordsvals_next,Ngradientcoordsvals)
+                else
+                        write(filechannel1,FMT=FMT1,advance="no") (coords(originalIndexes(i,1),l),l=1,Nvar)
+                        write(filechannel1,FMT=FMT2) (coords(originalIndexes(i,1),l),l=Nvar_next,Ngradientcoordsvals)
+                end if
         end do
         close(filechannel1)
 
@@ -318,10 +345,23 @@ write(var1_filename,FMT=FMTorder) var1_round + recent_index1*multiplier1
 write(var2_filename,FMT=FMTorder) var2_round + recent_index2*multiplier2
 subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
-open(filechannel1,file=gridpath2//trim(subcellChild)//".dat",status="new")
+
+if (unreadable_flag) then
+        open(filechannel1,file=gridpath2//trim(subcellChild)//".dat",&
+             status="new",form="unformatted")
+else
+        open(filechannel1,file=gridpath2//trim(subcellChild)//".dat",status="new")
+end if
+
 do i = recent_vals_index, frames
-        write(filechannel1,FMT=FMT1,advance="no") (coords(originalIndexes(i,1),l),l=1,Nvar)
-        write(filechannel1,FMT=FMT2)(coords(originalIndexes(i,1),l),l=1+Nvar,Nvar+6*Natoms)
+        if (unreadable_flag) then
+                write(filechannel1) (coords(originalIndexes(i,1),l),l=1,Nvar)
+                write(filechannel1) (coords(originalIndexes(i,1),l),l=Nvar_next,Ncoordsvals)
+                write(filechannel1) (coords(originalIndexes(i,1),l),l=Ncoordsvals_next,Ngradientcoordsvals)
+        else
+                write(filechannel1,FMT=FMT1,advance="no") (coords(originalIndexes(i,1),l),l=1,Nvar)
+                write(filechannel1,FMT=FMT2) (coords(originalIndexes(i,1),l),l=1+Nvar,Nvar+6*Natoms)
+        end if
 end do
 close(filechannel1)
 
@@ -1491,6 +1531,7 @@ if ((flag2) .and. (flag3)) then
         end if
 end if
 
+!Rinse and repeat
 if ((flag1) .and. (flag4)) then
 
         indexer = scaling1*(index2_2) + (index1_1) + 1
@@ -1511,6 +1552,7 @@ if ((flag1) .and. (flag4)) then
         end if
 end if
 
+!Rinse and repeat
 if ((flag2) .and. (flag4)) then
 
         indexer = scaling1*(index2_2) + (index1_2) + 1
@@ -1560,22 +1602,50 @@ real(dp) :: candidate_min_rmsd
 real(dp),intent(in), dimension(3,Natoms) :: coords
 real(dp), dimension(3,Natoms) :: coords2
 
-!Read off the states in this subcell
-open(filechannel1,file=gridpath2//trim(filename)//".dat")
-do i = 1, population
-	read(filechannel1,FMT=FMT7,advance="no") ((coords2(j,k),j=1,3),k=1,Natoms)
+!Open this cell
+if (unreadable_flag) then
+        open(filechannel1,file=gridpath2//trim(filename)//".dat",form="unformatted")
+else
+        open(filechannel1,file=gridpath2//trim(filename)//".dat")
+end if
 
+!Loop over every frame in the cell
+do i = 1, population
+
+        !Read the candidate frame
+        if (unreadable_flag) then
+                read(filechannel1)
+                read(filechannel1) ((coords2(j,k),j=1,3),k=1,Natoms)
+        else
+                read(filechannel1,FMT=FMT7,advance="no") ((coords2(j,k),j=1,3),k=1,Natoms)
+        end if
+
+        !Get the RMSD between the candidate frame and the reference frame
         call rmsd_dp(Natoms,coords2,coords,1,candidate_U(:,:),&
                      x_center,y_center,candidate_min_rmsd)
-	
-	if (candidate_min_rmsd < min_rmsd) then
-		min_rmsd = candidate_min_rmsd
-		U = candidate_U
-        	read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
-		if (accept_first) exit
-	else
-        	read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
-	end if
+         
+        !If it is low enough, accept the candidate frame (and save its rotation matrix!)
+        if (candidate_min_rmsd < min_rmsd) then
+                min_rmsd = candidate_min_rmsd
+                U = candidate_U
+
+                if (unreadable_flag) then
+                        read(filechannel1) ((gradient(j,k),j=1,3),k=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+                end if
+
+                !In special cases, we exit immediately afterwards
+                if (accept_first) exit
+
+        !Otherwise, just don't record the gradient
+        else
+                if (unreadable_flag) then
+                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                end if
+        end if
 
 end do
 close(filechannel1)
@@ -1595,13 +1665,24 @@ character(*),intent(in) :: filename
 integer :: i, j, k
 integer, dimension(Natoms) :: permutation
 
-open(filechannel1,file=filename,position="append")
-do k = 1, Nindistinguishables
-	permutation = INDISTINGUISHABLES(k,:)
-	write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-	write(filechannel1,FMT=FMT3,advance="no") ((coords(i,permutation(j)),i=1,3),j=1,Natoms)
-	write(filechannel1,FMT=FMT3) ((gradient(i,permutation(j)),i=1,3),j=1,Natoms)
-end do	
+!Pretty self-explanatory
+if (unreadable_flag) then
+        open(filechannel1,file=filename,position="append",form="unformatted")
+        do k = 1, Nindistinguishables
+                permutation = INDISTINGUISHABLES(k,:)
+                write(filechannel1) (vals(j),j=1,Nvar)
+                write(filechannel1) ((coords(i,permutation(j)),i=1,3),j=1,Natoms)
+                write(filechannel1) ((gradient(i,permutation(j)),i=1,3),j=1,Natoms)
+        end do        
+else
+        open(filechannel1,file=filename,position="append")
+        do k = 1, Nindistinguishables
+                permutation = INDISTINGUISHABLES(k,:)
+                write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+                write(filechannel1,FMT=FMT3,advance="no") ((coords(i,permutation(j)),i=1,3),j=1,Natoms)
+                write(filechannel1,FMT=FMT3) ((gradient(i,permutation(j)),i=1,3),j=1,Natoms)
+        end do        
+end if
 close(filechannel1)
 
 end subroutine addMultiples
@@ -1616,15 +1697,29 @@ real(dp),dimension(3,Natoms),intent(in) :: coords,gradient
 character(*),intent(in) :: filename
 integer :: i,j
 
-open(filechannel1,file=filename,position="append")
-if (force_NoLabels) then
-        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
-        write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+!Pretty self-explanatory
+if (unreadable_flag) then
+        open(filechannel1,file=filename,position="append",form="unformatted")
+        if (force_NoLabels) then
+                write(filechannel1) (vals(j),j=1,Nvar)
+                write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
+                write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
+        else
+                write(filechannel1) (vals(j),j=1,Nvar)
+                write(filechannel1) ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+                write(filechannel1) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+        end if
 else
-        write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-        write(filechannel1,FMT=FMT3,advance="no") ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
-        write(filechannel1,FMT=FMT3) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+        open(filechannel1,file=filename,position="append")
+        if (force_NoLabels) then
+                write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+                write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+                write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+        else
+                write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+                write(filechannel1,FMT=FMT3,advance="no") ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+                write(filechannel1,FMT=FMT3) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+        end if
 end if
 close(filechannel1)
 

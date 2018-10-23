@@ -792,13 +792,24 @@ real(dp), dimension(3,Natoms) :: coords2
 
 old_min_rmsd = min_rmsd
 
-!Read off the states in this subcell
-open(filechannel1,file=trim(subcell)//".dat")
+!Open the file corresponding to the cell
+if (unreadable_flag) then
+        open(filechannel1,file=trim(subcell)//".dat",form="unformatted")
+else
+        open(filechannel1,file=trim(subcell)//".dat")
+end if
+
 population = 0
 do
-	!Once we've had enough, exit
-        read(filechannel1,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
-	if (iostate /= 0) exit
+        !Read the candidate frame
+        if (unreadable_flag) then
+                read(filechannel1,iostat=iostate)
+	        if (iostate /= 0) exit
+                read(filechannel1) ((coords2(i,j),i=1,3),j=1,Natoms)
+        else
+                read(filechannel1,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
+	        if (iostate /= 0) exit
+        end if
 
         call rmsd_dp(Natoms,coords2,coords,1,candidate_U,x_center,y_center,min_rmsd)!,.false.,g)
 
@@ -807,11 +818,21 @@ do
 
 	if (min_rmsd < old_min_rmsd) then
 		old_min_rmsd = min_rmsd
-        	read(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
 		U = candidate_U
+
+                if (unreadable_flag) then
+                        read(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+                end if
+
                 if (accept_first) exit
 	else
-        	read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+                if (unreadable_flag) then
+                        read(filechannel1) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+                end if
 	end if
 end do
 close(filechannel1)

@@ -57,10 +57,10 @@ scaling2_0=004
 overcrowd0=00050
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0500
 
 #The number of grids to add to a new library
-Ngrid_max=12
+Ngrid_max=2
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -88,8 +88,8 @@ threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
 testtrajSA_flag=.true.
-Ngrid_cap=4
-#Ngrid_cap=${Ngrid_max}
+#Ngrid_cap=4
+Ngrid_cap=${Ngrid_max}
 Ntrajectories=350
 
 ###############################################################################################################################################
@@ -100,16 +100,16 @@ Ntrajectories=350
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Oct16_label"
+newGRID="HH2_Oct22_label_500x2_formatted"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 newGRID_check_min=30
 
 #The number of post-grid analyses you would like done
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -153,7 +153,7 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
      s|Ngrid_check_min = .*|Ngrid_check_min = $newGRID_check_min|
      s|force_Duplicates = .*|force_Duplicates = $force_Duplicates|
      s|force_NoLabels = .*|force_NoLabels = $force_NoLabels|
-     s|gridpath0 = .*|gridpath0 = \"$gridPATH/\"|
+     s|gridpath0 = .*|gridpath0 = \\&\\n\"$gridPATH/\"|
      s|$oldPARAMETERS\\.f90|$newPARAMETERS.f90|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
 
 #Make changes to the analysis file as specified in the variables above

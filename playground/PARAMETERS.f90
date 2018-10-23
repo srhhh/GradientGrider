@@ -87,6 +87,8 @@ integer,parameter :: gnuplotchannel = 77
 !                      FORMATTING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+logical,parameter :: unreadable_flag = .false.
+
 character(14),parameter :: FMT1 = "(2(1x,F14.10))"          !For two variables
 character(22) :: FMT2         !For six atoms, coords and gradient
 character(22) :: FMT3         !For six atoms, coords or gradient
@@ -131,7 +133,10 @@ integer,parameter :: Ncoords = Natoms*3
 
 !The number of variables in use
 integer,parameter :: Nvar = 2
+integer,parameter :: Nvar_next = Nvar + 1
 integer,parameter :: Ncoordsvals = Nvar+Ncoords
+integer,parameter :: Ncoordsvals_next = Ncoordsvals + 1
+integer,parameter :: Ngradientcoordsvals = Nvar+Ncoords*2
 
 
 
