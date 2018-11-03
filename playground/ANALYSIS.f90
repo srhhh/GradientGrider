@@ -82,6 +82,18 @@ logical,parameter :: testtraj_flag = .true.
    !the trajectories for each grid
    logical,parameter :: testtrajTRV_flag = .true.
 
+!Set .true. to ask the program to do a comparison of multiple
+!trajectory sets (mostly for consistency checking)
+logical,parameter :: comparison_flag = .false.
+character(40),parameter :: comparison_SATRVname = ""
+integer :: comparison_SATRVcolumn
+real,parameter :: comparison_lowerlimit = 0.0d0
+real,parameter :: comparison_upperlimit = 0.0d0
+
+integer,parameter :: comparison_number = 1
+character(11),parameter :: allprefixes = "placeholder"
+integer,dimension(comparison_number),parameter :: alllengths = (/ 69 /)
+
 end module ANALYSIS
 
 

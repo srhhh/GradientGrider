@@ -86,7 +86,7 @@ character(Ngrid_text_length+1) :: folder_text
 character(trajectory_text_length) :: Ntraj_text
 character(6) :: Nthreshold_text
 character(6) :: reject_text
-character(12) :: prefix_text
+character(12+Ngrid_text_length) :: prefix_text
 character(150) :: old_filename, new_filename
 character(1) :: answer
 
@@ -101,6 +101,7 @@ real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
 real(dp),dimension(3,Natoms) :: coords_initial,velocities_initial,coords_final,velocities_final
 real(dp) :: probJ_max, J_factor3
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
+real :: lowerlimit,upperlimit
 
 !Variables
 integer :: iostate
@@ -241,11 +242,16 @@ if (reject_flag) then
 else
 	reject_text = "accept"
 end if
+if (accept_first) then
+        reject_text = "alphaA"
+else
+end if
+
 allocate(filechannels(Ngrid_total))
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 
-prefix_text = reject_text//Nthreshold_text
+prefix_text = Ngrid_text//reject_text//Nthreshold_text
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -285,8 +291,10 @@ if (useolddata_flag) then
 	!and we assume all previous grids have just as many or more (usually a safe assumption)
         write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
         write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-        call system("ls "//gridpath0//Ngrid_text//"/ | grep -E '^"//&
-                    reject_text//"\"//Nthreshold_text//"_[0123456789]{6}.dat' > "//gridpath0//trajectories)
+        write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+        call system("ls "//gridpath0//Ngrid_text//"/ | grep -E '^"//Ngrid_text//&
+                    reject_text//"\"//Nthreshold_text//"_[0123456789]{"//trim(adjustl(variable_length_text))//&
+                    "}.dat' > "//gridpath0//trajectories)
 
         !Then we simply have to read the file to see how many we have
 	!This also assumes they were numbered correctly (usually a safe assumption)
@@ -317,16 +325,16 @@ if (useolddata_flag) then
                 print *, "          DATA INCONGRUENCE "
                 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 if (Ntraj > initial_n_testtraj) print *, "    trajectory files missing for "//&
-                                                         Ngrid_text//prefix_text//" ... .dat"
+                                                         prefix_text//" ... .dat"
                 if (Ntraj < initial_n_testtraj) print *, "    timeslice file corrupted for "//&
-                                                         Ngrid_text//prefix_text
+                                                         prefix_text
                 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 		print *, ""
 		
 		if ((Ntraj < Ntesttraj).or.(initial_n_testtraj < Ntesttraj)) then
 		do
 			print *, "    corrupted data interrupts trajectory indexing;"
-			print *, "    overwrite corrupted data?    (y/n)"
+			print *, "    overwrite corrupted data? otherwise the program exits    (y/n)"
 			print *, ""
 			read (*,*) answer
 			if ((answer == "y").or.(answer == "n")) exit
@@ -339,10 +347,13 @@ if (useolddata_flag) then
 	                print *, ""
 	                return
 		else
+			print *, "    starting off where the timeslice file left off!"
+			print *, ""
 			initial_n_testtraj = Ntraj
 		end if
 		else
 			print *, "    going along with analysis on uncorrupted data"
+			print *, ""
 		end if
                 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 		print *, ""
@@ -355,7 +366,7 @@ if (useolddata_flag) then
 else
 
         !We need to make a new one of these trajectory files altogether
-        call system("rm "//gridpath0//Ngrid_text//prefix_text//trajectoriesfile)
+        call system("rm "//gridpath0//prefix_text//trajectoriesfile)
 end if
 
 
@@ -422,7 +433,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                                         bond_period_elapsed /)
 	end do
 
-	open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//initialfile,&
+	open(filechannel1,file=gridpath0//prefix_text//initialfile,&
                           position="append")
 	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
         close(filechannel1)
@@ -464,7 +475,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	end do
 
 	!The only data that is recorded is the first and last frame of the trajectory
-	open(filechannel1,file=gridpath0//Ngrid_text//prefix_text//timeslicefile,position="append")
+	open(filechannel1,file=gridpath0//prefix_text//timeslicefile,position="append")
 	write(filechannel1,FMTtimeslice) &
                               ((coords_initial(i,j),i=1,3),j=1,Natoms),&
                               ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
@@ -492,8 +503,8 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 		write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
 		write(gnuplotchannel,*) 'set xlabel "RMSD"'
 		write(gnuplotchannel,*) 'set ylabel "Occurence"'
-		write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//"/"//reject_text//&
-                                        Nthreshold_text//'_'//Ntraj_text//'.dat'//&
+		write(gnuplotchannel,*) 'plot "'//gridpath0//Ngrid_text//"/"//&
+                                        prefix_text//'_'//Ntraj_text//'.dat'//&
 		                        '" u (rounded($1)):(1.0) smooth frequency with boxes'
 		close(gnuplotchannel)
 		call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
@@ -526,11 +537,32 @@ max_relenergychange = 0.0
 min_relenergychange = 1.0e9
 max_rotenergychange = 0.0
 min_rotenergychange = 1.0e9
-call postProcess(Ngrid_text//prefix_text)
 
-!We need to redo the postProcess (and convergence) of each grid
+!If we have other files we need to compare, then we need to comb through those
+if (comparison_flag) then
+
+        if (comparison_number < 1) then
+                print *, ""
+                call itime(now)
+                write(6,FMT=FMTnow) now
+                print *, "Number of trajectory sets being compared is inadequate"
+                print *, "Terribly exited analysis"
+                print *, ""
+
+                return
+        end if
+
+        call postProcess(allprefixes(1:alllengths(1)))
+        do i = 1, comparison_number-1
+                call postProcess(allprefixes(1+sum(alllengths(1:i)):sum(alllengths(1:i+1))))
+        end do
+else
+        call postProcess(prefix_text)
+end if
+
+!We need to redo the postProcess (and convergence) of each grid as well
 !in case the maximum and minimum of the trajectories just processed are different
-if (.true.) then                     !(trueSA_flag) then
+if (.true.) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "InitialSATRVDistribution"
@@ -559,43 +591,96 @@ if (.true.) then                     !(trueSA_flag) then
 	                call system("cp "//gridpath0//Ngrid_text//"/Initial"//SATRVfile//" "//trim(adjustl(old_filename)))
 	        end if
 
-	        !Make an SA + TRV plot
+	        !Then bin it
 	        call getScatteringAngles1(Ngrid_text//"/Initial"//Ntraj_text,"SATRVDistribution")
 	end do
 end if
 
-!Finally, do a post-creation timeslice-to-SA conversions here
-!We use the SA often so we do this at the beginning
+!Finally, we look at the scattering angle and energy change distributions of the grid
+!with the maximums and minimums gathered from above
+!and see whether they converge; these plots will be used for reference
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 Ntraj = Ntesttraj
 write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
 write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
 
-call getConvergenceImage(0.0, real(pi), 1, "ScatteringAngle")
-call getConvergenceImage(min(min_relenergychange,min_absenergychange,min_rotenergychange),&
-                         max(max_relenergychange,max_relenergychange,max_rotenergychange),4,"RelativeEnergyChange")
-call getConvergenceImage(min(min_relenergychange,min_absenergychange,min_rotenergychange),&
-                         max(max_relenergychange,max_relenergychange,max_rotenergychange),3,"AbsoluteEnergyChange")
-call getConvergenceImage(min(min_relenergychange,min_absenergychange,min_rotenergychange),&
-                         max(max_relenergychange,max_relenergychange,max_rotenergychange),5,"RotationalEnergyChange")
+call getConvergenceImage(0.0,real(pi), 1, "ScatteringAngle")
+call getConvergenceImage(min_absenergychange,max_absenergychange, 3, "AbsoluteEnergyChange")
+call getConvergenceImage(min_relenergychange,max_relenergychange, 4, "RelativeEnergyChange")
+call getConvergenceImage(min_rotenergychange,max_rotenergychange, 5, "RotationalEnergyChange")
+
+if (trim(adjustl(comparison_SATRVname)) == "ScatteringAngle") then
+        comparison_SATRVcolumn = 1
+        lowerlimit = 0.0
+        upperlimit = real(pi)
+else if (trim(adjustl(comparison_SATRVname)) == "AbsoluteEnergyChange") then
+        comparison_SATRVcolumn = 3
+        lowerlimit = min_absenergychange
+        upperlimit = max_absenergychange
+else if (trim(adjustl(comparison_SATRVname)) == "RelativeEnergyChange") then
+        comparison_SATRVcolumn = 4
+        lowerlimit = min_relenergychange
+        upperlimit = max_relenergychange
+else if (trim(adjustl(comparison_SATRVname)) == "RotationalEnergyChange") then
+        comparison_SATRVcolumn = 5
+        lowerlimit = min_rotenergychange
+        upperlimit = max_rotenergychange
+else
+end if
+
+if (comparison_upperlimit /= comparison_lowerlimit) then
+        call getConvergenceImage(comparison_lowerlimit,comparison_upperlimit,comparison_SATRVcolumn,&
+                                 trim(adjustl(comparison_SATRVname)))
+end if
+
+!In a comparison run, we don't look at any of the other flags
+if (comparison_flag) then
+        call itime(now)
+        write(6,FMT=FMTnow) now
+	print *, "   Making plot: ", "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution"
+	print *, ""
+
+        if (comparison_upperlimit /= comparison_lowerlimit) then
+                call getComparedScatteringAngles(comparison_lowerlimit,comparison_upperlimit,&
+                         "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution",&
+                         comparison_SATRVcolumn,trim(adjustl(comparison_SATRVname)))
+        else
+                call getComparedScatteringAngles(lowerlimit,upperlimit,&
+                         "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution",&
+                         comparison_SATRVcolumn,trim(adjustl(comparison_SATRVname)))
+        end if
+
+        print *, ""
+        call itime(now)
+        write(6,FMT=FMTnow) now
+        print *, "Successfully exited analysis"
+        print *, ""
+
+        return
+end if
+
+
+
+!In a run without comparison, usually we do some analysis on the trajectories afterwards
+!The following calls do some data manipulation and make some figures
 
 if (percentthreshold_flag) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "PercentRMSDThreshold_"//Ngrid_text//prefix_text
+	print *, "   Making plot: ", "PercentRMSDThreshold_"//prefix_text
 	print *, ""
-	call getRMSDThresholds1(prefix_text,"PercentRMSDThreshold_"//Ngrid_text//prefix_text)
+	call getRMSDThresholds1(prefix_text,"PercentRMSDThreshold_"//prefix_text)
 end if
 
 if (testtrajSA_flag) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//Ngrid_text//prefix_text
+	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//prefix_text
 	print *, ""
 	
-	call getScatteringAngles2(Ngrid_text//prefix_text,"TestScatteringAngleDistribution_"//&
-                                  Ngrid_text//prefix_text)
+	call getScatteringAngles2(prefix_text,"TestScatteringAngleDistribution_"//&
+                                  prefix_text)
 end if
 
 if (testheatmapSA_flag) then
@@ -604,8 +689,9 @@ if (testheatmapSA_flag) then
 	print *, "   Making plot: ", "HeatMap_"//trim(adjustl(Ntraj_text))//"SATRVDistribution"
 	print *, ""
 
-	call getScatteringAngles1(Ngrid_text//prefix_text, "SATRVDistribution")
+	call getScatteringAngles1(prefix_text, "SATRVDistribution")
 end if
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -615,5 +701,7 @@ call itime(now)
 write(6,FMT=FMTnow) now
 print *, "Successfully exited analysis"
 print *, ""
+
+return
 
 end program checkNewTrajectorieswithMultipleGrids

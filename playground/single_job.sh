@@ -60,7 +60,7 @@ overcrowd0=00050
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=12
+Ngrid_max=4
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -74,23 +74,41 @@ force_NoLabels=.false.
 heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
-testtraj_flag=.false.
+testtraj_flag=.true.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.004010d0
-threshold_rmsd1=.004010d0
-threshold_rmsd2=.001000d0
-threshold_rmsd3=.005000d0
+threshold_rmsd=.150000d0
+threshold_rmsd1=.150000d0
+threshold_rmsd2=.150010d0
+threshold_rmsd3=.200010d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
-accept_first=.false.
-testtrajSA_flag=.false.
-#Ngrid_cap=4
-Ngrid_cap=${Ngrid_max}
-Ntrajectories=350
+accept_first=.true.
+testtrajSA_flag=.true.
+Ngrid_cap=1
+#Ngrid_cap=${Ngrid_max}
+Ntrajectories=50
+
+#If you have special set of parameters you want to compare, list them here
+#These will be compared at each compilation
+
+#These are the options for comparison:
+#ScatteringAngle (rad)
+#AbsoluteEnergyChange (eV)
+#RelativeEnergyChange (eV)
+#RotationalEnergyChange (eV)
+
+comparison_flag=none
+comparison_lowerlimit="0.0d0"
+comparison_upperlimit="10.00d-3"
+
+declare -a prefixes
+prefixes[0]="001accept.20001"
+prefixes[1]="001accept.15001"
+prefixes[2]="001accept.10001"
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -100,7 +118,7 @@ Ntrajectories=350
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Oct16_label"
+newGRID="HH2_Sep15_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -204,6 +222,73 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
+
+###############################################################################################################################################
+###############################################################################################################################################
+#		COMPARISON (USUALLY DONE AFTER ANALYSES)
+###############################################################################################################################################
+###############################################################################################################################################
+
+shopt -s extglob
+cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS)+(.f90) $newPATH/
+cp $currentPATH/make_$(echo "*") $newPATH/
+shopt -s extglob
+
+allprefixes=""
+alllengths=()
+for prefix in "${prefixes[@]}"
+do
+      allprefixes=$allprefixes$prefix
+      alllengths+=("${#prefix}")
+done
+alllengths_statement=$(IFS=, ; echo "${alllengths[*]}")
+
+if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ]
+then
+
+
+#This prevents a new parameters file from being copied into the library
+#While at the same time, updating all of the .f90 files
+#Remember, the parameters file should never change after creation!
+
+sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
+     s/heatmap_flag = .*/heatmap_flag = .false./
+     s/trueSA_flag = .*/trueSA_flag = .false./
+     s/trueED_flag = .*/trueED_flag = .false./
+     s/testtraj_flag = .*/testtraj_flag = .false./
+     s/useolddata_flag = .*/useolddata_flag = .false./
+     s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
+     s/testtrajRMSD_flag = .*/testtrajRMSD_flag = .false./
+     s/percentthreshold_flag = .*/percentthreshold_flag = .false./
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
+     s/reject_flag = .*/reject_flag = $reject_flag/
+     s/accept_first = .*/accept_first = $accept_first/
+     s/comparison_flag = .*/comparison_flag = .true./
+     s/comparison_lowerlimit = .*/comparison_lowerlimit = $comparison_lowerlimit/
+     s/comparison_upperlimit = .*/comparison_upperlimit = $comparison_upperlimit/
+     s/comparison_SATRVname = .*/comparison_SATRVname = \"$comparison_flag\"/
+     s/comparison_number = .*/comparison_number = ${#prefixes[@]}/
+     s/character(11),parameter :: allprefixes = .*/character(${#allprefixes}),parameter :: allprefixes = \"$allprefixes\"/
+     s|alllengths = .*|alllengths = (/$alllengths_statement/)|
+     s/testtrajSA_flag = .*/testtrajSA_flag = .false./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+
+sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
+     s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
+     s|SOURCE = .*|SOURCE = $newPATH/|
+     s/$oldANALYSIS\\.o/$newANALYSIS.o/
+     s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
+
+cd $newPATH
+
+make clean -f $newPATH/$newMAKEANALYSIS
+make -f $newPATH/$newMAKEANALYSIS
+./a.out
+
+fi
+
+###############################################################################################################################################
+###############################################################################################################################################
+
 if [ $Nanalyses -lt 1 ]
 then
 exit
@@ -235,6 +320,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -275,6 +361,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -313,6 +400,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -351,6 +439,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -389,6 +478,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/

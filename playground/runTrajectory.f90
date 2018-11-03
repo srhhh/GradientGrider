@@ -943,20 +943,20 @@ subroutine addMultipleTrajectories()
 		heatmap_steps = 0
 	end if
 
-	!$OMP PARALLEL
+	!$OMP PARALLEL DO private(n)
 	do n = 1, Ntraj_max
 	        call InitialSetup4(coords(:,:,n),velocities(:,:,n))
 		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
 	        call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
 	end do
-	!$OMP END PARALLEL
+	!$OMP END PARALLEL DO
 
         !Accelerate the velcocities for a half step (verlet)
 	velocities = velocities + 0.5d0 * gradient
 
 	!To randomize the periods of the bond, I let the scene go on
 	!for a small period of time (need to standardize this later)
-	!$OMP PARALLEL
+	!$OMP PARALLEL DO private(n,m,coords_initial,velocities_initial,steps)
 	do m = 1, Ntraj_max
 	coords_initial = coords(:,:,m)
 	velocities_initial = velocities(:,:,m)
@@ -975,10 +975,11 @@ subroutine addMultipleTrajectories()
 		velocities(:,BONDING_DATA(n,2),m) = velocities_initial(:,BONDING_DATA(n,2))
 	end do
 	end do
-	!$OMP END PARALLEL
+	!$OMP END PARALLEL DO
 
 	!Now we go into the mainloop
 	!We have a hard cap of Nsteps timesteps
+	!$OMP PARALLEL DO private(n,m,steps)
         do steps = 1, Nsteps
 
 		!Just for bug-testing
@@ -999,7 +1000,7 @@ subroutine addMultipleTrajectories()
 			call analyzeHeatMaps2(counter0,counter1,"png/"//variable_length_text//".png")
                 end if
  
-		do n = 1, Ntraj_max
+	do n = 1, Ntraj_max
 			if (.not.TRAJECTORIES_FLAG(n)) cycle
 
 	                !Check every 500 steps if we are out-of-bounds
@@ -1010,7 +1011,7 @@ subroutine addMultipleTrajectories()
 
 				if (.not.(any(TRAJECTORIES_FLAG))) header_max_flag = .true.
 	                endif
-		end do
+	end do
 
 		!$OMP PARALLEL
 		do n = 1, Ntraj_max
@@ -1044,6 +1045,7 @@ subroutine addMultipleTrajectories()
 			exit
 		end if
         end do
+	!$OMP END PARALLEL DO
 
 	if (heatmap_evolution_flag) then
 		call system("convert -delay 20 -loop 0 "//gridpath1//"png/*.png "//gridpath1//"heatmap_evolution.gif")
@@ -1086,18 +1088,21 @@ subroutine addMultipleTrajectories2()
 		heatmap_steps = 0
 	end if
 
+        !Initialize all the trajectories
+	!$OMP PARALLEL DO private(n)
 	do n = 1, Ntraj_max
 	        call InitialSetup4(coords(:,:,n),velocities(:,:,n))
 		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
 	        call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
 	end do
+	!$OMP END PARALLEL DO
 
         !Accelerate the velcocities for a half step (verlet)
 	velocities = velocities + 0.5d0 * gradient
 
 	!To randomize the periods of the bond, I let the scene go on
 	!for a small period of time (need to standardize this later)
-	!$OMP PARALLEL
+	!$OMP PARALLEL DO private(n,m,steps)
 	do m = 1, Ntraj_max
 	coords_initial = coords(:,:,m)
 	velocities_initial = velocities(:,:,m)
@@ -1116,12 +1121,11 @@ subroutine addMultipleTrajectories2()
 		velocities(:,BONDING_DATA(n,2),m) = velocities_initial(:,BONDING_DATA(n,2))
 	end do
 	end do
-	!$OMP END PARALLEL
+	!$OMP END PARALLEL DO
 
 	TRAJECTORIES0 = 0
 	current_cell = 0
 	NEIGHBOR_LIST = 0
-	!$OMP PARALLEL
 	do n = 1, Ntraj_max
 		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
 
@@ -1142,10 +1146,8 @@ subroutine addMultipleTrajectories2()
 			TRAJECTORIES0(indexer) = n
 		end if
 	end do
-	!$OMP END PARALLEL
 
 	!Now we go into the mainloop
-	!We have a hard cap of Nsteps timesteps
         do
 
 		!Just for bug-testing
@@ -1180,6 +1182,7 @@ subroutine addMultipleTrajectories2()
 		end do
                 endif
 
+	        !$OMP PARALLEL DO
 		do
 			if (.not.TRAJECTORIES_FLAG(n)) cycle
 	
@@ -1202,6 +1205,7 @@ subroutine addMultipleTrajectories2()
 			!Update the velocities(:,:,n)
 			velocities(:,:,n) = velocities(:,:,n) + gradient(:,:,n)
 		end do
+	        !$OMP END PARALLEL DO
 
 	        if (header_max_flag) then
 			heatmap_steps = heatmap_steps + 1

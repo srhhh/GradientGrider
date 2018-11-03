@@ -256,3 +256,46 @@ E.		CHECKING A FRAME ALONGSIDE A GRID
 A frame is checked alongside a grid much the same way that a frame is added to a grid. However, instead of adding the frame to the target cell, the target cell is read. All the frames in the cell are compared to the original frame. In the grid creation, the target cell is checked whether it is overcrowded by checking the internal counter and following pointers. Something similar can be done for grid checking. However, if multiple grids are being checked at once---in which it would be laborious to have to open and close every counter text file---this internal counter system is not used. Instead, a subcell of some order is inquired for in the grid; if it does not exist, the cell that is one order higher is then inquired for. So while the internal counter system, by nature, checks from top-down, the external inquiry system checks from bottom-up.
 
 There is not yet a default value for the RMSD if there is no frame found in the grid closeby to the original frame; it is hard-coded to be .200100 A. So RMSD thresholds at this point must be below .2001 A.
+
+
+------------------------------------------------------------------------------------
+F.		ANALYSIS AS OF UPDATE 8.5
+------------------------------------------------------------------------------------
+
+There've been quite a lot of updates recently that have had little to no comments.
+
+Yes, the overall flow of analysis has changed. So I am going to go through it in the least painful way possible while still going through the core elements needed to debug it if there are unexpected results. This guide is not for grid building, trajectory sampling, and frame storing. I am going to assume you are already a little familiar with these concepts.
+
+Let's start with the "single_job" script because this is how the user actually interacts with the program. Rarely does the user actually need to change anything in the actual fortran code. All of the variables in ANALYSIS.f90 can be changed through single_job.sh, however there are MANY things in PARAMETERS.f90 and PHYSICS.f90 that cannot be changed through single_job.sh. One example is the switch between a H-H2 and H2-H2 system. This requires a few lines of commenting/uncommenting in PHYSICS.f90, VARIABLES.f90, and changing the number of atoms in PARAMETERS.f90 manually. This switch is one I don't anticipate automating with a job script. I think (in the future) if we are making a legacy code, I can make a copy of PARAMETERS, PHYSICS, and VARIABLES for the H - H2 system and one for the H2 - H2 system as examples; they don't seem scientifically noteworthy otherwise.
+
+Of these variables that can be changed, the most notable are the choices we have to making new trajectories to check alongside the grid. Even though these trajectories all sample the system the same way, the way they are checked with the grid can differ according to the variables specified. And because they are all different, they need different labels. Here is a rundown on how they are labelled:
+
+ex.              002accept.00800_00040
+
+The first prefix is the number of grids. In above, the trajectory was checked alongside the first two grids (001/, 002/) of the library. In single_job.sh, this is controlled through Ngrid_cap, but will of course never go above Ngrid_max.
+
+The second prefix indicates whether the trajectory even considered accepting frame approximations. "accept" means it did accept approximations whereas "reject" means it did not. I am going to add another option soon "alphaA" which means it accepts the first approximation (which would be considerably worse than then best approximation, as it done right now). The difference between acceptance and rejection is controlled by accept_flag in single_job.sh which tranalates to a boolean in fortran. The difference between accept first and accept normal (or best) is controlled by accept_first in single_job.sh, which again translates to a boolean in fortran. Must be 6 characters long right now.
+
+The third prefix is the RMSD threshold of acceptance. This is largely the same.
+
+The number following the underscore is the trajectory number. Two trajectories with the same first three prefixes would now be considered to be in the same ensemble so they can be plotted together.
+
+The largest problem I am having right now which is not backward compatible is labelling. If you look inside any grid, you can see that the first prefix does not exist. This means that right now, if you do a 2 grid check and a 4 grid check, the second check will overwrite the first one. This is clearly a problem and I have only mildly ameliorated it by giving different checks different thresholds (like .080001 vs .080002). A second problem is the second prefix labelling. It has not yet been implemented because some files that are labelled "accept" actually used the other method so should be labelled "alphaA".
+
+It is reasonable to expect changes in an ongoing project. But these are the major sticklers.
+
+Now, onto the analysis of these trajectories.
+
+The first step of analysis (which is all done in checkNewTrajectories....f90) is always to call a new random number with the time. Because this is a separate program from makeNewTrajectories....f90 and I haven't found a good way of making easy-to-change parameter formats, there is a little bit of front-end, both in single_job.sh with sed and the main program, to first get the format of strings and of trajectory labels out of the way. 
+
+After that is trajectory creation. Many times, we want to make new trajectories with the above labels. Suppose we want to do so. Now, to preserve old data, there is the useolddata flag that controls whether we check to see if there are already trajectories with the specified labels. If we need more trajectories, then we start the next trajectories where the old ones left off.
+
+After having made a test set of trajectories, a reference set is needed for comparison. Because we are looking at distributions, we are looking at bins, which means bin widths must be addressed. There is no good way of choosing a bin width without knowing the upper and lower bound of your test trajectories beforehand. But at the same time, the bin widths shouldn't be changing wildly because that changes the way the distribution looks from one bunch of trajectories to the next. This is why I defaulted to (1) an automated bin_width that looks at all trajectories of interest and (2) a manual upper/lower bounds cutoff in case outliers make the distribution look drastically bad.
+
+In detail, the bin width is calculated following the upper and lower bound determination. The upper and lower bound are defaulted to 1.0e9 and 0.0, respectively. Then, whenever the subroutine postProcess is called on a set of trajectories (whether it is from the grid or from a test), the upper and lower bound are adjusted if these trajectories dip below or above the lower or upper bound, respectively. A subroutine called getScatteringAngles1 seals the deal by binning the trajectories in the grid (the reference) according to these bounds and the bin width. The subroutine called getconvergenceImages then sees how many trajectories are needed to converge to a resonable agreement, which cements the error for the reference.
+
+From the above it is clear that, after the upper and lower bounds are reset, the subroutine postProcess should be called on each grid in the library as well as each set of trajectories of interest. In most cases, this is just one set of trajectories. After that, getScatteringAngles1 can be called and then getConvergenceImages can be called on each plot of interest (scattering angle, energy change, etc).
+
+
+
+
