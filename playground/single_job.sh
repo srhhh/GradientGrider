@@ -54,13 +54,13 @@ scaling1_0=004
 scaling2_0=004
 
 #The number of frames a parent-level cell accepts before it is subdivided
-overcrowd0=00050
+overcrowd0=0005
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0100
 
 #The number of grids to add to a new library
-Ngrid_max=4
+Ngrid_max=1
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -90,7 +90,7 @@ accept_first=.true.
 testtrajSA_flag=.true.
 Ngrid_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=50
+Ntrajectories=350
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -103,12 +103,14 @@ Ntrajectories=50
 
 comparison_flag=none
 comparison_lowerlimit="0.0d0"
-comparison_upperlimit="10.00d-3"
+comparison_upperlimit="0.14d0"
 
 declare -a prefixes
-prefixes[0]="001accept.20001"
-prefixes[1]="001accept.15001"
-prefixes[2]="001accept.10001"
+prefixes[0]="001alphaA.40001"
+prefixes[1]="001alphaA.20001"
+prefixes[2]="001alphaA.15001"
+prefixes[3]="001alphaA.04001"
+prefixes[4]="001alphaA.00401"
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -118,16 +120,16 @@ prefixes[2]="001accept.10001"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Sep15_label"
+newGRID="HH2_Nov12_test1"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 newGRID_check_min=30
 
 #The number of post-grid analyses you would like done
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)
