@@ -148,11 +148,17 @@ integer,parameter :: Ngradientcoordsvals = Nvar+Ncoords*2
 !                     GRID PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Norder_max controls how many children generation we will make
+integer,parameter :: Norder_max = 2
+logical,parameter :: order0_flag = (1 > Norder_max)
+logical,parameter :: order1_flag = (2 > Norder_max)
+logical,parameter :: order2_flag = (3 > Norder_max)
+
 !The spacing is the spacing of the parent-level grid
 !Because the variables may be unbound, we define the
 !parent-level grid in terms of gridline spacing
 real,parameter :: spacing1 = 0.01        !Angstroms
-real,parameter :: spacing2 = 0.01        !Cosine
+real,parameter :: spacing2 = 0.01        !Angstroms
 real,parameter :: spacing3 = 0.1         !Not in use
 
 !There are some outliers; making a maximum throws these away

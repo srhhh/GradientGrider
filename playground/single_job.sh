@@ -47,20 +47,27 @@ newMAKEANALYSIS=make_checkNewTrajectorieswithMultipleGrids2_new
 #If you want to change other variables (ex. spacing1) you would
 #have to make more sed statements below to change that
 
+#How many children generations do you want?
+Norder_max=1
+
 #The ratio of child-level to parent-level cell spacings with respect to var1
 scaling1_0=004
+scaling1_1=004
 
 #The ratio of child-level to parent-level cell spacings with respect to var2
 scaling2_0=004
+scaling2_1=004
 
 #The number of frames a parent-level cell accepts before it is subdivided
 overcrowd0=00050
+overcrowd1=10000
+overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0200
 
 #The number of grids to add to a new library
-Ngrid_max=12
+Ngrid_max=1
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -79,8 +86,8 @@ useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.150000d0
-threshold_rmsd1=.150000d0
+threshold_rmsd=.001000d0
+threshold_rmsd1=.001000d0
 threshold_rmsd2=.150010d0
 threshold_rmsd3=.200010d0
 threshold_rmsd4=.010000d0
@@ -89,6 +96,7 @@ reject_flag=.true.
 accept_first=.false.
 testtrajSA_flag=.true.
 Ngrid_cap=1
+Norder_cap=2
 #Ngrid_cap=${Ngrid_max}
 Ntrajectories=350
 
@@ -112,6 +120,19 @@ prefixes[2]="004accept.15000"
 prefixes[3]="008accept.15000"
 prefixes[4]="001reject.15000"
 
+#If the comparison lower and upper limits are the same, the program will
+#use whatever the minimum and maximum is of the data (bad if outliers exist)
+comparison_flag=none
+comparison_lowerlimit="0.0d0"
+comparison_upperlimit="0.14d0"
+
+declare -a prefixes
+prefixes[0]="001alphaA.40001"
+prefixes[1]="001alphaA.20001"
+prefixes[2]="001alphaA.15001"
+prefixes[3]="001alphaA.04001"
+prefixes[4]="001alphaA.00401"
+
 ###############################################################################################################################################
 ###############################################################################################################################################
 
@@ -120,15 +141,19 @@ prefixes[4]="001reject.15000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Oct16_label"
+newGRID="HH2_Nov12_test4"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
-newGRID_check_min=50
 
 #The number of post-grid analyses you would like done
+#Just set this to a very large number if no progress checks are wanted
+newGRID_check_min=30000
+
+#The number of post-grid analyses you would like done
+#These are separate from the comparison and the post-grid-making analysis
 Nanalyses=0
 
 #The path that has the original source code
@@ -145,7 +170,7 @@ newPATH=$(pwd)/$newGRID/$newSOURCE
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-#Set this true if you want to create a new grid
+#If you want to create a new grid, do that first
 if [ $newGRID_flag -eq 1 ]
 then
 
@@ -162,8 +187,13 @@ cp $currentPATH/make_$(echo "*") $newPATH/
 #Unless you want to change MORE variables, don't touch this
 sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max| 
      s|overcrowd0 = [0-9]*|overcrowd0 = $overcrowd0|
+     s|overcrowd1 = [0-9]*|overcrowd1 = $overcrowd1|
+     s|overcrowd2 = [0-9]*|overcrowd2 = $overcrowd2|
      s|scaling1_0 = [0-9]*|scaling1_0 = $scaling1_0|
      s|scaling2_0 = [0-9]*|scaling2_0 = $scaling2_0|
+     s|scaling1_1 = [0-9]*|scaling1_1 = $scaling1_1|
+     s|scaling2_1 = [0-9]*|scaling2_1 = $scaling2_1|
+     s|Norder_max = [0-9]*|Norder_max = $Norder_max|
      s|Ngrid_max = [0-9]*|Ngrid_max = $Ngrid_max|
      s|trajectory_text_length = [0-9]*|trajectory_text_length = ${#Ntraj_max}|
      s|scaling1_text_length = [0-9]*|scaling1_text_length = ${#scaling1_0}|
@@ -177,10 +207,10 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
      s|$oldPARAMETERS\\.f90|$newPARAMETERS.f90|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
 
 #Make changes to the analysis file as specified in the variables above
-#This first analysis simulates new trajectories and checks them with the grid
-#All of these variables can be changed;
-#Ntesttraj is how many trajectorie to simulate (important!)
+#This first post-grid-making analysis does nothing but look at the data
+#in the grid that was just made (heatmap, scattering angle, etc)
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
+     s|Norder_cap = [0-9]*|Norder_cap = $Norder_cap|
      s/heatmap_flag = .*/heatmap_flag = .true./
      s/trueSA_flag = .*/trueSA_flag = .true./
      s/trueED_flag = .*/trueED_flag = .true./
@@ -188,11 +218,13 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
-     s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
+     s/comparison_flag = .*/comparison_flag = .false./
+     s/percentthreshold_flag = .*/percentthreshold_flag = .false./
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
-     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+     s/testheatmapSA_flag = .*/testheatmapSA_flag = .false./
+     s/testtrajSA_flag = .*/testtrajSA_flag = .false./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 #DO NOT TOUCH THIS
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS.o/
@@ -231,11 +263,16 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
+#This prevents a new parameters file from being copied into the library
+#While at the same time, updating all of the .f90 files
+#Remember, the parameters file should never change after creation!
 shopt -s extglob
 cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS)+(.f90) $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
 
+#Whatever trajectories we want to check, we need to accumulate and pass
+#that to the fortran code somehow
 allprefixes=""
 alllengths=()
 for prefix in "${prefixes[@]}"
@@ -248,11 +285,7 @@ alllengths_statement=$(IFS=, ; echo "${alllengths[*]}")
 if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ]
 then
 
-
-#This prevents a new parameters file from being copied into the library
-#While at the same time, updating all of the .f90 files
-#Remember, the parameters file should never change after creation!
-
+#Change the comparison analysis as specified in the variables above
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = .false./
      s/trueSA_flag = .*/trueSA_flag = .false./

@@ -259,6 +259,7 @@ do i=1, frames
                 read(filechannel1) (coords(i,l),l=Ncoordsvals_next,Ngradientcoordsvals)
         else
                 read(filechannel1,FMT=FMT1,advance="no") (coords(i,l),l=1,Nvar)
+if (FMT2 /= "(000003(6(1x,F14.10)))") print *, "FMT2: ", FMT2
                 read(filechannel1,FMT=FMT2) (coords(i,l),l=Nvar_next,Ngradientcoordsvals)
         end if
 
@@ -344,7 +345,6 @@ end do
 write(var1_filename,FMT=FMTorder) var1_round + recent_index1*multiplier1
 write(var2_filename,FMT=FMTorder) var2_round + recent_index2*multiplier2
 subcellChild = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
-
 
 if (unreadable_flag) then
         open(filechannel1,file=gridpath2//trim(subcellChild)//".dat",&
@@ -964,18 +964,16 @@ if (key0 < overcrowd0) then
         if (key0 == 0)  return
 
         !Make the name of the subcell
-	var1_round = var1_round0
-	var2_round = var2_round0
+        var1_round = var1_round0
+        var2_round = var2_round0
         write(var1_filename,FMT=FMTorder0) var1_round
         write(var2_filename,FMT=FMTorder0) var2_round
         subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
 
         call getRMSD(subcell,key0,coords,min_rmsd,gradient,U)
 
-	number_of_frames = number_of_frames + key0
-	neighbor_check = neighbor_check + 1
-
-	stop_flag = .true.
+        number_of_frames = number_of_frames + key0
+        neighbor_check = neighbor_check + 1
 
         if (min_rmsd < old_min_rmsd) then
                 old_min_rmsd = min_rmsd
@@ -983,14 +981,13 @@ if (key0 < overcrowd0) then
                 old_U = U
         end if
 
+        order = 0
+        min_rmsd = old_min_rmsd
+        if (any(abs(old_U) > 1.0d-20)) gradient = matmul(old_U,old_gradient)
+        return
 end if
 
-if (stop_flag) then
-	order = 0
-	min_rmsd = old_min_rmsd
-	if (any(abs(old_U) > 1.0d-20)) gradient = matmul(old_U,old_gradient)
-	return
-end if
+if (order0_flag) return
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 ORDER 1
@@ -1196,21 +1193,14 @@ if (key1 < overcrowd1) then
                 end do
 
         end if
-end if
 
-if (stop_flag) then
 	order = 1
 	min_rmsd = old_min_rmsd
 	if (any(abs(old_U) > 1.0d-20)) gradient = matmul(old_U,old_gradient)
 	return
 end if
 
-
-!Right now we are stopping after we look at order 0 (parent) and order 1 (child) cells
-
-order = -1
-neighbor_check = 0
-return
+if (order1_flag) return
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 ORDER 2
@@ -1252,34 +1242,158 @@ if (key2 < overcrowd2) then
 		stop_flag = .true.
 	end if
 
+        !If there are no frames in this cell, we can look at one of its
+        !neighbors (better than having to look at the parent)
         if ((key2 == 0) .or. (force_Neighbors)) then
-		neighbor_check = 1
 
+		!We need to know the filename of the parent to get the filename of a child                
 		var1_round = var1_round0 + var1_round1
 		var2_round = var2_round0 + var2_round1
 
+                !Once we go far enough outside, we can stop
                 stop_flag = .false.
 
-                do i = 1, scaling1_1
-                do j = 0, i                
+                !Integer i keeps track of how far away from the original
+                !subcell we are; we look at cells on the 'diamond' surrounding
+                !the original subcell
+                do i = 1, subcell1search_max
+			neighbor_check = neighbor_check + 4
+        
+                        index1_1 = var1_index + i
+                        index1_2 = var1_index - i
+        
+                        index2_1 = var2_index + i
+                        index2_2 = var2_index - i
+        
+                        if (index1_1 < scaling1_1) then
 
-                        index1_1 = var1_index + j
-                        index1_2 = var1_index - j
+                                !Calculate the index in counterN, just as in addCells.f90
+				indexer = resolution_1*int(key1/key_start-1) + scaling1_1*var2_index + index1_1 + 1
+                                key2 = counter2(indexer)
 
-                        index2_1 = var2_index + i - j
-                        index2_2 = var2_index - i + j
+				if (key2 > 0) then        
 
-                        call getNeighbors(scaling1_1,scaling2_1,multiplier1_2,multiplier2_2,FMTorder2,&
-                                          resolution_1*(int(key1/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
-                                          var1_round,var2_round,counter2,counter2_max,&
-                                          coords,min_rmsd,gradient,U,number_of_frames)
-
-                        if (min_rmsd < old_min_rmsd) then
-                                stop_flag = .true.
+                                !Make the name of the subcell
+                                var1_round = var1_round0 + var1_round1 + index1_1 * multiplier1_2
+                                var2_round = var2_round0 + var2_round1 + var2_round2
+                                write(var1_filename,FMT=FMTorder2) var1_round
+                                write(var2_filename,FMT=FMTorder2) var2_round
+                                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+        
+                		call getRMSD(subcell,modulo(key2,key_start),coords,min_rmsd,gradient,U)
+        
+                                number_of_frames = number_of_frames + modulo(key2,key_start)
+				end if
                         end if
+                        !Rinse and repeat
+                        if (index1_2 .ge. 0) then
 
-                end do
-                if (stop_flag) exit
+                                !Calculate the index in counterN, just as in addCells.f90
+				indexer = resolution_1*int(key1/key_start-1) + scaling1_1*var2_index + index1_2 + 1
+                                key2 = counter2(indexer)
+
+				if (key2 > 0) then
+        
+                                var1_round = var1_round0 + var1_round1 + index1_2 * multiplier1_2
+                                var2_round = var2_round0 + var2_round1 + var2_round2
+                                write(var1_filename,FMT=FMTorder2) var1_round
+                                write(var2_filename,FMT=FMTorder2) var2_round
+                                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+        
+                		call getRMSD(subcell,modulo(key2,key_start),coords,min_rmsd,gradient,U)
+        
+                                number_of_frames = number_of_frames + modulo(key2,key_start)
+				end if
+                        end if
+                        !Rinse and repeat
+                        if (index2_1 < scaling2_1) then
+
+                                !Calculate the index in counterN, just as in addCells.f90
+				indexer = resolution_1*int(key1/key_start-1) + scaling1_1*index2_1 + var1_index + 1
+                                key2 = counter2(indexer)
+
+				if (key2 > 0) then
+        
+                                var1_round = var1_round0 + var1_round1 + var1_round2
+                                var2_round = var2_round0 + var2_round1 + index2_1 * multiplier2_2
+                                write(var1_filename,FMT=FMTorder2) var1_round
+                                write(var2_filename,FMT=FMTorder2) var2_round
+                                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+        
+                		call getRMSD(subcell,modulo(key2,key_start),coords,min_rmsd,gradient,U)
+        
+                                number_of_frames = number_of_frames + modulo(key2,key_start)
+				end if
+                        end if
+                        !Rinse and repeat
+                        if (index2_2 .ge. 0) then
+
+                                !Calculate the index in counterN, just as in addCells.f90
+				indexer = resolution_1*int(key1/key_start-1) + scaling1_1*index2_2 + var1_index + 1
+                                key2 = counter2(indexer)
+
+				if (key2 > 0) then
+        
+                                var1_round = var1_round0 + var1_round1 + var1_round2
+                                var2_round = var2_round0 + var2_round1 + index2_2 * multiplier2_2
+                                write(var1_filename,FMT=FMTorder2) var1_round
+                                write(var2_filename,FMT=FMTorder2) var2_round
+                                subcell = trim(adjustl(var1_filename))//"_"//trim(adjustl(var2_filename))
+        
+                		call getRMSD(subcell,modulo(key2,key_start),coords,min_rmsd,gradient,U)
+        
+                                number_of_frames = number_of_frames + modulo(key2,key_start)
+				end if
+                        end if
+        
+                        if (min_rmsd /= old_min_rmsd) then
+                                stop_flag = .true.
+                                if (min_rmsd < old_min_rmsd) then
+                                        old_min_rmsd = min_rmsd
+                                        old_gradient = gradient
+                                        old_U = U
+                                end if
+                        end if
+        
+                        !And integer j keeps track of where on the circumfrence
+                        !Of the diamond surrounding the subcell we are at
+                        do j = 1, i-1
+                        	neighbor_check = neighbor_check + 4
+                        
+                                !Yes, there are redundancies for j = 0 and j = i
+                                !This is the first thing we can improve upon
+                                !(maybe with an if statement?)
+                                index1_1 = var1_index + j
+                                index1_2 = var1_index - j
+        
+                                index2_1 = var2_index + i - j
+                                index2_2 = var2_index - i + j
+        
+                                !This does the nitty-gritty of checking to see
+                                !If any of the indexes are out of bounds and 
+                                !obtaining their rmsds and coordinates
+                                call getNeighbors(scaling1_1,scaling2_1,multiplier1_2,multiplier2_2,FMTorder2,&
+                                                  resolution_1*(int(key1/key_start)-1),index1_1,index1_2,index2_1,index2_2,&
+                                                  var1_round,var2_round,counter2,counter2_max,&
+                                                  coords,min_rmsd,gradient,U,number_of_frames)
+        
+                                !Even if all neighbors are empty, it still returns a
+                                !minimum rmsd (default is 100.0)
+                                if (min_rmsd /= old_min_rmsd) then
+                                        stop_flag = .true.
+                                        if (min_rmsd < old_min_rmsd) then
+                                                old_min_rmsd = min_rmsd
+                                                old_gradient = gradient
+                                                old_U = U
+                                        end if
+                                end if
+                        end do
+
+                        !We don't stop looking immediately (we may find a better fit
+                        !somewhere else on the circumfrence) but we know we don't need
+                        !to look any farther because farther subcells will normally have
+                        !a larger RMSD
+                        if (stop_flag) exit
                 end do
 
         end if
@@ -1292,7 +1406,7 @@ if ((min_rmsd < old_min_rmsd).or.(stop_flag)) then
 	return
 end if
 
-
+if (order2_flag) return
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 ORDER 3

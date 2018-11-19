@@ -557,12 +557,22 @@ if (comparison_flag) then
                 call postProcess(allprefixes(1+sum(alllengths(1:i)):sum(alllengths(1:i+1))))
         end do
 else
-        call postProcess(prefix_text)
+        if (percentthreshold_flag .or. testtrajSA_flag .or. testheatmapSA_flag) then
+             call postProcess(prefix_text)
+        else
+                print *, ""
+                call itime(now)
+                write(6,FMT=FMTnow) now
+                print *, "Successfully exited analysis"
+                print *, ""
+   
+                return
+        end if
 end if
 
 !We need to redo the postProcess (and convergence) of each grid as well
 !in case the maximum and minimum of the trajectories just processed are different
-if (.true.) then
+if (comparison_flag .or. trueSA_flag) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "InitialSATRVDistribution"

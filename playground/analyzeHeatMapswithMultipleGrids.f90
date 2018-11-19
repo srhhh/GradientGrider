@@ -143,8 +143,8 @@ do Ngrid = 1, max(Ngrid_total,1)
 			cycle
         	else
 			indexer1 = population / key_start
-			population = sum(counter1(indexer1+1:indexer1+17))
-	                occurence_max = max(occurence_max,population)
+			population = modulo(sum(counter1(indexer1+1:indexer1+1+resolution_0)),key_start)
+                	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
 
                         local_min1 = min(local_min1, var1)
                         local_min2 = min(local_min2, var2)
