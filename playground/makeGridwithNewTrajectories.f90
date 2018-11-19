@@ -522,7 +522,7 @@ prefix_text = reject_text//Nthreshold_text
 		!We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
-                call addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
+                call checkaddTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
 
                 call CPU_time(r2)
                 call system_clock(c2)
@@ -575,8 +575,8 @@ prefix_text = reject_text//Nthreshold_text
 
 		!This is a temporary file to store information on how fast
 		!Children level cells are filling up
-		open(filechannel1,file=gridpath1//"maxframesorder1.dat",position="append")
-		write(filechannel1,FMT=*) Ntraj, maxval(counter1), overcrowd1
+		open(filechannel1,file=gridpath1//"maxframesofsubcells.dat",position="append")
+		write(filechannel1,FMT=*) Ntraj, min(maxval(counter1),overcrowd1), min(maxval(counter2),overcrowd2)
 		close(filechannel1)
 
 		!$OMP END CRITICAL
@@ -657,7 +657,8 @@ prefix_text = reject_text//Nthreshold_text
 	write(gnuplotchannel,*) 'set label 1 "Total Wall Time (including grid checking): '//&
                                 trim(adjustl(grid_wall_time_text))//' s" at graph 0.025,0.9'
 	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($2)*1000.0) w lines'
-	write(gnuplotchannel,*) 'set xtics'
+	write(gnuplotchannel,*) 'Ntraj_max = ', Ntraj_max
+	write(gnuplotchannel,*) 'set xtics nomirror 1,floor(Ntraj_max/10), Ntraj_max'
 	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
 	write(gnuplotchannel,*) 'set autoscale y'
 	write(gnuplotchannel,*) 'unset label 1'
@@ -669,13 +670,13 @@ prefix_text = reject_text//Nthreshold_text
 	
 	open(gnuplotchannel,file=gridpath1//gnuplotfile)
 	write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
-	write(gnuplotchannel,*) 'set output "'//gridpath1//'MaxFramesOfOrder1.png"'
+	write(gnuplotchannel,*) 'set output "'//gridpath1//'MaxFramesOfSubcells.png"'
 	write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
 	write(gnuplotchannel,*) 'unset key'
 	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
-	write(gnuplotchannel,*) 'set ylabel "Max Number of Frames in Order 1 Cells (Subcells)"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//'maxframesorder1.dat" u 1:2 w lines'!,\'
-!	write(gnuplotchannel,*) '     "'//gridpath1//'maxframesorder1.dat" u 1:3 w lines'
+	write(gnuplotchannel,*) 'set ylabel "Max Number of Frames in Subcells"'
+	write(gnuplotchannel,*) 'plot "'//gridpath1//'maxframesofsubcells.dat" u 1:2 t "Order 1" w lines,\'
+	write(gnuplotchannel,*) '     "'//gridpath1//'maxframesofsubcells.dat" u 1:3 t "Order 2" w lines'
 	close(gnuplotchannel)
 	call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
 	

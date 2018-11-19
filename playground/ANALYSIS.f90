@@ -13,6 +13,11 @@ integer,parameter :: Ngrid_cap = 1
 !The number of grids we will end up using (never more than Ngrid_cap)
 integer :: Ngrid_total
 
+!Set the number of children cells to be checked
+integer,parameter :: Norder_cap = 1
+!The number of children cells we will end up check (never more than Ngrid_cap)
+integer :: Norder_total
+
 !Set .true. to generate top-level heat maps for each complete grid
 logical,parameter :: heatmap_flag = .true.
 
