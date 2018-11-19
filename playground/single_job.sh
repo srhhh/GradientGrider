@@ -64,10 +64,10 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0200
+Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=1
+Ngrid_max=12
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -81,7 +81,7 @@ force_NoLabels=.false.
 heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
-testtraj_flag=.true.
+testtraj_flag=.false.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
@@ -109,9 +109,11 @@ Ntrajectories=350
 #RelativeEnergyChange (eV)
 #RotationalEnergyChange (eV)
 
+#If the comparison lower and upper limits are the same, the program will
+#use whatever the minimum and maximum is of the data (bad if outliers exist)
 comparison_flag=ScatteringAngle
 comparison_lowerlimit="0.0d0"
-comparison_upperlimit="0.150d0"
+comparison_upperlimit="0.140d0"
 
 declare -a prefixes
 prefixes[0]="001accept.15000"
@@ -119,19 +121,6 @@ prefixes[1]="002accept.15000"
 prefixes[2]="004accept.15000"
 prefixes[3]="008accept.15000"
 prefixes[4]="001reject.15000"
-
-#If the comparison lower and upper limits are the same, the program will
-#use whatever the minimum and maximum is of the data (bad if outliers exist)
-comparison_flag=none
-comparison_lowerlimit="0.0d0"
-comparison_upperlimit="0.14d0"
-
-declare -a prefixes
-prefixes[0]="001alphaA.40001"
-prefixes[1]="001alphaA.20001"
-prefixes[2]="001alphaA.15001"
-prefixes[3]="001alphaA.04001"
-prefixes[4]="001alphaA.00401"
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -141,14 +130,13 @@ prefixes[4]="001alphaA.00401"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Nov12_test4"
+newGRID="HH2_Oct16_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
+
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
-
-#The number of post-grid analyses you would like done
 #Just set this to a very large number if no progress checks are wanted
 newGRID_check_min=30000
 
