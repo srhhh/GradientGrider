@@ -415,12 +415,12 @@ do Nsamples = 1, Nsamples_max
                 binTally = 0
         end if
 
-        if (binTally == 5) exit
-        if (Nsamples == Nsamples_max) then
-                print *, "    No convergence for true scattering angle"
-                print *, ""
-                exit
-        end if
+!        if (binTally == 5) exit
+!        if (Nsamples == Nsamples_max) then
+!                print *, "    No convergence for true scattering angle"
+!                print *, ""
+!                exit
+!        end if
 end do
 close(filechannel1)
 
