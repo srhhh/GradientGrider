@@ -20,6 +20,29 @@ real(dp) :: length1,length2
 !integer :: min1_length, min2_length, max_length
 !integer :: i, start_label
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! H - H2  (test)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!call getDistanceSquared(coords(:,1),coords(:,2),length1)
+!call getDistanceSquared(coords(:,1),coords(:,3),length2)
+!
+!if (length1 < length2) then
+!	labelling(2) = 2
+!	labelling(3) = 3
+!	vals(1) = sqrt(length1)
+!else
+!	labelling(2) = 3
+!	labelling(3) = 2
+!	vals(1) = sqrt(length2)
+!end if
+!
+!vals(2) = 1.0d0 + dot_product(coords(:,1)-coords(:,2),coords(:,1)-coords(:,3)) /&
+!                  sqrt(length1*length2)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! H - H2  (normal)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 call getDistanceSquared(coords(:,1),coords(:,2),length1)
 call getDistanceSquared(coords(:,1),coords(:,3),length2)
 if (length1 < length2) then
@@ -34,6 +57,9 @@ else
 	vals(2) = sqrt(length1)
 end if
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! H2 - H2 (normal)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !do i = 1, 4
 !	call getDistanceSquared(coords(:,BOND_LABELS_TENTATIVE(i,1)),&
 !				coords(:,BOND_LABELS_TENTATIVE(i,2)),lengths(i))

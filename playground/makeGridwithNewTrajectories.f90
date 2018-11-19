@@ -139,10 +139,15 @@ system_clock_rate = 1.0/real(cr)
 !We now do some formatting for the names of the files (for the occasional checks)
 write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
 if (reject_flag) then
-	reject_text = "reject"
+        reject_text = "reject"
 else
-	reject_text = "accept"
+        if (accept_first) then
+                 reject_text = "alphaA"
+        else
+                 reject_text = "accept"
+        end if
 end if
+
 prefix_text = reject_text//Nthreshold_text
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -232,8 +237,10 @@ do Ngrid = 1, Ngrid_max
 
 
 !!! TEST !!!
-!call addMultipleTrajectories()
-!exit
+if (heatmap_evolution_flag) then
+call addMultipleTrajectories()
+exit
+end if
 !!!!!!!!!!!!
 
 
@@ -327,10 +334,15 @@ reject_flag = (.not.(reject_flag))
 
 write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
 if (reject_flag) then
-	reject_text = "reject"
+        reject_text = "reject"
 else
-	reject_text = "accept"
+        if (accept_first) then
+                 reject_text = "alphaA"
+        else
+                 reject_text = "accept"
+        end if
 end if
+
 prefix_text = reject_text//Nthreshold_text
 
 			!Remark: output of checkTrajectory is in the checkstatefile
@@ -413,10 +425,15 @@ reject_flag = (.not.(reject_flag))
 
 write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
 if (reject_flag) then
-	reject_text = "reject"
+        reject_text = "reject"
 else
-	reject_text = "accept"
+        if (accept_first) then
+                 reject_text = "alphaA"
+        else
+                 reject_text = "accept"
+        end if
 end if
+
 prefix_text = reject_text//Nthreshold_text
 
 			call system_clock(trajectory_t0)

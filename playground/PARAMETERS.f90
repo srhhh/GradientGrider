@@ -162,7 +162,7 @@ real,parameter :: max_var2 = 12.0	!Angstroms (cos(angle) + 1 \in [0,2])
 !real,parameter :: max_var2 = 2.0	!Unitless (cos(angle) + 1 \in [0,2])
 integer,parameter :: bounds1 = ceiling(max_var1/spacing1)+400 !if var > max_var every 500 steps
 integer,parameter :: bounds2 = ceiling(max_var2/spacing2)+400 !if var > max_var every 500 steps
-!integer,parameter :: bounds2 = ceiling(max_var2/spacing2)	!For the cos(theta) definition
+!integer,parameter :: bounds2 = ceiling(max_var2/spacing2)+4	!For the cos(theta) definition
 !integer,parameter :: bounds2 = ceiling(max_var1/spacing1)+400 !This 4 is a cushioning because we only check
 !Consequently, we know the maximum number of cells in the grid
 integer, parameter :: counter0_max = bounds1*bounds2
@@ -328,7 +328,7 @@ integer :: Ntraj,Ntraj_allowed,Nfile,steps,heatmap_steps,Norder1
 logical :: header_max_flag
 
 !Set .true. to generate top-level heat map GIFS over time for each grid
-logical,parameter :: heatmap_evolution_flag = .true.
+logical,parameter :: heatmap_evolution_flag = .false.
 integer,parameter :: heatmap_evolution_steps = 100
 
 

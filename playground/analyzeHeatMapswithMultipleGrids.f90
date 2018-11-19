@@ -67,6 +67,8 @@ integer :: occurence_max
 integer :: indexer0, indexer1
 integer :: population
 real :: var1, var2
+real :: local_min1, local_min2
+real :: local_max1, local_max2
 
 !I/O HANDLING
 integer :: iostate
@@ -106,7 +108,18 @@ do Ngrid = 1, max(Ngrid_total,1)
 
         !Iterate through these cells
         open(filechannel1,file=gridpath0//temporaryfile3)
-	occurence_max = overcrowd0
+	occurence_max = 0
+        if (heatmap_evolution_flag) then
+                local_max1 = 11.0
+                local_max2 = 12.0
+                local_min1 = 2.0
+                local_min2 = 2.0
+        else
+                local_max1 = 0.0
+                local_max2 = 0.0
+                local_min1 = max_var1
+                local_min2 = max_var2
+        end if
 
         do i = 1, bounds2
         var2 = i * multiplier2_0
@@ -118,13 +131,27 @@ do Ngrid = 1, max(Ngrid_total,1)
                 population = counter0(indexer0 + j)
 		if (population < overcrowd0) then
                 	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
+	                occurence_max = max(occurence_max,population)
+
+                        if (population > 0) then
+                        local_min1 = min(local_min1, var1)
+                        local_min2 = min(local_min2, var2)
+                        local_max1 = max(local_max1, var1)
+                        local_max2 = max(local_max2, var2)
+                        end if
+
 			cycle
         	else
 			indexer1 = population / key_start
 			population = sum(counter1(indexer1+1:indexer1+17))
-                	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
+	                occurence_max = max(occurence_max,population)
 
-			occurence_max = max(occurence_max,population)
+                        local_min1 = min(local_min1, var1)
+                        local_min2 = min(local_min2, var2)
+                        local_max1 = max(local_max1, var1)
+                        local_max2 = max(local_max2, var2)
+
+                	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
 		end if
         end do
                 write(filechannel1,*) ""
@@ -172,10 +199,10 @@ do Ngrid = 1, max(Ngrid_total,1)
         write(filechannel1,*) 'set title "Configurational Heatmap of an H - H_2 System" font ",32" offset 0,3'
         write(filechannel1,*) 'set xlabel "Var1 (A)" font ",28" offset 0,-2'
         write(filechannel1,*) 'set xtics font ",24"'
-        write(filechannel1,*) 'set xrange [2:11]'
-        write(filechannel1,*) 'set ylabel "Var2 (A)" font ",28" offset -5,0'
+        write(filechannel1,*) 'set xrange [', floor(local_min1), ':', ceiling(local_max1),']'
+        write(filechannel1,*) 'set ylabel "Var2" font ",28" offset -5,0'
         write(filechannel1,*) 'set ytics font ",24"'
-        write(filechannel1,*) 'set yrange [2:12]'
+        write(filechannel1,*) 'set yrange [', floor(local_min2), ':',ceiling(local_max2),']'
         write(filechannel1,*) 'set cbtics'
         write(filechannel1,*) 'set view map'
         write(filechannel1,*) 'set pm3d interpolate 1,1'

@@ -240,11 +240,11 @@ write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
 if (reject_flag) then
 	reject_text = "reject"
 else
-	reject_text = "accept"
-end if
-if (accept_first) then
-        reject_text = "alphaA"
-else
+        if (accept_first) then
+                 reject_text = "alphaA"
+        else
+	         reject_text = "accept"
+        end if
 end if
 
 allocate(filechannels(Ngrid_total))
