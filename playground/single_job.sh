@@ -67,7 +67,7 @@ overcrowd2=01010
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=12
+Ngrid_max=4
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -116,11 +116,14 @@ comparison_lowerlimit="0.0d0"
 comparison_upperlimit="0.140d0"
 
 declare -a prefixes
-prefixes[0]="001accept.15000"
-prefixes[1]="002accept.15000"
-prefixes[2]="004accept.15000"
-prefixes[3]="008accept.15000"
-prefixes[4]="001reject.15000"
+#prefixes[0]="001accept.15000"
+#prefixes[1]="002accept.15000"
+#prefixes[2]="004accept.15000"
+#prefixes[3]="008accept.15000"
+#prefixes[4]="001reject.15000"
+prefixes[0]="004accept.05000"
+prefixes[1]="004accept.01000"
+prefixes[2]="004accept.00500"
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -130,7 +133,7 @@ prefixes[4]="001reject.15000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Oct16_label"
+newGRID="HH2_Sep15_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0

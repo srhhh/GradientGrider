@@ -353,7 +353,7 @@ integer,dimension(5) :: SATRVdata
 !SCATTERING ANGLE BINNING
 integer :: Nsamples, Nsamples_max
 real :: bin_width, binMean, binSD,binRMSD
-real,allocatable :: binAverage(:), sampleKS(:)
+real,allocatable :: binAverage(:), sampleKS(:), sampleRMSD(:)
 integer,allocatable :: binCumulative(:,:), binTotal(:,:),sampleSize(:)
 integer :: binTally
 real :: binThreshold = 1.0
@@ -373,7 +373,7 @@ Nsamples_max = (Ngrid_max * Ntraj_max) / Ntesttraj
 allocate(binCumulative(scatteringangleBins,Nsamples_max),&
          binTotal(scatteringangleBins,Nsamples_max),&
          binAverage(scatteringangleBins),&
-         sampleSize(Nsamples_max),sampleKS(Nsamples_max))
+         sampleSize(Nsamples_max),sampleKS(Nsamples_max),sampleRMSD(Nsamples_max))
 
 !Now we want a reference distribution
 !This will be the distribution of ALL trajectories
@@ -404,18 +404,22 @@ end do
 !When the running average converges then we stop and see the variance
 binTally = 0
 sampleKS = 0
+sampleRMSD = 0
 open(filechannel1,file=gridpath0//"RMSD"//SATRVname//cumulativefile//".dat",action="write")
 do Nsamples = 1, Nsamples_max
         binRMSD = 0.0
         do i = 1, scatteringangleBins
                 binRMSD = binRMSD + (sum(binTotal(i,1:Nsamples)) * 1.0 / Nsamples - binAverage(i))**2
+                sampleRMSD(Nsamples) = sampleRMSD(Nsamples) + (binTotal(i,Nsamples) - binAverage(i))**2
                 binCumulative(i,Nsamples) = sum(binTotal(1:i,Nsamples))
                 sampleKS(Nsamples) = max(sampleKS(Nsamples),abs(binCumulative(i,Nsamples)- &
                                          sum(binAverage(1:i))))
         end do
+        sampleRMSD(Nsamples) = sqrt(sampleRMSD(Nsamples) * 1.0 / (scatteringangleBins - 1.0))
 
         binRMSD = sqrt(binRMSD/scatteringangleBins)
-        write(filechannel1,FMT=*) Nsamples*Ntesttraj, binRMSD, binThreshold, sampleKS(Nsamples)
+        write(filechannel1,FMT=*) Nsamples*Ntesttraj, binRMSD, binThreshold,&
+                                  sampleKS(Nsamples), sampleRMSD(Nsamples)
 
         if (binRMSD < binThreshold) then
                 binTally = binTally + 1
@@ -451,7 +455,7 @@ write(gnuplotchannel,*) "set terminal pngcairo size 1200,1200"
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set output "'//gridpath0//'Convergence'//&
                         trim(adjustl(variable_length_text))//SATRVname//'.png"'
-write(gnuplotchannel,*) 'set multiplot layout 3,1'
+write(gnuplotchannel,*) 'set multiplot layout 2,2 columnsfirst'
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set title "Convergence of the '//trim(adjustl(variable_length_text))//&
                         ' '//SATRVname//' Distribution with '//trim(adjustl(Ngrid_text))//' Grids"'
@@ -469,24 +473,6 @@ write(gnuplotchannel,*) 'set label 1 "Convergence Threshold" at first '//&
 write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat" u 1:2 w lines, \'
 write(gnuplotchannel,*) '     "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat" u 1:3 w lines lc -1'
 write(gnuplotchannel,*) 'unset label 1'
-write(gnuplotchannel,*) 'set title "Distribution of the Kolmogorov-Smirnov Difference Among '//&
-                        trim(adjustl(variable_length_text))//' '//SATRVname//' Samplings Across '//&
-                        trim(adjustl(Ngrid_text))//' Grids"'
-write(gnuplotchannel,*) 'set xlabel "Kolmogorov-Smirnov Difference"'
-write(gnuplotchannel,*) 'set ylabel "Frequency"'
-write(gnuplotchannel,*) 'minKS = ', max(0.0,minval(sampleKS)-2*(maxval(sampleKS)-minval(sampleKS))/Nsamples_max)
-write(gnuplotchannel,*) 'maxKS = ', maxval(sampleKS) + 2*(maxval(sampleKS)-minval(sampleKS))/Nsamples_max
-write(gnuplotchannel,*) 'set xrange [minKS:maxKS]'
-write(gnuplotchannel,*) 'set yrange [0:]'
-write(gnuplotchannel,*) 'box_width = (maxKS-minKS) / ',(2*Nsamples_max)
-write(gnuplotchannel,*) 'set xtics minKS, (maxKS-minKS)/4, maxKS'
-write(gnuplotchannel,*) "set format x '%.2f'"
-write(gnuplotchannel,*) 'set ytics 1'
-write(gnuplotchannel,*) 'set boxwidth box_width'
-write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
-write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat"'//&
-                        'u (rounded($4)):(1.0) smooth frequency with boxes'
 write(variable_length_text,FMT="(I5)") Ntesttraj
 write(gnuplotchannel,*) 'set title "Final '//SATRVname//' Distribution for '//&
                         trim(adjustl(variable_length_text))//' Trajectories"'
@@ -516,6 +502,42 @@ write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u (scaling*($1)):2 w boxes, \'
 write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
+write(gnuplotchannel,*) 'set title "Distribution of the Kolmogorov-Smirnov Difference Among '//&
+                        trim(adjustl(variable_length_text))//' '//SATRVname//' Samplings Across '//&
+                        trim(adjustl(Ngrid_text))//' Grids"'
+write(gnuplotchannel,*) 'set xlabel "Kolmogorov-Smirnov Difference"'
+write(gnuplotchannel,*) 'set ylabel "Frequency"'
+write(gnuplotchannel,*) 'minKS = ', max(0.0,minval(sampleKS)-2*(maxval(sampleKS)-minval(sampleKS))/Nsamples_max)
+write(gnuplotchannel,*) 'maxKS = ', maxval(sampleKS) + 2*(maxval(sampleKS)-minval(sampleKS))/Nsamples_max
+write(gnuplotchannel,*) 'set xrange [minKS:maxKS]'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'box_width = (maxKS-minKS) / ',(2*Nsamples_max)
+write(gnuplotchannel,*) 'set xtics minKS, (maxKS-minKS)/4, maxKS'
+write(gnuplotchannel,*) "set format x '%.2f'"
+write(gnuplotchannel,*) 'set ytics 1'
+write(gnuplotchannel,*) 'set boxwidth box_width'
+write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
+write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
+write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat"'//&
+                        'u (rounded($4)):(1.0) smooth frequency with boxes'
+write(gnuplotchannel,*) 'set title "Distribution of the Root Mean Square Difference Among '//&
+                        trim(adjustl(variable_length_text))//' '//SATRVname//' Samplings Across '//&
+                        trim(adjustl(Ngrid_text))//' Grids"'
+write(gnuplotchannel,*) 'set xlabel "Root Mean Square Difference"'
+write(gnuplotchannel,*) 'set ylabel "Frequency"'
+write(gnuplotchannel,*) 'minRMSD = ', max(0.0,minval(sampleRMSD)-2*(maxval(sampleRMSD)-minval(sampleRMSD))/Nsamples_max)
+write(gnuplotchannel,*) 'maxRMSD = ', maxval(sampleRMSD) + 2*(maxval(sampleRMSD)-minval(sampleRMSD))/Nsamples_max
+write(gnuplotchannel,*) 'set xrange [minRMSD:maxRMSD]'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'box_width = (maxRMSD-minRMSD) / ',(2*Nsamples_max)
+write(gnuplotchannel,*) 'set xtics minRMSD, (maxRMSD-minRMSD)/4, maxRMSD'
+write(gnuplotchannel,*) "set format x '%.2f'"
+write(gnuplotchannel,*) 'set ytics 1'
+write(gnuplotchannel,*) 'set boxwidth box_width'
+write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
+write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
+write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat"'//&
+                        'u (rounded($5)):(1.0) smooth frequency with boxes'
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
@@ -966,6 +988,7 @@ implicit none
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 integer,intent(in) :: SATRVcolumn
 character(*), intent(in) :: SATRVname
+integer,dimension(5) :: SATRVdata
 
 !FORMAT OF JPG FILES TO BE MADE
 character(*), intent(in) :: imagename
@@ -981,8 +1004,41 @@ character(trajectory_text_length) :: Ntraj_text
 character(6) :: boxwidth_text
 logical :: grid_is_done
 
-integer :: iostate,i
+integer :: iostate,i,j
 real :: speed_out, ScatteringAngle
+
+real :: referenceBins(scatteringangleBins)
+real :: referenceMeans(scatteringangleBins)
+real :: referenceSDs(scatteringangleBins)
+integer :: binTotal(scatteringangleBins,comparison_number)
+real :: comparisonRMSD, comparisonKS, comparisonCDF
+real :: comparisonBin, comparisonMean, comparisonSD
+
+open(filechannel1,file=gridpath0//"Adjusted"//SATRVname//cumulativefile//".dat")
+do j = 1, scatteringangleBins
+        read(filechannel1,FMT=*) referenceBins(j), referenceMeans(j), referenceSDs(j)
+end do
+close(filechannel1)
+
+binTotal = 0
+open(filechannel1,file=gridpath0//allprefixes(1:alllengths(1))//binnedSATRVfile)
+do j = 1, Ntesttraj
+        read(filechannel1,FMT=*) SATRVdata
+        binTotal(SATRVdata(SATRVcolumn),1) = &
+                 binTotal(SATRVdata(SATRVcolumn),1) + 1
+end do
+close(filechannel1)
+
+do i = 1, comparison_number-1
+        open(filechannel1,file=gridpath0//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
+                               binnedSATRVfile)
+        do j = 1, Ntesttraj
+                read(filechannel1,FMT=*) SATRVdata
+                binTotal(SATRVdata(SATRVcolumn),i+1) = &
+                         binTotal(SATRVdata(SATRVcolumn),i+1) + 1
+        end do
+        close(filechannel1)
+end do
 
 !This is the gnuplot code to make the plots
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
@@ -1026,7 +1082,20 @@ else
         write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 end if
 
-write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1))//'" at graph 0.8, 0.9'
+comparisonRMSD = 0
+comparisonKS = 0
+comparisonCDF = 0
+do j = 1, scatteringangleBins
+        comparisonCDF = comparisonCDF + 1.0*binTotal(j,1) - referenceMeans(j)
+        comparisonKS = max(comparisonKS, abs(comparisonCDF))
+        comparisonRMSD = comparisonRMSD + (1.0*bintotal(j,1) - referenceMeans(j))**2
+end do
+
+write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1))//'" at graph 0.85, 0.9'
+write(variable_length_text,FMT="(F5.2)") comparisonKS
+write(gnuplotchannel,*) 'set label 2" KSD: '//variable_length_text//'" at graph 0.85,0.825'
+write(variable_length_text,FMT="(F5.2)") sqrt(comparisonRMSD * 1.0 / (scatteringangleBins - 1.0))
+write(gnuplotchannel,*) 'set label 3" RMSD: '//variable_length_text//'" at graph 0.85,0.750'
 write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
 write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(1:alllengths(1))//&
                         SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
@@ -1037,9 +1106,24 @@ write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefi
 write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//&
                         '.dat" u (scaling*($1)):2:3 w yerrorbars'
 do i = 1, comparison_number-1
-        write(gnuplotchannel,*) 'set label ', i, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
-                                '" at graph 0.8, 0.9'
-        write(gnuplotchannel,*) 'unset label ', i-1
+comparisonRMSD = 0
+comparisonKS = 0
+comparisonCDF = 0
+do j = 1, scatteringangleBins
+        comparisonCDF = comparisonCDF + 1.0*binTotal(j,i+1) - referenceMeans(j)
+        comparisonKS = max(comparisonKS, abs(comparisonCDF))
+        comparisonRMSD = comparisonRMSD + (1.0*binTotal(j,i+1) - referenceMeans(j))**2
+end do
+
+        write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
+                                '" at graph 0.85, 0.9'
+        write(variable_length_text,FMT="(F5.2)") comparisonKS
+        write(gnuplotchannel,*) 'set label ',3*i+2,'" KSD: '//variable_length_text//'" at graph 0.85,0.825'
+        write(variable_length_text,FMT="(F5.2)") sqrt(comparisonRMSD * 1.0 / (scatteringangleBins - 1.0))
+        write(gnuplotchannel,*) 'set label ',3*i+3,'" RMSD: '//variable_length_text//'" at graph 0.85,0.750'
+        write(gnuplotchannel,*) 'unset label ', 3*i-2
+        write(gnuplotchannel,*) 'unset label ', 3*i-1
+        write(gnuplotchannel,*) 'unset label ', 3*i
         if (i == comparison_number-1) then
                 if (SATRVname == "ScatteringAngle") then
                         write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
@@ -1051,6 +1135,7 @@ do i = 1, comparison_number-1
                         write(gnuplotchannel,*) "set format x '%.3f'"
                 end if
         end if
+        write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
         write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
                                 SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
                                 ')):(1.0) smooth frequency w boxes, \'

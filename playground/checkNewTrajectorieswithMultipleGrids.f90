@@ -651,6 +651,11 @@ if (comparison_flag) then
 	print *, "   Making plot: ", "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution"
 	print *, ""
 
+        call getScatteringAngles1(allprefixes(1:alllengths(1)),"")
+        do i = 1, comparison_number-1
+                call getScatteringAngles1(allprefixes(1+sum(alllengths(1:i)):sum(alllengths(1:i+1))),"")
+        end do
+
         if (comparison_upperlimit /= comparison_lowerlimit) then
                 call getComparedScatteringAngles(comparison_lowerlimit,comparison_upperlimit,&
                          "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution",&
