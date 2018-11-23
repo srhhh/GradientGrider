@@ -98,8 +98,7 @@ sizeDeltaEnergyBin = (max(max_absenergychange,max_relenergychange,max_rotenergyc
 sizeEnergyBin = max_TranslationalEnergy / (energyBins)
 sizeAngleBin = pi / (angleBins)
 
-if (comparison_upperlimit == comparison_lowerlimit) then
-else
+if (comparison_flag .and. (comparison_upperlimit /= comparison_lowerlimit)) then
 
 if (trim(adjustl(comparison_SATRVname)) == "ScatteringAngle") then
         sizeAngleBin = (comparison_upperlimit - comparison_lowerlimit) / angleBins
@@ -144,8 +143,8 @@ do i = 1, Ntraj
 	angle_energy_bins(ScatteringAngle,TranslationalEnergy) = &
                    angle_energy_bins(ScatteringAngle,TranslationalEnergy) + 1
 
-	write(filechannel2,FMT=*) ceiling(scatteringAngle*1.0/angle_ratio), TranslationalEnergy, &
-                                  AbsEnergyChange, RelEnergyChange, RotEnergyChange
+	write(filechannel2,FMT=*) ceiling((ScatteringAngle-0.5)/angle_ratio),&
+                                  TranslationalEnergy,AbsEnergyChange,RelEnergyChange,RotEnergyChange
 end do
 close(filechannel1)
 close(filechannel2)
@@ -154,7 +153,10 @@ close(filechannel2)
 !This is the gnuplot code to make the plots
 !This is only plotted if there is no comparison active
 
-if (comparison_flag) return
+if (comparison_flag) then
+        deallocate(angle_energy_bins)
+        return
+end if
 
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
@@ -227,6 +229,7 @@ do i = 1, angleBins/angle_slice+1
 	write(filechannel1,FMT=*) ""
 end do
 close(filechannel1)
+deallocate(angle_energy_bins)
 
 !This is the gnuplot code to make the plots
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
@@ -441,13 +444,11 @@ close(filechannel1)
 open(filechannel1,file=gridpath0//"Adjusted"//SATRVname//cumulativefile//".dat")
 do i = 1, scatteringangleBins
         binMean = binAverage(i)
-        binSD = sqrt(sum((binTotal(i,1:Nsamples_max)*1.0 - binMean)**2)/(Nsamples_max - 1))
+        binSD = sqrt(sum((binTotal(i,:)*1.0 - binMean)**2)/(Nsamples_max - 1))
 
         write(filechannel1,*) (i-0.5)*bin_width, binMean, binSD!/sqrt(real(Nsamples))
 end do
 close(filechannel1)
-
-deallocate(binAverage,binTotal,sampleSize)
 
 !We have everything we need to draw the distribution with error bars
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
@@ -481,7 +482,8 @@ write(gnuplotchannel,*) 'scaling = 1'
 write(gnuplotchannel,*) 'pi = 3.14159265'
 write(gnuplotchannel,*) 'lowerlimit = ', lowerlimit
 write(gnuplotchannel,*) 'upperlimit = ', upperlimit
-write(gnuplotchannel,*) 'set xtics lowerlimit, 10*(upperlimit-lowerlimit)/',SA_Nbins,', upperlimit'
+write(gnuplotchannel,*) 'set xtics lowerlimit, 10*(upperlimit-lowerlimit)/',&
+                        scatteringangleBins,', upperlimit'
 write(gnuplotchannel,*) "set format x '%.3P π'"
 write(gnuplotchannel,*) 'set xrange [lowerlimit:upperlimit]'
 write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
@@ -490,7 +492,7 @@ write(gnuplotchannel,*) 'scaling = 1000'
 write(gnuplotchannel,*) 'E_min = scaling * ', lowerlimit
 write(gnuplotchannel,*) 'E_max = scaling * ', upperlimit
 write(gnuplotchannel,*) 'set xrange [E_min:E_max]'
-write(gnuplotchannel,*) 'set xtics E_min, 10*(E_max-E_min)/',SA_Nbins,', E_max'
+write(gnuplotchannel,*) 'set xtics E_min, 10*(E_max-E_min)/',scatteringangleBins,', E_max'
 write(gnuplotchannel,*) "set format x '%.3f'"
 write(gnuplotchannel,*) 'set xlabel "Energy (meV)"'
 end if
@@ -502,7 +504,7 @@ write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u (scaling*($1)):2 w boxes, \'
 write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
-write(gnuplotchannel,*) 'set title "Distribution of the Kolmogorov-Smirnov Difference Among '//&
+write(gnuplotchannel,*) 'set title "Distribution of the Kolmogorov-Smirnov Difference Among\n'//&
                         trim(adjustl(variable_length_text))//' '//SATRVname//' Samplings Across '//&
                         trim(adjustl(Ngrid_text))//' Grids"'
 write(gnuplotchannel,*) 'set xlabel "Kolmogorov-Smirnov Difference"'
@@ -520,7 +522,7 @@ write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat"'//&
                         'u (rounded($4)):(1.0) smooth frequency with boxes'
-write(gnuplotchannel,*) 'set title "Distribution of the Root Mean Square Difference Among '//&
+write(gnuplotchannel,*) 'set title "Distribution of the Root Mean Square Difference Among\n'//&
                         trim(adjustl(variable_length_text))//' '//SATRVname//' Samplings Across '//&
                         trim(adjustl(Ngrid_text))//' Grids"'
 write(gnuplotchannel,*) 'set xlabel "Root Mean Square Difference"'
@@ -540,158 +542,14 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//
                         'u (rounded($5)):(1.0) smooth frequency with boxes'
 close(gnuplotchannel)
 
+deallocate(binAverage)
+deallocate(binCumulative)
+deallocate(binTotal)
+deallocate(sampleKS,sampleRMSD,sampleSize)
+
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
 end subroutine getConvergenceImage
-
-
-
-
-!
-!
-!subroutine getInitialimages(prefix_filename,JPGfilename)
-!use PARAMETERS
-!use ANALYSIS
-!use FUNCTIONS
-!use PHYSICS
-!implicit none
-!
-!!FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
-!character(*),intent(in) :: prefix_filename
-!character(*),intent(in) :: JPGfilename
-!
-!!FORMATTING OF JPG FILES
-!character(5) :: variable_length_text
-!character(5) :: variable_length_text1, variable_length_text2
-!character(Ngrid_text_length) :: Ngrid_text
-!character(Ngrid_text_length+1) :: folder_text
-!character(6) :: Ntraj_text
-!character(150) :: old_filename
-!
-!integer :: iostate
-!real :: r0, rot
-!real :: max_r0, max_rot
-!real :: min_r0, min_rot
-!real :: average_r0, average_rot
-!real :: average_Evib, average_Erot
-!integer :: total_bonds
-!integer :: i
-!
-!average_r0 = 0.0
-!average_rot = 0.0
-!average_Evib = 0.0
-!average_Erot = 0.0
-!max_r0 = 0.0
-!max_rot = 0.0
-!min_r0 = 1.0e9
-!min_rot = 1.0e9
-!total_bonds = 0
-!open(filechannel1,file=gridpath0//prefix_filename//initialfile)
-!do
-!	read(filechannel1,iostat=iostate,FMT=FMTinitial) INITIAL_BOND_DATA
-!	if (iostate /= 0) exit
-!	do i = 1, Nbonds
-!		r0 = INITIAL_BOND_DATA(1,i)
-!		rot = INITIAL_BOND_DATA(2,i)
-!		max_r0 = max(max_r0,r0)
-!		max_rot = max(max_rot,rot)
-!		min_r0 = min(min_r0,r0)
-!		min_rot = min(min_rot,rot)
-!		average_r0 = average_r0 + r0
-!		average_rot = average_rot + rot
-!		average_Evib = average_Evib + (r0 - HOr0_hydrogen)**2
-!		average_Erot = average_Erot + (rot**2)
-!		total_bonds = total_bonds + 1
-!	end do
-!end do
-!close(filechannel1)
-!
-!average_r0 = average_r0 / total_bonds
-!average_rot = average_rot / total_bonds
-!average_Evib = 0.5 * HOke_hydrogen * average_Evib / total_bonds
-!average_Erot = average_Erot / (total_bonds * mass_hydrogen)
-!
-!open(gnuplotchannel,file=gridpath0//gnuplotfile)
-!write(gnuplotchannel,*) 'set term pngcairo enhanced size 3600,1200'
-!write(gnuplotchannel,*) 'set encoding utf8'
-!write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.png"'
-!write(gnuplotchannel,*) 'unset key'
-!write(gnuplotchannel,*) 'pi = 3.14159265'
-!write(gnuplotchannel,*) 'set style histogram clustered gap 1'
-!write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-!write(gnuplotchannel,*) 'set label 1 "Average r0: ', average_r0, ' A" at screen 0.6,0.9'
-!write(gnuplotchannel,*) 'set label 2 "Temperature: ', (RU_energy/kb)*average_Evib, ' K" at screen 0.6,0.85'
-!write(gnuplotchannel,*) 'set label 3 "Average Rotational Speed: ', average_rot, ' A/fs" at screen 0.8,0.9'
-!write(gnuplotchannel,*) 'set label 4 "Temperature: ', (RU_energy/kb)*average_Erot, ' K" at screen 0.8,0.85'
-!write(Ntraj_text,FMT="(I6)") Ntraj
-!write(gnuplotchannel,*) 'set multiplot layout ', Nbonds,',4 title '//&
-!                        '"Initial Bond Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
-!do i = 1, Nbonds
-!write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence"'
-!write(gnuplotchannel,*) 'box_width = 2 * pi /', SA_Nbins
-!write(gnuplotchannel,*) 'set boxwidth box_width'
-!write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
-!write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
-!write(gnuplotchannel,*) 'set xrange [-pi:pi]'
-!write(gnuplotchannel,*) 'set xlabel "Angle (rad)"'
-!write(gnuplotchannel,*) 'set yrange [0:]'
-!write(gnuplotchannel,*) 'set xtics pi/2'
-!write(gnuplotchannel,*) "set format x '%.1P π'"
-!write(Ntraj_text,FMT="(I6)") i*6 - 2
-!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-!                        '" u (rounded($'//trim(adjustl(Ntraj_text))//&
-!			')):(1.0) smooth frequency with boxes'
-!write(gnuplotchannel,*) 'set ylabel "Initial H2 Phi Occurence"'
-!write(gnuplotchannel,*) 'box_width = pi /', SA_Nbins
-!write(gnuplotchannel,*) 'set boxwidth box_width'
-!write(gnuplotchannel,*) 'set xrange [0:pi]'
-!write(gnuplotchannel,*) 'set yrange [0:]'
-!write(Ntraj_text,FMT="(I6)") i*6 - 1
-!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-!			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
-!			')):(1.0) smooth frequency with boxes'
-!write(gnuplotchannel,*) 'min_r0 = ', min_r0
-!write(gnuplotchannel,*) 'max_r0 = ', max_r0
-!write(gnuplotchannel,*) 'box_width = (max_r0-min_r0) /', SA_Nbins
-!write(gnuplotchannel,*) 'set boxwidth box_width'
-!write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_r0)/box_width)'
-!write(gnuplotchannel,*) 'rounded(x) = min_r0+box_width * (bin_number(x) + 0.5)'
-!write(gnuplotchannel,*) 'set xlabel "Bond Distance (A)"'
-!write(gnuplotchannel,*) 'set xtics min_r0, (max_r0-min_r0)/5, max_r0'
-!write(gnuplotchannel,*) "set format x '%.4f'"
-!write(gnuplotchannel,*) 'set ylabel "Initial H2 Bond Length Occurence"'
-!write(gnuplotchannel,*) 'set xrange [min_r0:max_r0]'
-!write(gnuplotchannel,*) 'set yrange [0:]'
-!write(gnuplotchannel,*) 'set bmargin 3'
-!write(Ntraj_text,FMT="(I6)") i*6 - 5
-!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-!			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
-!			')):(1.0) smooth frequency with boxes'
-!write(gnuplotchannel,*) 'min_rot = ', min_rot
-!write(gnuplotchannel,*) 'max_rot = ', max_rot
-!write(gnuplotchannel,*) 'box_width = (max_rot-min_rot) /', SA_Nbins
-!write(gnuplotchannel,*) 'set boxwidth box_width'
-!write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_rot)/box_width)'
-!write(gnuplotchannel,*) 'rounded(x) = min_rot+box_width * (bin_number(x) + 0.5)'
-!write(gnuplotchannel,*) 'set xlabel "Rotational Speed (A/fs)"'
-!write(gnuplotchannel,*) 'set xtics min_rot, (max_rot-min_rot)/5, max_rot'
-!write(gnuplotchannel,*) 'set ylabel "Initial H2 Rotational Speed Occurence"'
-!write(gnuplotchannel,*) 'set xrange [min_rot:max_rot]'
-!write(gnuplotchannel,*) 'set yrange [0:]'
-!write(Ntraj_text,FMT="(I6)") i*6 - 4
-!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-!			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
-!			')):(1.0) smooth frequency with boxes'
-!end do
-!
-!close(gnuplotchannel)
-!
-!!And then we just input it into gnuplot.exe
-!call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
-!
-!
-!end subroutine getInitialimages
-!
 
 
 
@@ -728,7 +586,7 @@ write(gnuplotchannel,*) 'set encoding utf8'
 write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.png"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'pi = 3.14159265'
-write(gnuplotchannel,*) 'box_width = pi / ', SA_Nbins
+write(gnuplotchannel,*) 'box_width = pi / ', scatteringangleBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
@@ -760,7 +618,7 @@ end if
         write(gnuplotchannel,*) 'scaling = 1000'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_absenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_absenergychange
-        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
+        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
         write(gnuplotchannel,*) 'set boxwidth box_width'
@@ -784,7 +642,7 @@ end if
         write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_relenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_relenergychange
-        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
+        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
         write(gnuplotchannel,*) 'set boxwidth box_width'
@@ -805,7 +663,7 @@ end if
         write(gnuplotchannel,*) 'set ylabel "Rotational Translational Energy Change"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
-        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', SA_Nbins
+        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
         write(gnuplotchannel,*) "set format x '%.3f'"
@@ -852,6 +710,8 @@ character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(6) :: Ntraj_text
 character(150) :: old_filename
+
+integer,parameter :: initialBins = 50
 
 integer :: iostate
 real :: r0, rot
@@ -913,7 +773,7 @@ write(gnuplotchannel,*) 'set multiplot layout ', Nbonds,',4 title '//&
                         '"Initial Bond Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
 do i = 1, Nbonds
 write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence"'
-write(gnuplotchannel,*) 'box_width = 2 * pi /', SA_Nbins
+write(gnuplotchannel,*) 'box_width = 2 * pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
@@ -927,7 +787,7 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
                         '" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'set ylabel "Initial H2 Phi Occurence"'
-write(gnuplotchannel,*) 'box_width = pi /', SA_Nbins
+write(gnuplotchannel,*) 'box_width = pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
@@ -937,7 +797,7 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
 			')):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'min_r0 = ', min_r0
 write(gnuplotchannel,*) 'max_r0 = ', max_r0
-write(gnuplotchannel,*) 'box_width = (max_r0-min_r0) /', SA_Nbins
+write(gnuplotchannel,*) 'box_width = (max_r0-min_r0) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_r0)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_r0+box_width * (bin_number(x) + 0.5)'
@@ -954,7 +814,7 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
 			')):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'min_rot = ', min_rot
 write(gnuplotchannel,*) 'max_rot = ', max_rot
-write(gnuplotchannel,*) 'box_width = (max_rot-min_rot) /', SA_Nbins
+write(gnuplotchannel,*) 'box_width = (max_rot-min_rot) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_rot)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_rot+box_width * (bin_number(x) + 0.5)'
@@ -1007,15 +867,27 @@ logical :: grid_is_done
 integer :: iostate,i,j
 real :: speed_out, ScatteringAngle
 
-real :: referenceBins(scatteringangleBins)
-real :: referenceMeans(scatteringangleBins)
-real :: referenceSDs(scatteringangleBins)
-integer :: binTotal(scatteringangleBins,comparison_number)
+real,allocatable :: referenceBins(:)
+real,allocatable :: referenceMeans(:)
+real,allocatable :: referenceSDs(:)
+integer,allocatable :: binTotal(:,:)
 real :: comparisonRMSD, comparisonKS, comparisonCDF
 real :: comparisonBin, comparisonMean, comparisonSD
+integer :: Nbins
+
+if (SATRVname == "ScatteringAngle") then
+        Nbins = scatteringangleBins
+else
+        Nbins = energychangeBins
+end if
+
+allocate(referenceBins(Nbins),&
+         referenceMeans(Nbins),&
+         referenceSDs(Nbins))
+allocate(binTotal(Nbins,comparison_number))
 
 open(filechannel1,file=gridpath0//"Adjusted"//SATRVname//cumulativefile//".dat")
-do j = 1, scatteringangleBins
+do j = 1, Nbins
         read(filechannel1,FMT=*) referenceBins(j), referenceMeans(j), referenceSDs(j)
 end do
 close(filechannel1)
@@ -1064,28 +936,22 @@ write(gnuplotchannel,*) 'set yrange [0:]'
 if (SATRVname == "ScatteringAngle") then
         write(gnuplotchannel,*) 'scaling = 1'
         write(gnuplotchannel,*) 'pi = 3.14159265'
-        write(gnuplotchannel,*) "lowerlimit = ", lowerlimit
-        write(gnuplotchannel,*) "upperlimit = ", upperlimit
-        write(gnuplotchannel,*) 'set xrange [lowerlimit:upperlimit]'
-        write(gnuplotchannel,*) 'box_width = (upperlimit-lowerlimit) / ', SA_Nbins
-        write(gnuplotchannel,*) 'set boxwidth box_width'
-        write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
-        write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 else
         write(gnuplotchannel,*) 'scaling = 1000'
-        write(gnuplotchannel,*) 'lowerlimit = scaling * ', lowerlimit
-        write(gnuplotchannel,*) 'upperlimit = scaling * ', upperlimit
-        write(gnuplotchannel,*) 'set xrange [lowerlimit:upperlimit]'
-        write(gnuplotchannel,*) 'box_width = (upperlimit - lowerlimit) / ', SA_Nbins
-        write(gnuplotchannel,*) 'set boxwidth box_width'
-        write(gnuplotchannel,*) 'bin_number(x) = floor(scaling * x/box_width)'
-        write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 end if
+
+write(gnuplotchannel,*) 'lowerlimit = scaling * ', lowerlimit
+write(gnuplotchannel,*) 'upperlimit = scaling * ', upperlimit
+write(gnuplotchannel,*) 'set xrange [lowerlimit:upperlimit]'
+write(gnuplotchannel,*) 'box_width = (upperlimit - lowerlimit) / ', Nbins
+write(gnuplotchannel,*) 'set boxwidth box_width'
+write(gnuplotchannel,*) 'bin_number(x) = floor(scaling * x/box_width)'
+write(gnuplotchannel,*) 'rounded(x) = box_width * (x - 0.5)'
 
 comparisonRMSD = 0
 comparisonKS = 0
 comparisonCDF = 0
-do j = 1, scatteringangleBins
+do j = 1, Nbins
         comparisonCDF = comparisonCDF + 1.0*binTotal(j,1) - referenceMeans(j)
         comparisonKS = max(comparisonKS, abs(comparisonCDF))
         comparisonRMSD = comparisonRMSD + (1.0*bintotal(j,1) - referenceMeans(j))**2
@@ -1094,11 +960,14 @@ end do
 write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1))//'" at graph 0.85, 0.9'
 write(variable_length_text,FMT="(F5.2)") comparisonKS
 write(gnuplotchannel,*) 'set label 2" KSD: '//variable_length_text//'" at graph 0.85,0.825'
-write(variable_length_text,FMT="(F5.2)") sqrt(comparisonRMSD * 1.0 / (scatteringangleBins - 1.0))
+write(variable_length_text,FMT="(F5.2)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
 write(gnuplotchannel,*) 'set label 3" RMSD: '//variable_length_text//'" at graph 0.85,0.750'
 write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
+!write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(1:alllengths(1))//&
+!                        SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
+!                        ')):(1.0) smooth frequency w boxes, \'
 write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(1:alllengths(1))//&
-                        SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
+                        binnedSATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
                         ')):(1.0) smooth frequency w boxes, \'
 write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//&
                         '.dat" u (scaling*($1)):2 w boxes'//&
@@ -1106,20 +975,20 @@ write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefi
 write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//&
                         '.dat" u (scaling*($1)):2:3 w yerrorbars'
 do i = 1, comparison_number-1
-comparisonRMSD = 0
-comparisonKS = 0
-comparisonCDF = 0
-do j = 1, scatteringangleBins
-        comparisonCDF = comparisonCDF + 1.0*binTotal(j,i+1) - referenceMeans(j)
-        comparisonKS = max(comparisonKS, abs(comparisonCDF))
-        comparisonRMSD = comparisonRMSD + (1.0*binTotal(j,i+1) - referenceMeans(j))**2
-end do
+        comparisonRMSD = 0
+        comparisonKS = 0
+        comparisonCDF = 0
+        do j = 1, Nbins
+                comparisonCDF = comparisonCDF + 1.0*binTotal(j,i+1) - referenceMeans(j)
+                comparisonKS = max(comparisonKS, abs(comparisonCDF))
+                comparisonRMSD = comparisonRMSD + (1.0*binTotal(j,i+1) - referenceMeans(j))**2
+        end do
 
         write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
                                 '" at graph 0.85, 0.9'
         write(variable_length_text,FMT="(F5.2)") comparisonKS
         write(gnuplotchannel,*) 'set label ',3*i+2,'" KSD: '//variable_length_text//'" at graph 0.85,0.825'
-        write(variable_length_text,FMT="(F5.2)") sqrt(comparisonRMSD * 1.0 / (scatteringangleBins - 1.0))
+        write(variable_length_text,FMT="(F5.2)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
         write(gnuplotchannel,*) 'set label ',3*i+3,'" RMSD: '//variable_length_text//'" at graph 0.85,0.750'
         write(gnuplotchannel,*) 'unset label ', 3*i-2
         write(gnuplotchannel,*) 'unset label ', 3*i-1
@@ -1127,7 +996,8 @@ end do
         if (i == comparison_number-1) then
                 if (SATRVname == "ScatteringAngle") then
                         write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
-                        write(gnuplotchannel,*) 'set xtics lowerlimit, 10*(upperlimit-lowerlimit)/',SA_Nbins,', upperlimit'
+                        write(gnuplotchannel,*) 'set xtics lowerlimit, 10*(upperlimit-lowerlimit)/',&
+                                                Nbins,', upperlimit'
                         write(gnuplotchannel,*) "set format x '%.3P π'"
                 else
                         write(gnuplotchannel,*) 'set xlabel "Energy Change (meV)"'
@@ -1136,8 +1006,11 @@ end do
                 end if
         end if
         write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
+!        write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
+!                                SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
+!                                ')):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
-                                SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
+                                binnedSATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
                                 ')):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//&
                                 '.dat" u (scaling*($1)):2 w boxes'//&
@@ -1146,6 +1019,9 @@ end do
                                 '.dat" u (scaling*($1)):2:3 w yerrorbars'
 end do
 close(gnuplotchannel)
+
+deallocate(referenceBins,referenceMeans,referenceSDs)
+deallocate(binTotal)
 
 !And then we just input it into gnuplot.exe
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
