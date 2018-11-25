@@ -87,7 +87,7 @@ integer,parameter :: gnuplotchannel = 77
 !                      FORMATTING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-logical,parameter :: unreadable_flag = .false.
+logical,parameter :: unreadable_flag = .true.
 
 character(14),parameter :: FMT1 = "(2(1x,F14.10))"          !For two variables
 character(22) :: FMT2         !For six atoms, coords and gradient

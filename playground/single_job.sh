@@ -81,24 +81,24 @@ force_NoLabels=.false.
 heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
-testtraj_flag=.false.
+testtraj_flag=.true.
 useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.001000d0
-threshold_rmsd1=.001000d0
+threshold_rmsd=.200000d0
+threshold_rmsd1=.200000d0
 threshold_rmsd2=.150010d0
 threshold_rmsd3=.200010d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
-reject_flag=.true.
+reject_flag=.false.
 accept_first=.false.
 testtrajSA_flag=.true.
 Ngrid_cap=1
 Norder_cap=2
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=350
+Ntrajectories=700
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -111,19 +111,23 @@ Ntrajectories=350
 
 #If the comparison lower and upper limits are the same, the program will
 #use whatever the minimum and maximum is of the data (bad if outliers exist)
-comparison_flag=RelativeEnergyChange
+comparison_flag=none
 comparison_lowerlimit="0.0d0"
 comparison_upperlimit="0.000d0"
 
 declare -a prefixes
-prefixes[0]="001accept.15000"
-prefixes[1]="002accept.15000"
-prefixes[2]="004accept.15000"
-prefixes[3]="008accept.15000"
-prefixes[4]="001reject.15000"
+#prefixes[0]="001accept.15000"
+#prefixes[1]="002accept.15000"
+#prefixes[2]="004accept.15000"
+#prefixes[3]="008accept.15000"
+#prefixes[4]="001reject.15000"
 #prefixes[0]="004accept.05000"
 #prefixes[1]="004accept.01000"
 #prefixes[2]="004accept.00500"
+prefixes[0]="001accept.20000"
+prefixes[1]="001accept.15000"
+prefixes[2]="001accept.10000"
+#prefixes[2]="001accept.05000"
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -141,11 +145,11 @@ newGRID_flag=0
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 #Just set this to a very large number if no progress checks are wanted
-newGRID_check_min=30000
+newGRID_check_min=100
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)

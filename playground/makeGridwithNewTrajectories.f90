@@ -539,7 +539,7 @@ prefix_text = reject_text//Nthreshold_text
 		!We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
-                call checkaddTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
+                call addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
 
                 call CPU_time(r2)
                 call system_clock(c2)

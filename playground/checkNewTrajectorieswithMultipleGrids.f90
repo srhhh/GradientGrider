@@ -308,7 +308,7 @@ if (useolddata_flag) then
 
         !Second, we check how many lines are on the trajectories file
         Ntraj = 1
-        open(trajectorieschannel,file=gridpath0//Ngrid_text//prefix_text//timeslicefile)
+        open(trajectorieschannel,file=gridpath0//prefix_text//timeslicefile)
         do
                 read(trajectorieschannel,*,iostat=iostate)
                 if (iostate /= 0) exit
@@ -349,7 +349,8 @@ if (useolddata_flag) then
 		else
 			print *, "    starting off where the timeslice file left off!"
 			print *, ""
-			initial_n_testtraj = Ntraj
+			initial_n_testtraj = min(initial_n_testtraj,Ntraj)
+
 		end if
 		else
 			print *, "    going along with analysis on uncorrupted data"
