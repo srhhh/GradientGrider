@@ -67,7 +67,7 @@ overcrowd2=01010
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=12
+Ngrid_max=4
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -86,19 +86,20 @@ useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.200000d0
-threshold_rmsd1=.200000d0
+threshold_rmsd=.111000d0
+threshold_rmsd1=.111000d0
 threshold_rmsd2=.150010d0
 threshold_rmsd3=.200010d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
+accept_worst=.false.
 testtrajSA_flag=.true.
 Ngrid_cap=1
-Norder_cap=2
+Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=700
+Ntrajectories=10
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -137,7 +138,7 @@ prefixes[2]="001accept.10000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Oct16_label"
+newGRID="HH2_Sep15_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -218,6 +219,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/accept_worst = .*/accept_worst = $accept_worst/
      s/testheatmapSA_flag = .*/testheatmapSA_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = .false./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -293,6 +295,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .true./
      s/comparison_lowerlimit = .*/comparison_lowerlimit = $comparison_lowerlimit/
      s/comparison_upperlimit = .*/comparison_upperlimit = $comparison_upperlimit/
@@ -350,6 +353,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -391,6 +395,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -430,6 +435,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -469,6 +475,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
@@ -508,6 +515,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
+     s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 

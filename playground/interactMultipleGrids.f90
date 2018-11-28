@@ -275,7 +275,7 @@ if (subcell_existence) then
 	!However many frames are in the subcell we increment to number_of_frames
 	number_of_frames = number_of_frames + population
 
-	if (min_rmsd < old_min_rmsd) then
+	if (min_rmsd /= old_min_rmsd) then
 		old_min_rmsd = min_rmsd
 		old_gradient = gradient
 		old_U = U
@@ -370,11 +370,9 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 
                 if (min_rmsd /= old_min_rmsd) then
                         stop_flag = .true.
-			if (min_rmsd < old_min_rmsd) then
-				old_min_rmsd = min_rmsd
-				old_gradient = gradient
-				old_U = U
-			end if
+			old_min_rmsd = min_rmsd
+			old_gradient = gradient
+			old_U = U
                 end if
         
                 !And integer j keeps track of where on the circumfrence
@@ -399,12 +397,9 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                                           coords,min_rmsd,gradient,U,number_of_frames)
         
                         if (min_rmsd /= old_min_rmsd) then
-                                stop_flag = .true.
-        			if (min_rmsd < old_min_rmsd) then
-        				old_min_rmsd = min_rmsd
-        				old_gradient = gradient
-        				old_U = U
-        			end if
+				old_min_rmsd = min_rmsd
+				old_gradient = gradient
+				old_U = U
                         end if
                 end do
         
@@ -442,7 +437,7 @@ if (subcell_existence) then
 
 	number_of_frames = number_of_frames + population
 
-	if (min_rmsd < old_min_rmsd) then
+	if (min_rmsd /= old_min_rmsd) then
 		old_min_rmsd = min_rmsd
 		old_gradient = gradient
 		old_U = U
@@ -531,11 +526,9 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 
                 if (min_rmsd /= old_min_rmsd) then
                         stop_flag = .true.
-			if (min_rmsd < old_min_rmsd) then
-				old_min_rmsd = min_rmsd
-				old_gradient = gradient
-				old_U = U
-			end if
+			old_min_rmsd = min_rmsd
+			old_gradient = gradient
+			old_U = U
                 end if
 
         do j = 1, i-1
@@ -553,11 +546,9 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 
                 if (min_rmsd /= old_min_rmsd) then
                         stop_flag = .true.
-			if (min_rmsd < old_min_rmsd) then
-				old_min_rmsd = min_rmsd
-				old_gradient = gradient
-				old_U = U
-			end if
+			old_min_rmsd = min_rmsd
+			old_gradient = gradient
+			old_U = U
                 end if
 
         end do
@@ -780,17 +771,15 @@ integer,intent(out) :: population
 real(dp),intent(inout), dimension(3,Natoms) :: gradient
 real(dp),dimension(3,Natoms) :: candidate_gradient
 real(dp),intent(inout) :: min_rmsd
-integer :: i,j,iostate
+integer :: i,j,k,iostate
 character(*),intent(in) :: subcell
 real(dp),intent(in), dimension(3,Natoms) :: coords
-real(dp) :: old_min_rmsd
+real(dp) :: candidate_min_rmsd
 real(dp), dimension(3) :: x_center, y_center
 real(dp), allocatable :: g(:,:)
 real(dp),dimension(3,3),intent(inout) :: U
 real(dp),dimension(3,3) :: candidate_U
 real(dp), dimension(3,Natoms) :: coords2
-
-old_min_rmsd = min_rmsd
 
 !Open the file corresponding to the cell
 if (unreadable_flag) then
@@ -811,29 +800,91 @@ do
 	        if (iostate /= 0) exit
         end if
 
-        call rmsd_dp(Natoms,coords2,coords,1,candidate_U,x_center,y_center,min_rmsd)!,.false.,g)
+        call rmsd_dp(Natoms,coords2,coords,1,candidate_U,x_center,y_center,candidate_min_rmsd)!,.false.,g)
 
         !Increment the number of frames visited
         population = population + 1
 
-	if (min_rmsd < old_min_rmsd) then
-		old_min_rmsd = min_rmsd
-		U = candidate_U
+        !If in the "accept worst" method:
+        if (accept_worst) then
 
+        !If it is too low, reject the candidate frame
+        if (candidate_min_rmsd < min_rmsd) then
                 if (unreadable_flag) then
-                        read(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
+                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 end if
 
+        !Otherwise if it is low enough, accept the candidate frame (and save its rotation matrix!)
+        else if (candidate_min_rmsd < threshold_rmsd) then
+                min_rmsd = candidate_min_rmsd
+                U = candidate_U
+
+                if (unreadable_flag) then
+                        read(filechannel1) ((gradient(j,k),j=1,3),k=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+                end if
+
+                !In special cases, we exit immediately afterwards
                 if (accept_first) exit
-	else
+
+        !If it is too high, also reject the candidate frame
+        else
                 if (unreadable_flag) then
-                        read(filechannel1) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 end if
-	end if
+        end if
+
+        !If in the "accept best" method:
+        else
+
+        !If it is low enough, accept the candidate frame (and save its rotation matrix!)
+        if (candidate_min_rmsd < min_rmsd) then
+                min_rmsd = candidate_min_rmsd
+                U = candidate_U
+
+                if (unreadable_flag) then
+                        read(filechannel1) ((gradient(j,k),j=1,3),k=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+                end if
+
+                !In special cases, we exit immediately afterwards
+                if (accept_first) exit
+
+        !Otherwise, just don't record the gradient
+        else
+                if (unreadable_flag) then
+                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                end if
+        end if
+
+        end if
+
+!	if (candidate_min_rmsd < min_rmsd) then
+!		min_rmsd = candidate_min_rmsd
+!		U = candidate_U
+!
+!                if (unreadable_flag) then
+!                        read(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
+!                else
+!                        read(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+!                end if
+!
+!                if (accept_first) exit
+!	else
+!                if (unreadable_flag) then
+!                        read(filechannel1) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+!                else
+!                        read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+!                end if
+!	end if
 end do
 close(filechannel1)
 

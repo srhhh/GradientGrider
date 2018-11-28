@@ -142,9 +142,17 @@ if (reject_flag) then
         reject_text = "reject"
 else
         if (accept_first) then
-                 reject_text = "alphaA"
+                 if (accept_worst) then
+                         reject_text = "alphaW"
+                 else
+                         reject_text = "alphaA"
+                 end if
         else
-                 reject_text = "accept"
+                 if (accept_worst) then
+                         reject_text = "omegaW"
+                 else
+                         reject_text = "omegaA"
+                 end if
         end if
 end if
 
@@ -337,9 +345,17 @@ if (reject_flag) then
         reject_text = "reject"
 else
         if (accept_first) then
-                 reject_text = "alphaA"
+                 if (accept_worst) then
+                         reject_text = "alphaW"
+                 else
+                         reject_text = "alphaA"
+                 end if
         else
-                 reject_text = "accept"
+                 if (accept_worst) then
+                         reject_text = "omegaW"
+                 else
+                         reject_text = "omegaA"
+                 end if
         end if
 end if
 
@@ -428,9 +444,17 @@ if (reject_flag) then
         reject_text = "reject"
 else
         if (accept_first) then
-                 reject_text = "alphaA"
+                 if (accept_worst) then
+                         reject_text = "alphaW"
+                 else
+                         reject_text = "alphaA"
+                 end if
         else
-                 reject_text = "accept"
+                 if (accept_worst) then
+                         reject_text = "omegaW"
+                 else
+                         reject_text = "omegaA"
+                 end if
         end if
 end if
 

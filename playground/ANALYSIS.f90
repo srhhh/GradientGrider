@@ -63,7 +63,7 @@ logical,parameter :: testtraj_flag = .true.
       !Set the threshold RMSD to be used for any rejection method
       !real(dp),parameter :: !threshold_rmsd! = !.200100d0
       real(dp),parameter :: threshold_rmsd = .00100d0
-      real(dp),parameter :: default_rmsd = .200100d0
+      real(dp),parameter :: default_rmsd = 1.000100d0
 
       !Set .true. to generate trajectories using md-calculated gradients
       !Otherwise, the program will use the above threshold as a rejection
@@ -74,6 +74,11 @@ logical,parameter :: testtraj_flag = .true.
       !accept_first controls whether we use the first frame accepted
       !or use the frame that is closest in RMSD
       logical :: accept_first = .true.
+
+      !If reject_flag is false (and we are accepting frames) then
+      !accept_worst indicates to accept the frame with the
+      !maximum RMSD (instead of the minimum RMSD)
+      logical :: accept_worst = .false.
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

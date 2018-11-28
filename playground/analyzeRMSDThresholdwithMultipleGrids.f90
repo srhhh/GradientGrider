@@ -100,8 +100,9 @@ do n_testtraj = 1, Ntesttraj
                 if (iostate /= 0) exit
                 frames = frames + 1
 
-        !If the RMSD is below the threshhold we tally that
-                if (min_rmsd < threshold_RMSD) total_threshold_rmsd = total_threshold_rmsd + 1
+                !If the RMSD is below the threshhold we tally that
+                if (.not.(accept_worst) .and. (min_rmsd < threshold_RMSD)) total_threshold_rmsd = total_threshold_rmsd + 1
+                if ((accept_worst) .and. (min_rmsd > 0.0d0)) total_threshold_rmsd = total_threshold_rmsd + 1
         end do
         close(filechannel2)
 
@@ -141,6 +142,7 @@ write(gnuplotchannel,*) 'min(x,y) = (x < y) ? x : y'
 write(gnuplotchannel,*) 'bin_number(x) = min(floor(x/bin_width),Nbins-1)'
 write(gnuplotchannel,*) 'rounded(x) = bin_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set xrange [0:ymax]'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
 
 do Ngrid = 1, Ngrid_total

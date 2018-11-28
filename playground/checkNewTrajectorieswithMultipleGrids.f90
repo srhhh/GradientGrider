@@ -189,49 +189,6 @@ if (heatmap_flag) then
 	call analyzeHeatMaps2()
 end if
 
-!This is for scattering angle plots (from each of the grids)
-if (trueSA_flag) then
-	call itime(now)
-	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "InitialSATRVDistribution"
-	print *, ""
-	
-	max_TranslationalEnergy = 0.0d0
-        max_absenergychange = 0.0
-        min_absenergychange = 1.0e9
-        max_relenergychange = 0.0
-        min_relenergychange = 1.0e9
-	max_rotenergychange = 0.0
-	min_rotenergychange = 1.0e9
-	
-	old_filename = ""
-	do Ngrid = 1, Ngrid_max
-		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-
-		!First, post process
-	        Ntraj = Ntraj_max
-        	call postProcess(Ngrid_text//"/Initial")
-
-	        Ntraj = Ngrid*Ntraj_max
-		write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-		write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
-
-	        if (trim(adjustl(old_filename)) /= "") then
-	                new_filename = gridpath0//Ngrid_text//"/Initial"//Ntraj_text//SATRVfile
-	                call system("cat "//trim(adjustl(old_filename))//" "//&
-	                            gridpath0//Ngrid_text//"/Initial"//SATRVfile//" > "//new_filename)
-	                old_filename = new_filename
-	        else
-	                old_filename = gridpath0//Ngrid_text//"/Initial"//Ntraj_text//SATRVfile
-	                call system("cp "//gridpath0//Ngrid_text//"/Initial"//SATRVfile//" "//trim(adjustl(old_filename)))
-	        end if
-
-	        !Make an SA + TRV plot
-	        call getScatteringAngles1(Ngrid_text//"/Initial"//Ntraj_text,"SATRVDistribution")
-	end do
-end if
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -241,11 +198,20 @@ if (reject_flag) then
 	reject_text = "reject"
 else
         if (accept_first) then
-                 reject_text = "alphaA"
+                 if (accept_worst) then
+                         reject_text = "alphaW"
+                 else
+                         reject_text = "alphaA"
+                 end if
         else
-	         reject_text = "accept"
+                 if (accept_worst) then
+                         reject_text = "omegaW"
+                 else
+                         reject_text = "omegaA"
+                 end if
         end if
 end if
+
 
 allocate(filechannels(Ngrid_total))
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
@@ -573,10 +539,11 @@ end if
 
 !We need to redo the postProcess (and convergence) of each grid as well
 !in case the maximum and minimum of the trajectories just processed are different
-if (comparison_flag .or. trueSA_flag) then
+if (comparison_flag .or. trueSA_flag .or. testtrajSA_flag .or. testheatmapSA_flag) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "InitialSATRVDistribution"
+	print *, "   Making plots: ", "Initial_SATRVDistribution"
+	print *, "   Making plots: ", "Initial_HeatMap_SATRVDistribution"
 	print *, ""
 
 	old_filename = ""
@@ -640,13 +607,15 @@ else if (trim(adjustl(comparison_SATRVname)) == "RotationalEnergyChange") then
 else
 end if
 
-if (comparison_upperlimit /= comparison_lowerlimit) then
-        call getConvergenceImage(comparison_lowerlimit,comparison_upperlimit,comparison_SATRVcolumn,&
-                                 trim(adjustl(comparison_SATRVname)))
-end if
-
 !In a comparison run, we don't look at any of the other flags
 if (comparison_flag) then
+
+        !If need be, use the upper and lower limit dictated by the user
+        if (comparison_upperlimit /= comparison_lowerlimit) then
+                call getConvergenceImage(comparison_lowerlimit,comparison_upperlimit,comparison_SATRVcolumn,&
+                                         trim(adjustl(comparison_SATRVname)))
+        end if
+
         call itime(now)
         write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution"
@@ -684,28 +653,28 @@ end if
 if (percentthreshold_flag) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "PercentRMSDThreshold_"//prefix_text
+	print *, "   Making plot: ", prefix_text//"_PercentRMSDThreshold"
 	print *, ""
-	call getRMSDThresholds1(prefix_text,"PercentRMSDThreshold_"//prefix_text)
-end if
-
-if (testtrajSA_flag) then
-	call itime(now)
-	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "TestScatteringAngleDistribution_"//prefix_text
-	print *, ""
-	
-	call getScatteringAngles2(prefix_text,"TestScatteringAngleDistribution_"//&
-                                  prefix_text)
+	call getRMSDThresholds1(prefix_text,prefix_text//"_PercentRMSDThreshold")
 end if
 
 if (testheatmapSA_flag) then
 	call itime(now)
 	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "HeatMap_"//trim(adjustl(Ntraj_text))//"SATRVDistribution"
+	print *, "   Making plot: ", prefix_text//"_SATRVDistribution"
+	print *, "   Making plot: ", prefix_text//"_HeatMap_SATRVDistribution"
 	print *, ""
 
 	call getScatteringAngles1(prefix_text, "SATRVDistribution")
+end if
+
+if (testtrajSA_flag) then
+	call itime(now)
+	write(6,FMT=FMTnow) now
+	print *, "   Making plot: ", prefix_text//"_Final_SATRVDistribution"
+	print *, ""
+	
+	call getScatteringAngles2(prefix_text,prefix_text//"_Final_SATRVDistribution")
 end if
 
 

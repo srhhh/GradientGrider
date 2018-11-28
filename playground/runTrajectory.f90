@@ -647,11 +647,17 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
                 if ((force_Duplicates) .or. (force_NoLabels)) then
-                        min_rmsd = default_rmsd
+                        if (accept_worst) then
+                                min_rmsd = 0.0d0
+                        else
+                                min_rmsd = default_rmsd
+                        end if
                         call checkState(vals,coords,approx_gradient,min_rmsd,&
                                  number_of_frames,order,neighbor_check)
 
-                        if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
+                                call Acceleration(vals,coords,gradient)
+                        else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                 call Acceleration(vals,coords,gradient)
                         else
 				gradient = approx_gradient
@@ -664,13 +670,19 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 
                        !Check for a frame in the grid
                        !Set the default value beforehand though
-                       min_rmsd = default_rmsd
+                       if (accept_worst) then
+                               min_rmsd = 0.0d0
+                       else
+                               min_rmsd = default_rmsd
+                       end if
                        call checkState(vals,coords_labelled,approx_gradient,min_rmsd,&
                                 number_of_frames,order,neighbor_check)
 
                        !Update the gradient with either the approximation or by acclerating
                        !This is dependent on the threshold and the rejection method
-                       if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                       if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
+                                call Acceleration(vals,coords,gradient)
+                       else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                call Acceleration(vals,coords,gradient)
                        else
                                do n = 1, Natoms
@@ -866,11 +878,17 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
                 if ((force_Duplicates) .or. (force_NoLabels)) then
-                        min_rmsd = default_rmsd
+                        if (accept_worst) then
+                                min_rmsd = 0.0d0
+                        else
+                                min_rmsd = default_rmsd
+                        end if
                         call checkState(vals,coords,approx_gradient,min_rmsd,&
                                  filechannels,number_of_frames,order,neighbor_check)
 
-                        if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
+                                call Acceleration(vals,coords,gradient)
+                        else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                 call Acceleration(vals,coords,gradient)
                         else
 				gradient = approx_gradient
@@ -883,13 +901,19 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 
                        !Check for a frame in the grid
                        !Set the default value beforehand though
+                       if (accept_worst) then
+                               min_rmsd = 0.0d0
+                       else
                                min_rmsd = default_rmsd
-                               call checkState(vals,coords_labelled,approx_gradient,min_rmsd,&
-                                        filechannels,number_of_frames,order,neighbor_check)
+                       end if
+                       call checkState(vals,coords_labelled,approx_gradient,min_rmsd,&
+                                filechannels,number_of_frames,order,neighbor_check)
 
                        !Update the gradient with either the approximation or by acclerating
                        !This is dependent on the threshold and the rejection method
-                       if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                       if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
+                               call Acceleration(vals,coords,gradient)
+                       else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                call Acceleration(vals,coords,gradient)
                        else
                                do n = 1, Natoms

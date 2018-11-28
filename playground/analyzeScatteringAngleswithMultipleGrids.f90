@@ -172,10 +172,12 @@ write(gnuplotchannel,*) 'box_width = '//variable_length_text
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
+write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
-write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
 
@@ -184,6 +186,7 @@ write(gnuplotchannel,*) 'min_E = scaling * ', min_absenergychange
 write(gnuplotchannel,*) 'max_E = scaling * ', max_absenergychange
 write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
 write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xlabel "Energy (eV)"'
@@ -200,6 +203,7 @@ write(gnuplotchannel,*) 'min_E = scaling * ', min_relenergychange
 write(gnuplotchannel,*) 'max_E = scaling * ', max_relenergychange
 write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
 write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
@@ -209,9 +213,11 @@ write(gnuplotchannel,*) 'set title "Rotational Energy Change Distribution of '//
 write(gnuplotchannel,*) 'set ylabel "Rotational Energy Change"'
 write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
 write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
-write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
+write(gnuplotchannel,*) 'Nbins = ', energychangeBins
+write(gnuplotchannel,*) 'box_width = (max_E-min_E) / Nbins'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
+write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($5-0.5)+min_E):(1.0) smooth frequency w boxes'
@@ -586,7 +592,9 @@ write(gnuplotchannel,*) 'set encoding utf8'
 write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.png"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'pi = 3.14159265'
-write(gnuplotchannel,*) 'box_width = pi / ', scatteringangleBins
+write(gnuplotchannel,*) 'Nbins = ', energychangeBins
+write(gnuplotchannel,*) 'scaling = 1'
+write(gnuplotchannel,*) 'box_width = pi / Nbins'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
@@ -605,7 +613,8 @@ write(gnuplotchannel,*) "set format x '%.1P π'"
 
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
-                                '" u (rounded($1)):(1.0) smooth frequency w boxes, \'
+                                '" u (scaling*$1>=pi?(pi-0.5*box_width):'//&
+                                '(rounded($1))):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedScatteringAngle'//&
 				cumulativefile//'.dat" u 1:2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
@@ -613,14 +622,16 @@ if (grid_is_done) then
 				cumulativefile//'.dat" u 1:2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
-                                '" u (rounded($1)):(1.0) smooth frequency w boxes'
+                                '" u (scaling*$1>=pi?(pi-0.5*box_width):'//&
+                                '(rounded($1))):(1.0) smooth frequency w boxes, \'
 end if
         write(gnuplotchannel,*) 'scaling = 1000'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_absenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_absenergychange
-        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
+        write(gnuplotchannel,*) 'Nbins = ', energychangeBins
+        write(gnuplotchannel,*) 'box_width = (max_E-min_E) / Nbins'
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
-        write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
+        write(gnuplotchannel,*) 'set xtics min_E, box_width*Nbins/5, max_E'
         write(gnuplotchannel,*) 'set boxwidth box_width'
 	write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
@@ -629,7 +640,8 @@ end if
         write(gnuplotchannel,*) 'set ylabel "Absolute Translational Energy Change"'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
-                                '" u (rounded($3)):(1.0) smooth frequency w boxes, \'
+                                '" u (scaling*$3>=max_E?(max_E-0.5*box_width):'//&
+                                '(rounded($3))):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedAbsoluteEnergyChange'//&
 				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
@@ -637,20 +649,23 @@ if (grid_is_done) then
 				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
-                                '" u (rounded($3)):(1.0) smooth frequency w boxes'
+                                '" u (scaling*$3>=max_E?(max_E-0.5*box_width):'//&
+                                '(rounded($3))):(1.0) smooth frequency w boxes, \'
 end if
         write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_relenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_relenergychange
-        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
+        write(gnuplotchannel,*) 'Nbins = ', energychangeBins
+        write(gnuplotchannel,*) 'box_width = (max_E-min_E) / Nbins'
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
-        write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
+        write(gnuplotchannel,*) 'set xtics min_E, box_width*Nbins/5, max_E'
         write(gnuplotchannel,*) 'set boxwidth box_width'
 	write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
-                                '" u (rounded($4)):(1.0) smooth frequency w boxes, \'
+                                '" u (scaling*$4>=max_E?(max_E-0.5*box_width):'//&
+                                '(rounded($4))):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedRelativeEnergyChange'//&
 				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
@@ -658,21 +673,24 @@ if (grid_is_done) then
 				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
-                                '" u (rounded($4)):(1.0) smooth frequency w boxes'
+                                '" u (scaling*$4>=max_E?(max_E-0.5*box_width):'//&
+                                '(rounded($4))):(1.0) smooth frequency w boxes, \'
 end if
-        write(gnuplotchannel,*) 'set ylabel "Rotational Translational Energy Change"'
+        write(gnuplotchannel,*) 'set ylabel "Rotational Energy Change"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
-        write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
+        write(gnuplotchannel,*) 'Nbins = ', energychangeBins
+        write(gnuplotchannel,*) 'box_width = (max_E-min_E) / Nbins'
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
-        write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
+        write(gnuplotchannel,*) 'set xtics min_E, box_width*Nbins/5, max_E'
         write(gnuplotchannel,*) "set format x '%.3f'"
         write(gnuplotchannel,*) 'set boxwidth box_width'
 	write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
-                                '" u (rounded($5)):(1.0) smooth frequency w boxes, \'
+                                '" u (scaling*$5>=max_E?(max_E-0.5*box_width):'//&
+                                '(rounded($5))):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath0//'AdjustedRotationalEnergyChange'//&
 				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
@@ -680,7 +698,8 @@ if (grid_is_done) then
 				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
-                                '" u (rounded($5)):(1.0) smooth frequency w boxes'
+                                '" u (scaling*$5>=max_E?(max_E-0.5*box_width):'//&
+                                '(rounded($5))):(1.0) smooth frequency w boxes, \'
 end if
 close(gnuplotchannel)
 

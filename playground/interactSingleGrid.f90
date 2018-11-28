@@ -975,7 +975,7 @@ if (key0 < overcrowd0) then
         number_of_frames = number_of_frames + key0
         neighbor_check = neighbor_check + 1
 
-        if (min_rmsd < old_min_rmsd) then
+        if (min_rmsd /= old_min_rmsd) then
                 old_min_rmsd = min_rmsd
                 old_gradient = gradient
                 old_U = U
@@ -1028,7 +1028,7 @@ if (key1 < overcrowd1) then
 
                 call getRMSD(subcell,key1,coords,min_rmsd,gradient,U)
         
-                if (min_rmsd < old_min_rmsd) then
+                if (min_rmsd /= old_min_rmsd) then
                         old_min_rmsd = min_rmsd
                         old_gradient = gradient
                         old_U = U
@@ -1177,11 +1177,9 @@ if (key1 < overcrowd1) then
                                 !minimum rmsd (default is 100.0)
                                 if (min_rmsd /= old_min_rmsd) then
                                         stop_flag = .true.
-                                        if (min_rmsd < old_min_rmsd) then
-                                                old_min_rmsd = min_rmsd
-                                                old_gradient = gradient
-                                                old_U = U
-                                        end if
+                                        old_min_rmsd = min_rmsd
+                                        old_gradient = gradient
+                                        old_U = U
                                 end if
                         end do
 
@@ -1401,7 +1399,7 @@ if (key2 < overcrowd2) then
 	order = 2
 end if
 
-if ((min_rmsd < old_min_rmsd).or.(stop_flag)) then
+if ((min_rmsd /= old_min_rmsd).or.(stop_flag)) then
 	gradient = matmul(U,gradient)
 	return
 end if
@@ -1462,7 +1460,7 @@ if (key3 < overcrowd3) then
                                           var1_round,var2_round,counter3,counter3_max,&
                                           coords,min_rmsd,gradient,U,number_of_frames)
 
-                        if (min_rmsd < old_min_rmsd) then
+                        if (min_rmsd /= old_min_rmsd) then
                                 stop_flag = .true.
                         end if
                 end do
@@ -1474,7 +1472,7 @@ if (key3 < overcrowd3) then
 	order = 3
 end if
 
-if ((min_rmsd < old_min_rmsd).or.(stop_flag)) then
+if ((min_rmsd /= old_min_rmsd).or.(stop_flag)) then
 	gradient = matmul(U,gradient)
 	return
 end if
@@ -1737,7 +1735,44 @@ do i = 1, population
         !Get the RMSD between the candidate frame and the reference frame
         call rmsd_dp(Natoms,coords2,coords,1,candidate_U(:,:),&
                      x_center,y_center,candidate_min_rmsd)
-         
+
+        !If in the "accept worst" method:
+        if (accept_worst) then
+
+        !If it is too low, reject the candidate frame
+        if (candidate_min_rmsd < min_rmsd) then
+                if (unreadable_flag) then
+                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                end if
+
+        !Otherwise if it is low enough, accept the candidate frame (and save its rotation matrix!)
+        else if (candidate_min_rmsd < threshold_rmsd) then
+                min_rmsd = candidate_min_rmsd
+                U = candidate_U
+
+                if (unreadable_flag) then
+                        read(filechannel1) ((gradient(j,k),j=1,3),k=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+                end if
+
+                !In special cases, we exit immediately afterwards
+                if (accept_first) exit
+
+        !If it is too high, also reject the candidate frame
+        else
+                if (unreadable_flag) then
+                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                else
+                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                end if
+        end if
+        
+        !If in the "accept best" method:
+        else
+
         !If it is low enough, accept the candidate frame (and save its rotation matrix!)
         if (candidate_min_rmsd < min_rmsd) then
                 min_rmsd = candidate_min_rmsd
@@ -1761,6 +1796,7 @@ do i = 1, population
                 end if
         end if
 
+        end if
 end do
 close(filechannel1)
 
