@@ -752,7 +752,8 @@ min_rot = 1.0e9
 total_bonds = 0
 open(filechannel1,file=gridpath0//prefix_filename//initialfile)
 do
-	read(filechannel1,iostat=iostate,FMT=FMTinitial) INITIAL_BOND_DATA
+!	read(filechannel1,iostat=iostate,FMT=FMTinitial) INITIAL_BOND_DATA
+	read(filechannel1,iostat=iostate,FMT=*) INITIAL_BOND_DATA
 	if (iostate /= 0) exit
 	do i = 1, Nbonds
 		r0 = INITIAL_BOND_DATA(1,i)
@@ -1070,7 +1071,7 @@ real(dp) :: RotationalEnergy1, RotationalEnergy2
 real(dp) :: TotalEnergy1, TotalEnergy2
 
 !TRAJECTORY DATA
-real(dp),dimension(Nbonds,6) :: initial_bonding_data
+!real(dp),dimension(Nbonds,6) :: initial_bonding_data
 real(dp),dimension(3,Natoms) :: coords_initial,velocities_initial
 real(dp),dimension(3,Natoms) :: coords_final,velocities_final
 real(dp),dimension(3) :: velocity_in, velocity_out
@@ -1093,7 +1094,8 @@ integer :: i, j, k
                         ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
                         ((coords_final(i,j),i=1,3),j=1,Natoms),&
                         ((velocities_final(i,j),i=1,3),j=1,Natoms)
-		read(filechannel2,FMTinitial) ((initial_bonding_data(i,j),j=1,6),i=1,Nbonds)
+!		read(filechannel2,FMTinitial) ((initial_bonding_data(i,j),j=1,6),i=1,Nbonds)
+!		read(filechannel2,FMT=*) ((initial_bonding_data(j,i),j=1,6),i=1,Nbonds)
 
 		relTranslationalEnergy1 = 0.0d0
 		relTranslationalEnergy2 = 0.0d0

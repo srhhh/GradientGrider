@@ -104,7 +104,7 @@ character(6),parameter :: FMT6_pos_real1 = "(F6.4)"
 character(6),parameter :: FMT6_neg_real1 = "(F6.3)"
 character(6),parameter :: FMT6_pos_int = "(I0.6)"
 character(6) :: Nbond_text
-character(17) :: FMTinitial
+character(19) :: FMTinitial
 character(6) :: Natom_text
 character(19) :: FMTtimeslice
 character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"

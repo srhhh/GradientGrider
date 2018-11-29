@@ -82,9 +82,9 @@ heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
 testtraj_flag=.true.
-useolddata_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
+testtrajSA_flag=.true.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.111000d0
 threshold_rmsd1=.111000d0
@@ -94,12 +94,16 @@ threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
-accept_worst=.false.
-testtrajSA_flag=.true.
+accept_worst=.true.
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=10
+Ntrajectories=5
+
+#These are flags relating to using old data
+useolddata_flag=.false.
+useoldinitialbonddata_flag=.true.
+initialbondname="001omegaA.11100"
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -212,6 +216,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/trueED_flag = .*/trueED_flag = .true./
      s/testtraj_flag = .*/testtraj_flag = .false./
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
+     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
+     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/comparison_flag = .*/comparison_flag = .false./
@@ -289,6 +296,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/trueED_flag = .*/trueED_flag = .false./
      s/testtraj_flag = .*/testtraj_flag = .false./
      s/useolddata_flag = .*/useolddata_flag = .false./
+     s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
+     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
+     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
@@ -347,6 +357,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
+     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
+     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
@@ -389,6 +402,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
+     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
+     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
@@ -429,6 +445,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
+     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
+     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
@@ -469,6 +488,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
+     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
+     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
@@ -509,6 +531,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
      s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
+     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
+     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/

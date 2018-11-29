@@ -40,6 +40,12 @@ logical,parameter :: testtraj_flag = .true.
    !data and want to save computation
    logical,parameter :: useolddata_flag = .false.
 
+   !Set .true. if you want to use the initial conditions of a
+   !previous test; specify which one in the variable that follows
+   logical,parameter :: useoldinitialbonddata_flag = .false.
+   integer,parameter :: initialbondname_length = 40
+   character(initialbondname_length),parameter :: initialbondname = ""
+
    !Set how many trajectories will be generated for the test
    !If old data is being used, this number will be decreased internally
    integer,parameter :: Ntesttraj = 1000

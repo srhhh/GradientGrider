@@ -137,7 +137,7 @@ seed = rand(seed)
 
 write(Nbond_text,FMT="(I0.6)") Nbonds
 write(Natom_text,FMT="(I0.6)") Natoms
-write(FMTinitial,FMT="(A17)") "("//Nbond_text//"(6(F8.4)))"
+write(FMTinitial,FMT="(A19)") "("//Nbond_text//"(6(F14.10)))"
 write(FMTtimeslice,FMT="(A19)") "("//Natom_text//"(12(F12.7)))"
 write(FMT2,FMT="(A22)") "("//Natom_text//"(6(1x,F14.10)))"
 write(FMT3,FMT="(A22)") "("//Natom_text//"(3(1x,F14.10)))"
@@ -334,6 +334,8 @@ else
 
         !We need to make a new one of these trajectory files altogether
         call system("rm "//gridpath0//prefix_text//trajectoriesfile)
+        call system("rm "//gridpath0//prefix_text//timeslicefile)
+        if (prefix_text /= initialbondname) call system("rm "//gridpath0//prefix_text//initialfile)
 end if
 
 
@@ -350,10 +352,40 @@ end if
 call system_clock(c1,count_rate=cr)
 system_clock_rate = 1.0/real(cr)
 
+!If we want to use the same initial conditions as an old set of trajectories
+!open up whatever initial file that sample corresponds to
+if (useoldinitialbonddata_flag) then
+        open(trajectorieschannel,file=gridpath0//initialbondname//initialfile)
+        print *, ""
+        print *, "     Deciding to use old initial conditions..."
+        print *, ""
+end if
+
 !Now here we actually make these new trajectories
 do n_testtraj = initial_n_testtraj, Ntesttraj
 
-	!This is just the creation of the random initial trajectory
+        !If we're reusing old initial conditions, that's easy; we just read off the file
+        if (useoldinitialbonddata_flag) then
+                read(trajectorieschannel,FMT=FMTinitial,iostat=iostate) &
+                            ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
+
+                !If we ran out of trajectories, we just exit out
+                if (iostate /= 0) then
+                        print *, ""
+                        call itime(now)
+                        write(6,FMT=FMTnow) now
+                        print *, "All initial conditions have been read; no more left"
+                        print *, "Total number of trajectories created from it: ", n_testtraj-initial_n_testtraj
+                        print *, "Exiting analysis"
+                        print *, ""
+        
+                        return
+                end if
+        
+	!Otherwise, we must creat a random initial trajectory from the ensemble
+        !specified in PHYSICS and PARAMETERS
+        else
+
 	do n = 1, Nbonds
 		!The orientation of the H2
 		do
@@ -400,10 +432,15 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                                         bond_period_elapsed /)
 	end do
 
-	open(filechannel1,file=gridpath0//prefix_text//initialfile,&
-                          position="append")
-	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
-        close(filechannel1)
+        end if
+
+        !In most case, we will need to record the initial conditions to a (potentially) new file
+        if (prefix_text /= initialbondname) then
+        	open(filechannel1,file=gridpath0//prefix_text//initialfile,&
+                                  position="append")
+        	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
+                close(filechannel1)
+        end if
 
 
 	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
@@ -486,6 +523,10 @@ print *, ""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!If we did use old initial conditions, close that file up
+if (useoldinitialbonddata_flag) close(trajectorieschannel)
+
+!This closes that big, enclosing if statement on whether to make trajectories
 end if
 
 
