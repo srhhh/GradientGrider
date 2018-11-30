@@ -67,7 +67,7 @@ overcrowd2=01010
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=4
+Ngrid_max=12
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -86,11 +86,11 @@ testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.111000d0
-threshold_rmsd1=.111000d0
-threshold_rmsd2=.150010d0
-threshold_rmsd3=.200010d0
-threshold_rmsd4=.010000d0
+threshold_rmsd=.200000d0
+threshold_rmsd1=.200000d0
+threshold_rmsd2=.150000d0
+threshold_rmsd3=.100000d0
+threshold_rmsd4=.050000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
@@ -98,12 +98,12 @@ accept_worst=.true.
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=5
+Ntrajectories=700
 
 #These are flags relating to using old data
-useolddata_flag=.false.
-useoldinitialbonddata_flag=.true.
-initialbondname="001omegaA.11100"
+useolddata_flag=.true.
+useoldinitialbonddata_flag=.false.
+initialbondname="001omegaA.20000"
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -129,9 +129,10 @@ declare -a prefixes
 #prefixes[0]="004accept.05000"
 #prefixes[1]="004accept.01000"
 #prefixes[2]="004accept.00500"
-prefixes[0]="001accept.20000"
-prefixes[1]="001accept.15000"
-prefixes[2]="001accept.10000"
+prefixes[0]="001omegaW.20000"
+prefixes[1]="001omegaW.15000"
+prefixes[2]="001omegaW.10000"
+prefixes[3]="001omegaW.05000"
 #prefixes[2]="001accept.05000"
 
 ###############################################################################################################################################
@@ -142,7 +143,7 @@ prefixes[2]="001accept.10000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Sep15_label"
+newGRID="HH2_Oct16_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -154,7 +155,7 @@ newGRID_check_min=100
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)

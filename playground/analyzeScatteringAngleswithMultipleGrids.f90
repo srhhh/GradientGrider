@@ -361,11 +361,13 @@ integer,dimension(5) :: SATRVdata
 
 !SCATTERING ANGLE BINNING
 integer :: Nsamples, Nsamples_max
-real :: bin_width, binMean, binSD,binRMSD
-real,allocatable :: binAverage(:), sampleKS(:), sampleRMSD(:)
+real :: bin_width, binMean, binRMSD
+real,allocatable :: binAverage(:), binSD(:),sampleKS(:), sampleRMSD(:), sampleKRP(:)
 integer,allocatable :: binCumulative(:,:), binTotal(:,:),sampleSize(:)
 integer :: binTally
 real :: binThreshold = 1.0
+real :: lambda_penalty = 2.0
+real :: minsd_penalty = 0.01
 
 !FORMATTING OF JPG FILES
 character(5) :: variable_length_text
@@ -381,8 +383,9 @@ bin_width = (upperlimit-lowerlimit) / scatteringangleBins
 Nsamples_max = (Ngrid_max * Ntraj_max) / Ntesttraj
 allocate(binCumulative(scatteringangleBins,Nsamples_max),&
          binTotal(scatteringangleBins,Nsamples_max),&
-         binAverage(scatteringangleBins),&
-         sampleSize(Nsamples_max),sampleKS(Nsamples_max),sampleRMSD(Nsamples_max))
+         binAverage(scatteringangleBins),binSD(scatteringangleBins),&
+         sampleSize(Nsamples_max),sampleKS(Nsamples_max),&
+         sampleKRP(Nsamples_max),sampleRMSD(Nsamples_max))
 
 !Now we want a reference distribution
 !This will be the distribution of ALL trajectories
@@ -406,6 +409,7 @@ close(filechannel1)
 
 do i = 1,scatteringangleBins
         binAverage(i) = sum(binTotal(i,:)) * 1.0 / Nsamples_max
+        binSD(i) = sqrt(sum((binTotal(i,:)*1.0 - binAverage(i))**2)/(Nsamples_max - 1))
 end do
 
 !Now we want error bars
@@ -414,6 +418,7 @@ end do
 binTally = 0
 sampleKS = 0
 sampleRMSD = 0
+sampleKRP = 0
 open(filechannel1,file=gridpath0//"RMSD"//SATRVname//cumulativefile//".dat",action="write")
 do Nsamples = 1, Nsamples_max
         binRMSD = 0.0
@@ -423,12 +428,15 @@ do Nsamples = 1, Nsamples_max
                 binCumulative(i,Nsamples) = sum(binTotal(1:i,Nsamples))
                 sampleKS(Nsamples) = max(sampleKS(Nsamples),abs(binCumulative(i,Nsamples)- &
                                          sum(binAverage(1:i))))
+                sampleKRP(Nsamples) = sampleKRP(Nsamples) + (abs(binTotal(i,Nsamples) - binAverage(i)) /&
+                                                            max(minsd_penalty,binSD(i)))**lambda_penalty
         end do
         sampleRMSD(Nsamples) = sqrt(sampleRMSD(Nsamples) * 1.0 / (scatteringangleBins - 1.0))
+        sampleKRP(Nsamples) = (sampleKRP(Nsamples) * 1.0 / (scatteringangleBins - 1.0))**(1.0/lambda_penalty)
 
         binRMSD = sqrt(binRMSD/scatteringangleBins)
         write(filechannel1,FMT=*) Nsamples*Ntesttraj, binRMSD, binThreshold,&
-                                  sampleKS(Nsamples), sampleRMSD(Nsamples)
+                                  sampleKS(Nsamples), sampleRMSD(Nsamples), sampleKRP(Nsamples)
 
         if (binRMSD < binThreshold) then
                 binTally = binTally + 1
@@ -449,10 +457,7 @@ close(filechannel1)
 !Each bin has its own average and standard deviation based on how many samples we took
 open(filechannel1,file=gridpath0//"Adjusted"//SATRVname//cumulativefile//".dat")
 do i = 1, scatteringangleBins
-        binMean = binAverage(i)
-        binSD = sqrt(sum((binTotal(i,:)*1.0 - binMean)**2)/(Nsamples_max - 1))
-
-        write(filechannel1,*) (i-0.5)*bin_width, binMean, binSD!/sqrt(real(Nsamples))
+        write(filechannel1,*) (i-0.5)*bin_width, binAverage(i), binSD(i)
 end do
 close(filechannel1)
 
@@ -510,24 +515,24 @@ write(gnuplotchannel,*) 'set ylabel "Frequency"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'plot "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u (scaling*($1)):2 w boxes, \'
 write(gnuplotchannel,*) '     "'//gridpath0//'Adjusted'//SATRVname//cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
-write(gnuplotchannel,*) 'set title "Distribution of the Kolmogorov-Smirnov Difference Among\n'//&
+write(gnuplotchannel,*) 'set title "Distribution of the KRP Among\n'//&
                         trim(adjustl(variable_length_text))//' '//SATRVname//' Samplings Across '//&
                         trim(adjustl(Ngrid_text))//' Grids"'
-write(gnuplotchannel,*) 'set xlabel "Kolmogorov-Smirnov Difference"'
+write(gnuplotchannel,*) 'set xlabel "KRP"'
 write(gnuplotchannel,*) 'set ylabel "Frequency"'
-write(gnuplotchannel,*) 'minKS = ', max(0.0,minval(sampleKS)-2*(maxval(sampleKS)-minval(sampleKS))/Nsamples_max)
-write(gnuplotchannel,*) 'maxKS = ', maxval(sampleKS) + 2*(maxval(sampleKS)-minval(sampleKS))/Nsamples_max
-write(gnuplotchannel,*) 'set xrange [minKS:maxKS]'
+write(gnuplotchannel,*) 'minKRP = ', max(0.0,minval(sampleKRP)-2*(maxval(sampleKRP)-minval(sampleKRP))/Nsamples_max)
+write(gnuplotchannel,*) 'maxKRP = ', maxval(sampleKRP) + 2*(maxval(sampleKRP)-minval(sampleKRP))/Nsamples_max
+write(gnuplotchannel,*) 'set xrange [minKRP:maxKRP]'
 write(gnuplotchannel,*) 'set yrange [0:]'
-write(gnuplotchannel,*) 'box_width = (maxKS-minKS) / ',(2*Nsamples_max)
-write(gnuplotchannel,*) 'set xtics minKS, (maxKS-minKS)/4, maxKS'
+write(gnuplotchannel,*) 'box_width = (maxKRP-minKRP) / ',(2*Nsamples_max)
+write(gnuplotchannel,*) 'set xtics minKRP, (maxKRP-minKRP)/4, maxKRP'
 write(gnuplotchannel,*) "set format x '%.2f'"
 write(gnuplotchannel,*) 'set ytics 1'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//'.dat"'//&
-                        'u (rounded($4)):(1.0) smooth frequency with boxes'
+                        'u (rounded($6)):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'set title "Distribution of the Root Mean Square Difference Among\n'//&
                         trim(adjustl(variable_length_text))//' '//SATRVname//' Samplings Across '//&
                         trim(adjustl(Ngrid_text))//' Grids"'
@@ -548,10 +553,10 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//'RMSD'//SATRVname//cumulativefile//
                         'u (rounded($5)):(1.0) smooth frequency with boxes'
 close(gnuplotchannel)
 
-deallocate(binAverage)
+deallocate(binAverage,binSD)
 deallocate(binCumulative)
 deallocate(binTotal)
-deallocate(sampleKS,sampleRMSD,sampleSize)
+deallocate(sampleKS,sampleRMSD,sampleSize,sampleKRP)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
@@ -878,6 +883,7 @@ real,intent(in) :: upperlimit, lowerlimit
 
 !FORMATTING OF JPG FILES
 character(5) :: variable_length_text
+character(8) :: difference_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
 character(trajectory_text_length) :: Ntraj_text
@@ -891,8 +897,10 @@ real,allocatable :: referenceBins(:)
 real,allocatable :: referenceMeans(:)
 real,allocatable :: referenceSDs(:)
 integer,allocatable :: binTotal(:,:)
-real :: comparisonRMSD, comparisonKS, comparisonCDF
+real :: comparisonRMSD, comparisonKS, comparisonCDF, comparisonKRP
 real :: comparisonBin, comparisonMean, comparisonSD
+real :: lambda_penalty = 2.0
+real :: minsd_penalty = 0.01
 integer :: Nbins
 
 if (SATRVname == "ScatteringAngle") then
@@ -971,17 +979,20 @@ write(gnuplotchannel,*) 'rounded(x) = box_width * (x - 0.5)'
 comparisonRMSD = 0
 comparisonKS = 0
 comparisonCDF = 0
+comparisonKRP = 0
 do j = 1, Nbins
         comparisonCDF = comparisonCDF + 1.0*binTotal(j,1) - referenceMeans(j)
         comparisonKS = max(comparisonKS, abs(comparisonCDF))
         comparisonRMSD = comparisonRMSD + (1.0*bintotal(j,1) - referenceMeans(j))**2
+        comparisonKRP = comparisonKRP + (abs(1.0*bintotal(j,1) - referenceMeans(j)) / &
+                                        max(minsd_penalty,referenceSDs(j)))**lambda_penalty
 end do
 
-write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1))//'" at graph 0.85, 0.9'
-write(variable_length_text,FMT="(F5.2)") comparisonKS
-write(gnuplotchannel,*) 'set label 2" KSD: '//variable_length_text//'" at graph 0.85,0.825'
-write(variable_length_text,FMT="(F5.2)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
-write(gnuplotchannel,*) 'set label 3" RMSD: '//variable_length_text//'" at graph 0.85,0.750'
+write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1))//'" at graph 0.825, 0.9'
+write(difference_text,FMT="(F8.4)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
+write(gnuplotchannel,*) 'set label 2" RMSD: '//difference_text//'" at graph 0.85,0.825'
+write(difference_text,FMT="(F8.4)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
+write(gnuplotchannel,*) 'set label 3" KRP: '//difference_text//'" at graph 0.85,0.750'
 write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
 !write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(1:alllengths(1))//&
 !                        SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
@@ -998,18 +1009,21 @@ do i = 1, comparison_number-1
         comparisonRMSD = 0
         comparisonKS = 0
         comparisonCDF = 0
+        comparisonKRP = 0
         do j = 1, Nbins
                 comparisonCDF = comparisonCDF + 1.0*binTotal(j,i+1) - referenceMeans(j)
                 comparisonKS = max(comparisonKS, abs(comparisonCDF))
                 comparisonRMSD = comparisonRMSD + (1.0*binTotal(j,i+1) - referenceMeans(j))**2
+                comparisonKRP = comparisonKRP + (abs(1.0*bintotal(j,i+1) - referenceMeans(j)) / &
+                                                max(minsd_penalty,referenceSDs(j)))**lambda_penalty
         end do
 
         write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
-                                '" at graph 0.85, 0.9'
-        write(variable_length_text,FMT="(F5.2)") comparisonKS
-        write(gnuplotchannel,*) 'set label ',3*i+2,'" KSD: '//variable_length_text//'" at graph 0.85,0.825'
-        write(variable_length_text,FMT="(F5.2)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
-        write(gnuplotchannel,*) 'set label ',3*i+3,'" RMSD: '//variable_length_text//'" at graph 0.85,0.750'
+                                '" at graph 0.825, 0.9'
+        write(difference_text,FMT="(F8.4)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
+        write(gnuplotchannel,*) 'set label ',3*i+2,'" RMSD: '//difference_text//'" at graph 0.85,0.825'
+        write(difference_text,FMT="(F8.2)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
+        write(gnuplotchannel,*) 'set label ',3*i+3,'" KRP: '//difference_text//'" at graph 0.85,0.750'
         write(gnuplotchannel,*) 'unset label ', 3*i-2
         write(gnuplotchannel,*) 'unset label ', 3*i-1
         write(gnuplotchannel,*) 'unset label ', 3*i

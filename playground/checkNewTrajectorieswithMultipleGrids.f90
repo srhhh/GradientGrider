@@ -435,7 +435,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         end if
 
         !In most case, we will need to record the initial conditions to a (potentially) new file
-        if (prefix_text /= initialbondname) then
+        if ((.not.(useoldinitialbonddata_flag)).or.(prefix_text /= initialbondname)) then
         	open(filechannel1,file=gridpath0//prefix_text//initialfile,&
                                   position="append")
         	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
@@ -659,7 +659,7 @@ if (comparison_flag) then
 
         call itime(now)
         write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution"
+	print *, "   Making plot: ", "Comparison_"//trim(adjustl(Ntraj_text))//trim(adjustl(comparison_SATRVname))
 	print *, ""
 
         call getScatteringAngles1(allprefixes(1:alllengths(1)),"")
@@ -669,11 +669,11 @@ if (comparison_flag) then
 
         if (comparison_upperlimit /= comparison_lowerlimit) then
                 call getComparedScatteringAngles(comparison_lowerlimit,comparison_upperlimit,&
-                         "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution",&
+                         "Comparison_"//trim(adjustl(Ntraj_text))//trim(adjustl(comparison_SATRVname)),&
                          comparison_SATRVcolumn,trim(adjustl(comparison_SATRVname)))
         else
                 call getComparedScatteringAngles(lowerlimit,upperlimit,&
-                         "Comparison_"//trim(adjustl(Ntraj_text))//"SATRVDistribution",&
+                         "Comparison_"//trim(adjustl(Ntraj_text))//trim(adjustl(comparison_SATRVname)),&
                          comparison_SATRVcolumn,trim(adjustl(comparison_SATRVname)))
         end if
 
