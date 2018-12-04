@@ -174,7 +174,7 @@ integer,dimension(2,3),parameter :: INDISTINGUISHABLES = reshape((/ 1, 1, &
 								    2, 3, &
 								    3, 2 /),    (/ 2, 3 /))
 integer,dimension(3) :: BOND_LABELLING_DATA = (/ 1, 2, 3 /)
-
+!
 !integer,parameter :: Nindistinguishables = 1
 !integer,dimension(1,3),parameter :: INDISTINGUISHABLES = reshape((/ 1, &
 !								    2, &

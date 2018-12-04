@@ -16,6 +16,12 @@ oldPARAMETERS="PARAMETERS"
 #The analysis file
 oldANALYSIS="ANALYSIS"
 
+#The physics file
+oldPHYSICS="PHYSICS"
+
+#The variables file
+oldVARIABLES="VARIABLES"
+
 #The makefile for grid creation
 oldMAKEGRID="make_makeGridwithNewTrajectories2"
 
@@ -67,7 +73,7 @@ overcrowd2=01010
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=12
+Ngrid_max=7
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -86,23 +92,23 @@ testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.200000d0
-threshold_rmsd1=.200000d0
-threshold_rmsd2=.150000d0
+threshold_rmsd=.050000d0
+threshold_rmsd1=.050000d0
+threshold_rmsd2=.100000d0
 threshold_rmsd3=.100000d0
 threshold_rmsd4=.050000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
-accept_worst=.true.
-Ngrid_cap=1
+accept_worst=.false.
+Ngrid_cap=7
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
 Ntrajectories=700
 
 #These are flags relating to using old data
-useolddata_flag=.true.
-useoldinitialbonddata_flag=.false.
+useolddata_flag=.false.
+useoldinitialbonddata_flag=.true.
 initialbondname="001omegaA.20000"
 
 #If you have special set of parameters you want to compare, list them here
@@ -118,7 +124,7 @@ initialbondname="001omegaA.20000"
 #use whatever the minimum and maximum is of the data (bad if outliers exist)
 comparison_flag=none
 comparison_lowerlimit="0.0d0"
-comparison_upperlimit="0.000d0"
+comparison_upperlimit="0.200d0"
 
 declare -a prefixes
 #prefixes[0]="001accept.15000"
@@ -129,11 +135,11 @@ declare -a prefixes
 #prefixes[0]="004accept.05000"
 #prefixes[1]="004accept.01000"
 #prefixes[2]="004accept.00500"
-prefixes[0]="001omegaW.20000"
-prefixes[1]="001omegaW.15000"
-prefixes[2]="001omegaW.10000"
-prefixes[3]="001omegaW.05000"
-#prefixes[2]="001accept.05000"
+#prefixes[0]="001omegaA.20000"
+#prefixes[1]="001omegaA.15000"
+#prefixes[2]="001omegaA.10000"
+#prefixes[3]="001omegaA.05000"
+prefixes[0]="001reject.05000"
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -143,7 +149,7 @@ prefixes[3]="001omegaW.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Oct16_label"
+newGRID="H2H2_Nov22_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -155,7 +161,7 @@ newGRID_check_min=100
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -272,7 +278,7 @@ fi
 #While at the same time, updating all of the .f90 files
 #Remember, the parameters file should never change after creation!
 shopt -s extglob
-cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS)+(.f90) $newPATH/
+cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS|$oldPHYSICS|$oldVARIABLES)+(.f90) $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
 
@@ -348,7 +354,7 @@ fi
 #While at the same time, updating all of the .f90 files
 #Remember, the parameters file should never change after creation!
 shopt -s extglob
-cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS)+(.f90) $newPATH/
+cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS|$oldPHYSICS|$oldVARIABLES)+(.f90) $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
 
