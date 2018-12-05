@@ -73,7 +73,7 @@ overcrowd2=01010
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=7
+Ngrid_max=4
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -92,8 +92,8 @@ testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.050000d0
-threshold_rmsd1=.050000d0
+threshold_rmsd=.222000d0
+threshold_rmsd1=.222000d0
 threshold_rmsd2=.100000d0
 threshold_rmsd3=.100000d0
 threshold_rmsd4=.050000d0
@@ -101,14 +101,14 @@ threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
 accept_worst=.false.
-Ngrid_cap=7
+Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=700
+Ntrajectories=2
 
 #These are flags relating to using old data
 useolddata_flag=.false.
-useoldinitialbonddata_flag=.true.
+useoldinitialbonddata_flag=.false.
 initialbondname="001omegaA.20000"
 
 #If you have special set of parameters you want to compare, list them here
@@ -149,7 +149,7 @@ prefixes[0]="001reject.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Nov22_label"
+newGRID="HH2_Sep15_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -165,6 +165,9 @@ Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
+
+#The file that keeps the times of the code
+bashout="timing.dat"
 
 #DO NOT TOUCH THESE
 gridPATH=$currentPATH/$newGRID
@@ -257,10 +260,14 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 cd $newPATH
 
 make -f $newPATH/$newMAKEGRID
-./a.out
+
+echo $(date) >> $newPATH/$bashout
+/usr/bin/time -a -o $newPATH/$bashout -f "GRIDMAKING %E  %U  %S  %P  %O" ./a.out
 
 make -f $newPATH/$newMAKEANALYSIS
-./a.out
+
+echo $(date) >> $newPATH/$bashout
+/usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS00 %E  %U  %S  %P  %O" ./a.out
 
 fi
 
@@ -332,7 +339,9 @@ cd $newPATH
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
-./a.out
+
+echo $(date) >> $newPATH/$bashout
+/usr/bin/time -a -o $newPATH/$bashout -f "COMPARISON %E  %U  %S  %P  %O" ./a.out
 
 fi
 
@@ -387,7 +396,9 @@ cd $newPATH
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
-./a.out
+
+echo $(date) >> $newPATH/$bashout
+/usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS01 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -430,7 +441,9 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
-./a.out
+
+echo $(date) >> $newPATH/$bashout
+/usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS02 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -473,7 +486,9 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
-./a.out
+
+echo $(date) >> $newPATH/$bashout
+/usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS03 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -516,7 +531,9 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
-./a.out
+
+echo $(date) >> $newPATH/$bashout
+/usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS04 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -559,4 +576,6 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
-./a.out
+
+echo $(date) >> $newPATH/$bashout
+/usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS05 %E  %U  %S  %P  %O" ./a.out
