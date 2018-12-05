@@ -73,7 +73,7 @@ overcrowd2=01010
 Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=4
+Ngrid_max=12
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -89,8 +89,9 @@ trueSA_flag=.false.
 trueED_flag=.false.
 testtraj_flag=.true.
 testtrajRMSD_flag=.false.
-percentthreshold_flag=.true.
-testtrajSA_flag=.true.
+percentthreshold_flag=.false.
+testtrajSA_flag=.false.
+testtrajSAheatmap_flag=.false.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.222000d0
 threshold_rmsd1=.222000d0
@@ -149,7 +150,7 @@ prefixes[0]="001reject.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Sep15_label"
+newGRID="HH2_Oct16_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -327,6 +328,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/comparison_number = .*/comparison_number = ${#prefixes[@]}/
      s/character(11),parameter :: allprefixes = .*/character(${#allprefixes}),parameter :: allprefixes = \"$allprefixes\"/
      s|alllengths = .*|alllengths = (/$alllengths_statement/)|
+     s/testheatmapSA_flag = .*/testheatmapSA_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = .false./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -384,6 +386,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
+     s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -431,6 +434,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
+     s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -476,6 +480,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
+     s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -521,6 +526,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
+     s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
@@ -566,6 +572,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/comparison_flag = .*/comparison_flag = .false./
+     s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/

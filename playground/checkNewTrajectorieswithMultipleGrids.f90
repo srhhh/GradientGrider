@@ -613,43 +613,44 @@ if (comparison_flag .or. trueSA_flag .or. testtrajSA_flag .or. testheatmapSA_fla
 	        !Then bin it
 	        call getScatteringAngles1(Ngrid_text//"/Initial"//Ntraj_text,"SATRVDistribution")
 	end do
-end if
 
-!Finally, we look at the scattering angle and energy change distributions of the grid
-!with the maximums and minimums gathered from above
-!and see whether they converge; these plots will be used for reference
-write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-Ntraj = Ntesttraj
-write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
+        !Finally, we look at the scattering angle and energy change distributions of the grid
+        !with the maximums and minimums gathered from above
+        !and see whether they converge; these plots will be used for reference
+        write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
+        Ntraj = Ntesttraj
+        write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+        write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
+        
+        call getConvergenceImage(0.0,real(pi), 1, "ScatteringAngle")
+        call getConvergenceImage(min_absenergychange,max_absenergychange, 3, "AbsoluteEnergyChange")
+        call getConvergenceImage(min_relenergychange,max_relenergychange, 4, "RelativeEnergyChange")
+        call getConvergenceImage(min_rotenergychange,max_rotenergychange, 5, "RotationalEnergyChange")
 
-call getConvergenceImage(0.0,real(pi), 1, "ScatteringAngle")
-call getConvergenceImage(min_absenergychange,max_absenergychange, 3, "AbsoluteEnergyChange")
-call getConvergenceImage(min_relenergychange,max_relenergychange, 4, "RelativeEnergyChange")
-call getConvergenceImage(min_rotenergychange,max_rotenergychange, 5, "RotationalEnergyChange")
-
-if (trim(adjustl(comparison_SATRVname)) == "ScatteringAngle") then
-        comparison_SATRVcolumn = 1
-        lowerlimit = 0.0
-        upperlimit = real(pi)
-else if (trim(adjustl(comparison_SATRVname)) == "AbsoluteEnergyChange") then
-        comparison_SATRVcolumn = 3
-        lowerlimit = min_absenergychange
-        upperlimit = max_absenergychange
-else if (trim(adjustl(comparison_SATRVname)) == "RelativeEnergyChange") then
-        comparison_SATRVcolumn = 4
-        lowerlimit = min_relenergychange
-        upperlimit = max_relenergychange
-else if (trim(adjustl(comparison_SATRVname)) == "RotationalEnergyChange") then
-        comparison_SATRVcolumn = 5
-        lowerlimit = min_rotenergychange
-        upperlimit = max_rotenergychange
-else
 end if
 
 !In a comparison run, we don't look at any of the other flags
 if (comparison_flag) then
+
+        if (trim(adjustl(comparison_SATRVname)) == "ScatteringAngle") then
+                comparison_SATRVcolumn = 1
+                lowerlimit = 0.0
+                upperlimit = real(pi)
+        else if (trim(adjustl(comparison_SATRVname)) == "AbsoluteEnergyChange") then
+                comparison_SATRVcolumn = 3
+                lowerlimit = min_absenergychange
+                upperlimit = max_absenergychange
+        else if (trim(adjustl(comparison_SATRVname)) == "RelativeEnergyChange") then
+                comparison_SATRVcolumn = 4
+                lowerlimit = min_relenergychange
+                upperlimit = max_relenergychange
+        else if (trim(adjustl(comparison_SATRVname)) == "RotationalEnergyChange") then
+                comparison_SATRVcolumn = 5
+                lowerlimit = min_rotenergychange
+                upperlimit = max_rotenergychange
+        else
+        end if
 
         !If need be, use the upper and lower limit dictated by the user
         if (comparison_upperlimit /= comparison_lowerlimit) then
