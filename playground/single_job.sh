@@ -105,7 +105,7 @@ accept_worst=.false.
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=2
+Ntrajectories=50
 
 #These are flags relating to using old data
 useolddata_flag=.false.
@@ -150,7 +150,7 @@ prefixes[0]="001reject.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Oct16_label"
+newGRID="H2H2_Nov22_label"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -262,12 +262,16 @@ cd $newPATH
 
 make -f $newPATH/$newMAKEGRID
 
+echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "GRIDMAKING %E  %U  %S  %P  %O" ./a.out
 
 make -f $newPATH/$newMAKEANALYSIS
 
+echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS00 %E  %U  %S  %P  %O" ./a.out
 
 fi
@@ -342,7 +346,9 @@ cd $newPATH
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 
+echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "COMPARISON %E  %U  %S  %P  %O" ./a.out
 
 fi
@@ -400,7 +406,9 @@ cd $newPATH
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 
+echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS01 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
@@ -446,7 +454,9 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 
+echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS02 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
@@ -492,7 +502,9 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 
+echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS03 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
@@ -538,7 +550,9 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 
+echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS04 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
@@ -584,5 +598,7 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 
+echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS05 %E  %U  %S  %P  %O" ./a.out
