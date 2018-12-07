@@ -335,6 +335,7 @@ else
         !We need to make a new one of these trajectory files altogether
         call system("rm "//gridpath0//prefix_text//trajectoriesfile)
         call system("rm "//gridpath0//prefix_text//timeslicefile)
+        call system("rm "//gridpath0//prefix_text//"traversal.dat")
         if (prefix_text /= initialbondname) call system("rm "//gridpath0//prefix_text//initialfile)
 end if
 
@@ -360,6 +361,9 @@ if (useoldinitialbonddata_flag) then
         print *, "     Deciding to use old initial conditions..."
         print *, ""
 end if
+
+if (traversal_flag) allocate(traversal0(Ngrid_total,counter0_max),&
+                             traversal1(Ngrid_total,counter1_max))
 
 !Now here we actually make these new trajectories
 do n_testtraj = initial_n_testtraj, Ntesttraj
@@ -487,6 +491,12 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                               ((velocities_final(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
+        !For traversal
+        if (traversal_flag) then
+                open(filechannel1,file=gridpath0//prefix_text//"traversal.dat",position="append")
+                write(filechannel1,FMT=*) steps, ((sum(traversal1(i,:))),i=1,Ngrid_total)
+                close(filechannel1)
+        end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

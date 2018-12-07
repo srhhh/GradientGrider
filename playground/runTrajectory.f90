@@ -813,6 +813,13 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
         !Initialize the scene
         call InitialSetup3(coords,velocities)
 
+        !For traversal
+        if (traversal_flag) then
+                header1 = 0
+                traversal0 = 0
+                traversal1 = 0
+        end if
+
 	coords_initial = coords
 	velocities_initial = velocities
 

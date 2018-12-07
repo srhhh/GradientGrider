@@ -180,6 +180,7 @@ integer, dimension(Ngrid_total),intent(in) :: filechannels
 integer :: subcell0search_max,subcell1search_max
 character(Ngrid_text_length) :: Ngrid_text
 character(5) :: variable_length_text
+integer :: key0, key1
 
 !In order to decrease the number of frames checked
 !If we need to look at adjacent cells for a frame
@@ -245,6 +246,29 @@ neighbor_check = 0
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 gridpath2 = gridpath0//Ngrid_text//"/grid/"
+
+!Key creation (for traversal checking)
+if (traversal_flag) then
+        key0 = bounds1*var2_index0 + var1_index0 + 1
+        inquire(file=gridpath2//trim(adjustl(var1_filename0))//"_"//&
+                                trim(adjustl(var2_filename0))//".dat",&
+                exist=subcell_existence)
+        if (subcell_existence) then
+                inquire(file=gridpath2//trim(adjustl(var1_filename1))//"_"//&
+                                        trim(adjustl(var2_filename1))//".dat",&
+                        exist=subcell_existence)
+                if (subcell_existence) then
+                        key1 = modulo(traversal0(Ngrid,key0),key_start) + &
+                               bounds2*var2_index1 + var1_index1 + 1
+                        traversal1(Ngrid,key1) = traversal1(Ngrid,key1) + 1
+                else
+                        traversal0(Ngrid,key0) = traversal0(Ngrid,key0) + 1  
+                end if
+        else
+                header1 = header1 + 1
+                traversal0(Ngrid,key0) = header1*key_start + traversal0(Ngrid,key0) + 1
+        end if
+end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 ORDER 1
