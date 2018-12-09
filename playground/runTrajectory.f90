@@ -154,7 +154,7 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 	integer :: n
 
         !Initialize the scene
-        call InitialSetup3(coords,velocities)
+        call InitialSetup3(coords,velocities,INITIAL_BOND_DATA)
 	Norder1 = 0
 
 	coords_initial = coords
@@ -335,7 +335,7 @@ subroutine checkaddTrajectory(coords_initial,velocities_initial,coords_final,vel
 	integer :: n
 
         !Initialize the scene
-        call InitialSetup3(coords,velocities)
+        call InitialSetup3(coords,velocities,INITIAL_BOND_DATA)
 	Norder1 = 0
 
 	coords_initial = coords
@@ -569,7 +569,7 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 	integer :: n
 
         !Initialize the scene
-        call InitialSetup3(coords,velocities)
+        call InitialSetup3(coords,velocities,INITIAL_BOND_DATA)
 
 	coords_initial = coords
 	velocities_initial = velocities
@@ -781,7 +781,8 @@ end subroutine checkTrajectory
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_initial,&
+subroutine checkMultipleTrajectories(filechannels,INITIAL_BOND_DATA_thread,&
+                                                  coords_initial,velocities_initial,&
                                                   coords_final,velocities_final)
         use PHYSICS
         use PARAMETERS
@@ -795,12 +796,13 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
         real(dp),dimension(3,Natoms) :: gradient,approx_gradient
         real(dp),dimension(3,Natoms),intent(out) :: coords_initial, velocities_initial
         real(dp),dimension(3,Natoms),intent(out) :: coords_final, velocities_final
+        real(dp),dimension(6,Nbonds) :: INITIAL_BOND_DATA_thread
 	real(dp),dimension(Nvar) :: vals
 	
 	integer :: bond_index1, bond_index2
 
         !Grid Parameters
-        integer,dimension(Ngrid_total),intent(in) :: filechannels
+        integer,dimension(1+Ngrid_total),intent(in) :: filechannels
 
         !Various other variables
         real(dp) :: U, KE
@@ -811,7 +813,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	integer :: n
 
         !Initialize the scene
-        call InitialSetup3(coords,velocities)
+        call InitialSetup3(coords,velocities,INITIAL_BOND_DATA_thread)
 
         !For traversal
         if (traversal_flag) then
@@ -838,7 +840,7 @@ subroutine checkMultipleTrajectories(filechannels,coords_initial,velocities_init
 	!To randomize the periods of the bond, I let the scene go on
 	!for a small period of time (need to standardize this later)
 	do n = 1, Nbonds
-		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
+		do steps = 1, int(INITIAL_BOND_DATA_thread(6,n)*vib_period)
 			coords = coords + dt * velocities
 			call Acceleration(vals,coords,gradient)
 			velocities = velocities + gradient
@@ -1208,20 +1210,20 @@ subroutine addMultipleTrajectories()
 		heatmap_steps = 0
 	end if
 
-	!$OMP PARALLEL DO private(n)
+	!aaa$OMP PARALLEL DO private(n)
 	do n = 1, Ntraj_max
 	        call InitialSetup4(coords(:,:,n),velocities(:,:,n))
 		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
 	        call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
 	end do
-	!$OMP END PARALLEL DO
+	!aaa$OMP END PARALLEL DO
 
         !Accelerate the velcocities for a half step (verlet)
 	velocities = velocities + 0.5d0 * gradient
 
 	!To randomize the periods of the bond, I let the scene go on
 	!for a small period of time (need to standardize this later)
-	!$OMP PARALLEL DO private(n,m,coords_initial,velocities_initial,steps)
+	!aaa$OMP PARALLEL DO private(n,m,coords_initial,velocities_initial,steps)
 	do m = 1, Ntraj_max
 	coords_initial = coords(:,:,m)
 	velocities_initial = velocities(:,:,m)
@@ -1240,11 +1242,11 @@ subroutine addMultipleTrajectories()
 		velocities(:,BONDING_DATA(n,2),m) = velocities_initial(:,BONDING_DATA(n,2))
 	end do
 	end do
-	!$OMP END PARALLEL DO
+	!aaa$OMP END PARALLEL DO
 
 	!Now we go into the mainloop
 	!We have a hard cap of Nsteps timesteps
-	!$OMP PARALLEL DO private(n,m,steps)
+	!aaa$OMP PARALLEL DO private(n,m,steps)
         do steps = 1, Nsteps
 
 		!Just for bug-testing
@@ -1278,7 +1280,7 @@ subroutine addMultipleTrajectories()
 	                endif
 	end do
 
-		!$OMP PARALLEL
+		!aaa$OMP PARALLEL
 		do n = 1, Ntraj_max
 			if (.not.TRAJECTORIES_FLAG(n)) cycle
 	
@@ -1301,7 +1303,7 @@ subroutine addMultipleTrajectories()
 			!Update the velocities(:,:,n)
 			velocities(:,:,n) = velocities(:,:,n) + gradient(:,:,n)
 		end do
-		!$OMP END PARALLEL
+		!aaa$OMP END PARALLEL
 
 	        if (header_max_flag) then
 			heatmap_steps = heatmap_steps + 1
@@ -1310,7 +1312,7 @@ subroutine addMultipleTrajectories()
 			exit
 		end if
         end do
-	!$OMP END PARALLEL DO
+	!aaa$OMP END PARALLEL DO
 
 	if (heatmap_evolution_flag) then
 		call system("convert -delay 20 -loop 0 "//gridpath1//"png/*.png "//gridpath1//"heatmap_evolution.gif")
@@ -1354,20 +1356,20 @@ subroutine addMultipleTrajectories2()
 	end if
 
         !Initialize all the trajectories
-	!$OMP PARALLEL DO private(n)
+	!aaa$OMP PARALLEL DO private(n)
 	do n = 1, Ntraj_max
 	        call InitialSetup4(coords(:,:,n),velocities(:,:,n))
 		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
 	        call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
 	end do
-	!$OMP END PARALLEL DO
+	!aaa$OMP END PARALLEL DO
 
         !Accelerate the velcocities for a half step (verlet)
 	velocities = velocities + 0.5d0 * gradient
 
 	!To randomize the periods of the bond, I let the scene go on
 	!for a small period of time (need to standardize this later)
-	!$OMP PARALLEL DO private(n,m,steps)
+	!aaa$OMP PARALLEL DO private(n,m,steps)
 	do m = 1, Ntraj_max
 	coords_initial = coords(:,:,m)
 	velocities_initial = velocities(:,:,m)
@@ -1386,7 +1388,7 @@ subroutine addMultipleTrajectories2()
 		velocities(:,BONDING_DATA(n,2),m) = velocities_initial(:,BONDING_DATA(n,2))
 	end do
 	end do
-	!$OMP END PARALLEL DO
+	!aaa$OMP END PARALLEL DO
 
 	TRAJECTORIES0 = 0
 	current_cell = 0
@@ -1447,7 +1449,7 @@ subroutine addMultipleTrajectories2()
 		end do
                 endif
 
-	        !$OMP PARALLEL DO
+	        !aaa$OMP PARALLEL DO
 		do
 			if (.not.TRAJECTORIES_FLAG(n)) cycle
 	
@@ -1470,7 +1472,7 @@ subroutine addMultipleTrajectories2()
 			!Update the velocities(:,:,n)
 			velocities(:,:,n) = velocities(:,:,n) + gradient(:,:,n)
 		end do
-	        !$OMP END PARALLEL DO
+	        !aaa$OMP END PARALLEL DO
 
 	        if (header_max_flag) then
 			heatmap_steps = heatmap_steps + 1

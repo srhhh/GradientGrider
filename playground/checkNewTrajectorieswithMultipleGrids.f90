@@ -106,6 +106,7 @@ real :: lowerlimit,upperlimit
 !Variables
 integer :: iostate
 integer,allocatable :: filechannels(:)
+integer :: OMP_GET_THREAD_NUM
 
 !Timing
 real :: r1, r2, system_clock_rate
@@ -213,7 +214,7 @@ else
 end if
 
 
-allocate(filechannels(Ngrid_total))
+allocate(filechannels(1+Ngrid_total))
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 
@@ -360,31 +361,45 @@ if (useoldinitialbonddata_flag) then
         print *, ""
         print *, "     Deciding to use old initial conditions..."
         print *, ""
-end if
 
-if (traversal_flag) allocate(traversal0(Ngrid_total,counter0_max),&
-                             traversal1(Ngrid_total,counter1_max))
-
-!Now here we actually make these new trajectories
-do n_testtraj = initial_n_testtraj, Ntesttraj
-
-        !If we're reusing old initial conditions, that's easy; we just read off the file
-        if (useoldinitialbonddata_flag) then
+        !Check to see if we will run out of trajectories
+        do n_testtraj = initial_n_testtraj, Ntesttraj
                 read(trajectorieschannel,FMT=FMTinitial,iostat=iostate) &
                             ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
 
-                !If we ran out of trajectories, we just exit out
+                !If so, we just exit out
                 if (iostate /= 0) then
                         print *, ""
                         call itime(now)
                         write(6,FMT=FMTnow) now
-                        print *, "All initial conditions have been read; no more left"
-                        print *, "Total number of trajectories created from it: ", n_testtraj-initial_n_testtraj
+                        print *, "Error! Not enough initial conditions in initialfile"
+                        print *, "Total number of initial conditions inside of it: ", n_testtraj-initial_n_testtraj
                         print *, "Exiting analysis"
                         print *, ""
         
                         return
                 end if
+        end do
+
+        close(trajectorieschannel)
+        open(trajectorieschannel,file=gridpath0//initialbondname//initialfile)
+end if
+
+if (traversal_flag) allocate(traversal0(Ngrid_total,counter0_max),&
+                             traversal1(Ngrid_total,counter1_max))
+
+call OMP_SET_NUM_THREADS(4)
+
+!Now here we actually make these new trajectories
+!$OMP PARALLEL DO DEFAULT(FIRSTPRIVATE)
+do n_testtraj = initial_n_testtraj, Ntesttraj
+
+        !If we're reusing old initial conditions, that's easy; we just read off the file
+        if (useoldinitialbonddata_flag) then
+                !$OMP CRITICAL
+                read(trajectorieschannel,FMT=FMTinitial,iostat=iostate) &
+                            ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
+                !$OMP END CRITICAL
         
 	!Otherwise, we must creat a random initial trajectory from the ensemble
         !specified in PHYSICS and PARAMETERS
@@ -439,12 +454,14 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         end if
 
         !In most case, we will need to record the initial conditions to a (potentially) new file
+        !$OMP CRITICAL
         if ((.not.(useoldinitialbonddata_flag)).or.(prefix_text /= initialbondname)) then
         	open(filechannel1,file=gridpath0//prefix_text//initialfile,&
                                   position="append")
         	write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
                 close(filechannel1)
         end if
+        !$OMP END CRITICAL
 
 
 	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
@@ -459,29 +476,32 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	!The grid number will uniquely identify one trajectory
 	!Open all these files under filechannels
 	write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+        filechannels(1) = 1000 + OMP_GET_THREAD_NUM()
 	do Ngrid = 1, Ngrid_total
 		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-		filechannels(Ngrid) = 1000 + 69 * Ngrid
-		open(filechannels(Ngrid),file=gridpath0//Ngrid_text//"/"//&
+		filechannels(1+Ngrid) = 1000 + 69 * Ngrid + OMP_GET_THREAD_NUM()
+		open(filechannels(1+Ngrid),file=gridpath0//Ngrid_text//"/"//&
                                               prefix_text//'_'//Ntraj_text//".dat")
 	end do
 
 	!Then write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkMultipleGrids uses filechannel1 to open files in the grid
-	call checkMultipleTrajectories(filechannels(1:Ngrid_total),coords_initial,velocities_initial,&
-                                                                   coords_final,velocities_final)
+	call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),INITIAL_BOND_DATA,&
+                                                                     coords_initial,velocities_initial,&
+                                                                     coords_final,velocities_final)
 
 	!Also let's see how long a single trajectory takes
 	call system_clock(c2)
 	call CPU_time(r2)
-	print *, "        CPU Time: ", r2 - r1
-	print *, "       Wall Time: ", (c2 - c1) * system_clock_rate
+	print *, " Trajectory "//Ntraj_text//"     CPU Time: ", r2 - r1
+	print *, " Trajectory "//Ntraj_text//"    Wall Time: ", (c2 - c1) * system_clock_rate
 
 	!Finally, close them
 	do Ngrid = 1, Ngrid_total
-		close(filechannels(Ngrid))
+		close(filechannels(1+Ngrid))
 	end do
 
+        !$OMP CRITICAL
 	!The only data that is recorded is the first and last frame of the trajectory
 	open(filechannel1,file=gridpath0//prefix_text//timeslicefile,position="append")
 	write(filechannel1,FMTtimeslice) &
@@ -523,8 +543,10 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 		close(gnuplotchannel)
 		call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 	end if
+        !$OMP END CRITICAL
 	
 end do
+!$OMP END PARALLEL DO
 print *, ""
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

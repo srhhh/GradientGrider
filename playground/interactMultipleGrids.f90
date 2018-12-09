@@ -162,6 +162,8 @@ integer,intent(out),optional :: order,number_of_frames,neighbor_check
 integer :: var1_index0,var2_index0,var1_index1,var2_index1
 integer :: index1_1,index1_2,index2_1,index2_2
 integer :: population
+integer :: OMP_GET_THREAD_NUM
+integer :: Ngrid_thread
 logical :: stop_flag
 real :: var1,var2,var1_cell,var2_cell,var1_round,var2_round
 real :: var1_round0,var2_round0,var1_round1,var2_round1,var1_round2,var2_round2,var1_round3,var2_round3
@@ -176,7 +178,7 @@ logical :: subcell_existence
 character(100) :: subcell
 character(FMTlength) ::  var1_filename0, var2_filename0, var1_filename1, var2_filename1
 character(FMTlength) :: var1_filename,var2_filename
-integer, dimension(Ngrid_total),intent(in) :: filechannels
+integer, dimension(1+Ngrid_total),intent(in) :: filechannels
 integer :: subcell0search_max,subcell1search_max
 character(Ngrid_text_length) :: Ngrid_text
 character(5) :: variable_length_text
@@ -238,13 +240,13 @@ write(var1_filename0,FMT=FMTorder0) var1_round0
 write(var2_filename0,FMT=FMTorder0) var2_round0
 
 !Now, we start iterating over the grids
-do Ngrid = 1, Ngrid_total
+do Ngrid_thread = 1, Ngrid_total
 
 order = 1
 neighbor_check = 0
 
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_thread
 gridpath2 = gridpath0//Ngrid_text//"/grid/"
 
 !Key creation (for traversal checking)
@@ -266,7 +268,7 @@ if (traversal_flag) then
                 end if
         else
                 header1 = header1 + 1
-                traversal0(Ngrid,key0) = header1*key_start + traversal0(Ngrid,key0) + 1
+                traversal0(Ngrid_thread,key0) = header1*key_start + traversal0(Ngrid_thread,key0) + 1
         end if
 end if
 
@@ -294,7 +296,7 @@ end if
 if (subcell_existence) then
         !getRMSD reads off the coordinates and calculated the RMSD with
         !ls_rmsd module
-	call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+	call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
 
 	!However many frames are in the subcell we increment to number_of_frames
 	number_of_frames = number_of_frames + population
@@ -337,7 +339,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                         !Check if it exists
                         inquire(file=trim(subcell)//".dat",exist=subcell_existence)
                         if (subcell_existence) then
-                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                                call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
                         end if
                 
                         number_of_frames = number_of_frames + population
@@ -354,7 +356,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 
                         inquire(file=trim(subcell)//".dat",exist=subcell_existence)
                         if (subcell_existence) then
-                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                                call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
                         end if
                 
                         number_of_frames = number_of_frames + population
@@ -370,7 +372,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 
                         inquire(file=trim(subcell)//".dat",exist=subcell_existence)
                         if (subcell_existence) then
-                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                                call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
                         end if
                 
                         number_of_frames = number_of_frames + population
@@ -386,7 +388,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 
                         inquire(file=trim(subcell)//".dat",exist=subcell_existence)
                         if (subcell_existence) then
-                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                                call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
                         end if
                 
                         number_of_frames = number_of_frames + population
@@ -417,7 +419,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                         !obtaining their rmsds and coordinates
                         call getNeighbors(scaling1_0,scaling2_0,multiplier1_1,multiplier2_1,FMTorder1,&
                                           index1_1,index1_2,index2_1,index2_2,&
-                                          var1_round0,var2_round0,&
+                                          var1_round0,var2_round0,filechannels(1),&
                                           coords,min_rmsd,gradient,U,number_of_frames)
         
                         if (min_rmsd /= old_min_rmsd) then
@@ -432,7 +434,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 end if
 
 if (stop_flag) then
-	write(filechannels(Ngrid),FMT=FMT6) old_min_rmsd
+	write(filechannels(1+Ngrid),FMT=FMT6) old_min_rmsd
 	cycle
 end if
 
@@ -457,7 +459,7 @@ print *, ""
 end if
 
 if (subcell_existence) then
-	call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+	call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
 
 	number_of_frames = number_of_frames + population
 
@@ -492,7 +494,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                         !Check if it exists
                         inquire(file=trim(subcell)//".dat",exist=subcell_existence)
                         if (subcell_existence) then
-                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                                call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
                         end if
                 
                         number_of_frames = number_of_frames + population
@@ -509,7 +511,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 
                         inquire(file=trim(subcell)//".dat",exist=subcell_existence)
                         if (subcell_existence) then
-                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                                call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
                         end if
                 
                         number_of_frames = number_of_frames + population
@@ -525,7 +527,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 
                         inquire(file=trim(subcell)//".dat",exist=subcell_existence)
                         if (subcell_existence) then
-                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                                call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
                         end if
                 
                         number_of_frames = number_of_frames + population
@@ -542,7 +544,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
                 
                         inquire(file=trim(subcell)//".dat",exist=subcell_existence)
                         if (subcell_existence) then
-                                call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+                                call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
                         end if
                 
                         number_of_frames = number_of_frames + population
@@ -565,7 +567,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 
                 call getNeighbors(bounds1,bounds2,multiplier1_0,multiplier2_0,FMTorder1,&
                                   index1_1,index1_2,index2_1,index2_2,&
-                                  0.0,0.0,&
+                                  0.0,0.0,filechannels(1),&
                                   coords,min_rmsd,gradient,U,number_of_frames)
 
                 if (min_rmsd /= old_min_rmsd) then
@@ -582,7 +584,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 
 end if
 
-write(filechannels(Ngrid),FMT=FMT6) old_min_rmsd
+write(filechannels(1+Ngrid_thread),FMT=FMT6) old_min_rmsd
 end do
 
 !This is to see whether old_U has its default value (all zeroes) or not
@@ -671,7 +673,7 @@ end subroutine checkState
 
 subroutine getNeighbors(scaling1,scaling2,multiplier1,multiplier2,FMTorder,&
                         index1_1,index1_2,index2_1,index2_2,&
-                        var1_round0,var2_round0,&
+                        var1_round0,var2_round0,filechannel_thread,&
                         coords,min_rmsd,gradient,U,number_of_frames)
 use ANALYSIS
 use PARAMETERS
@@ -685,6 +687,7 @@ real :: var1_round,var2_round
 !integer,intent(in) :: decimals1, decimals2
 integer,intent(inout) :: number_of_frames
 character(6),intent(in) :: FMTorder
+integer,intent(in) :: filechannel_thread
 character(FMTlength) :: var1_filename,var2_filename
 character(100) :: subcell
 real(dp),dimension(3,3),intent(inout) :: U
@@ -714,7 +717,7 @@ if ((flag1) .and. (flag3)) then
 
 	!If it exists, get the rmsd of each frame in it
 	if (subcell_existence) then
-		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+		call getRMSD_dp(filechannel_thread,subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
 	!Increment however many frames we have
@@ -732,7 +735,7 @@ if ((flag1) .and. (flag4)) then
 
 	inquire(file=trim(subcell)//".dat",exist=subcell_existence)
 	if (subcell_existence) then
-		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+		call getRMSD_dp(filechannel_thread,subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
 	number_of_frames = number_of_frames + population
@@ -749,7 +752,7 @@ if ((flag2) .and. (flag3)) then
 
 	inquire(file=trim(subcell)//".dat",exist=subcell_existence)
 	if (subcell_existence) then
-		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+		call getRMSD_dp(filechannel_thread,subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
 	number_of_frames = number_of_frames + population
@@ -766,7 +769,7 @@ if ((flag2) .and. (flag4)) then
 
 	inquire(file=trim(subcell)//".dat",exist=subcell_existence)
 	if (subcell_existence) then
-		call getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+		call getRMSD_dp(filechannel_thread,subcell,coords,population,min_rmsd,gradient,U)
 	end if
 
 	number_of_frames = number_of_frames + population
@@ -785,7 +788,7 @@ end subroutine getNeighbors
 !  actually pretty self-explanatory
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine getRMSD_dp(subcell,coords,population,min_rmsd,gradient,U)
+subroutine getRMSD_dp(filechannel_thread,subcell,coords,population,min_rmsd,gradient,U)
 
 use ls_rmsd_original
 use ANALYSIS
@@ -795,6 +798,9 @@ integer,intent(out) :: population
 real(dp),intent(inout), dimension(3,Natoms) :: gradient
 real(dp),dimension(3,Natoms) :: candidate_gradient
 real(dp),intent(inout) :: min_rmsd
+integer,intent(in) :: filechannel_thread
+integer :: OMP_GET_THREAD_NUM
+integer :: new_filechannel
 integer :: i,j,k,iostate
 character(*),intent(in) :: subcell
 real(dp),intent(in), dimension(3,Natoms) :: coords
@@ -805,22 +811,24 @@ real(dp),dimension(3,3),intent(inout) :: U
 real(dp),dimension(3,3) :: candidate_U
 real(dp), dimension(3,Natoms) :: coords2
 
+new_filechannel = 6000 + OMP_GET_THREAD_NUM()
+
 !Open the file corresponding to the cell
 if (unreadable_flag) then
-        open(filechannel1,file=trim(subcell)//".dat",form="unformatted")
+        open(new_filechannel,action="read",file=trim(subcell)//".dat",form="unformatted")
 else
-        open(filechannel1,file=trim(subcell)//".dat")
+        open(new_filechannel,action="read",file=trim(subcell)//".dat")
 end if
 
 population = 0
 do
         !Read the candidate frame
         if (unreadable_flag) then
-                read(filechannel1,iostat=iostate)
+                read(new_filechannel,iostat=iostate)
 	        if (iostate /= 0) exit
-                read(filechannel1) ((coords2(i,j),i=1,3),j=1,Natoms)
+                read(new_filechannel) ((coords2(i,j),i=1,3),j=1,Natoms)
         else
-                read(filechannel1,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
+                read(new_filechannel,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
 	        if (iostate /= 0) exit
         end if
 
@@ -835,9 +843,9 @@ do
         !If it is too low, reject the candidate frame
         if (candidate_min_rmsd < min_rmsd) then
                 if (unreadable_flag) then
-                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 end if
 
         !Otherwise if it is low enough, accept the candidate frame (and save its rotation matrix!)
@@ -846,9 +854,9 @@ do
                 U = candidate_U
 
                 if (unreadable_flag) then
-                        read(filechannel1) ((gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel) ((gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
                 end if
 
                 !In special cases, we exit immediately afterwards
@@ -857,9 +865,9 @@ do
         !If it is too high, also reject the candidate frame
         else
                 if (unreadable_flag) then
-                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 end if
         end if
 
@@ -872,9 +880,9 @@ do
                 U = candidate_U
 
                 if (unreadable_flag) then
-                        read(filechannel1) ((gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel) ((gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(filechannel1,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
                 end if
 
                 !In special cases, we exit immediately afterwards
@@ -883,9 +891,9 @@ do
         !Otherwise, just don't record the gradient
         else
                 if (unreadable_flag) then
-                        read(filechannel1) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(filechannel1,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(new_filechannel,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 end if
         end if
 
@@ -896,21 +904,21 @@ do
 !		U = candidate_U
 !
 !                if (unreadable_flag) then
-!                        read(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
+!                        read(new_filechannel) ((gradient(i,j),i=1,3),j=1,Natoms)
 !                else
-!                        read(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+!                        read(new_filechannel,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
 !                end if
 !
 !                if (accept_first) exit
 !	else
 !                if (unreadable_flag) then
-!                        read(filechannel1) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+!                        read(new_filechannel) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
 !                else
-!                        read(filechannel1,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+!                        read(new_filechannel,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
 !                end if
 !	end if
 end do
-close(filechannel1)
+close(new_filechannel)
 
 end subroutine getRMSD_dp
 

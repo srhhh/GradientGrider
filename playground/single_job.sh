@@ -90,8 +90,8 @@ trueED_flag=.false.
 testtraj_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.false.
-testtrajSA_flag=.false.
-testtrajSAheatmap_flag=.false.
+testtrajSA_flag=.true.
+testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.222000d0
 threshold_rmsd1=.222000d0
@@ -105,10 +105,10 @@ accept_worst=.false.
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=5
+Ntrajectories=4
 
 #These are flags relating to using old data
-useolddata_flag=.false.
+useolddata_flag=.true.
 useoldinitialbonddata_flag=.false.
 initialbondname="001omegaA.20000"
 
@@ -123,7 +123,7 @@ initialbondname="001omegaA.20000"
 
 #If the comparison lower and upper limits are the same, the program will
 #use whatever the minimum and maximum is of the data (bad if outliers exist)
-comparison_flag=none
+comparison_flag=ScatteringAngle
 comparison_lowerlimit="0.0d0"
 comparison_upperlimit="0.000d0"
 
