@@ -815,9 +815,9 @@ new_filechannel = 6000 + OMP_GET_THREAD_NUM()
 
 !Open the file corresponding to the cell
 if (unreadable_flag) then
-        open(new_filechannel,action="read",SHARE="DENYWR",file=trim(subcell)//".dat",form="unformatted")
+        open(new_filechannel,action="read",file=trim(subcell)//".dat",form="unformatted")
 else
-        open(new_filechannel,action="read",SHARE="DENYWR",file=trim(subcell)//".dat")
+        open(new_filechannel,action="read",file=trim(subcell)//".dat")
 end if
 
 population = 0
