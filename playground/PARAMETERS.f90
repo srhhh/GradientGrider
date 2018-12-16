@@ -107,6 +107,7 @@ character(6) :: Nbond_text
 character(19) :: FMTinitial
 character(6) :: Natom_text
 character(19) :: FMTtimeslice
+!$OMP THREADPRIVATE(FMT2,FMT3,Nbond_text,FMTinitial,Natom_text,FMTtimeslice)
 character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"
 character(15),parameter :: FMTsa = "((F6.4),(F8.4))"
 character(10),parameter :: FMTtrv = "(3(F11.6))"
@@ -288,6 +289,7 @@ integer,parameter :: Ntraj_max = 1000
 real,parameter :: trajectory_CPU_time_max = 60.0
 !The number of grids we will make
 integer :: Ngrid_max = 1
+!$OMP THREADPRIVATE(Ngrid_max)
 !The number of trajectories to make before checking the grid-making progress
 integer,parameter :: Ngrid_check_min = 1
 integer,parameter :: Ngrid_check = max(Ntraj_max/10,Ngrid_check_min)
@@ -315,9 +317,10 @@ integer, dimension(counter3_max) :: counter3
 !                      TRAVERSAL
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-logical, parameter :: traversal_flag = .true.
+logical, parameter :: traversal_flag = .false.
 integer, allocatable :: traversal0(:,:)
 integer, allocatable :: traversal1(:,:)
+!$OMP THREADPRIVATE(traversal0,traversal1)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                  GRID FORMATTING
@@ -326,6 +329,7 @@ integer, allocatable :: traversal1(:,:)
 integer :: Ngrid
 character(gridpath_length+Ngrid_text_length+1) :: gridpath1
 character(gridpath_length+Ngrid_text_length+1+5) :: gridpath2
+!$OMP THREADPRIVATE(Ngrid,gridpath1,gridpath2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                    PLOT FORMATTING
@@ -340,6 +344,7 @@ character(6) :: angle1descriptor,angle2descriptor,bond1descriptor,scatteringdesc
 
 integer :: Ntraj,Ntraj_allowed,Nfile,steps,heatmap_steps,Norder1
 logical :: header_max_flag
+!$OMP THREADPRIVATE(Ntraj,Ntraj_allowed,Nfile,steps,Norder1)
 
 !Set .true. to generate top-level heat map GIFS over time for each grid
 logical,parameter :: heatmap_evolution_flag = .false.

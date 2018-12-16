@@ -12,6 +12,10 @@ implicit none
 integer,parameter :: Ngrid_cap = 1
 !The number of grids we will end up using (never more than Ngrid_cap)
 integer :: Ngrid_total
+!$OMP THREADPRIVATE(Ngrid_total)
+
+!The number of threads to use
+integer, parameter :: Nthreads = 1
 
 !Set the number of children cells to be checked
 integer,parameter :: Norder_cap = 1
@@ -85,6 +89,8 @@ logical,parameter :: testtraj_flag = .true.
       !accept_worst indicates to accept the frame with the
       !maximum RMSD (instead of the minimum RMSD)
       logical :: accept_worst = .false.
+
+      !$OMP THREADPRIVATE(reject_flag,accept_first,accept_worst)
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

@@ -105,10 +105,11 @@ accept_worst=.false.
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=4
+Ntrajectories=8
+Nthreads=2
 
 #These are flags relating to using old data
-useolddata_flag=.true.
+useolddata_flag=.false.
 useoldinitialbonddata_flag=.false.
 initialbondname="001omegaA.20000"
 
@@ -123,7 +124,7 @@ initialbondname="001omegaA.20000"
 
 #If the comparison lower and upper limits are the same, the program will
 #use whatever the minimum and maximum is of the data (bad if outliers exist)
-comparison_flag=ScatteringAngle
+comparison_flag=NOTScatteringAngle
 comparison_lowerlimit="0.0d0"
 comparison_upperlimit="0.000d0"
 
@@ -361,6 +362,38 @@ then
 exit
 fi
 
+#Now, we come to the part of the code which may run in parallel
+#We have to check if the user input a correct number of threads
+
+#Is it a positive integer? (made entirely of digits?)
+
+if [[ "$Nthreads" =~ ^[0-9]+$ ]]
+then
+:
+else
+echo ""
+echo "WARNING"
+echo "Number of threads ($Nthreads) is not a positive integer."
+echo "Exiting program before compiling analysis."
+echo ""
+exit
+fi
+
+#Is it greater than zero and less than or equal to the total number of cores?
+
+Ncores=$(nproc --all)
+if [[ $Nthreads -gt 0 && $Nthreads -le $Ncores ]]
+then
+:
+else
+echo ""
+echo "WARNING"
+echo "Number of threads ($Nthreads) may not be compatible on this system with $Ncores cores."
+echo "Exiting program before compiling analysis."
+echo ""
+exit
+fi
+
 ###############################################################################################################################################
 ###############################################################################################################################################
 #		FIRST ANALYSIS
@@ -385,6 +418,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
      s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
+     s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
@@ -435,6 +469,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
      s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
+     s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
@@ -483,6 +518,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
      s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
+     s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
@@ -531,6 +567,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
      s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
+     s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
@@ -579,6 +616,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
      s/initialbondname = .*/initialbondname = \"$initialbondname\"/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
+     s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/

@@ -107,6 +107,7 @@ real :: lowerlimit,upperlimit
 integer :: iostate
 integer,allocatable :: filechannels(:)
 integer :: OMP_GET_THREAD_NUM
+logical :: return_flag = .true.
 
 !Timing
 real :: r1, r2, system_clock_rate
@@ -120,12 +121,28 @@ integer :: trajectory_t0, trajectory_t1
 integer :: i, j, k
 
 
+call OMP_SET_NUM_THREADS(Nthreads)
+
+!Now here we actually make these new trajectories
+!$OMP PARALLEL DEFAULT(none)&
+!$OMP& PRIVATE(iostate,random_num1,random_num2,random_num3,random_r2,random_r3)&
+!$OMP& PRIVATE(initial_bond_angle1,initial_bond_angle2,initial_vibrational_energy,initial_bond_distance)&
+!$OMP& PRIVATE(J_factor3,probJ_max,initial_rotational_energy,initial_rotational_speed)&
+!$OMP& PRIVATE(initial_rotation_angle,bond_period_elapsed)&
+!$OMP& PRIVATE(variable_length_text,Ntraj_text,filechannels)&
+!$OMP& FIRSTPRIVATE(Ngrid_text,reject_text)&
+!$OMP& PRIVATE(c1,c2,cr,r1,r2,coords_initial,coords_final,velocities_initial,velocities_final)&
+!$OMP& SHARED(return_flag,now,seed,system_clock_rate)&
+!$OMP& SHARED(initial_n_testtraj,folder_text,prefix_text,Nthreshold_text,old_filename,new_filename,answer)&
+!$OMP& PRIVATE(i,j,n)
+
+!$OMP SINGLE
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       RNG SETUP
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
 !And we print the seed in case there's some bug that we need to reproduce
 call system_clock(seed)
@@ -135,6 +152,8 @@ write(6,FMT=FMTnow) now
 print *, "   RNG seed: ", seed
 print *, ""
 seed = rand(seed)
+
+!$OMP END SINGLE
 
 write(Nbond_text,FMT="(I0.6)") Nbonds
 write(Natom_text,FMT="(I0.6)") Natoms
@@ -149,6 +168,7 @@ write(FMT3,FMT="(A22)") "("//Natom_text//"(3(1x,F14.10)))"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!$OMP CRITICAL
 
 !All trajectory folders are formatted as I0.3 (3-digit integer)
 !So search for these numbered folders and read them
@@ -167,11 +187,17 @@ close(trajectorieschannel)
 !Keep the cap to the number of grids in mind
 Ngrid_total = min(Ngrid_cap, Ngrid_max)
 
+!$OMP END CRITICAL
+!$OMP BARRIER
+
+!$OMP SINGLE
+
 print *, ""
 call itime(now)
 write(6,FMT=FMTnow) now
 print *, "Analysis on directory ", gridpath0
 print *, "Deciding on using ", Ngrid_total, " grids"
+print *, "Deciding on using ", Nthreads, " threads"
 print *, ""
 
 
@@ -214,11 +240,13 @@ else
 end if
 
 
-allocate(filechannels(1+Ngrid_total))
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 
 prefix_text = Ngrid_text//reject_text//Nthreshold_text
+
+!$OMP END SINGLE
+!$OMP BARRIER
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -229,6 +257,8 @@ prefix_text = Ngrid_text//reject_text//Nthreshold_text
 !This is for checking trajectories against the grid
 !Currently, this is the main use of this program
 if (testtraj_flag) then
+
+!$OMP SINGLE
 
 print *, ""
 call itime(now)
@@ -312,7 +342,8 @@ if (useolddata_flag) then
 			write(6,FMT=FMTnow) now
 	                print *, "    Program exited disgracefully"
 	                print *, ""
-	                return
+
+	                return_flag = .true.
 		else
 			print *, "    starting off where the timeslice file left off!"
 			print *, ""
@@ -327,8 +358,10 @@ if (useolddata_flag) then
 		print *, ""
 	end if
 
+        if (.not.return_flag) then
         print *, "     Total Number of Trajectories Saved: ", initial_n_testtraj - 1, " out of ", Ntesttraj
         print *, ""
+        end if
 
 !If not...
 else
@@ -356,7 +389,7 @@ system_clock_rate = 1.0/real(cr)
 
 !If we want to use the same initial conditions as an old set of trajectories
 !open up whatever initial file that sample corresponds to
-if (useoldinitialbonddata_flag) then
+if ((useoldinitialbonddata_flag).and.(.not.return_flag)) then
         open(trajectorieschannel,file=gridpath0//initialbondname//initialfile)
         print *, ""
         print *, "     Deciding to use old initial conditions..."
@@ -377,7 +410,8 @@ if (useoldinitialbonddata_flag) then
                         print *, "Exiting analysis"
                         print *, ""
         
-                        return
+                        initial_n_testtraj = Ntesttraj+1
+                        return_flag = .true.
                 end if
         end do
 
@@ -385,13 +419,14 @@ if (useoldinitialbonddata_flag) then
         open(trajectorieschannel,file=gridpath0//initialbondname//initialfile)
 end if
 
+!$OMP END SINGLE
+!$OMP BARRIER
+
 if (traversal_flag) allocate(traversal0(Ngrid_total,counter0_max),&
                              traversal1(Ngrid_total,counter1_max))
+allocate(filechannels(1+Ngrid_total))
 
-call OMP_SET_NUM_THREADS(4)
-
-!Now here we actually make these new trajectories
-!$OMP PARALLEL DO DEFAULT(FIRSTPRIVATE)
+!$OMP DO
 do n_testtraj = initial_n_testtraj, Ntesttraj
 
         !If we're reusing old initial conditions, that's easy; we just read off the file
@@ -463,7 +498,6 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         end if
         !$OMP END CRITICAL
 
-
 	!Each trajectory will have Ngrid_total outputs; one for however many grids we use
 	!The trajectory number will uniquely identify one trajectory from another
 	write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
@@ -486,7 +520,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 
 	!Then write the outputted RMSDS of each trajectory onto those filechannels
 	!Remark: checkMultipleGrids uses filechannel1 to open files in the grid
-	call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),INITIAL_BOND_DATA,&
+	call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
                                                                      coords_initial,velocities_initial,&
                                                                      coords_final,velocities_final)
 
@@ -546,7 +580,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         !$OMP END CRITICAL
 	
 end do
-!$OMP END PARALLEL DO
+!$OMP END DO
 print *, ""
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -556,11 +590,18 @@ print *, ""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !If we did use old initial conditions, close that file up
+!$OMP SINGLE
 if (useoldinitialbonddata_flag) close(trajectorieschannel)
+!$OMP END SINGLE
 
 !This closes that big, enclosing if statement on whether to make trajectories
 end if
 
+!$OMP END PARALLEL
+
+if (return_flag) then
+        return
+end if
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

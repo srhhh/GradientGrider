@@ -192,6 +192,7 @@ integer,dimension(3) :: BOND_LABELLING_DATA = (/ 1, 2, 3 /)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 real(dp),dimension(6,Nbonds) :: INITIAL_BOND_DATA
+!$OMP THREADPRIVATE(INITIAL_BOND_DATA)
 
 real(dp) :: vibrational_max
 real(dp) :: translational_max
