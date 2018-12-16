@@ -1,39 +1,39 @@
 a.out : DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd_original.o mapCellData.o interactSingleGrid.o interactMultipleGrids.o analyzeHeatMapswithMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
-	$(FC) -fdec -fopenmp -o a.out -O3 -fcheck="bound" DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd_original.o mapCellData.o interactSingleGrid.o interactMultipleGrids.o analyzeHeatMapswithMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
+	$(FC) -fopenmp -o a.out -O3 -fcheck="bound" DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rmsd_original.o mapCellData.o interactSingleGrid.o interactMultipleGrids.o analyzeHeatMapswithMultipleGrids.o runTrajectory.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o checkNewTrajectorieswithMultipleGrids.o
 
 FC = gfortran
 SOURCE = /home/kazuumi/Desktop/GradientGrider/playground/
 
 DOUBLE.o : $(SOURCE)DOUBLE.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)DOUBLE.f90
+	$(FC) -fopenmp -c $(SOURCE)DOUBLE.f90
 PARAMETERS.o : $(SOURCE)PARAMETERS.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)PARAMETERS.f90
+	$(FC) -fopenmp -c $(SOURCE)PARAMETERS.f90
 FUNCTIONS.o : $(SOURCE)FUNCTIONS.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)FUNCTIONS.f90
+	$(FC) -fopenmp -c $(SOURCE)FUNCTIONS.f90
 VARIABLES.o : $(SOURCE)VARIABLES.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)VARIABLES.f90
+	$(FC) -fopenmp -c $(SOURCE)VARIABLES.f90
 PHYSICS.o : $(SOURCE)PHYSICS.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)PHYSICS.f90
+	$(FC) -fopenmp -c $(SOURCE)PHYSICS.f90
 ANALYSIS.o : $(SOURCE)ANALYSIS.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)ANALYSIS.f90
+	$(FC) -fopenmp -c $(SOURCE)ANALYSIS.f90
 ls_rmsd_original.o : $(SOURCE)ls_rmsd_original.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)ls_rmsd_original.f90
+	$(FC) -fopenmp -c $(SOURCE)ls_rmsd_original.f90
 interactSingleGrid.o : $(SOURCE)interactSingleGrid.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)interactSingleGrid.f90
+	$(FC) -fopenmp -c $(SOURCE)interactSingleGrid.f90
 interactMultipleGrids.o : $(SOURCE)interactMultipleGrids.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)interactMultipleGrids.f90
+	$(FC) -fopenmp -c $(SOURCE)interactMultipleGrids.f90
 runTrajectory.o : $(SOURCE)runTrajectory.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)runTrajectory.f90
+	$(FC) -fopenmp -c $(SOURCE)runTrajectory.f90
 mapCellData.o : $(SOURCE)mapCellData.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)mapCellData.f90
+	$(FC) -fopenmp -c $(SOURCE)mapCellData.f90
 analyzeHeatMapswithMultipleGrids.o : $(SOURCE)analyzeHeatMapswithMultipleGrids.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)analyzeHeatMapswithMultipleGrids.f90
+	$(FC) -fopenmp -c $(SOURCE)analyzeHeatMapswithMultipleGrids.f90
 analyzeRMSDThresholdwithMultipleGrids.o : $(SOURCE)analyzeRMSDThresholdwithMultipleGrids.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)analyzeRMSDThresholdwithMultipleGrids.f90
+	$(FC) -fopenmp -c $(SOURCE)analyzeRMSDThresholdwithMultipleGrids.f90
 analyzeScatteringAngleswithMultipleGrids.o : $(SOURCE)analyzeScatteringAngleswithMultipleGrids.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)analyzeScatteringAngleswithMultipleGrids.f90
+	$(FC) -fopenmp -c $(SOURCE)analyzeScatteringAngleswithMultipleGrids.f90
 checkNewTrajectorieswithMultipleGrids.o : $(SOURCE)checkNewTrajectorieswithMultipleGrids.f90
-	$(FC) -fdec -fopenmp -c $(SOURCE)checkNewTrajectorieswithMultipleGrids.f90
+	$(FC) -fopenmp -c $(SOURCE)checkNewTrajectorieswithMultipleGrids.f90
 
 clean :
 	rm *.mod *.o

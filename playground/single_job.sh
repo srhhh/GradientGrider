@@ -102,11 +102,11 @@ threshold_rmsd5=.050000d0
 reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
-Ngrid_cap=1
+Ngrid_cap=2
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
 Ntrajectories=8
-Nthreads=2
+Nthreads=1
 
 #These are flags relating to using old data
 useolddata_flag=.false.

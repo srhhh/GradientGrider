@@ -262,9 +262,9 @@ if (traversal_flag) then
                 if (subcell_existence) then
                         key1 = modulo(traversal0(Ngrid,key0),key_start) + &
                                bounds2*var2_index1 + var1_index1 + 1
-                        traversal1(Ngrid,key1) = traversal1(Ngrid,key1) + 1
+                        traversal1(Ngrid_thread,key1) = traversal1(Ngrid_thread,key1) + 1
                 else
-                        traversal0(Ngrid,key0) = traversal0(Ngrid,key0) + 1  
+                        traversal0(Ngrid_thread,key0) = traversal0(Ngrid_thread,key0) + 1  
                 end if
         else
                 header1 = header1 + 1
@@ -434,7 +434,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 end if
 
 if (stop_flag) then
-	write(filechannels(1+Ngrid),FMT=FMT6) old_min_rmsd
+	write(filechannels(1+Ngrid_thread),FMT=FMT6) old_min_rmsd
 	cycle
 end if
 
@@ -800,7 +800,6 @@ real(dp),dimension(3,Natoms) :: candidate_gradient
 real(dp),intent(inout) :: min_rmsd
 integer,intent(in) :: filechannel_thread
 integer :: OMP_GET_THREAD_NUM
-integer :: new_filechannel
 integer :: i,j,k,iostate
 character(*),intent(in) :: subcell
 real(dp),intent(in), dimension(3,Natoms) :: coords
@@ -811,24 +810,22 @@ real(dp),dimension(3,3),intent(inout) :: U
 real(dp),dimension(3,3) :: candidate_U
 real(dp), dimension(3,Natoms) :: coords2
 
-new_filechannel = 6000 + OMP_GET_THREAD_NUM()
-
 !Open the file corresponding to the cell
 if (unreadable_flag) then
-        open(new_filechannel,action="read",SHARE="DENYWR",file=trim(subcell)//".dat",form="unformatted")
+        open(filechannel_thread,action="read",file=trim(subcell)//".dat",form="unformatted")
 else
-        open(new_filechannel,action="read",SHARE="DENYWR",file=trim(subcell)//".dat")
+        open(filechannel_thread,action="read",file=trim(subcell)//".dat")
 end if
 
 population = 0
 do
         !Read the candidate frame
         if (unreadable_flag) then
-                read(new_filechannel,iostat=iostate)
+                read(filechannel_thread,iostat=iostate)
 	        if (iostate /= 0) exit
-                read(new_filechannel) ((coords2(i,j),i=1,3),j=1,Natoms)
+                read(filechannel_thread) ((coords2(i,j),i=1,3),j=1,Natoms)
         else
-                read(new_filechannel,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
+                read(filechannel_thread,FMT=FMT7,advance="no",iostat=iostate) ((coords2(i,j),i=1,3),j=1,Natoms)
 	        if (iostate /= 0) exit
         end if
 
@@ -843,9 +840,9 @@ do
         !If it is too low, reject the candidate frame
         if (candidate_min_rmsd < min_rmsd) then
                 if (unreadable_flag) then
-                        read(new_filechannel) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(new_filechannel,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 end if
 
         !Otherwise if it is low enough, accept the candidate frame (and save its rotation matrix!)
@@ -854,9 +851,9 @@ do
                 U = candidate_U
 
                 if (unreadable_flag) then
-                        read(new_filechannel) ((gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread) ((gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(new_filechannel,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
                 end if
 
                 !In special cases, we exit immediately afterwards
@@ -865,9 +862,9 @@ do
         !If it is too high, also reject the candidate frame
         else
                 if (unreadable_flag) then
-                        read(new_filechannel) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(new_filechannel,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 end if
         end if
 
@@ -880,9 +877,9 @@ do
                 U = candidate_U
 
                 if (unreadable_flag) then
-                        read(new_filechannel) ((gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread) ((gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(new_filechannel,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread,FMT=FMT3) ((gradient(j,k),j=1,3),k=1,Natoms)
                 end if
 
                 !In special cases, we exit immediately afterwards
@@ -891,9 +888,9 @@ do
         !Otherwise, just don't record the gradient
         else
                 if (unreadable_flag) then
-                        read(new_filechannel) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 else
-                        read(new_filechannel,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
+                        read(filechannel_thread,FMT=FMT3) ((candidate_gradient(j,k),j=1,3),k=1,Natoms)
                 end if
         end if
 
@@ -904,21 +901,21 @@ do
 !		U = candidate_U
 !
 !                if (unreadable_flag) then
-!                        read(new_filechannel) ((gradient(i,j),i=1,3),j=1,Natoms)
+!                        read(filechannel_thread) ((gradient(i,j),i=1,3),j=1,Natoms)
 !                else
-!                        read(new_filechannel,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
+!                        read(filechannel_thread,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
 !                end if
 !
 !                if (accept_first) exit
 !	else
 !                if (unreadable_flag) then
-!                        read(new_filechannel) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+!                        read(filechannel_thread) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
 !                else
-!                        read(new_filechannel,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
+!                        read(filechannel_thread,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
 !                end if
 !	end if
 end do
-close(new_filechannel)
+close(filechannel_thread)
 
 end subroutine getRMSD_dp
 
