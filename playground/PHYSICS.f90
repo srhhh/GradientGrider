@@ -1,3 +1,58 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       MODULE
+!               PHYSICS
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This module contains variables dictating the physics of the simulations
+!               as well as what ensemble we are sampling initial conditions from and
+!               some subroutines used to smooth this along
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILECHANNELS                    ACTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINES                     ARGUMENTS               KIND
+!
+!               InitialSetup3                   coords                  intent(out),real(dp),dim(3,Natoms)
+!                                               velocities              intent(out),real(dp),dim(3,Natoms)
+!
+!               BondedForce                     coords1                 intent(in),real(dp),dim(3)
+!                                               coords2                 intent(in),real(dp),dim(3)
+!                                               gradient1               intent(out),real(dp),dim(3,Natoms)
+!                                               gradient1               intent(out),real(dp),dim(3,Natoms)
+!                                               r                       intent(in),real(dp),optional
+!
+!               NonBondedForce                  coords1                 intent(in),real(dp),dim(3)
+!                                               coords2                 intent(in),real(dp),dim(3)
+!                                               gradient1               intent(out),real(dp),dim(3,Natoms)
+!                                               gradient1               intent(out),real(dp),dim(3,Natoms)
+!                                               r                       intent(in),real(dp),optional
+!
+!               cross                           A                       intent(in),real(dp),dim(3)
+!                                               B                       intent(in),real(dp),dim(3)
+!                                               AcrossB                 intent(out),real(dp),dim(3)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       CALLS                           MODULE
+!
+!               cross                           PHYSICS
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
 module PHYSICS
 use DOUBLE
 
@@ -73,6 +128,9 @@ real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass
 !                 TEMPERATURE PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Legacy variables
+!((NOT USED))
+
 !real(dp), parameter :: temperature = 200.0d0
 !					!Kelvin
 !real(dp), parameter :: upsilon_max = 5.0d0
@@ -81,6 +139,8 @@ real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass
 !real(dp), parameter :: upsilon_factor2 = pi2*(hbar/(RU_energy*RU_time))*frequency_factor
 !real(dp), parameter :: temperature_factor = exp(0.5d0*upsilon_factor1)
 !real(dp), parameter :: temperature_scaling = (1.0d0-temperature_factor)*upsilon_max/temperature_factor
+
+!Self-explanatory
 
 real(dp), parameter :: temperature = 300.0d0
 					!Kelvin
@@ -105,42 +165,40 @@ real(dp), parameter :: J_factor2 = (hbar**2 / (mass_hydrogen)) / (((RU_energy * 
 !                  COLLISION PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Self-explanatory
+
 real(dp),parameter :: initial_translational_KE = (1.0d0)*eV/RU_energy
 !real(dp),parameter :: collision_distance = Morser0_hydrogen*5.0
  real(dp),parameter :: collision_distance = 8.5d0
 real(dp),parameter :: collision_skew = HOr0_hydrogen*0.00d0
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!			BONDAGE
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !For the COLLISION_DATA:
 !Each atom index corresponds to a zero or a one
 !A one indicates it is 'incoming'
 !A zero indicates it is 'to-be-collided'
 
+!For the BONDING_DATA:
+!Each bond corresponds to a pair in a column
+!The number corresponds to the atom index of the atom
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!			BONDAGE
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!For the BONDING_VALUE_DATA:
+!If some variable in the acceleration subroutine (particularly
+!the distance between two atoms) was calculated beforehand by,
+!the VARIABLES module, increment Nvar_eff and signify between
+!which atoms this was by 1s and 0s
 
-!integer,parameter :: Nbonds = 1
-!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 2, &
-!                                                                   3 /),&
-!                                                                                  (/ Nbonds, 2 /))
-!integer,parameter :: Nvar_eff = 2
-!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 1,    &
-!                                                                           2, 3,    &
-!                                                                           1, 2/),  &
-!                                                                                  (/ Nvar_eff, 3 /))
-!integer,dimension(3),parameter :: COLLISION_DATA = (/ 1, 0, 0 /)
+!For the INDISTINGUISHABLES:
+!Each separate (but indistinguishable) labeling scheme for a frame is listed
+!in a column by the order of atom indexes that would result in a similar frame
 
-!integer,parameter :: Nbonds = 2
-!integer,dimension(Nbonds,2),parameter :: BONDING_DATA = reshape((/ 1, 3,   &
-!                                                                   2, 4 /),        (/ Nbonds, 2 /))
-!
-!integer,parameter :: Nvar_eff = 2
-!integer,dimension(Nvar_eff,3),parameter :: BONDING_VALUE_DATA = reshape((/ 1, 2,    &
-!                                                                           3, 4,    &
-!                                                                           1, 2 /), &
-!                                                                                   (/ Nvar_eff, 3 /)) 
-!integer,dimension(4),parameter :: COLLISION_DATA = (/ 1, 1, 0, 0 /)
+!For the BOND_LABELS_TENTATIVE:
+!Each pair of nonbonded atoms corresponds to a pair in a column
+!The number corresponds to the atom index of the atom
+
 
 !!H2 - H2 COLLISION STUFF
 !integer,parameter :: Nbonds = 2
@@ -174,11 +232,6 @@ integer,dimension(2,3),parameter :: INDISTINGUISHABLES = reshape((/ 1, 1, &
 								    2, 3, &
 								    3, 2 /),    (/ 2, 3 /))
 integer,dimension(3) :: BOND_LABELLING_DATA = (/ 1, 2, 3 /)
-!
-!integer,parameter :: Nindistinguishables = 1
-!integer,dimension(1,3),parameter :: INDISTINGUISHABLES = reshape((/ 1, &
-!								    2, &
-!								    3 /),    (/ 1, 3 /))
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -191,20 +244,27 @@ integer,dimension(3) :: BOND_LABELLING_DATA = (/ 1, 2, 3 /)
 !                RANDOM COLLISION SETTINGS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Each trajectory has a set of initial conditions; this is stored in INITIAL_BOND_DATA
+!It is only accessed by the InitialSetup subroutine
+!Each thread in a parallel program will have separate initial conditions
+!so we insure that each has its own private copy of it
+
 real(dp),dimension(6,Nbonds) :: INITIAL_BOND_DATA
 !$OMP THREADPRIVATE(INITIAL_BOND_DATA)
 
-real(dp) :: vibrational_max
-real(dp) :: translational_max
-real(dp) :: rotational_max
-real(dp) :: rovibrational_max
-real(dp) :: TranslationalEnergy_max
+!In the check-grid program we often want to analyze distributions, and to analyze those,
+!we need to know the bounds of our variables
+!Here we declare variables for the minimum and maximum of each variable
+!This can be over-rided by user input
 
 real :: max_absenergychange, min_absenergychange
 real :: max_relenergychange, min_relenergychange
 real :: max_rotenergychange, min_rotenergychange
 real :: abs_energychange, rel_energychange, rot_energychange
 real :: max_TranslationalEnergy
+
+!In the check-grid program, we also need to figure out the number and sizes of
+!the bins in our distribution
 
 real(dp) :: sizeEnergyBin,sizeAngleBin
 real(dp) :: sizeAbsEnergyBin,sizeRelEnergyBin,sizeRotEnergyBin
@@ -229,6 +289,8 @@ contains
 
 
 
+!Legacy subroutine
+!((NOT USED))
 subroutine decompose_two_velocities(coords,velocities,velocity_translation,TRVenergies)
 
 implicit none
@@ -278,19 +340,17 @@ velocity_translation = velocity_translation1 + &
 velocity_rotation = velocity_rotation1 + &
                     velocity_rotation2
 
-!Note: these are INDIVIDUAL VELOCITIES
-!So first we multiply by two and take a square root to get a speed
-!Then we divide by two and take a square to get a kinetic energy
-!These two calculations cancel each other out
 TRVenergies(1) = sum(velocity_translation**2)
 TRVenergies(2) = sum(velocity_rotation**2)
 TRVenergies(3) = sum(velocity_vibration**2)
 
 TRVenergies = mass_hydrogen*TRVenergies
-!Note: now they are TOTAL KINETIC ENERGIES
 
 end subroutine decompose_two_velocities
 
+
+!Legacy subroutine
+!((NOT USED))
 subroutine decompose_three_velocities(velocities,rel_velocities,velocity_center_of_mass)
 implicit none
 real(dp), dimension(9),intent(in) :: velocities
@@ -307,7 +367,7 @@ end subroutine decompose_three_velocities
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!     CROSS PRODUCT FUNCTION
+!     CROSS PRODUCT SUBROUTINE
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !   INPUT:      real, dim (3) A                 "vectorA"
 !               real, dim (3) B                 "vectorB"
@@ -416,6 +476,46 @@ end function HOPotential
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               InitialSetup3
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 
+!       PURPOSE
+!               This subroutine initialize the coordinates and velocities of a frame
+!               according to INITIAL_BOND_DATA
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               coords                          REAL(DP),DIM(3,Natoms)          The coordinates of the frame
+!               velocities                      REAL(DP),DIM(3,Natoms)          The velocities of the frame
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               initial_bond_distance           REAL(DP)                        The distance between two bonded atoms
+!               initial_rotational_speed        REAL(DP)                        The speed at which two atoms are rotating
+!               initial_rotation_angle          REAL(DP)                        The angle the rotation vector makes wtih a fixed axis
+!                                                                               with respect to the plane perpendicular to the bond
+!               initial_bond_angle1             REAL(DP)                        The angle the bond makes with one axis
+!               initial_bond_angle2             REAL(DP)                        The angle the bond makes with another axis
+!               incoming_speed                  REAL(DP)                        The speed each incoming atom has (for collision)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine InitialSetup3(coords,velocities)
 	use PARAMETERS
         implicit none
@@ -481,6 +581,8 @@ subroutine InitialSetup3(coords,velocities)
 end subroutine InitialSetup3
 
 
+!Legacy subroutine
+!((NOT USED))
 subroutine InitialSetup4(coords,velocities)
 	use PARAMETERS
         implicit none
@@ -609,6 +711,43 @@ end subroutine InitialSetup4
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               NonBondedForce
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 
+!       PURPOSE
+!               This subroutine gets the force between two nonbonded atoms
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               coord1                          REAL(DP),DIM(3)                 The coordinates of the first atom
+!               coord2                          REAL(DP),DIM(3)                 The coordinates of the second atom
+!               r                               REAL(DP),OPTIONAL               The distance between the two atoms
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               gradient1                       REAL(DP),DIM(3)                 The force on the first atom
+!               gradient2                       REAL(DP),DIM(3)                 The force on the second atom
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               distance12                      REAL(DP)                        The distance between the two atoms
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine NonBondedForce(coords1,coords2,gradient1,gradient2,r)
         implicit none
         real(dp), dimension(3), intent(in) :: coords1,coords2
@@ -637,6 +776,43 @@ subroutine NonBondedForce(coords1,coords2,gradient1,gradient2,r)
         return
 
 end subroutine NonBondedForce
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               BondedForce
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 
+!       PURPOSE
+!               This subroutine gets the force between two bonded atoms
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               coord1                          REAL(DP),DIM(3)                 The coordinates of the first atom
+!               coord2                          REAL(DP),DIM(3)                 The coordinates of the second atom
+!               r                               REAL(DP),OPTIONAL               The distance between the two atoms
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               gradient1                       REAL(DP),DIM(3)                 The force on the first atom
+!               gradient2                       REAL(DP),DIM(3)                 The force on the second atom
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               distance12                      REAL(DP)                        The distance between the two atoms
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine BondedForce(coords1,coords2,gradient1,gradient2,r)
         implicit none

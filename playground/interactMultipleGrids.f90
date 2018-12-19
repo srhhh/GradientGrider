@@ -2,7 +2,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       MODULE
-!               interactSingleGrid
+!               interactMultipleGrids
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -29,33 +29,57 @@
 !
 !       FILECHANNELS                    ACTION
 !
-!               FILECHANNEL1                    OPEN, WRITE, CLOSE
-!               FILECHANNEL1                    OPEN, READ, CLOSE
+!               FILECHANNELS(2:Ngrid_total+1)   WRITE
+!               FILECHANNELS(1)                 OPEN, READ, CLOSE
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       SUBROUTINES                     ARGUMENTS               KIND
 !
-!		checkState
+!		checkState                      vals                            intent(in),REAL(DP),DIM(Nvar)
+!                                               coords                          intent(in),REAL(DP),DIM(3,Natoms)
+!                                               gradient                        intent(inout),REAL(DP),DIM(3,Natoms)
+!                                               min_rmsd                        intent(inout),REAL(DP)
+!                                               filechannels                    intent(in),INTEGER,DIM(Ngrid_total+1)
 !
-!		getNeighbors
+!                                               number_of_frames                intent(out),INTEGER
+!                                               order                           intent(out),INTEGER
+!                                               neighbor_check                  intent(out),INTEGER
 !
-!		getRMSD_dp
+!		getNeighbors                    scaling                         intent(in),REAL
+!                                               multiplier                      intent(in),REAL
+!                                               FMTorder                        intent(in),CHARACTER(6)
+!                                               index                           intent(in),INTEGER
+!                                               filechannel                     intent(in),INTEGER
+!
+!                                               coords                          intent(in),REAL(DP),DIM(3,Natoms)
+!                                               min_rmsd                        intent(inout),REAL(DP)
+!                                               gradient                        intent(inout),REAL(DP),DIM(3,Natoms)
+!                                               U                               intent(inout),REAL(DP),DIM(3,3)
+!                                               number_of_frames                intent(inout),INTEGER
+!
+!		getRMSD_dp                      filechannel_thread              intent(in),INTEGER
+!                                               subcell                         intent(in),CHARACTER(*)
+!
+!                                               coords                          intent(in),REAL(DP),DIM(3,Natoms)
+!                                               population                      intent(out),INTEGER
+!                                               min_rmsd                        intent(inout),REAL(DP)
+!                                               gradient                        intent(inout),REAL(DP),DIM(3,Natoms)
+!                                               U                               intent(inout),REAL(DP),DIM(3,3)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       CALLS                           MODULE
 !
-!               getVar3                         VARIABLES
-!               getVar4                         VARIABLES
+!               getVarMaxMin                    VARIABLES
 !
 !               getNeighbors                    interactMultipleGrids
 !               getRMSD_dp                      interactMultipleGrids
 !
 !               rmsd                            ls_rmsd_original
-!               matmul                          PHYSICS
+!               matmul                          INTRINSIC
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -94,6 +118,7 @@ contains
 !
 !       INPUT                           KIND                            DESCRIPTION
 !
+!               vals                            REAL(DP),DIM(Nvar)              The collective variables used to bin a frame
 !               coords                          REAL(DP),DIM(3,Natoms)          The coordinates defining the reference frame
 !		filechannels			INTEGER,DIM(Ngrid_total)	The filechannels of each grid to write data
 !										such as minimum rmsd
@@ -131,6 +156,9 @@ contains
 !
 !		subcell_existence		LOGICAL				A flag indicating whethere a file associated with
 !										a subcell exists
+!               population                      INTEGER                         The number of frames checked in a cell
+!               subcellsearch_max               INTEGER                         The maximum number of cells radii to check
+!                                                                               before quitting getNeighbors
 !
 !		old_min_rmsd			REAL(DP)			Temporary buffer for the value of min_rmsd
 !										when comparing the min_rmsd output of two grids
@@ -144,6 +172,8 @@ contains
 !
 !               U                               REAL(DP),DIM(3,3)               The rotation matrix used to rotate a frame
 !                                                                               and minimize its RMSD with respect to the reference frame
+!
+!               key                             INTEGER                         An index used to uniquely associate files in traversal
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -163,7 +193,6 @@ integer :: var1_index0,var2_index0,var1_index1,var2_index1
 integer :: index1_1,index1_2,index2_1,index2_2
 integer :: population
 integer :: OMP_GET_THREAD_NUM
-integer :: Ngrid_thread
 logical :: stop_flag
 real :: var1,var2,var1_cell,var2_cell,var1_round,var2_round
 real :: var1_round0,var2_round0,var1_round1,var2_round1,var1_round2,var2_round2,var1_round3,var2_round3
@@ -195,9 +224,12 @@ subcell1search_max = 1
 number_of_frames = 0
 neighbor_check = 0
 
+!If we do not find good candidates, then we restore our defaults
+!that are stored in old_...
 old_min_rmsd = min_rmsd
 old_gradient = gradient
 old_U = 0.0d0
+stop_flag = .false.
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                 SUBCELL TARGETING
@@ -240,13 +272,13 @@ write(var1_filename0,FMT=FMTorder0) var1_round0
 write(var2_filename0,FMT=FMTorder0) var2_round0
 
 !Now, we start iterating over the grids
-do Ngrid_thread = 1, Ngrid_total
+do Ngrid = 1, Ngrid_total
 
 order = 1
 neighbor_check = 0
 
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_thread
+write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 gridpath2 = gridpath0//Ngrid_text//"/grid/"
 
 !Key creation (for traversal checking)
@@ -262,13 +294,13 @@ if (traversal_flag) then
                 if (subcell_existence) then
                         key1 = modulo(traversal0(Ngrid,key0),key_start) + &
                                bounds2*var2_index1 + var1_index1 + 1
-                        traversal1(Ngrid_thread,key1) = traversal1(Ngrid_thread,key1) + 1
+                        traversal1(Ngrid,key1) = traversal1(Ngrid,key1) + 1
                 else
-                        traversal0(Ngrid_thread,key0) = traversal0(Ngrid_thread,key0) + 1  
+                        traversal0(Ngrid,key0) = traversal0(Ngrid,key0) + 1  
                 end if
         else
                 header1 = header1 + 1
-                traversal0(Ngrid_thread,key0) = header1*key_start + traversal0(Ngrid_thread,key0) + 1
+                traversal0(Ngrid,key0) = header1*key_start + traversal0(Ngrid,key0) + 1
         end if
 end if
 
@@ -281,16 +313,15 @@ subcell = gridpath2//trim(adjustl(var1_filename1))//"_"//trim(adjustl(var2_filen
 
 !See whether this subcell exists
 inquire(file=trim(subcell)//".dat",exist=subcell_existence)
-stop_flag = .false.
 
 !For bug-testing
-if (.false.) then
-print *, ""
-print *, ""
-print *, "inquiring for: ", subcell
-print *, "exists? ", subcell_existence
-print *, ""
-end if
+!if (.false.) then
+!print *, ""
+!print *, ""
+!print *, "inquiring for: ", subcell
+!print *, "exists? ", subcell_existence
+!print *, ""
+!end if
 
 !If the subcell exists, we will look in here for a closeby frame
 if (subcell_existence) then
@@ -434,7 +465,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 end if
 
 if (stop_flag) then
-	write(filechannels(1+Ngrid_thread),FMT=FMT6) old_min_rmsd
+	write(filechannels(1+Ngrid),FMT=FMT6) old_min_rmsd
 	cycle
 end if
 
@@ -450,13 +481,13 @@ inquire(file=trim(subcell)//".dat",exist=subcell_existence)
 order = 0
 
 !For bug-testing
-if (.false.) then
-print *, ""
-print *, ""
-print *, "inquiring for: ", trim(subcell)//".dat" 
-print *, "exists? ", subcell_existence
-print *, ""
-end if
+!if (.false.) then
+!print *, ""
+!print *, ""
+!print *, "inquiring for: ", trim(subcell)//".dat" 
+!print *, "exists? ", subcell_existence
+!print *, ""
+!end if
 
 if (subcell_existence) then
 	call getRMSD_dp(filechannels(1),subcell,coords,population,min_rmsd,gradient,U)
@@ -584,7 +615,7 @@ if ((.not.(subcell_existence)).or.(force_Neighbors)) then
 
 end if
 
-write(filechannels(1+Ngrid_thread),FMT=FMT6) old_min_rmsd
+write(filechannels(1+Ngrid),FMT=FMT6) old_min_rmsd
 end do
 
 !This is to see whether old_U has its default value (all zeroes) or not
@@ -684,7 +715,6 @@ integer,intent(in) :: index1_1,index1_2,index2_1,index2_2
 real,intent(in) :: multiplier1,multiplier2
 real,intent(in) :: var1_round0,var2_round0
 real :: var1_round,var2_round
-!integer,intent(in) :: decimals1, decimals2
 integer,intent(inout) :: number_of_frames
 character(6),intent(in) :: FMTorder
 integer,intent(in) :: filechannel_thread
@@ -896,24 +926,6 @@ do
 
         end if
 
-!	if (candidate_min_rmsd < min_rmsd) then
-!		min_rmsd = candidate_min_rmsd
-!		U = candidate_U
-!
-!                if (unreadable_flag) then
-!                        read(filechannel_thread) ((gradient(i,j),i=1,3),j=1,Natoms)
-!                else
-!                        read(filechannel_thread,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
-!                end if
-!
-!                if (accept_first) exit
-!	else
-!                if (unreadable_flag) then
-!                        read(filechannel_thread) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
-!                else
-!                        read(filechannel_thread,FMT=FMT3) ((candidate_gradient(i,j),i=1,3),j=1,Natoms)
-!                end if
-!	end if
 end do
 close(filechannel_thread)
 

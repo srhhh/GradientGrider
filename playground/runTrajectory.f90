@@ -21,30 +21,40 @@
 !
 !               FILECHANNEL1                    OPEN, WRITE, CLOSE
 !               FILECHANNEL2                    OPEN, CALL CHECKSTATE, WRITE, CLOSE
+!               FILECHANNELS                    none
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !	SUBROUTINES			ARGUMENTS		KIND
 !
-!		addTrajectory			velocityH1		intent(out),real(dp)
-!						velocityH2		intent(out),real(dp)
+!		addTrajectory			coords_initial		intent(out),real(dp),dim(3,Natoms)
+!						velocities_initial	intent(out),real(dp),dim(3,Natoms)
+!						coords_final		intent(out),real(dp),dim(3,Natoms)
+!						velocities_final	intent(out),real(dp),dim(3,Natoms)
 !
-!		checkTrajectory			velocityH1		intent(out),real(dp)
-!						velocityH2		intent(out),real(dp)
+!		checkaddTrajectory		coords_initial		intent(out),real(dp),dim(3,Natoms)
+!						velocities_initial	intent(out),real(dp),dim(3,Natoms)
+!						coords_final		intent(out),real(dp),dim(3,Natoms)
+!						velocities_final	intent(out),real(dp),dim(3,Natoms)
 !
-!		checkMultipleTrajectories	filechannels		intent(in),dim(Ngrid_total),integer
+!		checkTrajectory			coords_initial		intent(out),real(dp),dim(3,Natoms)
+!						velocities_initial	intent(out),real(dp),dim(3,Natoms)
+!						coords_final		intent(out),real(dp),dim(3,Natoms)
+!						velocities_final	intent(out),real(dp),dim(3,Natoms)
 !
-!						velocityH1		intent(out),real(dp)
-!						velocityH2		intent(out),real(dp)
+!		checkMultipleTrajectories	filechannels		intent(in),dim(Ngrid_total+1),integer
+!						coords_initial		intent(out),real(dp),dim(3,Natoms)
+!						velocities_initial	intent(out),real(dp),dim(3,Natoms)
+!						coords_final		intent(out),real(dp),dim(3,Natoms)
+!						velocities_final	intent(out),real(dp),dim(3,Natoms)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       CALLS                           MODULE
 !
-!		getVar1				VARIABLES
-!		getVar2				VARIABLES
+!		getVarMaxMin			VARIABLES
 !
 !		InitialSetup3			PHYSICS
 !
@@ -105,13 +115,10 @@ contains
 !
 !	OUTPUT				KIND				DESCRIPTION
 !
-!		ScatteringAngle			REAL(DP)			The scatteringangle
-!		TRVenergies1			REAL(DP),DIM(3)			The translation, rotational, and vibrational
-!										speeds of the incoming H/H2 molecule
-!										at the start of the trajectory
-!		TRVenergies2			REAL(DP),DIM(3)			The translation, rotational, and vibrational
-!										speeds of the incoming H/H2 molecule
-!										at the end of the trajectory (post-collision)
+!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
+!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
+!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
+!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -162,9 +169,6 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 
 	!Always calculate the variables before accelerating
 	!because we can reuse these calculations
-!	call getVar1(coords,Natoms,vals(1))
-!	call getVar2(coords,Natoms,vals(2))
-
 	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
         !Accelerate the velcocities for a half step (verlet)
@@ -217,9 +221,6 @@ subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velociti
 		coords = coords + dt * velocities
 
 		!Always calculate the variables before adding a frame or accelerating
-!		call getVar1(coords,Natoms,vals(1))
-!		call getVar2(coords,Natoms,vals(2))
-
 		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
                 !Accelerate and update gradients
@@ -270,13 +271,10 @@ end subroutine addTrajectory
 !
 !	OUTPUT				KIND				DESCRIPTION
 !
-!		ScatteringAngle			REAL(DP)			The scatteringangle
-!		TRVenergies1			REAL(DP),DIM(3)			The translation, rotational, and vibrational
-!										speeds of the incoming H/H2 molecule
-!										at the start of the trajectory
-!		TRVenergies2			REAL(DP),DIM(3)			The translation, rotational, and vibrational
-!										speeds of the incoming H/H2 molecule
-!										at the end of the trajectory (post-collision)
+!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
+!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
+!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
+!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -342,9 +340,6 @@ subroutine checkaddTrajectory(coords_initial,velocities_initial,coords_final,vel
 	velocities_initial = velocities
 
 	!Always calculate the variables before accelerating
-!        call getVar1(coords,Natoms,vals(1))
-!        call getVar2(coords,Natoms,vals(2))
-
 	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
         !Accelerate the velcocities for a half step (verlet)
@@ -409,11 +404,11 @@ subroutine checkaddTrajectory(coords_initial,velocities_initial,coords_final,vel
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-!                call getVar1(coords,Natoms,vals(1))
-!                call getVar2(coords,Natoms,vals(2))
-
 		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
+                !If the library forced no special labeling or duplicate additions, then
+                !that means we don't do any special label switching when using the
+                !approximated gradient and inputing the frame
                 if ((force_Duplicates) .or. (force_NoLabels)) then
                         min_rmsd = default_rmsd
                         call checkState(vals,coords,approx_gradient,min_rmsd,&
@@ -426,7 +421,9 @@ subroutine checkaddTrajectory(coords_initial,velocities_initial,coords_final,vel
 				gradient = approx_gradient
                         end if
 
+                !Otherwise, then we need to do the label switching
                 else
+                        !We need to input the frame using the labeling scheme
                         do n = 1, Natoms
                                 coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
                         end do
@@ -443,6 +440,7 @@ subroutine checkaddTrajectory(coords_initial,velocities_initial,coords_final,vel
                                 call Acceleration(vals,coords,gradient)
                                 call addState(vals,coords,gradient)
                         else
+                                !And we need to use the approximation after "unlabeling"
                                 do n = 1, Natoms
                                          gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
                                 end do
@@ -504,13 +502,10 @@ end subroutine checkaddTrajectory
 !
 !	OUTPUT				KIND				DESCRIPTION
 !
-!		ScatteringAngle			REAL(DP)			The scatteringangle
-!		TRVenergies1			REAL(DP),DIM(3)			The translation, rotational, and vibrational
-!										speeds of the incoming H/H2 molecule
-!										at the start of the trajectory
-!		TRVenergies2			REAL(DP),DIM(3)			The translation, rotational, and vibrational
-!										speeds of the incoming H/H2 molecule
-!										at the end of the trajectory (post-collision)
+!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
+!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
+!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
+!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -575,9 +570,6 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 	velocities_initial = velocities
 
 	!Always calculate the variables before accelerating
-!        call getVar1(coords,Natoms,vals(1))
-!        call getVar2(coords,Natoms,vals(2))
-
 	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
         !Accelerate the velcocities for a half step (verlet)
@@ -641,11 +633,11 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-!                call getVar1(coords,Natoms,vals(1))
-!                call getVar2(coords,Natoms,vals(2))
-
 		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
+                !If the library forced no special labeling or duplicate additions, then
+                !that means we don't do any special label switching when using the
+                !approximated gradient and inputing the frame
                 if ((force_Duplicates) .or. (force_NoLabels)) then
                         if (accept_worst) then
                                 min_rmsd = 0.0d0
@@ -663,7 +655,9 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
 				gradient = approx_gradient
                         end if
 
+                !Otherwise, then we need to do the label switching
                 else
+                        !We need to input the frame using the labeling scheme
                         do n = 1, Natoms
                                 coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
                         end do
@@ -683,11 +677,12 @@ subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,veloci
                        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
                                 call Acceleration(vals,coords,gradient)
                        else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-                               call Acceleration(vals,coords,gradient)
+                                call Acceleration(vals,coords,gradient)
                        else
-                               do n = 1, Natoms
+                                !And we need to use the approximation after "unlabeling"
+                                do n = 1, Natoms
                                         gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
-                               end do
+                                end do
                        end if
                 end if
 
@@ -739,21 +734,20 @@ end subroutine checkTrajectory
 !
 !	INPUT				KIND				DESCRIPTION
 !
-!		filechannels			INTEGER,DIM(Ngrid_total)	These filechannels were opened beforehand to the
+!		filechannels			INTEGER,DIM(Ngrid_total+1)	These filechannels were opened beforehand to the
 !										trajectory files that we output rmsd data to;
-!										all that's left to do is to write to them every frame
+!										all that's left to do is to write to them every frame.
+!                                                                               However, filechannel(1) is NOT opened beforehand
+!                                                                               and is available for any random purpose
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !	OUTPUT				KIND				DESCRIPTION
 !
-!		ScatteringAngle			REAL(DP)			The scatteringangle
-!		TRVenergies1			REAL(DP),DIM(3)			The translation, rotational, and vibrational
-!										speeds of the incoming H/H2 molecule
-!										at the start of the trajectory
-!		TRVenergies2			REAL(DP),DIM(3)			The translation, rotational, and vibrational
-!										speeds of the incoming H/H2 molecule
-!										at the end of the trajectory (post-collision)
+!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
+!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
+!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
+!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -766,7 +760,7 @@ end subroutine checkTrajectory
 !		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
 !		approx_gradient			REAL(DP),DIM(3,Natoms)		The gradient recovered for a frame from the grid
 !
-!		number_of_frames		INTEGER				The total amount of frames checked over all frames
+!		number_of_frames		INTEGER				The total amount of frames checked over all cells
 !		order				INTEGER				The order of the cell checked for a frame
 !		neighbor_check			INTEGER				Signifies whether neighbor cells were check or not (0 or 1)
 !
@@ -797,8 +791,6 @@ subroutine checkMultipleTrajectories(filechannels,&
         real(dp),dimension(3,Natoms),intent(out) :: coords_initial, velocities_initial
         real(dp),dimension(3,Natoms),intent(out) :: coords_final, velocities_final
 	real(dp),dimension(Nvar) :: vals
-	
-	integer :: bond_index1, bond_index2
 
         !Grid Parameters
         integer,dimension(1+Ngrid_total),intent(in) :: filechannels
@@ -806,7 +798,7 @@ subroutine checkMultipleTrajectories(filechannels,&
 
         !Various other variables
         real(dp) :: U, KE
-        real(dp) :: min_rmsd,min_rmsd_prime
+        real(dp) :: min_rmsd
         integer :: number_of_frames,order,neighbor_check
 
 	!Incremental Integer
@@ -826,9 +818,6 @@ subroutine checkMultipleTrajectories(filechannels,&
 	velocities_initial = velocities
 
         !Always calculate the variables before accelearting
-!        call getVar1(coords,Natoms,vals(1))
-!        call getVar2(coords,Natoms,vals(2))
-
 	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
         !Accelerate the velcocities for a half step (verlet)
@@ -881,11 +870,11 @@ subroutine checkMultipleTrajectories(filechannels,&
                 coords = coords + dt * velocities
 
                 !Always calculate the variables before checking a frame or accelerating
-!                call getVar1(coords,Natoms,vals(1))
-!                call getVar2(coords,Natoms,vals(2))
-
 		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
+                !If the library forced no special labeling or duplicate additions, then
+                !that means we don't do any special label switching when using the
+                !approximated gradient and inputing the frame
                 if ((force_Duplicates) .or. (force_NoLabels)) then
                         if (accept_worst) then
                                 min_rmsd = 0.0d0
@@ -903,7 +892,9 @@ subroutine checkMultipleTrajectories(filechannels,&
 				gradient = approx_gradient
                         end if
 
+                !Otherwise, then we need to do the label switching
                 else
+                        !We need to input the frame using the labeling scheme
                         do n = 1, Natoms
                                 coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
                         end do
@@ -925,11 +916,16 @@ subroutine checkMultipleTrajectories(filechannels,&
                        else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                call Acceleration(vals,coords,gradient)
                        else
+                               !And we need to use the approximation after "unlabeling"
                                do n = 1, Natoms
                                         gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
                                end do
                        end if
                 end if
+
+!This segment that was commented out is primarily used for bug testing
+!I don't want to have to check a logical statement every time so I just
+!commented it out to save maybe a millisecond or so
 
 !if (testtrajDetailedRMSD_flag) then
 !

@@ -6,6 +6,9 @@ module PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!In a parallel system, most of these variables are shared among threads
+!Except for those declared wtih !$OMP THREADPRIVATE
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                      PATHS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -87,6 +90,8 @@ integer,parameter :: gnuplotchannel = 77
 !                      FORMATTING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!If true, the grid has unformatted files; thus, keep this constant
+!The processed files and check trajectory files are still formatted though
 logical,parameter :: unreadable_flag = .true.
 
 character(14),parameter :: FMT1 = "(2(1x,F14.10))"          !For two variables
@@ -103,22 +108,37 @@ character(6),parameter :: FMT6_pos_real0 = "(F6.5)"
 character(6),parameter :: FMT6_pos_real1 = "(F6.4)"
 character(6),parameter :: FMT6_neg_real1 = "(F6.3)"
 character(6),parameter :: FMT6_pos_int = "(I0.6)"
+
+!These formats depend on the number of atoms and bonds in the system
+!So they cannot be parameters and must be changed later
+!These are always changed in the MAIN program
 character(6) :: Nbond_text
 character(19) :: FMTinitial
 character(6) :: Natom_text
 character(19) :: FMTtimeslice
 !$OMP THREADPRIVATE(FMT2,FMT3,Nbond_text,FMTinitial,Natom_text,FMTtimeslice)
+
+!Formatting for files that are processed AFTER grid making and checking
 character(27),parameter :: FMTinformatics = "(2(F12.7),I6,2(I5),I8,F8.4)"
 character(15),parameter :: FMTsa = "((F6.4),(F8.4))"
 character(10),parameter :: FMTtrv = "(3(F11.6))"
 character(32),parameter :: FMTdata = "((F6.4),(F8.4),2(F11.6),(F13.9))"
 character(33),parameter :: FMTnow = "('Time: ',I2.2,':',I2.2,':',I2.2)"
 
+!Because we want to not use trim and adjustl all the time, and also
+!because we want nice-looking graphs, we want to store various numbers
+!in strings (with formattings as specified above)
+!But to adjust to different sizes of strings, we need to establish
+!the length of certain strings
 integer,parameter :: trajectory_text_length = 5
 integer,parameter :: scaling1_text_length = 3
 integer,parameter :: scaling2_text_length = 3
 integer,parameter :: overcrowd0_text_length = 5
 integer,parameter :: Ngrid_text_length = 3
+
+!Gridpath is one variable that must be supplied by the user and is changed
+!on the LOCAL version of a library; this is changed AUTOMATICALLY
+!But within the library itself it should stay constant
 integer,parameter :: gridpath_length = 68
 character(gridpath_length),parameter :: gridpath0 = ""
 integer, parameter :: SAfiles_text_length = gridpath_length +&
@@ -129,10 +149,13 @@ integer, parameter :: SAfiles_text_length = gridpath_length +&
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !The number of atoms in the system
+!Natoms is another variable that must be supplied by the user and is changed
+!on the LOCAL version of a library; this must be changed MANUALLY
 integer,parameter :: Natoms = 3
 integer,parameter :: Ncoords = Natoms*3
 
 !The number of variables in use
+!Right now, we only support a two-variable grid (easier to script and visualize)
 integer,parameter :: Nvar = 2
 integer,parameter :: Nvar_next = Nvar + 1
 integer,parameter :: Ncoordsvals = Nvar+Ncoords
@@ -148,6 +171,9 @@ integer,parameter :: Ngradientcoordsvals = Nvar+Ncoords*2
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                     GRID PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!Many of the variables below are supplied by the user and are changed
+!on the LOCAL version of alibrary; this is done AUTOMATICALLY
 
 !Norder_max controls how many children generation we will make
 integer,parameter :: Norder_max = 2
@@ -283,6 +309,9 @@ logical,parameter :: force_NoLabels = .false.
 !                   MULTI-GRID PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Ntraj_max, Ngrid_max, and Ngrid_check_min are three variables supplied by
+!the user to change the grid-making procedure; this is updated AUTOMATICALLY
+
 !The number of trajectories we add to a grid
 integer,parameter :: Ntraj_max = 1000
 !The maximum amount of time (seconds) we are willing to wait for a single trajectory to finish
@@ -290,6 +319,7 @@ real,parameter :: trajectory_CPU_time_max = 60.0
 !The number of grids we will make
 integer :: Ngrid_max = 1
 !$OMP THREADPRIVATE(Ngrid_max)
+
 !The number of trajectories to make before checking the grid-making progress
 integer,parameter :: Ngrid_check_min = 1
 integer,parameter :: Ngrid_check = max(Ntraj_max/10,Ngrid_check_min)
@@ -317,6 +347,16 @@ integer, dimension(counter3_max) :: counter3
 !                      TRAVERSAL
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Traversal variables deal with counting how many cells are visited by a trajectory;
+!The first column is counter0/1_index, the second column is thread (for parallel programming)
+
+!This is not implemented for grid-making but is for grid-checking
+!Right now, we only have output for traversal1 (number of subcells traversed)
+!but we can easily implement traversal0 (number of parent cells traversed) output
+
+!Traversal is slightly costly so if you're not interested in traversal,
+!please flag this false MANUALLY
+
 logical, parameter :: traversal_flag = .false.
 integer, allocatable :: traversal0(:,:)
 integer, allocatable :: traversal1(:,:)
@@ -325,6 +365,10 @@ integer, allocatable :: traversal1(:,:)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                  GRID FORMATTING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!Because Ngrid is a shared variable, but it is often manipulated within runTrajectory,
+!we need each thread to have its own private copy of Ngrid
+!(and consequently, gridpath1 and gridpath2)
 
 integer :: Ngrid
 character(gridpath_length+Ngrid_text_length+1) :: gridpath1
@@ -335,12 +379,25 @@ character(gridpath_length+Ngrid_text_length+1+5) :: gridpath2
 !                    PLOT FORMATTING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!These are some strings that are used often in analyzeScatteringAngle;
+!because they are used often, I just define them here instead of redefining
+!them each time inside of each subroutine
+
 character(6) :: checkstateTrajectory
 character(6) :: angle1descriptor,angle2descriptor,bond1descriptor,scatteringdescriptor
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                    TRAJECTORY
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!Every trajectory, we keep track of various metadata about the trajectory and file system in general like:
+!          Ntraj: the "ID" of the trajectory
+!  Ntraj_allowed: I've forgotten what this is
+!          Nfile: the number of files in the filesystem
+!          steps: the number of steps that have passed for a trajectory
+!  heatmap_steps: the number of steps that have passed in the trajectory (for heatmap_evolution)
+!        Norder1: the number of subcells (cells of order = 1) that were checked
+!header_max_flag: a flag that signals that counter1 is full (need to check this later)
 
 integer :: Ntraj,Ntraj_allowed,Nfile,steps,heatmap_steps,Norder1
 logical :: header_max_flag

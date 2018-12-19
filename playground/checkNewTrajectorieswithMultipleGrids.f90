@@ -29,7 +29,8 @@
 !               GNUPLOTCHANNEL                  OPEN, WRITE, CLOSE
 !               FILECHANNEL1                    OPEN, WRITE, CLOSE
 !		TRAJECTORIESCHANNEL		OPEN, WRITE, CLOSE
-!		FILECHANNELS(GRID#)		OPEN, RUNTRAJECTORY, CLOSE
+!		FILECHANNELS(1)          	none
+!		FILECHANNELS(2:1+Ngrid_total)	OPEN, RUNTRAJECTORY, CLOSE
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -422,8 +423,12 @@ end if
 !$OMP END SINGLE
 !$OMP BARRIER
 
+!If we are checking traversal, allocate the necessary arrays
 if (traversal_flag) allocate(traversal0(Ngrid_total,counter0_max),&
                              traversal1(Ngrid_total,counter1_max))
+
+!BEFORE going inside the parallel do loop, each thread should
+!instantiate its own filechannels
 allocate(filechannels(1+Ngrid_total))
 
 !$OMP DO
@@ -441,7 +446,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         else
 
 	do n = 1, Nbonds
-		!The orientation of the H2
+		!The orientation of the H2 (two angles)
 		do
 			random_num1 = rand() - 0.5d0
 			random_num2 = rand() - 0.5d0
@@ -455,6 +460,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 			exit
 		end do
 
+                !The vibrational energy of the H2 (bond length)
                 do
                         random_num1 = rand() * upsilon_max
                         random_num2 = rand()
@@ -466,6 +472,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                 J_factor3 = J_factor1 / (initial_bond_distance**2)
                 probJ_max = sqrt(2*J_factor3) * exp(J_factor3*0.25d0 - 0.5d0)
 
+                !The rotational energy of the H2 (rotational speed)
                 do
                         random_num1 = rand() * J_max
                         random_num2 = rand() * probJ_max
@@ -474,10 +481,13 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                         initial_rotational_energy = (random_num1) * (random_num1 + 1.0d0) * J_factor2
                         exit
                 end do
-
-                random_num1 = rand()
                 initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
+
+                !The rotational orientation of the H2 (an angle)
+                random_num1 = rand()
                 initial_rotation_angle = random_num1*pi2 - pi
+
+                !The rotational start time of the H2 (a period of time)
                 bond_period_elapsed = rand()
 
                 !All of this is stored for later use in the InitialSetup of runTrajectory
@@ -545,7 +555,8 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                               ((velocities_final(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
-        !For traversal
+        !For traversal, we can see how many cells the trajectory traversed
+        !merely by figuring out how many nonzero values exist (since 0s represent no traversal)
         if (traversal_flag) then
                 open(filechannel1,file=gridpath0//prefix_text//"traversal.dat",position="append")
                 write(filechannel1,FMT=*) steps, ((sum(traversal1(i,:))),i=1,Ngrid_total)
@@ -558,7 +569,9 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
+        !If this flag is one, we are also checking the RMSD of a trajectory per timestpe
+        !This is very expensive so please don't turn this on
+        !(and you have to manually turn it on in checkMultipleTrajectories anyway)
 	if (testtrajRMSD_flag) then
 		open(gnuplotchannel,file=gridpath0//gnuplotfile)
 		write(gnuplotchannel,*) 'set term pngcairo size 600, 600'
@@ -610,7 +623,13 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!Specify how many trajectories we will be analyzing
+!We communicate to analyzeScatteringAngles and others through the
+!shared variable Ntraj
 Ntraj = Ntesttraj
+
+!Initialize each maximum and minimum value
+!These are also shared among modules
 max_TranslationalEnergy = 0.0d0
 max_absenergychange = 0.0
 min_absenergychange = 1.0e9
@@ -619,7 +638,7 @@ min_relenergychange = 1.0e9
 max_rotenergychange = 0.0
 min_rotenergychange = 1.0e9
 
-!If we have other files we need to compare, then we need to comb through those
+!If we have a list of files we need to compare, then we need to comb through those
 if (comparison_flag) then
 
         if (comparison_number < 1) then
@@ -633,13 +652,20 @@ if (comparison_flag) then
                 return
         end if
 
+        !These files are stored in allprefixes and the length of each file
+        !is stored in alllengths
         call postProcess(allprefixes(1:alllengths(1)))
         do i = 1, comparison_number-1
                 call postProcess(allprefixes(1+sum(alllengths(1:i)):sum(alllengths(1:i+1))))
         end do
+
+!Otherwise, we do not need to process all the files in the library
 else
+        !We only need to look at the files if we are actually analyzing something
         if (percentthreshold_flag .or. testtrajSA_flag .or. testheatmapSA_flag) then
              call postProcess(prefix_text)
+
+        !Otherwise, we can just exit early
         else
                 print *, ""
                 call itime(now)
@@ -662,22 +688,28 @@ if (comparison_flag .or. trueSA_flag .or. testtrajSA_flag .or. testheatmapSA_fla
 
 	old_filename = ""
 	do Ngrid = 1, Ngrid_max
+                !Prepare the name of the file; here we are uniquely identifying the
+                !file by how many trajectories we've accumulated and put in it
+	        Ntraj = Ngrid*Ntraj_max
 		write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 		write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-
-		!First, post process
-	        Ntraj = Ntraj_max
-        	call postProcess(Ngrid_text//"/Initial")
-
-	        Ntraj = Ngrid*Ntraj_max
 		write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
 		write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
 
+		!Post process the file; here we are telling the subroutine that
+                !there are Ntraj_max trajectories in the file
+	        Ntraj = Ntraj_max
+        	call postProcess(Ngrid_text//"/Initial")
+
+                !We create this unique file that has all trajectories up until that grid
+                !so beforehand we need to concatenate all the old trajectories with the new file
 	        if (trim(adjustl(old_filename)) /= "") then
 	                new_filename = gridpath0//Ngrid_text//"/Initial"//Ntraj_text//SATRVfile
 	                call system("cat "//trim(adjustl(old_filename))//" "//&
 	                            gridpath0//Ngrid_text//"/Initial"//SATRVfile//" > "//new_filename)
 	                old_filename = new_filename
+
+                !If this is the first grid, then we just copy the new file to this unique file
 	        else
 	                old_filename = gridpath0//Ngrid_text//"/Initial"//Ntraj_text//SATRVfile
 	                call system("cp "//gridpath0//Ngrid_text//"/Initial"//SATRVfile//" "//trim(adjustl(old_filename)))
@@ -690,9 +722,9 @@ if (comparison_flag .or. trueSA_flag .or. testtrajSA_flag .or. testheatmapSA_fla
         !Finally, we look at the scattering angle and energy change distributions of the grid
         !with the maximums and minimums gathered from above
         !and see whether they converge; these plots will be used for reference
+        Ntraj = Ntesttraj
         write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
         write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-        Ntraj = Ntesttraj
         write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
         write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
         
@@ -706,6 +738,10 @@ end if
 !In a comparison run, we don't look at any of the other flags
 if (comparison_flag) then
 
+        !The name the user gives us tells us
+        !  1) which column of the SATRV file to look in
+        !  2) how to name our output file
+        !The user may also give user-defined bounds to the distribution
         if (trim(adjustl(comparison_SATRVname)) == "ScatteringAngle") then
                 comparison_SATRVcolumn = 1
                 lowerlimit = 0.0
@@ -736,15 +772,20 @@ if (comparison_flag) then
 	print *, "   Making plot: ", "Comparison_"//trim(adjustl(Ntraj_text))//trim(adjustl(comparison_SATRVname))
 	print *, ""
 
+        !We now need to bin each set of trajectories we want to compare
         call getScatteringAngles1(allprefixes(1:alllengths(1)),"")
         do i = 1, comparison_number-1
                 call getScatteringAngles1(allprefixes(1+sum(alllengths(1:i)):sum(alllengths(1:i+1))),"")
         end do
 
+        !If the upper and lower limit are equal, that is an internal sign that means
+        !that the user wants to use the natural bounds of the distribution
         if (comparison_upperlimit /= comparison_lowerlimit) then
                 call getComparedScatteringAngles(comparison_lowerlimit,comparison_upperlimit,&
                          "Comparison_"//trim(adjustl(Ntraj_text))//trim(adjustl(comparison_SATRVname)),&
                          comparison_SATRVcolumn,trim(adjustl(comparison_SATRVname)))
+
+        !Otherwise, that means we must use the user-defined bounds
         else
                 call getComparedScatteringAngles(lowerlimit,upperlimit,&
                          "Comparison_"//trim(adjustl(Ntraj_text))//trim(adjustl(comparison_SATRVname)),&

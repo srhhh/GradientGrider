@@ -1,13 +1,109 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       MODULE
+!               VARIABLES
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This modules defines the collective variables used to
+!               grid the library
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILECHANNELS                    ACTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINES                     ARGUMENTS               KIND
+!
+!               getVarsMaxMin                   coords                  intent(in),real(dp),dim(3,Natoms)
+!                                               Natoms                  intent(in),integer
+!                                               vals                    intent(out),real(dp),dim(Nvar)
+!                                               Nvar                    intent(in),integer
+!                                               labelling               intent(out),integer,dim(Natoms)
+!
+!               getDistanceSquared              coord1                  intent(in),real(dp),dim(3)
+!                                               coord2                  intent(in),real(dp),dim(3)
+!                                               d                       intent(out),real(dp)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       CALLS                           MODULE
+!
+!               getDistanceSquared            VARIABLES
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 module VARIABLES
 use DOUBLE
 implicit none
-integer,dimension(4,2),parameter :: BOND_LABELS_TENTATIVE = reshape((/ 1, 2, 1, 2, &
-                                                                       3, 4, 4, 3 /),    (/ 4, 2 /))
-
-!This module defines the variables we're using to 'grid' the system
-!and organize the data
-
+!integer,dimension(4,2),parameter :: BOND_LABELS_TENTATIVE = reshape((/ 1, 2, 1, 2, &
+!                                                                       3, 4, 4, 3 /),    (/ 4, 2 /))
 contains
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               getVarsMaxMin
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine gets the collective variables of a frame
+!
+!               This subroutine assumes this is a TWO variable griding
+!
+!               Currently, there are two main segments, one for if this is a H-H2
+!               system and one for if this is a H2-H2 system; to switch back and
+!               forth, you must manually comment and uncomment the respective
+!               segments
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               coords                          REAL(DP),DIM(3,Natoms)          The coordinates of the frame
+!               Natoms                          INTEGER                         The number of atoms in the system
+!               Nvar                            INTEGER                         The number of variables in the grid
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               vals                            REAL(DP),DIM(Nvals)             The variables defining the frame
+!               labelling                       INTEGER,DIM(Natoms)             The labeling scheme used to account for atom
+!                                                                               indistinguishability
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               length1                         REAL(DP)                        USED IN THE  H - H2 SYSTEM
+!               length2                         REAL(DP)                        USED IN THE  H - H2 SYSTEM
+!
+!               lengths                         REAL(DP),DIM(4)                 USED IN THE H2 - H2 SYSTEM
+!               min1_length                     INTEGER                         USED IN THE H2 - H2 SYSTEM
+!               min2_length                     INTEGER                         USED IN THE H2 - H2 SYSTEM
+!               max_length                      INTEGER                         USED IN THE H2 - H2 SYSTEM
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 subroutine getVarsMaxMin(coords,Natoms,vals,Nvar,labelling)
 implicit none
@@ -43,13 +139,27 @@ real(dp) :: length1,length2
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! H - H2  (normal)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!In this labeling scheme, we implicitly assume the nonbonded hydrogen
+!is the 1st atom (as it is when I define it in PHYSICS)
+!Otherwise, make sure you label it as the first atom
+
+!Get the length between atoms 1 and 2
 call getDistanceSquared(coords(:,1),coords(:,2),length1)
+
+!Get the length between atoms 1 and 3
 call getDistanceSquared(coords(:,1),coords(:,3),length2)
+
+!If length1 < length2, then the 2nd atom must be closest to the
+!nonbonded hydrogen, so it is labeled as 2nd
 if (length1 < length2) then
 	labelling(2) = 2
 	labelling(3) = 3
 	vals(1) = sqrt(length1)
 	vals(2) = sqrt(length2)
+
+!Otherwise, the 2nd atom is the farthest from the
+!nonbonded hydrogen, so it is labeled as 3rd
 else
 	labelling(2) = 3
 	labelling(3) = 2
@@ -60,10 +170,22 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! H2 - H2 (normal)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!First, get all lengths between nonbonded hydrogen
+!!In PHYSICS, we define nonbonded hydrogen pairs by rows in the variable
+!!BOND_LABELS_TENTATIVE; consequently, this variable must be 4x2 in dimension
+!
 !do i = 1, 4
 !	call getDistanceSquared(coords(:,BOND_LABELS_TENTATIVE(i,1)),&
 !				coords(:,BOND_LABELS_TENTATIVE(i,2)),lengths(i))
 !end do
+!
+!!Next, locate the MIN, 2nd MIN, and MAX distance between nonbonded hydrogens
+!!(Bear with me, this actually works)
+!!Basically, because there are only 4 lengths, we can reduce this to
+!!a psuedo-case statement that only checks whether the last two lengths
+!!(between 1,4 and 3,2) are 1) lower, 2) in-between, or 3) greater
+!!than the established MIN and MAX between the first two lengths
 !
 !min1_length = minloc(lengths(1:2),1)
 !min2_length = 3 - min1_length
@@ -82,8 +204,15 @@ end if
 !	end if
 !end do
 !
+!!Unfortunately, because of how we define the variable and grid, we
+!!must take two square roots here
+!
 !vals(1) = sqrt(lengths(min1_length))
 !vals(2) = sqrt(lengths(max_length))
+!
+!!Now, on to labeling
+!!If the MIN AND MAX lengths both involve the same hydrogen then
+!!we label that hydrogen as the first atom
 !
 !start_label = 0
 !do i = 1, 4
@@ -92,6 +221,9 @@ end if
 !		start_label = i
 !	end if
 !end do
+!
+!!If not, then we label the first hydrogen as the hydrogen involved
+!!in both the MIN AND 2nd MIN lengths
 !
 !if (start_label == 0) then
 !	do i = 1, 4
@@ -102,6 +234,9 @@ end if
 !	end do
 !end if
 !
+!!After deciding the first atom, we label the second atom
+!!as the hydrogen not bonded to the first atom (using minimal length)
+!
 !labelling(1) = start_label
 !if (BOND_LABELS_TENTATIVE(min1_length,1) == start_label) then
 !	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,2)
@@ -109,11 +244,17 @@ end if
 !	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,1)
 !end if
 !
+!!Then we label the third atom to be the hydrogen not bonded
+!!to the first atom (using maximal length)
+!
 !if (BOND_LABELS_TENTATIVE(max_length,1) == start_label) then
 !	labelling(3) = BOND_LABELS_TENTATIVE(max_length,2)
 !else
 !	labelling(3) = BOND_LABELS_TENTATIVE(max_length,1)
 !end if
+!
+!!And the fourth atom must be whichever index
+!!we have not used yet, which is 4+3+2+1 - (x1+x2+x3)
 !
 !labelling(4) = 10 - sum(labelling(1:3))
 
@@ -246,7 +387,39 @@ end subroutine getVar6
 
 
 
-!Gets the squared distance between two sets of xyz xoordinates
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               getDistanceSquared
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine gets the distance (squared) between two atoms
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               coord1                          REAL(DP),DIM(3)                 The coordinates of the first atom
+!               coord2                          REAL(DP),DIM(3)                 The coordinates of the second atom
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               d                               REAL(DP)                        The distance between the two atoms
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine getDistanceSquared(coord1,coord2,d)
 implicit none
 real(dp), dimension(3), intent(in) :: coord1, coord2

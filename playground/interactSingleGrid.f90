@@ -67,15 +67,14 @@
 !
 !       CALLS                           MODULE
 !
-!               getVar3                         VARIABLES
-!               getVar4                         VARIABLES
+!               getVarMinMax                    VARIABLES
 !
 !		divyUp				interactSingleGrid
 !		getNeighbors			interactSingleGrid
 !		getRMSD				interactSingleGrid
 !
 !		rmsd				ls_rmsd_original
-!		matmul				PHYSICS
+!		matmul				INTRINSIC
 !
 !		qsort2				FUNCTIONS
 !
@@ -835,20 +834,22 @@ end subroutine addState
 !
 !       INPUT                           KIND                            DESCRIPTION
 !
+!               vals                            REAL(DP),DIM(Nvar)              The collective variables used to bin a frame
 !               coords                          REAL(DP),DIM(3,Natoms)          The coordinates defining the reference frame
+!                                                                               such as minimum rmsd
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       OUTPUT                          KIND                            DESCRIPTION
 !
-!		min_rmsd			REAL(DP)			The minimum rmsd found between the refence frame and
-!										all frames in the subcell associated with it
+!               min_rmsd                        REAL(DP)                        The minimum rmsd found between the refence frame and
+!                                                                               all frames in the subcell associated with it
 !               gradient                        REAL(DP),DIM(3,Natoms)          The gradient associated with a frame
 !
-!		number_of_frames		INTEGER				The total number of frames checked for the refernce frame
-!		order				INTEGER				The order of the subcell that was checked
-!		neighbor_check			INTEGER				May either be 0 or 1 depending on whether the
-!										subcells surrounding the original subcell were checked
+!               number_of_frames                INTEGER                         The total number of frames checked for the refernce frame
+!               order                           INTEGER                         The order of the subcell that was checked
+!               neighbor_check                  INTEGER                         May either be 0 or 1 depending on whether the
+!                                                                               subcells surrounding the original subcell were checked
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -1804,6 +1805,44 @@ end subroutine getRMSD
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               addSingle
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine adds a frame and its gradient to a cell
+!               It also takes care of any relabeling
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               vals                            REAL(DP),DIM(Nvar)              The collective variables of a frame
+!               coords                          REAL(DP),DIM(3,Natoms)          The coordinates of a frame
+!               gradient                        REAL(DP),DIM(3,Natoms)          The gradient of a frame
+!               filename                        CHARACTER(*)                    The name of a cell
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               permutation                     INTEGER,DIM(Natoms)             The order of atom index labels
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               filename                        DAT                             A file holding the frames of a cell
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 subroutine addMultiples(vals,coords,gradient,filename)
 use PARAMETERS
@@ -1836,6 +1875,42 @@ end if
 close(filechannel1)
 
 end subroutine addMultiples
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               addSingle
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine adds a frame and its gradient to a cell
+!               It also takes care of any relabeling
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               vals                            REAL(DP),DIM(Nvar)              The collective variables of a frame
+!               coords                          REAL(DP),DIM(3,Natoms)          The coordinates of a frame
+!               gradient                        REAL(DP),DIM(3,Natoms)          The gradient of a frame
+!               filename                        CHARACTER(*)                    The name of a cell
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               filename                        DAT                             A file holding the frames of a cell
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 subroutine addSingle(vals,coords,gradient,filename)
