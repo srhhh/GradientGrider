@@ -87,29 +87,29 @@ force_NoLabels=.false.
 heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
-testtraj_flag=.true.
+testtraj_flag=.false.
 testtrajRMSD_flag=.false.
-percentthreshold_flag=.false.
+percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.222000d0
-threshold_rmsd1=.222000d0
+threshold_rmsd=.005000d0
+threshold_rmsd1=.005000d0
 threshold_rmsd2=.100000d0
 threshold_rmsd3=.100000d0
 threshold_rmsd4=.050000d0
 threshold_rmsd5=.050000d0
-reject_flag=.true.
+reject_flag=.false.
 accept_first=.false.
 accept_worst=.false.
-Ngrid_cap=2
+Ngrid_cap=4
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=8
+Ntrajectories=350
 Nthreads=1
 
 #These are flags relating to using old data
-useolddata_flag=.false.
+useolddata_flag=.true.
 useoldinitialbonddata_flag=.false.
 initialbondname="001omegaA.20000"
 

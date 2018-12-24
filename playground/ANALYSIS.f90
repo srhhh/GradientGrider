@@ -66,9 +66,15 @@ logical,parameter :: testtraj_flag = .true.
 
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD
-   !One plot will be produced per grid
    logical,parameter :: percentthreshold_flag = .true.
    integer,parameter :: RMSD_Nbins = 50
+
+   !One plot will be produced per grid if percentthrshold_key = 0
+   !Otherwise, percentthreshold_key is translated into binary
+   !The string of 1s and 0s dictate which number of grids will be
+   !plotted and which won't
+   ! ex. 27 = 11011 = 1, 2, 4, and 5 grids will be plotted
+   integer,parameter :: percentthreshold_key = 0
 
       !Set the threshold RMSD to be used for any rejection method
       !real(dp),parameter :: !threshold_rmsd! = !.200100d0

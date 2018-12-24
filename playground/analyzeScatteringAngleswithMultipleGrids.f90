@@ -8,8 +8,8 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       PURPOSE
-!		This module simply plots scattering angles
-!		from specified DAT files
+!		This module processes outputs of trjaectories, gains information like the
+!		scattering angle and energy change decomposition, and plots them
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -18,6 +18,9 @@
 !
 !               GNUPLOTCHANNEL                  OPEN, WRITE, CLOSE
 !               TRAJECTORIESCHANNEL             OPEN, WRITE, CLOSE
+!               FILECHANNEL1                    OPEN, WRITE/READ, CLOSE
+!               FILECHANNEL2                    OPEN, WRITE/READ, CLOSE
+!               FILECHANNEL3                    OPEN, WRITE/READ, CLOSE
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -25,7 +28,26 @@
 !       SUBROUTINES                     ARGUMENTS               KIND
 !
 !               getScatteringAngles1            prefix_filename         intent(in),character(*)
-!                                               JPGfilename             intent(in),character(*)
+!                                               PNGfilename             intent(in),character(*)
+!
+!               getConvergenceImage             lowerlimit              intent(in),real(dp)
+!                                               upperlimit              intent(in),real(dp)
+!                                               SATRVcolumn             intent(in),integer
+!                                               SATRVname               intent(in),character(*)
+!
+!               getScatteringAngles2            prefix_filename         intent(in),character(*)
+!                                               PNGfilename             intent(in),character(*)
+!
+!               getInitialImages                prefix_filename         intent(in),character(*)
+!                                               PNGfilename             intent(in),character(*)
+!
+!               getComparedScatteringAngles     lowerlimit              intent(in),real(dp)
+!                                               upperlimit              intent(in),real(dp)
+!                                               imagename               intent(in),character(*)
+!                                               SATRVcolumn             intent(in),integer
+!                                               SATRVname               intent(in),character(*)
+!
+!               postProcess                     prefix_filename         intent(in),character(*)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -38,6 +60,31 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath0//prefix_filename//    DAT                             Stores the initial conditions for the set of
+!                 initialfile                                                   trajectories associated with this prefix
+!               gridpath0//prefix_filename//    DAT                             Stores the initial and final frames of a
+!                 timeslicefile                                                 set of trajectories corresponding to the
+!                                                                               specified prefix
+!               gridpath0//prefix_filename//    DAT                             Stores the scattering angle and energy change
+!                 SATRVfile                                                     decomposition for a set of trajectories
+!                                                                               corresponding to the specified prefix
+!               gridpath0//prefix_filename//    DAT                             Same as the SATRV file but the values are
+!                 binnedSATRVfile                                               stored as integers corresponding to some
+!                                                                               bin in a specific binning
+!               gridpath1//Initial//#traj//     DAT                             Stores the scattering angle and energy change
+!                 binnedSATRVfile                                               decomposition for all trajectories in the library;
+!                                                                               its is already binned
+!               gridpath0//RMSD//SATRVname      DAT                             Stores the averages, devations, and other data
+!                 cumulativefile                                                associated with a particular SATRV for all
+!                                                                               trajectories in the library for some sampling
+!               gridpath0//Adjusted//           DAT                             Similar to cumulative file but normalized and
+!                 SATRVname                                                     dependent only on the number of sets and number
+!                                                                               of trajectories per set
+!               gridpath0//Convergence//        PNG                             The reference distribution of the library for
+!                 SATRVname                                                     some sampling and some SATRV; also listed are
+!                                                                               the RMSD, KRP, and running average
+!               gridpath0//PNGfilename          PNG                             Generic format for image naming
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -68,33 +115,68 @@ contains
 !       INPUT                           KIND                            DESCRIPTION
 !
 !               prefix_filename                 CHARACTER(*)                    The prefix defining a set of trajectories
-!               JPGfilename                     CHARACTER(*)                    The suffix we use for the output JPG
+!               PNGfilename                     CHARACTER(*)                    The suffix we use for the output PNG
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       OUTPUT                          KIND                            DESCRIPTION
 !
-!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
-!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
-!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
-!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               Ntraj                           INTEGER                         The number of trajectories in this
+!                                                                               set of trajectories, or the "sampling"
+!               energychangeBins                INTEGER                         The number of bins used for distributions
+!                                                                               involving energy change
+!               energyBins                      INTEGER                         The number of bins used for distributions
+!                                                                               involving the final translational energy
+!               angleBins                       INTEGER                         The number of bins used for distributions
+!                                                                               involving scattering angle
+!               angleratio                      INTEGER                         The ratio between the size of the scattering
+!                                                                               angle distribution and heatmap;
+!                                                                               The heatmap bins should be SMALLER
+!               angle_energy_bins               INTEGER,                        The array storing binned scattering angle
+!                                               DIM(angleBins,energyBins)       data
+!
+!               sizeAbsEnergyBin                REAL(DP)                        The size of a bin for the distribution
+!                                                                               of absolute translational energy change
+!               sizeRelEnergyBin                REAL(DP)                        The size of a bin for the distribution
+!                                                                               of relative translational energy change
+!               sizeRotEnergyBin                REAL(DP)                        The size of a bin for the distribution
+!                                                                               of rotational energy change
+!               sizeDeltaEnergyBin              REAL(DP)                        The size of a bin for the distribution
+!                                                                               of all kinetic energy changes
+!
+!               sizeEnergyBin                   REAL(DP)                        The size of a bin for the distribution
+!                                                                               of final translational energy
+!               sizeAngleBin                    REAL(DP)                        The size of a bin for the distribution
+!                                                                               of scattering angles
+!               angleslice                      REAL(DP)                        The dividing factor that slices the
+!                                                                               scattering angle heatmap into a more
+!                                                                               visually pleasing figure
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       FILES                             FILETYPE                      DESCRIPTION
 !
-!               gridpath0//trajectory           XYZ                             Coordinates to view the trajectory over time;
-!                                                                               currently just for bug-testing (set to false)
+!               gridpath0//prefix_filename//    DAT                             Stores the scattering angle and energy change
+!                 SATRVfile                                                     decomposition for a set of trajectories
+!                                                                               corresponding to the specified prefix
+!               gridpath0//prefix_filename//    DAT                             Same as the SATRV file but the values are
+!                 binnedSATRVfile                                               stored as integers corresponding to some
+!                                                                               bin in a specific binning
+!               gridpath0//prefix_filename//    PNG                             Scattering angle and energy change decompositon
+!                 PNGfilename                                                   distributions for a set of trajectories
+!                                                                               corresponding to the specified prefix
+!               gridpath0//prefix_filename//    PNG                             Scattering angle heatmap for a set of
+!                 Heatmap_//PNGfilename                                         trajectories corresponding to the specified
+!                                                                               prefix
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-subroutine getScatteringAngles1(prefix_filename,JPGfilename)
+subroutine getScatteringAngles1(prefix_filename,PNGfilename)
 use PARAMETERS
 use PHYSICS
 use ANALYSIS
@@ -104,10 +186,10 @@ implicit none
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: prefix_filename
 
-!FORMAT OF JPG FILES TO BE MADE
-character(*), intent(in) :: JPGfilename
+!FORMAT OF PNG FILES TO BE MADE
+character(*), intent(in) :: PNGfilename
 
-!FORMATTING OF JPG FILES
+!FORMATTING OF PNG FILES
 character(5) :: variable_length_text
 character(5) :: variable_length_text1, variable_length_text2
 character(Ngrid_text_length) :: Ngrid_text
@@ -135,13 +217,15 @@ integer :: iostate
 integer :: i, j, k
 
 
-!The plots are named starting from Ntraj_max by increments of Ntraj_max (the number of trajectories)
+!The plots are named starting with Ntraj (the number of trajectories)
 write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
 write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
 
 allocate(angle_energy_bins(angleBins,energyBins))
 angle_energy_bins = 0
 
+!The size of the bins, of course, depend on how many bins we have as
+!well as the bounds of the distribution
 sizeAbsEnergyBin = (max_absenergychange-min_absenergychange) / energychangeBins
 sizeRelEnergyBin = (max_relenergychange-min_relenergychange) / energychangeBins
 sizeRotEnergyBin = (max_rotenergychange-min_rotenergychange) / energychangeBins
@@ -151,6 +235,7 @@ sizeDeltaEnergyBin = (max(max_absenergychange,max_relenergychange,max_rotenergyc
 sizeEnergyBin = max_TranslationalEnergy / (energyBins)
 sizeAngleBin = pi / (angleBins)
 
+!If we are doing this for a comparison, we may have user-defined bounds
 if (comparison_flag .and. (comparison_upperlimit /= comparison_lowerlimit)) then
 
 if (trim(adjustl(comparison_SATRVname)) == "ScatteringAngle") then
@@ -166,18 +251,25 @@ end if
 
 end if
 
+!Now we can actually bin them
+!Here we open up the SATRVfile (which has the observables) and the binnedSATRVfile
+!(which has the observables after binning)
 open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
 open(filechannel2,file=gridpath0//prefix_filename//binnedSATRVfile)
 do i = 1, Ntraj
+
+        !First, we read the line
         read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real, &
 						      abs_energychange, rel_energychange, rot_energychange
 
+        !Then we figure out what bin it should be in
 	ScatteringAngle = ceiling(ScatteringAngle_real / sizeAngleBin)
 	TranslationalEnergy = ceiling((TranslationalEnergy_real)/ sizeEnergyBin)
 	AbsEnergyChange = ceiling((abs_energychange)/sizeAbsEnergyBin)
 	RelEnergyChange = ceiling((rel_energychange)/sizeRelEnergyBin)
 	RotEnergyChange = ceiling((rot_energychange)/sizeRotEnergyBin)
 
+        !If the bin is out of bounds, put it back in bounds
 	if (ScatteringAngle > angleBins) ScatteringAngle = angleBins
 	if (ScatteringAngle == 0) ScatteringAngle = 1
 
@@ -193,9 +285,14 @@ do i = 1, Ntraj
 	if (RotEnergyChange > energychangeBins) RotEnergyChange = energychangeBins
 	if (RotEnergyChange == 0) RotEnergyChange = 1
 
+        !For the scattering angle heatmap, we also store these values in another array
 	angle_energy_bins(ScatteringAngle,TranslationalEnergy) = &
                    angle_energy_bins(ScatteringAngle,TranslationalEnergy) + 1
 
+        !We have two separate bin sizes for the scattering angle heatmap and the
+        !scattering angle distribution. The former have SMALLER bins
+        !Thus, we can get the binning of the latter by dividing by some factor which
+        !I call "angle_ratio": the ratio between the sizes of these two binnings
 	write(filechannel2,FMT=*) ceiling((ScatteringAngle-0.5)/angle_ratio),&
                                   TranslationalEnergy,AbsEnergyChange,RelEnergyChange,RotEnergyChange
 end do
@@ -203,7 +300,7 @@ close(filechannel1)
 close(filechannel2)
 
 
-!This is the gnuplot code to make the plots
+!This is the gnuplot code to make the scattering angle and energy change (SATRV) plots
 !This is only plotted if there is no comparison active
 
 if (comparison_flag) then
@@ -213,7 +310,7 @@ end if
 
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath0//prefix_filename//JPGfilename//'.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath0//prefix_filename//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set multiplot layout 4,1'
 write(gnuplotchannel,*) 'set title "Scattering Angle Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories"'
@@ -276,9 +373,11 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($5-0.5)+min_E):(1.0) smooth frequency w boxes'
 close(gnuplotchannel)
 
-!And then we just input it into gnuplot.exe
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
+!For the scattering angle - final translational energy heatmap, all we need
+!to do is write the values of angle_energy_bins onto a file and plot it
+!For convenience, I also record the maximum frequency in the array
 occurence_max = maxval(angle_energy_bins)
 open(filechannel1,file=gridpath0//temporaryfile1)
 do i = 1, angleBins/angle_slice+1
@@ -290,11 +389,12 @@ end do
 close(filechannel1)
 deallocate(angle_energy_bins)
 
-!This is the gnuplot code to make the plots
+!This is the gnuplot code to make the scattering angle - final translational energy heatmap
+!This took A LOT of fine-tuning to make it look nice, so please don't change it
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//prefix_filename//'HeatMap_'//&
-                        JPGfilename//'.png"'
+                        PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" offset 0,-20'
 !write(gnuplotchannel,*) 'set lmargin at screen 0.05'
 !write(gnuplotchannel,*) 'set rmargin at screen 0.85'
@@ -399,6 +499,88 @@ end subroutine getScatteringAngles1
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               getConvergenceImage
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine takes some binning of the library's trajectories and finds
+!               how it converges; it produces error bars along the way which are stored
+!               in a separate file
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               lowerlimit                      REAL(DP)                        The lower bound of the distribution
+!               upperlimit                      REAL(DP)                        The upper bound of the distribution
+!               SATRVcolumn                     INTEGER                         The column in the SATRV file this distribution
+!                                                                               is recorded in
+!               SATRVname                       CHARACTER(*)                    The name of the distribution (needs to be exact)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               Ntesttraj                       INTEGER                         The number of trajectories per sample
+!                                                                               set of trajectories, or the "sampling"
+!               scatteringangleBins             INTEGER                         The number of bins used for distributions
+!                                                                               (all of them, in this case)
+!               bin_width                       REAL(DP)                        The size of the binning
+!               Nsamples_max                    INTEGER                         The number of samples the library has
+!                                                                               in total
+!
+!               binTotal                        INTEGER,DIM(                    The size of each bin of the distribution
+!                                               scatteringangleBins,            for every sample
+!                                               Nsamples_max)
+!               binCumulative                   INTEGER,DIM(                    The size of each bin of the cumulative
+!                                               scatteringangleBins,            distribution for every sample; this is
+!                                               Nsamples_max)                   used in the Kolmogorov-Smirnov difference
+!               sampleSize                      INTEGER,DIM(                    The number of trajectories per sample;
+!                                               Nsamples_max)                   (should be constant)
+!
+!               binAverage                      REAL,DIM(                       The average per bin over all samples;
+!                                               scatteringangleBins)            this is used in the final distribution
+!               binSD                           REAL,DIM(                       The standard deviation per bin over all samples;
+!                                               scatteringangleBins)            this is used in the final distribution
+!
+!               sampleKS                        REAL,DIM(                       The Kolmogorov-Smirnov difference per
+!                                               Nsamples_max)                   sample
+!               sampleRMSD                      REAL,DIM(                       The root mean square difference per
+!                                               Nsamples_max)                   sample
+!               sampleKRP                       REAL,DIM(                       The KRP per sample
+!                                               Nsamples_max)
+!
+!               lambda_penalty                  REAL                            The value of lambda used to
+!                                                                               calculate the KRP
+!               minsd_penalty                   REAL                            The minimum standard deviation used to
+!                                                                               calculate the KRP
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath1//Initial//#traj//     DAT                             Stores the scattering angle and energy change
+!                 binnedSATRVfile                                               decomposition for all trajectories in the library;
+!                                                                               its is already binned
+!               gridpath0//RMSD//SATRVname      DAT                             Stores the averages, devations, and other data
+!                 cumulativefile                                                associated with a particular SATRV for all
+!                                                                               trajectories in the library for some sampling
+!               gridpath0//Adjusted//           DAT                             Similar to cumulative file but normalized and
+!                 SATRVname                                                     dependent only on the number of sets and number
+!                                                                               of trajectories per set
+!               gridpath0//Convergence//        PNG                             The reference distribution of the library for
+!                 SATRVname                                                     some sampling and some SATRV; also listed are
+!                                                                               the RMSD, KRP, and running average
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 subroutine getConvergenceImage(lowerlimit,upperlimit,SATRVcolumn,SATRVname)
@@ -422,7 +604,7 @@ real :: binThreshold = 1.0
 real :: lambda_penalty = 2.0
 real :: minsd_penalty = 0.01
 
-!FORMATTING OF JPG FILES
+!FORMATTING OF PNG FILES
 character(5) :: variable_length_text
 character(5) :: variable_length_text1, variable_length_text2
 character(Ngrid_text_length) :: Ngrid_text
@@ -618,7 +800,54 @@ end subroutine getConvergenceImage
 
 
 
-subroutine getScatteringAngles2(prefix_filename,JPGfilename)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               getScatteringAngles2
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine reads in frames from the file corresponding to the prefix provided,
+!               and then proceeds to visualize them in a distribution with a reference distribution
+!               if provided with one
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               prefix_filename                 CHARACTER(*)                    The prefix defining a set of trajectories
+!               PNGfilename                     CHARACTER(*)                    The suffix we use for the output PNG
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               Ntraj                           INTEGER                         The number of trajectories in this
+!                                                                               set of trajectories, or the "sampling"
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath0//prefix_filename//    DAT                             Stores the scattering angle and energy change
+!                 SATRVfile                                                     decomposition for a set of trajectories
+!                                                                               corresponding to the specified prefix
+!               gridpath0//Adjusted//           DAT                             Stores the averages and deviations for the 
+!                 SATRVname                                                     distribution of some SATRV for all the
+!                                                                               trajectories in the library for some sampling
+!               gridpath0//PNGfilename          PNG                             Distributions of scattering angle and energy
+!                                                                               change decomposition for some set of
+!                                                                               trajectories
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+subroutine getScatteringAngles2(prefix_filename,PNGfilename)
 use PARAMETERS
 use PHYSICS
 use ANALYSIS
@@ -627,10 +856,10 @@ implicit none
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*), intent(in) :: prefix_filename
 
-!FORMAT OF JPG FILES TO BE MADE
-character(*), intent(in) :: JPGfilename
+!FORMAT OF PNG FILES TO BE MADE
+character(*), intent(in) :: PNGfilename
 
-!FORMATTING OF JPG FILES
+!FORMATTING OF PNG FILES
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 character(Ngrid_text_length+1) :: folder_text
@@ -647,7 +876,7 @@ inquire(file=gridpath0//'AdjustedScatteringAngle'//cumulativefile//'.dat',exist=
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo enhanced size 1200,1200'
 write(gnuplotchannel,*) 'set encoding utf8'
-write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath0//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'pi = 3.14159265'
 write(gnuplotchannel,*) 'Nbins = ', energychangeBins
@@ -769,7 +998,66 @@ end subroutine getScatteringAngles2
 
 
 
-subroutine getInitialimages(prefix_filename,JPGfilename)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               getInitialImages
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine reads in the initial conditions of all the trajectories of
+!               some set of trajectories and plots their distribution
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               prefix_filename                 CHARACTER(*)                    The prefix defining a set of trajectories
+!               PNGfilename                     CHARACTER(*)                    The suffix we use for the output PNG
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               Ntraj                           INTEGER                         The number of trajectories in this
+!                                                                               set of trajectories
+!
+!               max_r0                          REAL                            The maximum bond distance encountered
+!                                                                               in this set of trajectories
+!               min_r0                          REAL                            The minimum bond distance encountered
+!                                                                               in this set of trajectories
+!               average_r0                      REAL                            The average bond distance encountered
+!                                                                               in this set of trajectories
+!               max_rot                         REAL                            The maximum rotational speed encountered
+!                                                                               in this set of trajectories
+!               min_rot                         REAL                            The minimum rotational speed encountered
+!                                                                               in this set of trajectories
+!               average_rot                     REAL                            The average rotational speed encountered
+!                                                                               in this set of trajectories
+!
+!               average_Evib                    REAL                            The average vibrational energy encountered
+!                                                                               in this set of trajectories
+!               average_Erot                    REAL                            The average rotational energy encountered
+!                                                                               in this set of trajectories
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath0//prefix_filename//    DAT                             Stores the initial conditions for the set of
+!                 initialfile                                                   trajectories associated with this prefix
+!               gridpath0//PNGfilename          PNG                             Distributions of the initial conditions for the
+!                                                                               set of trajectories associated with this prefix
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+subroutine getInitialimages(prefix_filename,PNGfilename)
 use PARAMETERS
 use ANALYSIS
 use FUNCTIONS
@@ -778,9 +1066,9 @@ implicit none
 
 !FORMAT OF DAT FILES HOUSING SCATTERING ANGLES
 character(*),intent(in) :: prefix_filename
-character(*),intent(in) :: JPGfilename
+character(*),intent(in) :: PNGfilename
 
-!FORMATTING OF JPG FILES
+!FORMATTING OF PNG FILES
 character(5) :: variable_length_text
 character(5) :: variable_length_text1, variable_length_text2
 character(Ngrid_text_length) :: Ngrid_text
@@ -837,7 +1125,7 @@ average_Erot = average_Erot / (total_bonds * mass_hydrogen)
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo enhanced size 3600,1200'
 write(gnuplotchannel,*) 'set encoding utf8'
-write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath0//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'pi = 3.14159265'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
@@ -917,6 +1205,75 @@ end subroutine getInitialimages
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               getComparedScatteringAngles
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine reads all selected set of trajectories and compares
+!               them with respect to some number of trajectories and some SATRV
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               lowerlimit                      REAL(DP)                        The lower bound of the distribution
+!               upperlimit                      REAL(DP)                        The upper bound of the distribution
+!               imagename                       CHARACTER(*)                    The name of the output image
+!               SATRVcolumn                     INTEGER                         The column in the SATRV file this distribution
+!                                                                               is recorded in
+!               SATRVname                       CHARACTER(*)                    The name of the distribution (needs to be exact)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               Ntesttraj                       INTEGER                         The number of trajectories per sample
+!                                                                               set of trajectories, or the "sampling"
+!               Nbins                           INTEGER                         The number of bins used for distributions
+!               comparison_number               INTEGER                         The number of sets of trajectories being
+!                                                                               compared
+!
+!               binTotal                        INTEGER,DIM(                    The size of each bin of the distribution
+!                                               Nbins,comparison_number         for each set of trajectories
+!
+!               referenceBins                   REAL,DIM(Nbins)                 The x-value corresponding to a bin
+!               referenceMeans                  REAL,DIM(Nbins)                 The y-value corresponding to a bin
+!               referenceSDs                    REAL,DIM(Nbins)                 The y-value uncertainty corresponding to a bin
+!
+!               comparisonCDF                   REAL                            The cumulative distribution function of some bin
+!               comparisonKS                    REAL                            The Kolmogorov-Smirnov difference of some bin
+!               comparisonRMSD                  REAL                            The RMSD of some distribution
+!               comparisonKRP                   REAL                            The KRP of some distribution
+!
+!               lambda_penalty                  REAL                            The value of lambda used to
+!                                                                               calculate the KRP
+!               minsd_penalty                   REAL                            The minimum standard deviation used to
+!                                                                               calculate the KRP
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath0//Adjusted//           DAT                             Stores the averages and deviations for the 
+!                 SATRVname                                                     distribution of some SATRV for all the
+!                                                                               trajectories in the library for some sampling
+!               gridpath0//allprefixes(...)//   DAT                             Same as the SATRV file but the values are
+!                 binnedSATRVfile                                               stored as integers corresponding to some
+!                                                                               bin in a specific binning
+!               gridpath0//imagename            PNG                             Compares distributions as selected in
+!                                                                               allprefixes by some sampling and some SATRV
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 subroutine getComparedScatteringAngles(lowerlimit,upperlimit,imagename,SATRVcolumn,SATRVname)
 use PARAMETERS
 use PHYSICS
@@ -928,13 +1285,13 @@ integer,intent(in) :: SATRVcolumn
 character(*), intent(in) :: SATRVname
 integer,dimension(5) :: SATRVdata
 
-!FORMAT OF JPG FILES TO BE MADE
+!FORMAT OF PNG FILES TO BE MADE
 character(*), intent(in) :: imagename
 
 !Upper and Lower Limits for the plot
 real,intent(in) :: upperlimit, lowerlimit
 
-!FORMATTING OF JPG FILES
+!FORMATTING OF PNG FILES
 character(5) :: variable_length_text
 character(8) :: difference_text
 character(Ngrid_text_length) :: Ngrid_text
@@ -951,7 +1308,6 @@ real,allocatable :: referenceMeans(:)
 real,allocatable :: referenceSDs(:)
 integer,allocatable :: binTotal(:,:)
 real :: comparisonRMSD, comparisonKS, comparisonCDF, comparisonKRP
-real :: comparisonBin, comparisonMean, comparisonSD
 real :: lambda_penalty = 2.0
 real :: minsd_penalty = 0.01
 integer :: Nbins
@@ -1117,6 +1473,75 @@ end subroutine getComparedScatteringAngles
 
 
 
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               postProcess
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine reads all initial and final frames for a set of trajectories specified
+!               by the prefix_filename, then processes them into a few collective variables per
+!               trajectory like scattering angle and energy change decompositions; these values are
+!               then written onto a final file
+!
+!               While reading the files, it also searches for and records the minimums and maximums
+!               found for each variable evaluated
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               prefix_filename                 CHARACTER(*)                    The prefix defining a set of trajectories
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               Ntraj                           INTEGER                         The number of trajectories to be read
+!                                                                               for this set of trajectories
+!               coords_initial                  REAL,DIM(3,Natoms)              The coordinates of the initial frame
+!               velocities_initial              REAL,DIM(3,Natoms)              The velocities of the initial frame
+!               coords_final                    REAL,DIM(3,Natoms)              The coordinates of the final frame
+!               velocities_final                REAL,DIM(3,Natoms)              The velocities of the final frame
+!
+!               velocity_in                     REAL,DIM(3)                     The velocity of the incoming molecule
+!               velocity_out                    REAL,DIM(3)                     The velocity of the outgoing molecule
+!               speed_in                        REAL                            The speed of the incoming molecule
+!               speed_out                       REAL                            The speed of the outgoing molecule
+!               scatteringAngle                 REAL                            The angle between velocity_in and
+!                                                                               velocity_out
+!
+!               velocity1_CM                    REAL,DIM(3)                     The velocity of the center of mass of
+!                                                                               all atoms of the initial frame
+!               velocity2_CM                    REAL,DIM(3)                     The velocity of the center of mass of
+!                                                                               all atoms of the final frame
+!               TotalEnergy1                    REAL                            Total kinetic energy of the initial frame
+!               TotalEnergy2                    REAL                            Total kinetic energy of the final frame
+!               RotationalEnergy1               REAL                            Rotational energy of the initial frame
+!               RotationalEnergy2               REAL                            Rotational energy of the final frame
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath0//prefix_filename//    DAT                             Stores the initial and final frames of a
+!                 timeslicefile                                                 set of trajectories corresponding to the
+!                                                                               specified prefix
+!               gridpath0//prefix_filename//    DAT                             Unused at the moment for this subroutine
+!                 intialfile                                            
+!               gridpath0//prefix_filename//    DAT                             Stores the scattering angle and energy change
+!                 SATRVfile                                                     decomposition for a set of trajectories
+!                                                                               corresponding to the specified prefix
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 subroutine postProcess(prefix_filename)

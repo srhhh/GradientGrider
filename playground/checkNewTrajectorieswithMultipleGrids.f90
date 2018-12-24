@@ -108,7 +108,7 @@ real :: lowerlimit,upperlimit
 integer :: iostate
 integer,allocatable :: filechannels(:)
 integer :: OMP_GET_THREAD_NUM
-logical :: return_flag = .true.
+logical :: return_flag = .false.
 
 !Timing
 real :: r1, r2, system_clock_rate
@@ -716,6 +716,7 @@ if (comparison_flag .or. trueSA_flag .or. testtrajSA_flag .or. testheatmapSA_fla
 	        end if
 
 	        !Then bin it
+	        Ntraj = Ngrid*Ntraj_max
 	        call getScatteringAngles1(Ngrid_text//"/Initial"//Ntraj_text,"SATRVDistribution")
 	end do
 
@@ -811,7 +812,13 @@ if (percentthreshold_flag) then
 	write(6,FMT=FMTnow) now
 	print *, "   Making plot: ", prefix_text//"_PercentRMSDThreshold"
 	print *, ""
-	call getRMSDThresholds1(prefix_text,prefix_text//"_PercentRMSDThreshold")
+
+        if (percentthreshold_key < 1) then
+	        call getRMSDThresholds1(prefix_text,prefix_text//"_PercentRMSDThreshold")
+        else
+	        call getRMSDThresholds1(prefix_text,prefix_text//"_PercentRMSDThreshold",&
+                                        percentthreshold_key)
+        end if
 end if
 
 if (testheatmapSA_flag) then
