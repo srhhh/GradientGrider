@@ -910,7 +910,7 @@ if (grid_is_done) then
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$1>=pi?(pi-0.5*box_width):'//&
-                                '(rounded($1))):(1.0) smooth frequency w boxes, \'
+                                '(rounded($1))):(1.0) smooth frequency w boxes'
 end if
         write(gnuplotchannel,*) 'scaling = 1000'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_absenergychange
@@ -937,7 +937,7 @@ if (grid_is_done) then
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$3>=max_E?(max_E-0.5*box_width):'//&
-                                '(rounded($3))):(1.0) smooth frequency w boxes, \'
+                                '(rounded($3))):(1.0) smooth frequency w boxes'
 end if
         write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_relenergychange
@@ -961,7 +961,7 @@ if (grid_is_done) then
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$4>=max_E?(max_E-0.5*box_width):'//&
-                                '(rounded($4))):(1.0) smooth frequency w boxes, \'
+                                '(rounded($4))):(1.0) smooth frequency w boxes'
 end if
         write(gnuplotchannel,*) 'set ylabel "Rotational Energy Change"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
@@ -986,7 +986,7 @@ if (grid_is_done) then
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$5>=max_E?(max_E-0.5*box_width):'//&
-                                '(rounded($5))):(1.0) smooth frequency w boxes, \'
+                                '(rounded($5))):(1.0) smooth frequency w boxes'
 end if
 close(gnuplotchannel)
 
@@ -1120,7 +1120,9 @@ close(filechannel1)
 average_r0 = average_r0 / total_bonds
 average_rot = average_rot / total_bonds
 average_Evib = 0.5 * HOke_hydrogen * average_Evib / total_bonds
-average_Erot = average_Erot / (total_bonds * mass_hydrogen)
+!average_Evib = (0.5 * HOke_hydrogen * average_Evib / total_bonds) / &
+!        (hbar * pi2 * vib_frequency / (RU_energy * RU_time))
+average_Erot = average_Erot * mass_hydrogen / total_bonds
 
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo enhanced size 3600,1200'
@@ -1130,10 +1132,21 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'pi = 3.14159265'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-write(gnuplotchannel,*) 'set label 1 "Average r0: ', average_r0, ' A" at screen 0.6,0.9'
-write(gnuplotchannel,*) 'set label 2 "Temperature: ', (RU_energy/kb)*average_Evib, ' K" at screen 0.6,0.85'
-write(gnuplotchannel,*) 'set label 3 "Average Rotational Speed: ', average_rot, ' A/fs" at screen 0.8,0.9'
-write(gnuplotchannel,*) 'set label 4 "Temperature: ', (RU_energy/kb)*average_Erot, ' K" at screen 0.8,0.85'
+write(Ntraj_text,FMT="(F6.4)") average_r0
+write(gnuplotchannel,*) 'set label 1 "Average r0: '//Ntraj_text//' A" at screen 0.65,0.95'
+write(gnuplotchannel,*) 'set label 1 front'
+!Only one degree of freedom for vibrations
+write(Ntraj_text,FMT="(F6.1)") (2.0d0/1.0d0)*(RU_energy/kb)*average_Evib
+!write(Ntraj_text,FMT="(F6.1)") theta_vib / log((1.0d0 + average_Evib) / average_Evib)
+write(gnuplotchannel,*) 'set label 2 "Temperature: '//Ntraj_text//' K" at screen 0.65,0.925'
+write(gnuplotchannel,*) 'set label 2 front'
+write(Ntraj_text,FMT="(F6.3)") average_rot
+write(gnuplotchannel,*) 'set label 3 "Average Rotational Speed: '//Ntraj_text//' A/fs" at screen 0.9,0.95'
+write(gnuplotchannel,*) 'set label 3 front'
+!Two degrees of freedom for rotations
+write(Ntraj_text,FMT="(F6.1)") (2.0d0/2.0d0)*(RU_energy/kb)*average_Erot
+write(gnuplotchannel,*) 'set label 4 "Temperature: '//Ntraj_text//' K" at screen 0.9,0.925'
+write(gnuplotchannel,*) 'set label 4 front'
 write(Ntraj_text,FMT="(I6)") Ntraj
 write(gnuplotchannel,*) 'set multiplot layout ', Nbonds,',4 title '//&
                         '"Initial Bond Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'

@@ -70,10 +70,10 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0010
 
 #The number of grids to add to a new library
-Ngrid_max=4
+Ngrid_max=1
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -87,14 +87,14 @@ force_NoLabels=.false.
 heatmap_flag=.false.
 trueSA_flag=.false.
 trueED_flag=.false.
-testtraj_flag=.false.
+testtraj_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.005000d0
-threshold_rmsd1=.005000d0
+threshold_rmsd=.222000d0
+threshold_rmsd1=.222000d0
 threshold_rmsd2=.100000d0
 threshold_rmsd3=.100000d0
 threshold_rmsd4=.050000d0
@@ -102,14 +102,14 @@ threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
 accept_worst=.false.
-Ngrid_cap=4
+Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=350
+Ntrajectories=6
 Nthreads=1
 
 #These are flags relating to using old data
-useolddata_flag=.true.
+useolddata_flag=.false.
 useoldinitialbonddata_flag=.false.
 initialbondname="001omegaA.20000"
 
@@ -151,10 +151,10 @@ prefixes[3]="001omegaA.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Sep15_label"
+newGRID="HH2_Dec24_test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
@@ -268,6 +268,7 @@ echo $(date) >> $newPATH/$bashout
 echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "GRIDMAKING %E  %U  %S  %P  %O" ./a.out
 
+make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 
 echo "" >> $newPATH/$bashout

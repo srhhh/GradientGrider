@@ -91,16 +91,9 @@ character(12+Ngrid_text_length) :: prefix_text
 character(150) :: old_filename, new_filename
 character(1) :: answer
 
-!New Trajectory Parameters
-real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
-real(dp) :: initial_bond_angle1, initial_bond_angle2
-real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
-real(dp) :: bond_period_elapsed
-real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3
 real(dp) :: scattering_angle
 real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
 real(dp),dimension(3,Natoms) :: coords_initial,velocities_initial,coords_final,velocities_final
-real(dp) :: probJ_max, J_factor3
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
 real :: lowerlimit,upperlimit
 
@@ -126,10 +119,7 @@ call OMP_SET_NUM_THREADS(Nthreads)
 
 !Now here we actually make these new trajectories
 !$OMP PARALLEL DEFAULT(none)&
-!$OMP& PRIVATE(iostate,random_num1,random_num2,random_num3,random_r2,random_r3)&
-!$OMP& PRIVATE(initial_bond_angle1,initial_bond_angle2,initial_vibrational_energy,initial_bond_distance)&
-!$OMP& PRIVATE(J_factor3,probJ_max,initial_rotational_energy,initial_rotational_speed)&
-!$OMP& PRIVATE(initial_rotation_angle,bond_period_elapsed)&
+!$OMP& PRIVATE(iostate)&
 !$OMP& PRIVATE(variable_length_text,Ntraj_text,filechannels)&
 !$OMP& FIRSTPRIVATE(Ngrid_text,reject_text)&
 !$OMP& PRIVATE(c1,c2,cr,r1,r2,coords_initial,coords_final,velocities_initial,velocities_final)&
@@ -444,58 +434,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 	!Otherwise, we must creat a random initial trajectory from the ensemble
         !specified in PHYSICS and PARAMETERS
         else
-
-	do n = 1, Nbonds
-		!The orientation of the H2 (two angles)
-		do
-			random_num1 = rand() - 0.5d0
-			random_num2 = rand() - 0.5d0
-			random_num3 = rand() - 0.5d0
-			random_r2 = random_num1**2 + random_num2**2
-			random_r3 = random_r2 + random_num3**2
-			if (random_r3 > 0.25d0) cycle
-			random_r2 = sqrt(random_r2)
-			initial_bond_angle1 = atan2(random_num1, random_r2)
-			initial_bond_angle2 = atan2(random_r2,random_num3)
-			exit
-		end do
-
-                !The vibrational energy of the H2 (bond length)
-                do
-                        random_num1 = rand() * upsilon_max
-                        random_num2 = rand()
-                        if (exp(-random_num1 * upsilon_factor1) * upsilon_factor2 < random_num2) cycle
-                        initial_vibrational_energy = (random_num1 + 0.5d0) * epsilon_factor
-                        exit
-                end do
-                initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
-                J_factor3 = J_factor1 / (initial_bond_distance**2)
-                probJ_max = sqrt(2*J_factor3) * exp(J_factor3*0.25d0 - 0.5d0)
-
-                !The rotational energy of the H2 (rotational speed)
-                do
-                        random_num1 = rand() * J_max
-                        random_num2 = rand() * probJ_max
-                        if ((2*random_num1 + 1.0d0) * J_factor3 * exp(-random_num1 * (random_num1 + 1.0d0) * &
-                            J_factor3) < random_num2) cycle
-                        initial_rotational_energy = (random_num1) * (random_num1 + 1.0d0) * J_factor2
-                        exit
-                end do
-                initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
-
-                !The rotational orientation of the H2 (an angle)
-                random_num1 = rand()
-                initial_rotation_angle = random_num1*pi2 - pi
-
-                !The rotational start time of the H2 (a period of time)
-                bond_period_elapsed = rand()
-
-                !All of this is stored for later use in the InitialSetup of runTrajectory
-                INITIAL_BOND_DATA(:,n) = (/ initial_bond_distance,initial_rotational_speed,&
-                                        initial_rotation_angle,initial_bond_angle1,initial_bond_angle2,&
-                                        bond_period_elapsed /)
-	end do
-
+                call InitialSampling3()
         end if
 
         !In most case, we will need to record the initial conditions to a (potentially) new file

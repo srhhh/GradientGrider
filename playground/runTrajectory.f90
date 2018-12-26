@@ -1208,7 +1208,7 @@ subroutine addMultipleTrajectories()
 
 	!aaa$OMP PARALLEL DO private(n)
 	do n = 1, Ntraj_max
-	        call InitialSetup4(coords(:,:,n),velocities(:,:,n))
+	        call InitialSetup3(coords(:,:,n),velocities(:,:,n))
 		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
 	        call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
 	end do
@@ -1354,7 +1354,7 @@ subroutine addMultipleTrajectories2()
         !Initialize all the trajectories
 	!aaa$OMP PARALLEL DO private(n)
 	do n = 1, Ntraj_max
-	        call InitialSetup4(coords(:,:,n),velocities(:,:,n))
+	        call InitialSetup3(coords(:,:,n),velocities(:,:,n))
 		call getVarsMaxMin(coords(:,:,n),Natoms,vals(:,n),Nvar,BOND_LABELLING_DATA)
 	        call Acceleration(vals(:,n),coords(:,:,n),gradient(:,:,n))
 	end do

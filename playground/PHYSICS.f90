@@ -96,31 +96,31 @@ integer,parameter :: Nsteps = 30000
 !                   ATOMIC PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-real(dp),parameter :: HOr0_hydrogen = (1.0d-10)*0.7412d0/RU_length
+real(dp),parameter :: HOr0_hydrogen = (1.0d-10)*0.7412d0/RU_length                         !RU_length
                                         ! originally in A
-real(dp),parameter :: HOke_hydrogen =  (1.0d10*1.0d-8)*5.756d0/(RU_force/RU_length)
+real(dp),parameter :: HOke_hydrogen =  (1.0d10*1.0d-8)*5.756d0/(RU_force/RU_length)        !RU_force/RU_length
                                         ! originally in mdyn/A= 1.0e-8 N/A
-real(dp),parameter :: Morser0_hydrogen = (1.0d-10)*3.25d0/RU_length
+real(dp),parameter :: Morser0_hydrogen = (1.0d-10)*3.25d0/RU_length                        !RU_length
                                         ! originally in A
-real(dp),parameter :: MorseDe_hydrogen = (1.0d0/(Na*2.39006d-4))*0.02347d0/RU_energy
+real(dp),parameter :: MorseDe_hydrogen = (1.0d0/(Na*2.39006d-4))*0.02347d0/RU_energy       !RU_energy
                                         ! originally in kcal/mol
-real(dp),parameter :: Morsealpha_hydrogen = -10.6d0
+real(dp),parameter :: Morsealpha_hydrogen = -10.6d0                                        ! -
                                         ! unitless
-real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass
+real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass                      !RU_mass
                                         !originally g/mol
 
         !Calculation Savers
-        real(dp), parameter :: PotentialConstant0 =&
+        real(dp), parameter :: PotentialConstant0 =&                                       !RU_force*RU_length
                 0.5d0*HOke_hydrogen*HOr0_hydrogen**2
-        real(dp), parameter :: PotentialConstant1 =&
+        real(dp), parameter :: PotentialConstant1 =&                                       !RU_force
                 -HOke_hydrogen*HOr0_hydrogen
-        real(dp), parameter :: PotentialConstant2 =&
+        real(dp), parameter :: PotentialConstant2 =&                                       !RU_force/RU_length
                 0.5d0*HOke_hydrogen
-        real(dp), parameter :: AccelerationConstant0 =&
+        real(dp), parameter :: AccelerationConstant0 =&                                    !RU_length/RU_time
                 HOke_hydrogen*(dt/mass_hydrogen)
-        real(dp), parameter :: AccelerationConstant1 =&
+        real(dp), parameter :: AccelerationConstant1 =&                                    !RU_length^2/RU_time
                 -HOke_hydrogen*(dt/mass_hydrogen)*HOr0_hydrogen
-        real(dp), parameter :: AccelerationConstant2 =&
+        real(dp), parameter :: AccelerationConstant2 =&                                    !RU_length^2/RU_time
                 2*MorseDe_hydrogen*Morsealpha_hydrogen*dt/mass_hydrogen
 
 
@@ -128,37 +128,127 @@ real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass
 !                 TEMPERATURE PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!Legacy variables
-!((NOT USED))
+!The temperature used to sample vibration and rotation (not the total temperature)
+real(dp), parameter :: temperature = 300.0d0                                       !Kelvin
 
-!real(dp), parameter :: temperature = 200.0d0
-!					!Kelvin
-!real(dp), parameter :: upsilon_max = 5.0d0
-!real(dp), parameter :: frequency_factor  = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))/pi2
-!real(dp), parameter :: upsilon_factor1 = -pi2*(hbar/(RU_energy*RU_time))*frequency_factor/(kb*temperature/RU_energy)
-!real(dp), parameter :: upsilon_factor2 = pi2*(hbar/(RU_energy*RU_time))*frequency_factor
-!real(dp), parameter :: temperature_factor = exp(0.5d0*upsilon_factor1)
-!real(dp), parameter :: temperature_scaling = (1.0d0-temperature_factor)*upsilon_max/temperature_factor
+!The reduced mass of diatomic hydrogen
+!
+! reduced_mass = (mass1) (mass2) / (mass1 + mass2)
+!
+!        mass1 = mass2   for diatomics
+!
+! reduced_mass = (mass1) (mass1) / (mass1 + mass1)
+!              = (1/2) (mass1)
+!
+real(dp), parameter :: reduced_mass = 0.5d0 * mass_hydrogen                        !RU_mass
 
-!Self-explanatory
 
-real(dp), parameter :: temperature = 300.0d0
-					!Kelvin
-real(dp), parameter :: upsilon_max = 5.0d0
-					!Vibrational Quantum Number Cutoff
-real(dp), parameter :: vib_frequency = sqrt(HOke_hydrogen/(0.5d0*mass_hydrogen))/pi2
-integer, parameter  :: vib_period = floor((1.0 / vib_frequency) / dt)
-real(dp), parameter :: theta_vib = (hbar/(RU_energy*RU_time)) * pi2 * HOke_hydrogen / (kb / RU_energy)
-					!Vibrational Constant
-real(dp), parameter :: upsilon_factor1 = theta_vib / temperature
-real(dp), parameter :: upsilon_factor2 = 1.0d0 - exp(-upsilon_factor1)
-real(dp), parameter :: epsilon_factor = (hbar/(RU_energy*RU_time)) * pi2 * vib_frequency
-					!Some scaling factors
+
+
+
+
+!VIBRATION
+
+!The vibrational frequency of diatomic hydrogen (based off of the force constant)
+!McQuarrie, 1997 : section 18-4 : pg.740
+!
+! vib_frequency = sqrt (force constant / reduced mass) / 2 pi
+!
+real(dp), parameter :: vib_frequency = sqrt(HOke_hydrogen/reduced_mass)/pi2        !1/RU_time
+
+!The vibrational period of the diatmic hydrogen, rounded down to the nearest timestep
+!
+! vib_period = 1 / vib_frequency                       (real number)
+!
+! vib period = floor(vib_period / dt)                  (integer)
+!            = floor((1.0 / vib_frequency) / dt)
+!
+integer, parameter  :: vib_period = floor((1.0d0 / vib_frequency) / dt)            !RU_time
+
+!The vibrational temperature of diatomic hydrogen
+!McQuarrie, 1997 : section 18-4 : pg 740
+!
+! theta_vib = (h) (vib_frequency) / kb
+!           = (hbar) (2) (pi) (vib_frequency) / kb
+!
+real(dp), parameter :: theta_vib = &
+        (hbar/(RU_energy*RU_time)) * pi2 * vib_frequency / (kb / RU_energy)        !Kelvin
+
+!A few variables are calculated ahead of time to save probability calculations:
+!
+! upsilon_factor1 = theta_vib / T
+! upsilon_factor2 = 1 - e^(-theta_vib / T)
+!
+!The probability of a certain vibrational number (upsilon) existing is given
+!in McQuarrie, 1997 : section 18-4 : pg 742
+!
+! P(upsilon) = (1 - e^(-theta_vib/T)) e^(-(upsilon) (theta_vib) / T)
+!
+! P(upsilon) = (1 - e^(-upsilon_factor1)) e^(-(upsilon) (upsilon_factor1))
+!            = (upsilon_factor2) e^(-(upsilon) (upsilon_factor1))
+!
+real(dp), parameter :: upsilon_factor1 = theta_vib / temperature                   ! -
+real(dp), parameter :: upsilon_factor2 = 1.0d0 - exp(-upsilon_factor1)             ! -
+
+!The Vibrational Quantum Number Cutoff
+!
+!In this case, we want to make sure the smallest nonzero probability
+!(assumed to be 10^-16 for double precision numbers)
+!is a little more than the probability of upsilon_max
+!
+! 10^-16 = (upsilon_factor2) e^(-(upsilon_max) (upsilon_factor1))
+!
+! upsilon_max > log(upsilon_factor2 / 10^-16) / upsilon_factor1
+!             > log((upsilon_factor2) (10^16)) / upsilon_factor1
+!             > (log(upsilon_factor2) + 16 log(10)) / upsilon_factor1
+!
+! upsilon_max = 1.1 * (log(upsilon_factor2) + 16 log(10)) / upsilon_factor1
+!
+real(dp), parameter :: upsilon_max = &                                             ! -
+        1.1d0 * (log(upsilon_factor2) + 16.0d0*log(10.0d0)) / upsilon_factor1
+
+!A variable is calculated ahead of time to save energy calculations:
+!
+! epsilon_factor1 = (h) (vib_frequency)
+!                 = (hbar) (2) (pi) (vib_frequency)
+!
+!The vibrational energy is computed using the vibrational number (upsilon)
+!McQuarrie, 1997 : section 18-4 : pg.740
+!
+! Evib(upsilon) = (upsilon + 1/2) (h) (vib_frequency)
+!
+!We use a slightly different classical model that does not have the
+!zero point energy (ZPE) associated:
+!
+! Evib(upsilon) = (upsilon) (h) (vib_frequency)
+!
+! Evib(upsilon) = (upsilon) (epsilon_factor1)
+!
+real(dp), parameter :: epsilon_factor1 = &                                          !RU_energy
+        (hbar/(RU_energy*RU_time)) * pi2 * vib_frequency
+
+!ROTATION
+
+!The Rotational Quantum Number Cutoff
 real(dp), parameter :: J_max = 10.0d0
-					!Rotational Quantum Number Cutoff
-real(dp), parameter :: J_factor1 = (hbar**2 / (kb * temperature * mass_hydrogen)) / ((RU_energy * RU_time**2))
-real(dp), parameter :: J_factor2 = (hbar**2 / (mass_hydrogen)) / (((RU_energy * RU_time)**2))
-					!Some scaling factors
+
+!A variable is calculated ahead of time to save energy calculations:
+!
+! epsilon_factor2 = (hbar)^2 / 2
+!
+!The rotational energy is computed using the rotational number (J)
+!McQuarrie, 1997 : section 18-5 : pg.743
+!
+! Erot(J) = (hbar^2) (J) (J + 1) / (2) (moment_inertia)
+!
+! Erot(J) = (hbar^2) (J) (J + 1) / (2) (moment_inertia)
+!         = ((hbar^2) / 2) (J) (J + 1) / moment_inertia
+!         = (epsilon_factor2) (J) (J + 1) / moment_inertia
+!
+real(dp), parameter :: epsilon_factor2 = &                                         !RU_energy
+        (hbar/(RU_energy*RU_time))**2
+
+
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -581,27 +671,27 @@ subroutine InitialSetup3(coords,velocities)
 end subroutine InitialSetup3
 
 
-!Legacy subroutine
-!((NOT USED))
-subroutine InitialSetup4(coords,velocities)
-	use PARAMETERS
+
+subroutine InitialSampling3()
+        use PARAMETERS
         implicit none
-        real(dp), dimension(3,Natoms), intent(out) :: velocities,coords
-        real(dp), dimension(3) :: bond_vector,rotation_vector,rotation0_vector,rotation90_vector
+
+        !Trajectory Initialization Variables
         real(dp) :: random_num1,random_num2,random_num3,random_r2,random_r3
         real(dp) :: initial_bond_distance, initial_rotation_angle, initial_rotational_speed
         real(dp) :: initial_bond_angle1, initial_bond_angle2
         real(dp) :: initial_energy_H2,initial_vibrational_energy,initial_rotational_energy
         real(dp) :: bond_period_elapsed
-        real(dp) :: probJ_max, J_factor3
-	real(dp) :: incoming_speed
-        integer :: i, atom1, atom2
+        real(dp) :: Jmp, prob_Jmp, J_factor1, theta_rot, moment_inertia
+        real(dp) :: upsilon, J
+        
+        !Incremental Integers
+        integer :: m
 
+        !Get some random initial conditions for the trajectory
+        !For now, we are only handling systems with H-H bonds
 
-	coords = 0.0d0
-	velocities = 0.0d0
-
-        do i = 1, Nbonds
+        do m = 1, Nbonds
 
                 !The orientation of the H2 should be some random
                 !point in the unit sphere
@@ -611,10 +701,13 @@ subroutine InitialSetup4(coords,velocities)
                         random_num1 = rand() - 0.5d0
                         random_num2 = rand() - 0.5d0
                         random_num3 = rand() - 0.5d0
+
+                        !Calculate the length of the point (squared) and the
+                        !length of its projection onto the xy plane (squared)
                         random_r2 = random_num1**2 + random_num2**2
                         random_r3 = random_r2 + random_num3**2
 
-                        !If the point lies outside of the cube, reject it
+                        !If the point lies outside of the sphere, reject it
                         if (random_r3 > 0.25d0) cycle
                         random_r2 = sqrt(random_r2)
 
@@ -625,87 +718,189 @@ subroutine InitialSetup4(coords,velocities)
                 end do
 
                 !The vibrational energy of the H2 should be some random value
-                !that follows the boltzmann distribution at this temperature
+                !picked from a distribution at this temperature
                 do
-                        !This picks a random value between zero and some very high upper limit
-                        random_num1 = rand() * upsilon_max
-!                               random_num2 = rand() * upsilon_factor2
-                        random_num2 = rand()
+                        !First, pick a random vibrational number (upsilon)
+                        !between zero and some upper limit (upsilon_max)
+                        upsilon = rand() * upsilon_max
 
-!                               if (exp(-random_num1 * upsilon_factor1) < random_num2) cycle
-                        if (exp(-random_num1 * upsilon_factor1) * upsilon_factor2 < random_num2) cycle
+                        !And some other number between 0 and 1 for
+                        !metropolis rejection
+                        random_num1 = rand()
 
-                        initial_vibrational_energy = (random_num1 + 0.5d0) * epsilon_factor
+                        !If the probability that this upsilon is less than that
+                        !random rejection rate, then it is rejected
+                        if (exp(-upsilon * upsilon_factor1) * upsilon_factor2 < random_num1) cycle
                         exit
                 end do
-                initial_bond_distance = HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
-                J_factor3 = J_factor1 / (initial_bond_distance**2)
-                probJ_max = sqrt(2*J_factor3) * exp(J_factor3*0.25d0 - 0.5d0)
-!                J_factor3 = 85.3d0 / temperature
+
+                !The vibrational energy is computed using the vibrational number (upsilon)
+                !McQuarrie, 1997 : section 18-4 : pg.740
+                !
+                ! Evib(upsilon) = (upsilon + 1/2) (h) (vib_frequency)
+                !
+                !We use a slightly different classical model that does not have the
+                !zero point energy (ZPE) associated:
+                !
+                ! Evib(upsilon) = (upsilon) (h) (vib_frequency)
+                !
+                ! Evib(upsilon) = (upsilon) (epsilon_factor)
+
+                initial_vibrational_energy = upsilon * epsilon_factor1                 !RU_energy
+
+                !The bond distance is derived from the vibrational energy assuming all
+                !of the vibrational energy is potential (so it is fully stretched out)
+                !McQuarries, 1997 : section 5-1 : pg.160
+                !
+                !          Evib = (1/2) (force_constant) (bond_distance - r0)^2
+                !
+                ! bond_distance = r0 + sqrt((2) (Evib) / force_constant)
+                !
+                initial_bond_distance = &                                              !RU_length
+                        HOr0_hydrogen + sqrt(initial_vibrational_energy*2/HOke_hydrogen)
+
+                !The moment of inertia for diatomic hydrogen
+                !
+                ! moment_inertia = (mass1) (radius1)^2 + (mass2) (radius2)^2
+                !
+                !        mass1 = mass2  ;  radius1 = radius2 = 0.5 bond_distance   for diatomics
+                !
+                ! moment_inertia = (2) (mass1)((0.5) (bond_distance))^2
+                !                = (1/2) (mass1) (bond_distance)^2
+                !
+
+                moment_inertia = &                                                      !RU_mass*RU_length^2
+                        0.5d0 * mass_hydrogen * (initial_bond_distance)**2
+
+                !The rotational temperature of diatomic hydrogen
+                !McQuarrie, 1997 : section 18-5 : pg 744
+                !
+                ! theta_rot = hbar^2 / (2) (moment_inertia) (kB)
+                !
+                !For homonuclear diatomics, theta_rot is always multiplied by 2 so
+                !we use an "effective" theta_rot
+                !McQuarrie, 1997 : section 18-5 : pg 747
+                !
+                ! theta_rot = hbar^2 / (moment_inertia) (kB)
+                !
+                theta_rot = &                                                           !Kelvin
+                        ((hbar/(RU_energy*RU_time))**2) / (moment_inertia * (kb / RU_energy))
+
+                !A few variables are calculated ahead of time to save probability calculations:
+                !
+                ! J_factor1 = theta_rot / temperature
+                !
+                !The probability of a certain rotational number (J) existing is given
+                !in McQuarrie, 1997 : section 18-5 : pg 745
+                !
+                ! P(J) = ((2)(J) + 1) (theta_rot / T) e^(-(theta_rot) (J) (J + 1) / T)
+                !
+                ! P(J) = ((2) (J) + 1) (J_factor1) e^(-(J_factor1) (J) (J + 1))
+                !
+                !
+                J_factor1 = theta_rot / temperature                                     ! -
+
+                !The rotational quantum number (J) that is most likely to occur
+                !McQuarrie, 1997 : section 18-5 : pg.746
+                !
+                ! Jmp = sqrt(T / (2) (theta_rot)) - 0.5
+                !
+                ! Jmp = sqrt((0.5) (T / theta_rot)) - 0.5
+                !     = sqrt( 0.5 / J_factor1) - 0.5
+                !
+                Jmp = &                                                                 ! -
+                        sqrt(0.50d0 / J_factor1) - 0.5d0
+
+                !The probability that the most probable rotational quantum number (Jmp) occurs
+                !
+                ! P(Jmp) = ((2) (Jmp) + 1) (J_factor1) e^(-(J_factor1) (Jmp) (Jmp + 1))
+                !
+                ! P(Jmp) = ((2) (sqrt(0.5 / J_factor1) - 0.5) + 1) (J_factor1)
+                !          e^(-(J_factor1) (sqrt(0.5 / J_factor1) - 0.5)
+                !                          (sqrt(0.5 / J_factor1) - 0.5 + 1)
+                !        = (2) sqrt(0.5 / J_factor1) (J_factor1)
+                !          e^(-(J_factor1) (sqrt(0.5 / J_factor1) - 0.5)
+                !                          (sqrt(0.5 / J_factor1) + 0.5)
+                !        = (2) sqrt(0.5 / J_factor1) (J_factor1)
+                !          e^(-(J_factor1) ((0.5 / J_factor1) - 0.25)
+                !        = (2) sqrt((0.5) (J_factor1))
+                !          e^(-(0.5 - (0.25) (J_factor1))
+                !        = (2) sqrt((0.5) (J_factor1)) e^((0.25) (J_factor1) - 0.5)
+                !
+                prob_Jmp = &                                                            ! -
+                        2 * sqrt(J_factor1 / 2) * exp(J_factor1/4 - 0.5d0)
 
                 !The rotational energy of the H2 should be some random value
                 !that follows the boltzmann distribution at this temperature
                 do
-                        !This picks a random value between zero and some very high upper limit
-                        random_num1 = rand() * J_max
-                        random_num2 = rand() * probJ_max
+                        !First pick a random rotational quantum number (J)
+                        !between zero and some upper limit (J_max)
+                        J = rand() * J_max
 
-                        if ((2*random_num1 + 1.0d0) * J_factor3 * exp(-random_num1 * (random_num1 + 1.0d0) * &
-                            J_factor3) < random_num2) cycle
+                        !And some random number between 0 and the highest
+                        !probability (prob_Jmp) for metropolis rejection
+                        random_num1 = rand() * prob_Jmp
 
-                        initial_rotational_energy = (random_num1) * (random_num1 + 1.0d0) * J_factor2
+                        !If the probability that this J is less than that
+                        !random rejection rate, then it is rejected
+                        if ((2*J + 1.0d0) * (J_factor1) * &
+                            exp(-(J_factor1) * (J) * (J + 1.0d0)) < random_num1) cycle
                         exit
                 end do
 
+                !The rotational energy is computed using the rotational number (J)
+                !McQuarrie, 1997 : section 18-5 : pg.743
+                !
+                ! Erot(J) = (hbar^2) (J) (J + 1) / (2) (moment_inertia)
+                !
+                ! Erot(J) = (hbar^2) (J) (J + 1) / (2) (moment_inertia)
+                !         = ((hbar^2) / 2) (J) (J + 1) / moment_inertia
+                !         = (epsilon_factor2) (J) (J + 1) / moment_inertia
+                !
+                initial_rotational_energy = &                                          !RU_energy
+                        epsilon_factor2 * J * (J + 1.0d0) / moment_inertia
+
+                !The linear rotational speed is computed from the rotational energy
+                !McQuarrie, 1997 : section 5-8 : pg.174
+                !
+                !   Erot = (1/2) (moment_inertia) (angular_rotational_speed)^2
+                !
+                !   Erot = (1/2) (moment_inertia) (angular_rotational_speed)^2
+                !        = (1/2) (moment_inertia) (linear_rotational_speed  / radius)^2
+                !        = (1/2) (moment_inertia) (linear_rotational_speed / (bond_length / 2))^2
+                !        = (2) (moment_inertia) (linear_rotational_speed)^2 / bond_length^2
+                !
+                ! linear_rotational_speed = sqrt((1/2) (E_rot) (initial_bond_distance)^2 / moment_inertia)
+                ! linear_rotational_speed = sqrt(E_rot / mass_hydrogen)
+                !
+                initial_rotational_speed = &                                          !RU_length/RU_time
+                        sqrt(initial_rotational_energy/mass_hydrogen)
+
+                !The bond is rotating, meaning some part of the two atoms' velocity
+                !vectors are perpendicular to the bond. Which direction it is going
+                !should be random
+                !
+                !Two degrees of freedom can be decribed by a single angle
+                !
                 random_num1 = rand()
-                initial_rotational_speed = sqrt(initial_rotational_energy/mass_hydrogen)
-                initial_rotation_angle = random_num1*pi2 - pi
-                bond_period_elapsed = rand()
+                initial_rotation_angle = random_num1*pi2 - pi                         !Radians
 
-                !Now we actually change the physical location of coordinates to reflect this bonding
-                atom1 = BONDING_DATA(i,1)
-                atom2 = BONDING_DATA(i,2)
+                !The bond in actuality may not be completely stretched out or
+                !contracted so a random point in the period is picked to
+                !start the bond at
+                !
+                !This is normalized to a value between 0 and 1
+                !
+                bond_period_elapsed = rand()                                          ! -
 
-                !Figure out which direction the bond is going
-                bond_vector = (/ sin(initial_bond_angle1)*cos(initial_bond_angle2),&
-                                 sin(initial_bond_angle1)*sin(initial_bond_angle2),&
-                                 cos(initial_bond_angle1) /)
-
-                !And two orthogonal vectors that are both perpendicular to the bond
-                rotation0_vector =  (/ bond_vector(2), -bond_vector(1), 0.0d0 /) / &
-                                       sqrt(bond_vector(2)**2 + bond_vector(1)**2)
-                call cross(bond_vector,rotation0_vector,rotation90_vector)
-
-                !Calculate the coordinates of the atoms via the distance, skew, and bond vector
-                bond_vector = initial_bond_distance * bond_vector / 2
-                coords(:,atom1) = bond_vector
-                coords(:,atom2) = -bond_vector
-
-                !Calculate the direction the bond is spinning given the two
-                !orthogonal vectors
-                rotation_vector = ( sin(initial_rotation_angle) * rotation0_vector + &
-                                    cos(initial_rotation_angle) * rotation90_vector ) * &
-                                  initial_rotational_speed
-
-                !With the translational, vibrational, and rotational vectors and speeds
-                !Calculate the velocities of the atoms
-                velocities(:,atom1) = rotation_vector
-                velocities(:,atom2) = -rotation_vector
+                !All of this is stored for later use in the InitialSetup of runTrajectory
+                INITIAL_BOND_DATA(:,m) = (/ initial_bond_distance,initial_rotational_speed,&
+                                        initial_rotation_angle,initial_bond_angle1,initial_bond_angle2,&
+                                        bond_period_elapsed /)
         end do
 
-	incoming_speed = sqrt(2*initial_translational_KE/(mass_hydrogen*sum(COLLISION_DATA)))
+end subroutine InitialSampling3
 
-	do i = 1, Natoms
-		if (COLLISION_DATA(i) == 1) then
-			velocities(:,i) = velocities(:,i) + &
-                        (/ incoming_speed, 0.0d0, 0.0d0 /)
-		else
-			coords(:,i) = coords(:,i) + &
-			(/ collision_distance, collision_skew, 0.0d0 /)
-		end if
-	end do
-
-end subroutine InitialSetup4
 
 
 
