@@ -158,30 +158,6 @@ do Ngrid = 1, max(Ngrid_total,1)
         end do
         close(filechannel1)
         
-!
-!        do i = 1, bounds1
-!        var1 = i * multiplier1_0
-!        indexer0 = bounds2*(i-1)
-!        
-!        do j = 1, bounds2
-!        var2 = j * multiplier2_0
-!        
-!                population = counter0(indexer0 + j)
-!		if (population < overcrowd0) then
-!                	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
-!			cycle
-!        	else
-!			indexer1 = population / key_start
-!			population = sum(counter1(indexer1+1:indexer1+17))
-!                	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
-!
-!			occurence_max = max(occurence_max,population)
-!		end if
-!        end do
-!                write(filechannel1,*) ""
-!        end do
-!        close(filechannel1)
-        
         !Write to the plot
         write(variable_length_text,FMT="(I5)") floor(occurence_max*.9)
         open(filechannel1,file=gridpath0//gnuplotfile)
@@ -195,14 +171,14 @@ do Ngrid = 1, max(Ngrid_total,1)
         write(filechannel1,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
         write(filechannel1,*) '     1 1 0.6471 0 )'
         write(filechannel1,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//']'
-        write(filechannel1,*) 'set cblabel "Population"'
+        write(filechannel1,*) 'set cblabel "Number of Frames in the Cell" font ",18" offset 1,0'
         write(filechannel1,*) 'set title "Configurational Heatmap of an H - H_2 System" font ",32" offset 0,3'
         write(filechannel1,*) 'set xlabel "Var1 (A)" font ",28" offset 0,-2'
-        write(filechannel1,*) 'set xtics font ",24"'
-        write(filechannel1,*) 'set xrange [', floor(local_min1), ':', ceiling(local_max1),']'
-        write(filechannel1,*) 'set ylabel "Var2" font ",28" offset -5,0'
-        write(filechannel1,*) 'set ytics font ",24"'
-        write(filechannel1,*) 'set yrange [', floor(local_min2), ':',ceiling(local_max2),']'
+        write(filechannel1,*) 'set xtics 1 font ",24"'
+        write(filechannel1,*) 'set xrange [', local_min1*0.9, ':', local_max1*1.1,']'
+        write(filechannel1,*) 'set ylabel "Var2 (A)" font ",28" offset -5,0'
+        write(filechannel1,*) 'set ytics 1 font ",24"'
+        write(filechannel1,*) 'set yrange [', local_min2*0.9, ':',local_max2*1.1,']'
         write(filechannel1,*) 'set cbtics'
         write(filechannel1,*) 'set view map'
         write(filechannel1,*) 'set pm3d interpolate 1,1'

@@ -122,6 +122,88 @@ integer,parameter :: comparison_number = 1
 character(11),parameter :: allprefixes = "placeholder"
 integer,dimension(comparison_number),parameter :: alllengths = (/ 69 /)
 
+
+
+contains
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               getPrefixText
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 
+!       PURPOSE
+!               This subroutine uniquely describes an approximation method with a string
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               prefix_text                     CHAR(12)                        The string that uniquely describes
+!                                                                               the approximation method
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               reject_flag                     LOGICAL                         If true, then reject all approximations;
+!                                                                               otherwise, use approximations
+!               accept_first                    LOGICAL                         If true, then approximations use the first candidate;
+!                                                                               otherwise, they use the best candidate
+!               accept_worst                    LOGICAL                         If true, then approximations use the worst candidate;
+!                                                                               otherwise, they use the best candidate
+!
+!               threshold_rmsd                  REAL(DP)                        The RMSD threshold which differentiates candidates
+!                                                                               for approximation from others
+!
+!               reject_text                     CHAR(6)                         A string desribing the approximation method
+!               Nthreshold_text                 CHAR(6)                         A string desribing the threshold of acceptance
+!                                                                               for the approximation method
+
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine getPrefixText(prefix_text)
+use PARAMETERS
+implicit none
+
+!Grid Directory/File Formatting Strings
+character(6) :: reject_text
+character(6) :: Nthreshold_text
+character(12),intent(out) :: prefix_text
+
+write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
+if (reject_flag) then
+        reject_text = "reject"
+else
+        if (accept_first) then
+                 if (accept_worst) then
+                         reject_text = "alphaW"
+                 else
+                         reject_text = "alphaA"
+                 end if
+        else
+                 if (accept_worst) then
+                         reject_text = "omegaW"
+                 else
+                         reject_text = "omegaA"
+                 end if
+        end if
+end if
+
+prefix_text = reject_text//Nthreshold_text
+
+end subroutine getPrefixText
+
 end module ANALYSIS
 
 

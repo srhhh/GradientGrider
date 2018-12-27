@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0010
+Ntraj_max=0100
 
 #The number of grids to add to a new library
 Ngrid_max=1

@@ -87,6 +87,7 @@ character(Ngrid_text_length+1) :: folder_text
 character(trajectory_text_length) :: Ntraj_text
 character(6) :: Nthreshold_text
 character(6) :: reject_text
+character(12) :: short_prefix_text
 character(12+Ngrid_text_length) :: prefix_text
 character(150) :: old_filename, new_filename
 character(1) :: answer
@@ -124,7 +125,8 @@ call OMP_SET_NUM_THREADS(Nthreads)
 !$OMP& FIRSTPRIVATE(Ngrid_text,reject_text)&
 !$OMP& PRIVATE(c1,c2,cr,r1,r2,coords_initial,coords_final,velocities_initial,velocities_final)&
 !$OMP& SHARED(return_flag,now,seed,system_clock_rate)&
-!$OMP& SHARED(initial_n_testtraj,folder_text,prefix_text,Nthreshold_text,old_filename,new_filename,answer)&
+!$OMP& SHARED(initial_n_testtraj,folder_text,prefix_text,short_prefix_text)&
+!$OMP& SHARED(Nthreshold_text,old_filename,new_filename,answer)&
 !$OMP& PRIVATE(i,j,n)
 
 !$OMP SINGLE
@@ -210,31 +212,13 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!Some intitialization stuff
-write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
-if (reject_flag) then
-	reject_text = "reject"
-else
-        if (accept_first) then
-                 if (accept_worst) then
-                         reject_text = "alphaW"
-                 else
-                         reject_text = "alphaA"
-                 end if
-        else
-                 if (accept_worst) then
-                         reject_text = "omegaW"
-                 else
-                         reject_text = "omegaA"
-                 end if
-        end if
-end if
-
+!Some formatting for uniquely identifying this set of trajectories
+call getPrefixText(short_prefix_text)
 
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
 
-prefix_text = Ngrid_text//reject_text//Nthreshold_text
+prefix_text = Ngrid_text//short_prefix_text
 
 !$OMP END SINGLE
 !$OMP BARRIER

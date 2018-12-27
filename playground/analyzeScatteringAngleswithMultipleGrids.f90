@@ -311,19 +311,20 @@ end if
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//prefix_filename//PNGfilename//'.png"'
-write(gnuplotchannel,*) 'set multiplot layout 4,1'
-write(gnuplotchannel,*) 'set title "Scattering Angle Distribution of '//trim(adjustl(Ntraj_text))//&
-                        ' Trajectories"'
+write(gnuplotchannel,*) 'set multiplot layout 4,1 margins 0.10,0.95,.1,.95 spacing 0,0.1'//&
+                        'title "Scattering Angle and '//&
+                        'Energy Change Distributions of '//trim(adjustl(Ntraj_text))//&
+                        ' Trajectories" font ",18" offset 0,3'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'pi = 3.14159265'
-write(variable_length_text,FMT="(F5.4)") sizeAngleBin*angle_ratio
-write(gnuplotchannel,*) 'box_width = '//variable_length_text
-write(gnuplotchannel,*) 'set boxwidth box_width'
-write(gnuplotchannel,*) 'set xlabel "Scattering Angle"'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
-write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'unset key'
+
+write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
+write(gnuplotchannel,*) 'pi = 3.14159265'
+write(gnuplotchannel,*) 'box_width = ', sizeAngleBin*angle_ratio
+write(gnuplotchannel,*) 'set boxwidth box_width'
+write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
@@ -332,6 +333,8 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
 
 write(gnuplotchannel,*) 'scaling = 1000'
+
+write(gnuplotchannel,*) 'set xlabel "Absolute Translation Energy Change (meV)"'
 write(gnuplotchannel,*) 'min_E = scaling * ', min_absenergychange
 write(gnuplotchannel,*) 'max_E = scaling * ', max_absenergychange
 write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
@@ -339,16 +342,11 @@ write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'set boxwidth box_width'
-write(gnuplotchannel,*) 'set xlabel "Energy (eV)"'
 write(gnuplotchannel,*) "set format x '%.3f'"
-write(gnuplotchannel,*) 'set ylabel "Absolute Translational Energy Change"'
-write(gnuplotchannel,*) 'set title "Absolute Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
-                        ' Trajectories"'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($3-0.5)+min_E):(1.0) smooth frequency w boxes'
-write(gnuplotchannel,*) 'set title "Relative Translational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
-                        ' Trajectories"'
-write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
+
+write(gnuplotchannel,*) 'set xlabel "Relative Translational Energy Change (meV)"'
 write(gnuplotchannel,*) 'min_E = scaling * ', min_relenergychange
 write(gnuplotchannel,*) 'max_E = scaling * ', max_relenergychange
 write(gnuplotchannel,*) 'box_width = (max_E-min_E) /', energychangeBins
@@ -358,9 +356,8 @@ write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//binnedSATRVfile//&
                         '" u (box_width*($4-0.5)+min_E):(1.0) smooth frequency w boxes'
-write(gnuplotchannel,*) 'set title "Rotational Energy Change Distribution of '//trim(adjustl(Ntraj_text))//&
-                        ' Trajectories"'
-write(gnuplotchannel,*) 'set ylabel "Rotational Energy Change"'
+
+write(gnuplotchannel,*) 'set xlabel "Rotational Energy Change (meV)"'
 write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
 write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
 write(gnuplotchannel,*) 'Nbins = ', energychangeBins
@@ -395,7 +392,7 @@ open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//prefix_filename//'HeatMap_'//&
                         PNGfilename//'.png"'
-write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" offset 0,-20'
+write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" font ",18" offset 0,-20'
 !write(gnuplotchannel,*) 'set lmargin at screen 0.05'
 !write(gnuplotchannel,*) 'set rmargin at screen 0.85'
 !write(gnuplotchannel,*) 'set bmargin at screen 0.1'
@@ -887,13 +884,16 @@ write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
 write(Ntraj_text,FMT="(I0."//variable_length_text//")") Ntraj
-write(gnuplotchannel,*) 'set multiplot layout 4,1 title '//&
-                        '"Angle Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
+write(gnuplotchannel,*) 'set multiplot layout 4,1 margins 0.10,0.95,.1,.95 spacing 0,0.1'//&
+                        'title "Scattering Angle and '//&
+                        'Energy Change Distributions of '//trim(adjustl(Ntraj_text))//&
+                        ' Trajectories" font ",18" offset 0,3'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-write(gnuplotchannel,*) 'set ylabel "Scattering Angle Occurence"'
-write(gnuplotchannel,*) 'set xlabel "Angle (rad)"'
+write(gnuplotchannel,*) 'set ylabel "Occurence"'
 write(gnuplotchannel,*) 'set yrange [0:]'
+
+write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
@@ -913,6 +913,8 @@ else
                                 '(rounded($1))):(1.0) smooth frequency w boxes'
 end if
         write(gnuplotchannel,*) 'scaling = 1000'
+
+        write(gnuplotchannel,*) 'set xlabel "Absolute Translational Energy Change (meV)"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_absenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_absenergychange
         write(gnuplotchannel,*) 'Nbins = ', energychangeBins
@@ -922,9 +924,7 @@ end if
         write(gnuplotchannel,*) 'set boxwidth box_width'
 	write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
-        write(gnuplotchannel,*) 'set xlabel "Energy (meV)"'
         write(gnuplotchannel,*) "set format x '%.3f'"
-        write(gnuplotchannel,*) 'set ylabel "Absolute Translational Energy Change"'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$3>=max_E?(max_E-0.5*box_width):'//&
@@ -939,7 +939,7 @@ else
                                 '" u (scaling*$3>=max_E?(max_E-0.5*box_width):'//&
                                 '(rounded($3))):(1.0) smooth frequency w boxes'
 end if
-        write(gnuplotchannel,*) 'set ylabel "Relative Translational Energy Change"'
+        write(gnuplotchannel,*) 'set xlabel "Relative Translational Energy Change (meV)"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_relenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_relenergychange
         write(gnuplotchannel,*) 'Nbins = ', energychangeBins
@@ -963,7 +963,7 @@ else
                                 '" u (scaling*$4>=max_E?(max_E-0.5*box_width):'//&
                                 '(rounded($4))):(1.0) smooth frequency w boxes'
 end if
-        write(gnuplotchannel,*) 'set ylabel "Rotational Energy Change"'
+        write(gnuplotchannel,*) 'set xlabel "Rotational Energy Change (meV)"'
         write(gnuplotchannel,*) 'min_E = scaling * ', min_rotenergychange
         write(gnuplotchannel,*) 'max_E = scaling * ', max_rotenergychange
         write(gnuplotchannel,*) 'Nbins = ', energychangeBins
@@ -1133,31 +1133,33 @@ write(gnuplotchannel,*) 'pi = 3.14159265'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(Ntraj_text,FMT="(F6.4)") average_r0
-write(gnuplotchannel,*) 'set label 1 "Average r0: '//Ntraj_text//' A" at screen 0.65,0.95'
+write(gnuplotchannel,*) 'set label 1 "Average r0: '//Ntraj_text//' A" at screen 0.65,0.925'
 write(gnuplotchannel,*) 'set label 1 front'
 !Only one degree of freedom for vibrations
 write(Ntraj_text,FMT="(F6.1)") (2.0d0/1.0d0)*(RU_energy/kb)*average_Evib
 !write(Ntraj_text,FMT="(F6.1)") theta_vib / log((1.0d0 + average_Evib) / average_Evib)
-write(gnuplotchannel,*) 'set label 2 "Temperature: '//Ntraj_text//' K" at screen 0.65,0.925'
+write(gnuplotchannel,*) 'set label 2 "Temperature: '//Ntraj_text//' K" at screen 0.65,0.9'
 write(gnuplotchannel,*) 'set label 2 front'
 write(Ntraj_text,FMT="(F6.3)") average_rot
-write(gnuplotchannel,*) 'set label 3 "Average Rotational Speed: '//Ntraj_text//' A/fs" at screen 0.9,0.95'
+write(gnuplotchannel,*) 'set label 3 "Average Rotational Speed: '//Ntraj_text//' A/fs" at screen 0.9,0.925'
 write(gnuplotchannel,*) 'set label 3 front'
 !Two degrees of freedom for rotations
 write(Ntraj_text,FMT="(F6.1)") (2.0d0/2.0d0)*(RU_energy/kb)*average_Erot
-write(gnuplotchannel,*) 'set label 4 "Temperature: '//Ntraj_text//' K" at screen 0.9,0.925'
+write(gnuplotchannel,*) 'set label 4 "Temperature: '//Ntraj_text//' K" at screen 0.9,0.9'
 write(gnuplotchannel,*) 'set label 4 front'
 write(Ntraj_text,FMT="(I6)") Ntraj
-write(gnuplotchannel,*) 'set multiplot layout ', Nbonds,',4 title '//&
-                        '"Initial Bond Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
+write(gnuplotchannel,*) 'set multiplot layout ',Nbonds,',4 '//&
+                        'margins 0.025,0.975,.1,.95 spacing 0.05,0 '//&
+                        'title "Initial Bond Distribution of '//trim(adjustl(Ntraj_text))//&
+                        ' Trajectories" font ",24" offset 0,5'
 do i = 1, Nbonds
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence"'
+write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence" font ",18"'
 write(gnuplotchannel,*) 'box_width = 2 * pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set xrange [-pi:pi]'
-write(gnuplotchannel,*) 'set xlabel "Angle (rad)"'
+write(gnuplotchannel,*) 'set xlabel "Angle (rad)" font ",18"'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
@@ -1165,7 +1167,7 @@ write(Ntraj_text,FMT="(I6)") i*6 - 2
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
                         '" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Phi Occurence"'
+write(gnuplotchannel,*) 'set ylabel "Initial H2 Phi Occurence" font ",18"'
 write(gnuplotchannel,*) 'box_width = pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xrange [0:pi]'
@@ -1180,13 +1182,12 @@ write(gnuplotchannel,*) 'box_width = (max_r0-min_r0) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_r0)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_r0+box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xlabel "Bond Distance (A)"'
+write(gnuplotchannel,*) 'set xlabel "Bond Distance (A)" font ",18"'
 write(gnuplotchannel,*) 'set xtics min_r0, (max_r0-min_r0)/5, max_r0'
 write(gnuplotchannel,*) "set format x '%.4f'"
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Bond Length Occurence"'
+write(gnuplotchannel,*) 'set ylabel "Initial H2 Bond Length Occurence" font ",18"'
 write(gnuplotchannel,*) 'set xrange [min_r0:max_r0]'
 write(gnuplotchannel,*) 'set yrange [0:]'
-write(gnuplotchannel,*) 'set bmargin 3'
 write(Ntraj_text,FMT="(I6)") i*6 - 5
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
 			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
@@ -1197,9 +1198,9 @@ write(gnuplotchannel,*) 'box_width = (max_rot-min_rot) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_rot)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_rot+box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xlabel "Rotational Speed (A/fs)"'
+write(gnuplotchannel,*) 'set xlabel "Rotational Speed (A/fs)" font ",18"'
 write(gnuplotchannel,*) 'set xtics min_rot, (max_rot-min_rot)/5, max_rot'
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Rotational Speed Occurence"'
+write(gnuplotchannel,*) 'set ylabel "Initial H2 Rotational Speed Occurence" font ",18"'
 write(gnuplotchannel,*) 'set xrange [min_rot:max_rot]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(Ntraj_text,FMT="(I6)") i*6 - 4
@@ -1377,7 +1378,8 @@ write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
 write(Ntraj_text,FMT="(I0."//variable_length_text//")") Ntraj
 write(gnuplotchannel,*) 'set multiplot layout ',comparison_number,&
                         ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
-                        '"'//SATRVname//' Distribution of '//trim(adjustl(Ntraj_text))//' Trajectories"'
+                        '"'//SATRVname//' Distribution of '//trim(adjustl(Ntraj_text))//&
+                        ' Trajectories" font ",18" offset 0,3'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
