@@ -238,7 +238,7 @@ end if
                 !The check only happens every Ngrid_check
                 !Right now it is spaced so that we get (at most) ten graphs over the period of its creation
                 if ((modulo(n,Ngrid_check) == 0)) then
-                        call checkPlotting()
+                        call makeCheckTrajectoryGraphs()
                 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -370,92 +370,11 @@ end if
 	write(progresschannel,*) ""
 	write(progresschannel,*) ""
 	close(progresschannel)
-	
-	
-	!Now that we are done with a grid, we can see how much time the grid creation took
-	!There is also some other interesting data
-	open(gnuplotchannel,file=gridpath1//gnuplotfile)
-	write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
-	write(gnuplotchannel,*) 'set output "'//gridpath1//'GridCreationGraph.png"'
-	write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
-	write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
-	write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
-	write(gnuplotchannel,*) 'set style line 4 lc rgb "orange" pt 9'
-	write(gnuplotchannel,*) 'set style line 5 lc rgb "yellow" pt 11'
-	write(gnuplotchannel,*) 'set style line 6 lc rgb "pink" pt 20'
-	write(gnuplotchannel,*) 'unset xtics'
-	write(gnuplotchannel,*) 'tic_spacing = 0.20'
-	write(gnuplotchannel,*) 'set tmargin 0'
-	write(gnuplotchannel,*) 'set bmargin 0'
-	write(gnuplotchannel,*) 'set lmargin 1'
-	write(gnuplotchannel,*) 'set rmargin 1'
-	write(gnuplotchannel,*) 'set multiplot layout 5,1 margins 0.15,0.95,.1,.95 spacing 0,0 title '//&
-                                '"Logistics of Trajectory Addition for Grid '//Ngrid_text//'/" font ",18" offset 0,3'
-	write(gnuplotchannel,*) 'unset key'
-	write(gnuplotchannel,*) 'unset xlabel'
 
-	write(gnuplotchannel,*) 'set ylabel "Number of Files\n(Thousands)"'
-	write(gnuplotchannel,*) 'delta_Nfile = (',Nfile,' / 5.0)/1000.0'
-	write(gnuplotchannel,*) 'set yrange [-delta_Nfile*tic_spacing:delta_Nfile*(5.0+tic_spacing)]'
-	write(gnuplotchannel,*) 'set ytics 0, floor(delta_Nfile)'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($6)/1000.0) w lines'
+        call makeGridCreationGraph(Nfile,max_header1_delta,grid_wall_time)
 
-	write(gnuplotchannel,*) 'set ylabel "Number of Calls\nto DivyUp"'
-	write(gnuplotchannel,*) 'delta_header1 = (',max_header1_delta,' / 5.0)'
-	write(gnuplotchannel,*) 'set yrange [-delta_header1*tic_spacing:delta_header1*(5.0+tic_spacing)]'
-	write(gnuplotchannel,*) 'set ytics 0, floor(delta_header1)'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:4 w lines, '//&
-	                           '"'//gridpath1//"Initial"//informaticsfile//'" u 3:5 w lines'
+        call makeMaxFramesOfSubcellsGraph()
 
-	write(gnuplotchannel,*) 'set ylabel "Percentage of Frames\nAdded to Order 1"'
-	write(gnuplotchannel,*) 'delta_percentage = 20'
-	write(gnuplotchannel,*) 'set yrange [-delta_percentage*tic_spacing:100+delta_percentage*tic_spacing]'
-	write(gnuplotchannel,*) 'set ytics 0, delta_percentage, 100'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:7 w lines'
-
-	write(grid_wall_time_text,FMT="(F10.2)") grid_wall_time
-	write(gnuplotchannel,*) 'set label 1 "Total Wall Time (including grid checking): '//&
-                                trim(adjustl(grid_wall_time_text))//' s" at graph 0.025,0.9'
-
-	write(gnuplotchannel,*) 'set autoscale y'
-	write(gnuplotchannel,*) 'set ytics autofreq'
-	write(gnuplotchannel,*) 'set format y "%.1e"'
-	write(gnuplotchannel,*) 'set ylabel "Wall Time\nPer Frame (ms)"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($2)*1000.0) w lines'
-
-	write(gnuplotchannel,*) 'unset label 1'
-
-	write(gnuplotchannel,*) 'Ntraj_max = ', Ntraj_max
-	write(gnuplotchannel,*) 'set xrange [1:Ntraj_max]'
-	write(gnuplotchannel,*) 'set xtics nomirror 0,floor(Ntraj_max*.10), Ntraj_max'
-	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
-
-	write(gnuplotchannel,*) 'set autoscale y'
-	write(gnuplotchannel,*) 'set ytics autofreq'
-	write(gnuplotchannel,*) 'set format y "%.1e"'
-	write(gnuplotchannel,*) 'set ylabel "CPU Time\nPer Frame (ms)"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($1)*1000.0) w lines'
-	close(gnuplotchannel)
-
-	call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
-	
-	!We can also glean some information on the concentration of frames in subcells by checking
-        !how many frames the most crowded subcell had over the course of the grid's creation
-	open(gnuplotchannel,file=gridpath1//gnuplotfile)
-	write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
-	write(gnuplotchannel,*) 'set output "'//gridpath1//'MaxFramesOfSubcells.png"'
-	write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
-	write(gnuplotchannel,*) 'unset key'
-	write(gnuplotchannel,*) 'set xlabel "Trajectories"'
-	write(gnuplotchannel,*) 'set ylabel "Max Number of Frames in Subcells"'
-	write(gnuplotchannel,*) 'plot "'//gridpath1//'maxframesofsubcells.dat" u 1:2 t "Order 1" w lines,\'
-	write(gnuplotchannel,*) '     "'//gridpath1//'maxframesofsubcells.dat" u 1:3 t "Order 2" w lines'
-	close(gnuplotchannel)
-	call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
-	
-	
-	
-	
         !Finally, we save all of the counters to their respective counter files in the folder
         open(filechannel1,file=trim(gridpath1)//counter0file)
         do n = 1, counter0_max
@@ -516,7 +435,7 @@ end program makeGridwithNewTrajectories
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       SUBROUTINE
-!               checkPlotting
+!               makeCheckTrajectoryGraphs
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! 
@@ -552,7 +471,7 @@ end program makeGridwithNewTrajectories
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine checkPlotting
+subroutine makeCheckTrajectoryGraphs
 use runTrajectory
 use PARAMETERS
 use FUNCTIONS
@@ -925,5 +844,212 @@ close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
 
-end subroutine checkPlotting
+end subroutine makeCheckTrajectoryGraphs
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               makeGridCreationGraph
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 
+!       PURPOSE
+!               This subroutine plots the number of frames in the subcell that has the most frames over the
+!               course of the grid's creation. This information is stored in a specific file.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               Nfile                           INTEGER                         How many files are in the grid
+!               max_header1_delta               INTEGER                         The maximum numer of times divyUp was
+!                                                                               called in one trajectory
+!               grid_wall_time                  REAL                            The amount of wall time that elapsed
+!                                                                               over the creation of the grid
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath1//                     DAT                             A file that holds information on various
+!                   informaticsfile                                             file and counter variables of the grid
+!                                                                               over the course of its creation
+!               gridpath1//                     PNG                             A plot describing the evolution of some
+!                   GridCreationGraph                                           file and counter information of the grid
+!                                                                               over the course of its creation
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine makeGridCreationGraph(Nfile, max_header1_delta, grid_wall_time)
+use PARAMETERS
+use FUNCTIONS
+use VARIABLES
+use ANALYSIS
+use PHYSICS
+implicit none
+
+integer,intent(in) :: Nfile, max_header1_delta
+real,intent(in) :: grid_wall_time
+character(5) :: variable_length_text
+character(Ngrid_text_length) :: Ngrid_text
+integer,dimension(3) :: now
+
+print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
+print *, "   Making plot: "//gridpath1//'GridCreationGraph.png"'
+print *, ""
+
+write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+
+!Now that we are done with a grid, we can see how much time the grid creation took
+!There is also some other interesting data
+open(gnuplotchannel,file=gridpath1//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath1//'GridCreationGraph.png"'
+write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
+write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
+write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
+write(gnuplotchannel,*) 'set style line 4 lc rgb "orange" pt 9'
+write(gnuplotchannel,*) 'set style line 5 lc rgb "yellow" pt 11'
+write(gnuplotchannel,*) 'set style line 6 lc rgb "pink" pt 20'
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'tic_spacing = 0.20'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,*) 'set multiplot layout 5,1 margins 0.15,0.95,.1,.95 spacing 0,0 title '//&
+                                '"Logistics of Trajectory Addition for Grid '//Ngrid_text//'/" font ",18" offset 0,3'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'unset xlabel'
+
+write(gnuplotchannel,*) 'set ylabel "Number of Files\n(Thousands)"'
+write(gnuplotchannel,*) 'delta_Nfile = (',Nfile,' / 5.0)/1000.0'
+write(gnuplotchannel,*) 'set yrange [-delta_Nfile*tic_spacing:delta_Nfile*(5.0+tic_spacing)]'
+write(gnuplotchannel,*) 'set ytics 0, floor(delta_Nfile)'
+write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($6)/1000.0) w lines'
+
+write(gnuplotchannel,*) 'set ylabel "Number of Calls\nto DivyUp"'
+write(gnuplotchannel,*) 'delta_header1 = (',max_header1_delta,' / 5.0)'
+write(gnuplotchannel,*) 'set yrange [-delta_header1*tic_spacing:delta_header1*(5.0+tic_spacing)]'
+write(gnuplotchannel,*) 'set ytics 0, floor(delta_header1)'
+write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:4 w lines, '//&
+                           '"'//gridpath1//"Initial"//informaticsfile//'" u 3:5 w lines'
+
+write(gnuplotchannel,*) 'set ylabel "Percentage of Frames\nAdded to Order 1"'
+write(gnuplotchannel,*) 'delta_percentage = 20'
+write(gnuplotchannel,*) 'set yrange [-delta_percentage*tic_spacing:100+delta_percentage*tic_spacing]'
+write(gnuplotchannel,*) 'set ytics 0, delta_percentage, 100'
+write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:7 w lines'
+
+write(grid_wall_time_text,FMT="(F10.2)") grid_wall_time
+write(gnuplotchannel,*) 'set label 1 "Total Wall Time (including grid checking): '//&
+                                trim(adjustl(grid_wall_time_text))//' s" at graph 0.025,0.9'
+
+write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set ytics autofreq'
+write(gnuplotchannel,*) 'set format y "%.1e"'
+write(gnuplotchannel,*) 'set ylabel "Wall Time\nPer Frame (ms)"'
+write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($2)*1000.0) w lines'
+
+write(gnuplotchannel,*) 'unset label 1'
+
+write(gnuplotchannel,*) 'Ntraj_max = ', Ntraj_max
+write(gnuplotchannel,*) 'set xrange [1:Ntraj_max]'
+write(gnuplotchannel,*) 'set xtics nomirror 0,floor(Ntraj_max*.10), Ntraj_max'
+write(gnuplotchannel,*) 'set xlabel "Trajectories"'
+
+write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set ytics autofreq'
+write(gnuplotchannel,*) 'set format y "%.1e"'
+write(gnuplotchannel,*) 'set ylabel "CPU Time\nPer Frame (ms)"'
+write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($1)*1000.0) w lines'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
+
+end subroutine makeGridCreationGraph
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               makeMaxFramesOfSubcellsGraph
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! 
+!       PURPOSE
+!               This subroutine plots the number of frames in the subcell that has the most frames over the
+!               course of the grid's creation. This information is stored in a specific file.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath1//                     DAT                             A file that holds information on how many
+!                   maxframesofsubcells                                         frames are in the most crowded cell of
+!                                                                               each order
+!               gridpath1//                     PNG                             A plot describing the number of frames in
+!                   MaxFramesOfSubcells                                         the subcell that has the most frames over
+!                                                                               the course of the grid creation
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine makeMaxFramesOfSubcellsGraph()
+use PARAMETERS
+use FUNCTIONS
+use VARIABLES
+use ANALYSIS
+use PHYSICS
+implicit none
+
+integer,dimension(3) :: now
+
+print *, ""
+call itime(now)
+write(6,FMT=FMTnow) now
+print *, "   Making plot: "//gridpath1//'MaxFramesOfSubcells.png"'
+print *, ""
+
+!We can also glean some information on the concentration of frames in subcells by checking
+!how many frames the most crowded subcell had over the course of the grid's creation
+open(gnuplotchannel,file=gridpath1//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath1//'MaxFramesOfSubcells.png"'
+write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "Trajectories"'
+write(gnuplotchannel,*) 'set ylabel "Max Number of Frames in Subcells"'
+write(gnuplotchannel,*) 'plot "'//gridpath1//'maxframesofsubcells.dat" u 1:2 t "Order 1" w lines,\'
+write(gnuplotchannel,*) '     "'//gridpath1//'maxframesofsubcells.dat" u 1:3 t "Order 2" w lines'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
+
+end subroutine makeMaxFramesOfSubcellsGraph
 
