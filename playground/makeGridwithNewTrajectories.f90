@@ -89,7 +89,6 @@ integer :: seed,c1,c2,cr
 real :: system_clock_rate
 integer :: grid_t0, grid_t1
 real :: grid_wall_time
-character(10) :: grid_wall_time_text
 integer,dimension(3) :: now
 
 !Incremental Integers
@@ -891,7 +890,7 @@ end subroutine makeCheckTrajectoryGraphs
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine makeGridCreationGraph(Nfile, max_header1_delta, grid_wall_time)
+subroutine makeGridCreationGraph(Nfile_in, max_header1_delta_in, grid_wall_time_in)
 use PARAMETERS
 use FUNCTIONS
 use VARIABLES
@@ -899,10 +898,11 @@ use ANALYSIS
 use PHYSICS
 implicit none
 
-integer,intent(in) :: Nfile, max_header1_delta
-real,intent(in) :: grid_wall_time
+integer,intent(in) :: Nfile_in, max_header1_delta_in
+real,intent(in) :: grid_wall_time_in
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
+character(10) :: grid_wall_time_text
 integer,dimension(3) :: now
 
 print *, ""
@@ -937,13 +937,13 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'unset xlabel'
 
 write(gnuplotchannel,*) 'set ylabel "Number of Files\n(Thousands)"'
-write(gnuplotchannel,*) 'delta_Nfile = (',Nfile,' / 5.0)/1000.0'
+write(gnuplotchannel,*) 'delta_Nfile = (',Nfile_in,' / 5.0)/1000.0'
 write(gnuplotchannel,*) 'set yrange [-delta_Nfile*tic_spacing:delta_Nfile*(5.0+tic_spacing)]'
 write(gnuplotchannel,*) 'set ytics 0, floor(delta_Nfile)'
 write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($6)/1000.0) w lines'
 
 write(gnuplotchannel,*) 'set ylabel "Number of Calls\nto DivyUp"'
-write(gnuplotchannel,*) 'delta_header1 = (',max_header1_delta,' / 5.0)'
+write(gnuplotchannel,*) 'delta_header1 = (',max_header1_delta_in,' / 5.0)'
 write(gnuplotchannel,*) 'set yrange [-delta_header1*tic_spacing:delta_header1*(5.0+tic_spacing)]'
 write(gnuplotchannel,*) 'set ytics 0, floor(delta_header1)'
 write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:4 w lines, '//&
@@ -955,7 +955,7 @@ write(gnuplotchannel,*) 'set yrange [-delta_percentage*tic_spacing:100+delta_per
 write(gnuplotchannel,*) 'set ytics 0, delta_percentage, 100'
 write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:7 w lines'
 
-write(grid_wall_time_text,FMT="(F10.2)") grid_wall_time
+write(grid_wall_time_text,FMT="(F10.2)") grid_wall_time_in
 write(gnuplotchannel,*) 'set label 1 "Total Wall Time (including grid checking): '//&
                                 trim(adjustl(grid_wall_time_text))//' s" at graph 0.025,0.9'
 
