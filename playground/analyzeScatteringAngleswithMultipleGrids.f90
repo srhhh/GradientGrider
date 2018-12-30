@@ -1087,6 +1087,10 @@ real :: average_Evib, average_Erot
 integer :: total_bonds
 integer :: i
 
+real :: expected_upsilon
+real :: expected_evib
+real :: expected_temperature
+
 average_r0 = 0.0
 average_rot = 0.0
 average_Evib = 0.0
@@ -1136,16 +1140,44 @@ write(Ntraj_text,FMT="(F6.4)") average_r0
 write(gnuplotchannel,*) 'set label 1 "Average r0: '//Ntraj_text//' A" at screen 0.65,0.925'
 write(gnuplotchannel,*) 'set label 1 front'
 !Only one degree of freedom for vibrations
-write(Ntraj_text,FMT="(F6.1)") (2.0d0/1.0d0)*(RU_energy/kb)*average_Evib
+!write(Ntraj_text,FMT="(F6.1)") (2.0d0/1.0d0)*(RU_energy/kb)*average_Evib
+!write(Ntraj_text,FMT="(F6.1)") theta_vib / log(((hbar*pi2/(RU_energy*RU_time))*vib_frequency + average_Evib) / average_Evib)
+write(Ntraj_text,FMT="(F6.1)") theta_vib / log(1.0d0 + (2.0d0*(kb/RU_energy)*theta_vib) / &
+                                               (2.0d0*average_Evib ))!- (kb/RU_energy)*theta_vib))
+!write(Ntraj_text,FMT="(F6.1)") theta_vib / log((0.5d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency + average_Evib) / &
+!                                               (-0.5d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency + average_Evib))
+print *, "kb*theta_vib:", (kb/RU_energy)*theta_vib
+print *, "hv/2: ", 0.5d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
+print *, "evib: ", average_Evib
+print *, ""
+print *, "Ptotal:", upsilon_factor2*(1.0d0-exp(-upsilon_max*upsilon_factor1))/upsilon_factor1
+print *, "up_f2/up_f1:", upsilon_factor2/upsilon_factor1
+print *, "Pupsilon:", (-upsilon_max*exp(-upsilon_max*upsilon_factor1) + (1.0d0-exp(-upsilon_max*upsilon_factor1)) / &
+                          upsilon_factor1) * (upsilon_factor2 / upsilon_factor1)
+expected_upsilon = (-upsilon_max*exp(-upsilon_max*upsilon_factor1) + (1.0d0-exp(-upsilon_max*upsilon_factor1)) / &
+                          upsilon_factor1) * (upsilon_factor2 / upsilon_factor1) / &
+                         (upsilon_factor2*(1.0d0+exp(-upsilon_max*upsilon_factor1))/upsilon_factor1)
+expected_evib = epsilon_factor1*expected_upsilon
+expected_temperature = theta_vib / log(1.0d0 + 2.0d0 / (2.0d0*expected_upsilon))! + 1.0d0))
+print *, ""
+print *, "expected upsilon: ", expected_upsilon
+print *, "expected evib: ", expected_evib
+print *, "expected temperature: ", expected_temperature
+
+print *, ""
+print *, "evib-hv/2: ", average_Evib - 0.50d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
+print *, "evib+hv/2: ", average_Evib + 0.50d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
+print *, "theta_vib: ", theta_vib
+print *, "vib_freq: ", vib_frequency
 !write(Ntraj_text,FMT="(F6.1)") theta_vib / log((1.0d0 + average_Evib) / average_Evib)
 write(gnuplotchannel,*) 'set label 2 "Temperature: '//Ntraj_text//' K" at screen 0.65,0.9'
 write(gnuplotchannel,*) 'set label 2 front'
 write(Ntraj_text,FMT="(F6.3)") average_rot
-write(gnuplotchannel,*) 'set label 3 "Average Rotational Speed: '//Ntraj_text//' A/fs" at screen 0.9,0.925'
+write(gnuplotchannel,*) 'set label 3 "Average Rotational Speed: '//Ntraj_text//' A/fs" at screen 0.85,0.925'
 write(gnuplotchannel,*) 'set label 3 front'
 !Two degrees of freedom for rotations
 write(Ntraj_text,FMT="(F6.1)") (2.0d0/2.0d0)*(RU_energy/kb)*average_Erot
-write(gnuplotchannel,*) 'set label 4 "Temperature: '//Ntraj_text//' K" at screen 0.9,0.9'
+write(gnuplotchannel,*) 'set label 4 "Temperature: '//Ntraj_text//' K" at screen 0.85,0.9'
 write(gnuplotchannel,*) 'set label 4 front'
 write(Ntraj_text,FMT="(I6)") Ntraj
 write(gnuplotchannel,*) 'set multiplot layout ',Nbonds,',4 '//&
@@ -1176,37 +1208,70 @@ write(Ntraj_text,FMT="(I6)") i*6 - 1
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
 			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
-write(gnuplotchannel,*) 'min_r0 = ', min_r0
-write(gnuplotchannel,*) 'max_r0 = ', max_r0
-write(gnuplotchannel,*) 'box_width = (max_r0-min_r0) /', initialBins
+!write(gnuplotchannel,*) 'min_r0 = ', min_r0
+!write(gnuplotchannel,*) 'max_r0 = ', max_r0
+!write(gnuplotchannel,*) 'box_width = (max_r0-min_r0) /', initialBins
+!write(gnuplotchannel,*) 'set boxwidth box_width'
+!write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_r0)/box_width)'
+!write(gnuplotchannel,*) 'rounded(x) = min_r0+box_width * (bin_number(x) + 0.5)'
+!write(gnuplotchannel,*) 'set xlabel "Bond Distance (A)" font ",18"'
+!write(gnuplotchannel,*) 'set xtics min_r0, (max_r0-min_r0)/5, max_r0'
+!write(gnuplotchannel,*) "set format x '%.4f'"
+!write(gnuplotchannel,*) 'set ylabel "Initial H2 Bond Length Occurence" font ",18"'
+!write(gnuplotchannel,*) 'set xrange [min_r0:max_r0]'
+!write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'upsilon_factor1 = ', 0.5d0 * mass_hydrogen / epsilon_factor1
+write(gnuplotchannel,*) 'HOr0 = ', HOr0_hydrogen
+write(gnuplotchannel,*) 'min_upsilon = upsilon_factor1*(HOr0 -',min_r0, ')**2'
+write(gnuplotchannel,*) 'max_upsilon = upsilon_factor1*(HOr0 -',max_r0, ')**2'
+write(gnuplotchannel,*) 'box_width = (max_upsilon-min_upsilon) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
-write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_r0)/box_width)'
-write(gnuplotchannel,*) 'rounded(x) = min_r0+box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xlabel "Bond Distance (A)" font ",18"'
-write(gnuplotchannel,*) 'set xtics min_r0, (max_r0-min_r0)/5, max_r0'
+write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_upsilon)/box_width)'
+write(gnuplotchannel,*) 'rounded(x) = min_upsilon+box_width * (bin_number(x) + 0.5)'
+write(gnuplotchannel,*) 'set xlabel "Vibrational Quantum Number" font ",18"'
+write(gnuplotchannel,*) 'set xtics min_upsilon, (max_upsilon-min_upsilon)/5, max_upsilon'
 write(gnuplotchannel,*) "set format x '%.4f'"
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Bond Length Occurence" font ",18"'
-write(gnuplotchannel,*) 'set xrange [min_r0:max_r0]'
+write(gnuplotchannel,*) 'set ylabel "Initial H2 Bibrational Quantum Number" font ",18"'
+write(gnuplotchannel,*) 'set xrange [min_upsilon:max_upsilon]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(Ntraj_text,FMT="(I6)") i*6 - 5
+!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
+!			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
+!			')):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
-			')):(1.0) smooth frequency with boxes'
-write(gnuplotchannel,*) 'min_rot = ', min_rot
-write(gnuplotchannel,*) 'max_rot = ', max_rot
-write(gnuplotchannel,*) 'box_width = (max_rot-min_rot) /', initialBins
+			'" u (rounded(upsilon_factor1*(HOr0-$'//trim(adjustl(Ntraj_text))//&
+			')**2)):(1.0) smooth frequency with boxes'
+!write(gnuplotchannel,*) 'min_rot = ', min_rot
+!write(gnuplotchannel,*) 'max_rot = ', max_rot
+!write(gnuplotchannel,*) 'box_width = (max_rot-min_rot) /', initialBins
+!write(gnuplotchannel,*) 'set boxwidth box_width'
+!write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_rot)/box_width)'
+!write(gnuplotchannel,*) 'rounded(x) = min_rot+box_width * (bin_number(x) + 0.5)'
+!write(gnuplotchannel,*) 'set xlabel "Rotational Speed (A/fs)" font ",18"'
+!write(gnuplotchannel,*) 'set xtics min_rot, (max_rot-min_rot)/5, max_rot'
+!write(gnuplotchannel,*) 'set ylabel "Initial H2 Rotational Speed Occurence" font ",18"'
+!write(gnuplotchannel,*) 'set xrange [min_rot:max_rot]'
+!write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'J_factor1 = ', 2.0d0 * (mass_hydrogen**2) / epsilon_factor2
+write(gnuplotchannel,*) 'min_J = -0.5 + 0.5*sqrt(1.0+2.0*J_factor1*', (min_rot*min_r0)**2, ')'
+write(gnuplotchannel,*) 'max_J = -0.5 + 0.5*sqrt(1.0+2.0*J_factor1*', (max_rot*max_r0)**2, ')'
+write(gnuplotchannel,*) 'box_width = (max_J-min_J) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
-write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_rot)/box_width)'
-write(gnuplotchannel,*) 'rounded(x) = min_rot+box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xlabel "Rotational Speed (A/fs)" font ",18"'
-write(gnuplotchannel,*) 'set xtics min_rot, (max_rot-min_rot)/5, max_rot'
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Rotational Speed Occurence" font ",18"'
-write(gnuplotchannel,*) 'set xrange [min_rot:max_rot]'
+write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_J)/box_width)'
+write(gnuplotchannel,*) 'rounded(x) = min_J+box_width * (bin_number(x) + 0.5)'
+write(gnuplotchannel,*) 'set xlabel "Rotational Quantum Number" font ",18"'
+write(gnuplotchannel,*) 'set xtics min_J, (max_J-min_J)/5, max_J'
+write(gnuplotchannel,*) 'set ylabel "Initial H2 Rotational Quantum Number" font ",18"'
+write(gnuplotchannel,*) 'set xrange [min_J:max_J]'
 write(gnuplotchannel,*) 'set yrange [0:]'
+write(variable_length_text,FMT="(I5)") i*6 - 5
 write(Ntraj_text,FMT="(I6)") i*6 - 4
+!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
+!			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
+!			')):(1.0) smooth frequency with boxes'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
-			')):(1.0) smooth frequency with boxes'
+			'" u (rounded(-0.5+0.5*sqrt(1.0+2.0*J_factor1*(($'//trim(adjustl(Ntraj_text))//&
+			')*($'//trim(adjustl(variable_length_text))//'))**2))):(1.0) smooth frequency with boxes'
 end do
 
 close(gnuplotchannel)

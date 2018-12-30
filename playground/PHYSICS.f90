@@ -156,7 +156,7 @@ real(dp), parameter :: reduced_mass = 0.5d0 * mass_hydrogen                     
 !
 real(dp), parameter :: vib_frequency = sqrt(HOke_hydrogen/reduced_mass)/pi2        !1/RU_time
 
-!The vibrational period of the diatmic hydrogen, rounded down to the nearest timestep
+!The vibrational period of the diatomic hydrogen, rounded down to the nearest timestep
 !
 ! vib_period = 1 / vib_frequency                       (real number)
 !
@@ -187,8 +187,9 @@ real(dp), parameter :: theta_vib = &
 ! P(upsilon) = (1 - e^(-upsilon_factor1)) e^(-(upsilon) (upsilon_factor1))
 !            = (upsilon_factor2) e^(-(upsilon) (upsilon_factor1))
 !
-real(dp), parameter :: upsilon_factor1 = theta_vib / temperature                   ! -
-real(dp), parameter :: upsilon_factor2 = 1.0d0 - exp(-upsilon_factor1)             ! -
+real(dp), parameter :: upsilon_factor1 = 7.0d7 * theta_vib / temperature                   ! -
+!real(dp), parameter :: upsilon_factor2 = 1.0d0 - exp(-upsilon_factor1)             ! -
+real(dp), parameter :: upsilon_factor2 = 1.0d0 - 0.0d0!exp(-upsilon_factor1)             ! -
 
 !The Vibrational Quantum Number Cutoff
 !
@@ -747,6 +748,7 @@ subroutine InitialSampling3()
                 ! Evib(upsilon) = (upsilon) (epsilon_factor)
 
                 initial_vibrational_energy = upsilon * epsilon_factor1                 !RU_energy
+!                initial_vibrational_energy = (upsilon + 0.50d0) * epsilon_factor1      !RU_energy
 
                 !The bond distance is derived from the vibrational energy assuming all
                 !of the vibrational energy is potential (so it is fully stretched out)

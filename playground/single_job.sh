@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=1000
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -151,7 +151,7 @@ prefixes[3]="001omegaA.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HH2_Dec24_test"
+newGRID="Dec29_test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1
@@ -163,7 +163,7 @@ newGRID_check_min=100
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)
