@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=1000
+Ntraj_max=0100
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -93,8 +93,8 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.222000d0
-threshold_rmsd1=.222000d0
+threshold_rmsd=.010000d0
+threshold_rmsd1=.010000d0
 threshold_rmsd2=.100000d0
 threshold_rmsd3=.100000d0
 threshold_rmsd4=.050000d0
@@ -159,7 +159,7 @@ newGRID_flag=1
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 #Just set this to a very large number if no progress checks are wanted
-newGRID_check_min=100
+newGRID_check_min=10
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis

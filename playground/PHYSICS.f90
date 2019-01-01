@@ -187,9 +187,22 @@ real(dp), parameter :: theta_vib = &
 ! P(upsilon) = (1 - e^(-upsilon_factor1)) e^(-(upsilon) (upsilon_factor1))
 !            = (upsilon_factor2) e^(-(upsilon) (upsilon_factor1))
 !
-real(dp), parameter :: upsilon_factor1 = 7.0d7 * theta_vib / temperature                   ! -
-!real(dp), parameter :: upsilon_factor2 = 1.0d0 - exp(-upsilon_factor1)             ! -
-real(dp), parameter :: upsilon_factor2 = 1.0d0 - 0.0d0!exp(-upsilon_factor1)             ! -
+
+!To alter the discrepancy in the vibrational temperature due to potential issues
+!in using a continuous (vs discrete) vibrational quantum number sampling,
+!the rejection method may be altered here:
+!
+!To alter the rejection so that the temperature is around 300 Kelvin:
+!
+!real(dp), parameter :: upsilon_factor1 = 7.0d7 * theta_vib / temperature          ! -
+!real(dp), parameter :: upsilon_factor2 = 1.0d0 - 0.0d0!exp(-upsilon_factor1)      ! -
+!
+!To use the original rejection method:
+!         (produces a temperature ~2000 Kelvin when
+!          sampling with an input temperature of 300 Kelvin)
+!
+real(dp), parameter :: upsilon_factor1 = theta_vib / temperature                   ! -
+real(dp), parameter :: upsilon_factor2 = 1.0d0 - exp(-upsilon_factor1)             ! -
 
 !The Vibrational Quantum Number Cutoff
 !
@@ -218,7 +231,7 @@ real(dp), parameter :: upsilon_max = &                                          
 !
 ! Evib(upsilon) = (upsilon + 1/2) (h) (vib_frequency)
 !
-!We use a slightly different classical model that does not have the
+!We may use a slightly different classical model that does not have the
 !zero point energy (ZPE) associated:
 !
 ! Evib(upsilon) = (upsilon) (h) (vib_frequency)
@@ -685,9 +698,23 @@ subroutine InitialSampling3()
         real(dp) :: bond_period_elapsed
         real(dp) :: Jmp, prob_Jmp, J_factor1, theta_rot, moment_inertia
         real(dp) :: upsilon, J
+
+!        !For bug testing
+!        real(dp),save :: average_upsilon
+!        real(dp),save :: average_evib
+!        real(dp),save :: average_r0
+!        logical,save :: FirstCall = .true.
         
         !Incremental Integers
         integer :: m
+
+!        !For bug testing
+!        if (FirstCall) then
+!                FirstCall = .false.
+!                average_upsilon = 0.0d0
+!                average_evib = 0.0d0
+!                average_r0 = 0.0d0
+!        end if
 
         !Get some random initial conditions for the trajectory
         !For now, we are only handling systems with H-H bonds
@@ -747,8 +774,8 @@ subroutine InitialSampling3()
                 !
                 ! Evib(upsilon) = (upsilon) (epsilon_factor)
 
-                initial_vibrational_energy = upsilon * epsilon_factor1                 !RU_energy
-!                initial_vibrational_energy = (upsilon + 0.50d0) * epsilon_factor1      !RU_energy
+!                initial_vibrational_energy = upsilon * epsilon_factor1                 !RU_energy
+                initial_vibrational_energy = (upsilon + 0.50d0) * epsilon_factor1      !RU_energy
 
                 !The bond distance is derived from the vibrational energy assuming all
                 !of the vibrational energy is potential (so it is fully stretched out)
@@ -899,7 +926,17 @@ subroutine InitialSampling3()
                 INITIAL_BOND_DATA(:,m) = (/ initial_bond_distance,initial_rotational_speed,&
                                         initial_rotation_angle,initial_bond_angle1,initial_bond_angle2,&
                                         bond_period_elapsed /)
+
+!                !For bug testing
+!                average_upsilon = average_upsilon + upsilon
+!                average_evib = average_evib + initial_vibrational_energy
+!                average_r0 = average_r0 + initial_bond_distance
         end do
+
+!        !For bug testing
+!        print *, "avg_upsilon: ", average_upsilon / (Ntraj_max * Nbonds)
+!        print *, "   avg_evib: ",  average_evib / (Ntraj_max * Nbonds)
+!        print *, "     avg_r0: ", average_r0 / (Ntraj_max * Nbonds)
 
 end subroutine InitialSampling3
 

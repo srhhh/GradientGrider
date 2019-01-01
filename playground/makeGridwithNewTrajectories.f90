@@ -83,6 +83,9 @@ integer :: max_header1_delta, max_header2_delta, max_header3_delta
 real(dp),dimension(3,Natoms) :: coords_initial, velocities_initial
 real(dp),dimension(3,Natoms) :: coords_final, velocities_final
 
+!For Consistency in the Trajectory Testing
+real(dp),dimension(6,Nbonds) :: INITIAL_BOND_DATA_test
+
 !Timing Variables
 real :: r1,r2
 integer :: seed,c1,c2,cr
@@ -197,6 +200,16 @@ do Ngrid = 1, Ngrid_max
                 counter3(m) = 0
         end do
 
+        !If we are doing "grid-checking" by occaisionally
+        !doing a test trajectory, then we can reduce some
+        !random variables by making them all start with
+        !the same set of initial conditions.
+        !
+        !We store these in INITIAL_BOND_DATA_test:
+
+        call InitialSampling3()
+        INITIAL_BOND_DATA_test = INITIAL_BOND_DATA
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !		TRAJECTORY INITIALIZATION
@@ -222,11 +235,6 @@ end if
 
         do n = 1, Ntraj_max
 
-                !Get some random initial conditions for the trajectory
-                !For now, we are only handling systems with H-H bonds
-
-                call InitialSampling3()
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                GRID CREATION MONITORING
@@ -237,6 +245,7 @@ end if
                 !The check only happens every Ngrid_check
                 !Right now it is spaced so that we get (at most) ten graphs over the period of its creation
                 if ((modulo(n,Ngrid_check) == 0)) then
+                        INITIAL_BOND_DATA = INITIAL_BOND_DATA_test
                         call makeCheckTrajectoryGraphs()
                 end if
 
@@ -245,6 +254,11 @@ end if
 !		TRAJECTORY ADDITION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                !Get some random initial conditions for the trajectory
+                !For now, we are only handling systems with H-H bonds
+
+                call InitialSampling3()
 
 		!$OMP CRITICAL
 
@@ -331,11 +345,11 @@ end if
 		write(filechannel1,FMTtimeslice) &
                                                  ((coords_initial(l,m),l=1,3),m=1,Natoms),&
                                                  ((velocities_initial(l,m),l=1,3),m=1,Natoms),&
-         				         ((coords_final(l,m),l=1,3),m=1,Natoms),&
+                                                 ((coords_final(l,m),l=1,3),m=1,Natoms),&
                                                  ((velocities_final(l,m),l=1,3),m=1,Natoms)
                 close(filechannel1)
 
-		!$OMP END CRITICAL
+                !$OMP END CRITICAL
 
                 max_header1_delta = max(max_header1_delta,header1-header1_old)
                 max_header2_delta = max(max_header2_delta,header2-header2_old)
@@ -614,7 +628,7 @@ write(gnuplotchannel,*) 'delta_var1 = (max_var1 - min_var1) / 4'
 write(gnuplotchannel,*) 'delta_var2 = (max_var2 - min_var2) / 4'
 write(gnuplotchannel,*) 'max_frames = ', trajectory_max_frames
 write(gnuplotchannel,*) 'max_steps = ', trajectory_total_frames
-write(gnuplotchannel,*) 'max_neighbor_check = ', trajectory_max_neighbor_check
+write(gnuplotchannel,*) 'max_neighbor_check = ', min(trajectory_max_neighbor_check,4)
 write(gnuplotchannel,*) 'min_rmsd = ', trajectory_min_rmsd
 
 write(gnuplotchannel,*) 'steps_scaling = 1000'

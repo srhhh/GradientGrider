@@ -599,7 +599,7 @@ integer,allocatable :: binCumulative(:,:), binTotal(:,:),sampleSize(:)
 integer :: binTally
 real :: binThreshold = 1.0
 real :: lambda_penalty = 2.0
-real :: minsd_penalty = 0.01
+real :: minsd_penalty
 
 !FORMATTING OF PNG FILES
 character(5) :: variable_length_text
@@ -611,6 +611,7 @@ character(trajectory_text_length) :: Ntraj_text
 !INCREMENTAL INTEGER
 integer :: i
 
+!Some initialization
 bin_width = (upperlimit-lowerlimit) / scatteringangleBins
 Nsamples_max = (Ngrid_max * Ntraj_max) / Ntesttraj
 allocate(binCumulative(scatteringangleBins,Nsamples_max),&
@@ -618,6 +619,30 @@ allocate(binCumulative(scatteringangleBins,Nsamples_max),&
          binAverage(scatteringangleBins),binSD(scatteringangleBins),&
          sampleSize(Nsamples_max),sampleKS(Nsamples_max),&
          sampleKRP(Nsamples_max),sampleRMSD(Nsamples_max))
+
+!The minimum standard deviation (used to calculate KRP) of a bin is
+!set to be the theoretical standard deviation if a value for the
+!observable occurs only once over the whole set. Thus:
+!
+! minBin = 1 / (Nsamples_max * Ntesttraj)
+!
+!  minSD = sqrt( SUM( (minBin - valueBin)^2 ) /
+!                (Nsamples_max - 1)                   )
+!
+!        = sqrt( ((Nsamples_max - 1) * (minBin - 0)^2
+!                        + (1) * (minBin - 1)^2 )) /
+!                (Nsamples_max - 1)                   )
+!        = sqrt( ((Nsamples_max - 1) * (1 / (Nsamples_max * Ntesttraj)^2)
+!                        + ( 1 - 1/ (Nsamples_max * Ntesttraj))^2 ) /
+!                (Nsamples_max - 1)                   )
+!        = sqrt( ((Nsamples_max - 1) / (Nsamples_max * Ntesttraj)^2
+!                        + ((Nsamples_max * Ntesttraj) - 1)^2 / (Nsamples_max * Ntesttraj)^2) /
+!                (Nsamples_max - 1)                   )
+!        = sqrt( ((Nsamples_max * Ntesttraj - 1)^2 + Nsamples_max - 1) /
+!                (Nsamples_max - 1)                   ) / (Nsamples_max * Ntesttraj)
+!
+minsd_penalty = sqrt( ((Nsamples_max * Ntesttraj - 1)**2 + Nsamples_max - 1) * 1.0 / &
+                      (Nsamples_max - 1) ) * 1.0 / (Nsamples_max * Ntesttraj)
 
 !Now we want a reference distribution
 !This will be the distribution of ALL trajectories
@@ -1087,6 +1112,7 @@ real :: average_Evib, average_Erot
 integer :: total_bonds
 integer :: i
 
+real :: N_upsilon, N_J
 real :: expected_upsilon
 real :: expected_evib
 real :: expected_temperature
@@ -1121,11 +1147,16 @@ do
 end do
 close(filechannel1)
 
+!The average bond length
 average_r0 = average_r0 / total_bonds
+
+!The average linear rotational speed
 average_rot = average_rot / total_bonds
+
+!The average vibrational energy
 average_Evib = 0.5 * HOke_hydrogen * average_Evib / total_bonds
-!average_Evib = (0.5 * HOke_hydrogen * average_Evib / total_bonds) / &
-!        (hbar * pi2 * vib_frequency / (RU_energy * RU_time))
+
+!The average rotational energy
 average_Erot = average_Erot * mass_hydrogen / total_bonds
 
 open(gnuplotchannel,file=gridpath0//gnuplotfile)
@@ -1136,62 +1167,252 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'pi = 3.14159265'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+
+!
+!The average bond length is displayed on screen
+!
 write(Ntraj_text,FMT="(F6.4)") average_r0
 write(gnuplotchannel,*) 'set label 1 "Average r0: '//Ntraj_text//' A" at screen 0.65,0.925'
 write(gnuplotchannel,*) 'set label 1 front'
-!Only one degree of freedom for vibrations
-!write(Ntraj_text,FMT="(F6.1)") (2.0d0/1.0d0)*(RU_energy/kb)*average_Evib
-!write(Ntraj_text,FMT="(F6.1)") theta_vib / log(((hbar*pi2/(RU_energy*RU_time))*vib_frequency + average_Evib) / average_Evib)
-write(Ntraj_text,FMT="(F6.1)") theta_vib / log(1.0d0 + (2.0d0*(kb/RU_energy)*theta_vib) / &
-                                               (2.0d0*average_Evib ))!- (kb/RU_energy)*theta_vib))
-!write(Ntraj_text,FMT="(F6.1)") theta_vib / log((0.5d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency + average_Evib) / &
-!                                               (-0.5d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency + average_Evib))
-print *, "kb*theta_vib:", (kb/RU_energy)*theta_vib
-print *, "hv/2: ", 0.5d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
-print *, "evib: ", average_Evib
-print *, ""
-print *, "Ptotal:", upsilon_factor2*(1.0d0-exp(-upsilon_max*upsilon_factor1))/upsilon_factor1
-print *, "up_f2/up_f1:", upsilon_factor2/upsilon_factor1
-print *, "Pupsilon:", (-upsilon_max*exp(-upsilon_max*upsilon_factor1) + (1.0d0-exp(-upsilon_max*upsilon_factor1)) / &
-                          upsilon_factor1) * (upsilon_factor2 / upsilon_factor1)
-expected_upsilon = (-upsilon_max*exp(-upsilon_max*upsilon_factor1) + (1.0d0-exp(-upsilon_max*upsilon_factor1)) / &
-                          upsilon_factor1) * (upsilon_factor2 / upsilon_factor1) / &
-                         (upsilon_factor2*(1.0d0+exp(-upsilon_max*upsilon_factor1))/upsilon_factor1)
-expected_evib = epsilon_factor1*expected_upsilon
-expected_temperature = theta_vib / log(1.0d0 + 2.0d0 / (2.0d0*expected_upsilon))! + 1.0d0))
-print *, ""
-print *, "expected upsilon: ", expected_upsilon
-print *, "expected evib: ", expected_evib
-print *, "expected temperature: ", expected_temperature
 
-print *, ""
-print *, "evib-hv/2: ", average_Evib - 0.50d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
-print *, "evib+hv/2: ", average_Evib + 0.50d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
-print *, "theta_vib: ", theta_vib
-print *, "vib_freq: ", vib_frequency
-!write(Ntraj_text,FMT="(F6.1)") theta_vib / log((1.0d0 + average_Evib) / average_Evib)
+!
+!The (vibrational) temperature is displayed on screen
+!
+!For the vibrational partition function, we can define a relationship between
+!temperature and average vibrational energy
+!McQuarrie, 1997 : section 18-4 : pg.741
+!
+! average_Evib = (kB) (theta_vib) ( (1/2) + (e^(theta_vib / T) - 1)^-1)                    (w/ ZPE)
+!
+! avearge_Evib = (kb) (theta_vib) / (e^(theta_vib / T) - 1)                                (w/o ZPE)
+!
+!Rearranging:
+!
+! T = theta_vib / log(1 + (2) (kB) (theta_vib) / ((2) (average_Evib) - (kB) (theta_vib)))  (w/ ZPE)
+!
+! T = theta_vib / log(1 + (kB) (theta_vib) / average_Evib)                                 (w/o ZPE)
+!
+!Thus, we can get the two equations below:
+!
+! Without ZPE:
+!write(Ntraj_text,FMT="(F6.1)") theta_vib / log(1.0d0 + (2.0d0*(kb/RU_energy)*theta_vib) / &
+!                                               (2.0d0*average_Evib ))
+! With ZPE:
+write(Ntraj_text,FMT="(F6.1)") theta_vib / log(1.0d0 + (2.0d0*(kb/RU_energy)*theta_vib) / &
+                                               (2.0d0*average_Evib - (kb/RU_energy)*theta_vib))
 write(gnuplotchannel,*) 'set label 2 "Temperature: '//Ntraj_text//' K" at screen 0.65,0.9'
 write(gnuplotchannel,*) 'set label 2 front'
+
+!
+! BUG TESTING START
+!print *, ""
+!print *, "kb*theta_vib:", (kb/RU_energy)*theta_vib
+!print *, "hv/2: ", 0.5d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
+!print *, "evib: ", average_Evib
+!print *, ""
+!print *, "Ptotal:", upsilon_factor2*(1.0d0-exp(-upsilon_max*upsilon_factor1))/upsilon_factor1
+!print *, "up_f2/up_f1:", upsilon_factor2/upsilon_factor1
+!print *, "Pupsilon:", (-upsilon_max*exp(-upsilon_max*upsilon_factor1) + (1.0d0-exp(-upsilon_max*upsilon_factor1)) / &
+!                          upsilon_factor1) * (upsilon_factor2 / upsilon_factor1)
+!print *, "evib-hv/2: ", average_Evib - 0.50d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
+!print *, "evib+hv/2: ", average_Evib + 0.50d0*(hbar*pi2/(RU_energy*RU_time))*vib_frequency 
+!print *, "theta_vib: ", theta_vib
+!print *, "vib_freq: ", vib_frequency
+! BUG TESTING END
+!
+
+!
+!Obtain the expectation value of the vibrational quantum
+!number by integrating over the domain:
+!
+! <upsilon> = [ integral{0 -> upsilon_max}
+!                 (upsilon) P(upsilon) d(upsilon) ] / N
+!
+!           = [ integral{0 -> upsilon_max}
+!                 (upsilon) (upsilon_factor2) e^(-(upsilon) (upsilon_factor1)) d(upsilon) ] / N
+!           = (upsilon_factor2 / N) [ integral{0 -> upsilon_max}
+!                 (upsilon) e^(-(upsilon) (upsilon_factor1)) d(upsilon) ]
+!           = (upsilon_factor2 / N) (
+!                 [ (upsilon) (-upsilon_factor1)^-1 exp(-(upsilon) (upsilon_factor1)) ]{0 -> upsilon_max} -
+!                 [ integral{0 -> upsilon_max} (-upsilon_factor)^-1 exp(-(upsilon) (upsilon_factor1)) d(upsilon) ]
+!                                   )
+!           = (upsilon_factor2 / (upsilon_factor1) (N)) (
+!                 [ 0 - (upsilon_max) exp(-(upsilon_max) (upsilon_factor1)) ] +
+!                 [ (-upsilon_factor1)^-1 exp(-(upsilon) (upsilon_factor1)) ]{0 -> upsilon_max}
+!                                                       )
+!           = (upsilon_factor2 / (upsilon_factor1) (N)) (
+!                 -(upsilon_max) exp(-(upsilon_max) (upsilon_factor1)) -
+!                 (upsilon_factor1)^-1 (exp(-(upsilon_max) (upsilon_factor1)) - 1)
+!                                                       )
+!           = (upsilon_factor2 / (upsilon_factor1) (N)) (
+!                 -(upsilon_max) exp(-(upsilon_max) (upsilon_factor1)) +
+!                 (upsilon_factor1)^-1 (1 - exp(-(upsilon_max) (upsilon_factor1)))
+!                                                       )
+!
+!where N is the normalization constant of the integral:
+!
+!         N = integral{0 -> upsilon_max}
+!                           P(upsilon) d(upsilon)
+!
+!           = [ integral{0 -> upsilon_max}
+!                 (upsilon_factor2) e^(-(upsilon) (upsilon_factor1)) d(upsilon) ]
+!           = (upsilon_factor2)
+!             [ (-upsilon_factor1)^-1 exp(-(upsilon) (upsilon_factor1)) ]{0 -> upsilon_max}
+!           = (upsilon_factor2 / upsilon_factor1)
+!             [-exp(-(upsilon_max) (upsilon_factor1)) + 1]
+!           = (1 - exp(-(upsilon_max) (upsilon_factor1))) (upsilon_factor2) / upsilon_factor1
+!
+N_upsilon = (1.0d0 - exp(-upsilon_max*upsilon_factor1)) * upsilon_factor2 / upsilon_factor1
+
+expected_upsilon = (upsilon_factor2 / (upsilon_factor1 * N_upsilon)) * &
+                   (     -upsilon_max*exp(-upsilon_max * upsilon_factor1) + &
+                         (1.0d0 - exp(-upsilon_max * upsilon_factor1)) / upsilon_factor1    )
+
+!
+!Obtain the expectation value of the vibrational energy given
+!the expecation value of the vibrational quantum number
+!
+! With ZPE:
+!
+! <Evib> = [ integral{0 -> upsilon_max}
+!                 (h) (vib_frequency) (upsilon + 1/2) P(upsilon) d(upsilon) ] / N
+!
+!        = (h) (vib_frequency) [ integral{0 -> upsilon_max}
+!                 (upsilon) P(upsilon) d(upsilon) ] / N
+!           + (h) (vib_frequency) [ integral{0 -> upsilon_max}
+!                       (1/2) P(upsilon) d(upsilon) ] / N
+!        = (h) (vib_frequency) (<upsilon>) + (1/2) (h) (vib_frequency)
+!        = (h) (vib_frequency) (<upsilon> + 1/2)
+!
+expected_evib = epsilon_factor1*(expected_upsilon+0.5d0)
+
+! 
+! Without ZPE:
+!
+! <Evib> = [ integral{0 -> upsilon_max}
+!                 (h) (vib_frequency) (upsilon ) P(upsilon) d(upsilon) ] / N
+!
+!        = (h) (vib_frequency) [ integral{0 -> upsilon_max}
+!                 (upsilon) P(upsilon) d(upsilon) ] / N
+!        = (h) (vib_frequency) (<upsilon>)
+!
+!expected_evib = epsilon_factor1*expected_upsilon
+
+!
+!Obtain the expectation value of the temperature given
+!the expecation value of the vibrational energy
+!
+!From before:
+!
+! With ZPE:
+!
+!   T = theta_vib / log( 1 + (2) (kB) (theta_vib) /
+!                            ((2) (average_Evib) - (kB) (theta_vib)))
+!
+! <T> = theta_vib / log( 1 + (2) (kB) (theta_vib) /
+!                            ((2) (<Evib>) - (kB) (theta_vib)))
+!     = theta_vib / log( 1 + (2) (kB) (theta_vib) /
+!                            ((2) (h) (vib_frequency) (<upsilon> + 1/2) - (kB) (theta_vib)))
+!     = theta_vib / log( 1 + (2) (kB) (theta_vib) /
+!                            ((2) (kB) (theta_vib) (<upsilon> + 1/2) - (kB) (theta_vib)))
+!     = theta_vib / log( 1 + (2) (kB) (theta_vib) /
+!                            (2) (kB) (theta_vib) (<upsilon>))
+!     = theta_vib / log( 1 + 1 / <upsilon>)
+!
+expected_temperature = theta_vib / log(1.0d0 + 1.0d0 / expected_upsilon)
+
+!
+! Without ZPE:
+!
+!   T = theta_vib / log( 1 + (kB) (theta_vib) / average_Evib)
+!
+! <T> = theta_vib / log( 1 + (kB) (theta_vib) / <Evib>)
+!     = theta_vib / log( 1 + (kB) (theta_vib) / (h) (vib_frequency) (<upsilon>))
+!     = theta_vib / log( 1 + (kB) (theta_vib) / (kB) (theta_vib) (<upsilon>))
+!     = theta_vib / log( 1 + 1 / <upsilon>)
+!
+!expected_temperature = theta_vib / log(1.0d0 + 2.0d0 / (2.0d0*expected_upsilon + 1.0d0))
+
+!
+! BUG TESTING START
+!print *, ""
+!print *, "expected upsilon: ", expected_upsilon
+!print *, "expected evib: ", expected_evib
+!print *, "expected temperature: ", expected_temperature
+!print *, ""
+! BUG TESTING END
+!
+
+!
+!For later, also obtain the normalization constant of the corresponding
+!integral but for the rotational quantum number (J)
+!
+!         N = integral{0 -> J_max}
+!                           P(J) d(J)
+!
+!           = [ integral{0 -> J_max}
+!                 ((2) (J) + 1) (J_factor1) e^(-(J_factor1) (J) (J + 1)) d(J) ]
+!           = (J_factor1)
+!             [ (-J_factor1)^-1 exp(-(J_factor1) (J) (J + 1)) ]{0 -> J_max}
+!           = [-exp(-(J_factor1) (J_max) (J_max + 1)) + 1]
+!
+!           = 1 - exp(-(J_factor1) (J_max) (J_max + 1))
+!
+!Because J_factor1 depends on the bond length, use the average
+!bond length
+!
+! J_factor1 = theta_rot / temperature
+!           = hbar^2 / (moment_inertia) (kB) (temperature)
+!           = hbar^2 / ((1/2) (mass_hydrogen) (bond_length)^2) (kB) (temperature)
+!           = (2) (hbar^2) / (mass_hydrogen) (average_r0^2) (kB) (temperature)
+!
+!Thus:
+!
+! N = 1 - exp(-((2) (hbar^2) / (mass_hydrogen) (average_r0^2) (kB) (temperature))
+!              (J_max) (J_max + 1))
+!
+N_J = (1.0d0 - exp(-(2.0d0 * ((hbar/(RU_energy * RU_time))**2) / &
+                     (mass_hydrogen * (average_r0**2) * (kb / RU_energy) * temperature)) * &
+                    (J_max) * (J_max + 1.0d0)))
+
+!
+!The average linear rotational speed is displayed on screen
+!
 write(Ntraj_text,FMT="(F6.3)") average_rot
 write(gnuplotchannel,*) 'set label 3 "Average Rotational Speed: '//Ntraj_text//' A/fs" at screen 0.85,0.925'
 write(gnuplotchannel,*) 'set label 3 front'
-!Two degrees of freedom for rotations
+
+!
+!The (rotational) temperature is displayed on screen
+!
 write(Ntraj_text,FMT="(F6.1)") (2.0d0/2.0d0)*(RU_energy/kb)*average_Erot
 write(gnuplotchannel,*) 'set label 4 "Temperature: '//Ntraj_text//' K" at screen 0.85,0.9'
 write(gnuplotchannel,*) 'set label 4 front'
+
+!
+!There may be multiple bonds in the system so multiple
+!distributions may be plotted
+!
 write(Ntraj_text,FMT="(I6)") Ntraj
 write(gnuplotchannel,*) 'set multiplot layout ',Nbonds,',4 '//&
                         'margins 0.025,0.975,.1,.95 spacing 0.05,0 '//&
                         'title "Initial Bond Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories" font ",24" offset 0,5'
 do i = 1, Nbonds
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Theta Occurence" font ",18"'
+
+!
+! Bond Orientation (Theta) Distribution
+!
+! Plotted based on theta angles in the 4th column
+!
+
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'box_width = 2 * pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set xrange [-pi:pi]'
-write(gnuplotchannel,*) 'set xlabel "Angle (rad)" font ",18"'
+write(gnuplotchannel,*) 'set xlabel "Initial Bond Theta Angle (rad)" font ",18"'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
@@ -1199,7 +1420,15 @@ write(Ntraj_text,FMT="(I6)") i*6 - 2
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
                         '" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Phi Occurence" font ",18"'
+
+!
+! Bond Orientation (Phi) Distribution
+!
+! Plotted based on phi angles in the 5th column
+!
+
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
+write(gnuplotchannel,*) 'set xlabel "Initial Bond Phi Angle (rad)" font ",18"'
 write(gnuplotchannel,*) 'box_width = pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'set xrange [0:pi]'
@@ -1208,70 +1437,167 @@ write(Ntraj_text,FMT="(I6)") i*6 - 1
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
 			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
-!write(gnuplotchannel,*) 'min_r0 = ', min_r0
-!write(gnuplotchannel,*) 'max_r0 = ', max_r0
-!write(gnuplotchannel,*) 'box_width = (max_r0-min_r0) /', initialBins
-!write(gnuplotchannel,*) 'set boxwidth box_width'
-!write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_r0)/box_width)'
-!write(gnuplotchannel,*) 'rounded(x) = min_r0+box_width * (bin_number(x) + 0.5)'
-!write(gnuplotchannel,*) 'set xlabel "Bond Distance (A)" font ",18"'
-!write(gnuplotchannel,*) 'set xtics min_r0, (max_r0-min_r0)/5, max_r0'
-!write(gnuplotchannel,*) "set format x '%.4f'"
-!write(gnuplotchannel,*) 'set ylabel "Initial H2 Bond Length Occurence" font ",18"'
-!write(gnuplotchannel,*) 'set xrange [min_r0:max_r0]'
-!write(gnuplotchannel,*) 'set yrange [0:]'
-write(gnuplotchannel,*) 'upsilon_factor1 = ', 0.5d0 * mass_hydrogen / epsilon_factor1
+
+!
+! Vibrational Quantum Number Distribution
+!
+! Plotted based on bond distances in the 1st column
+!
+
+write(Ntraj_text,FMT="(I6)") i*6 - 5
+
+!
+!Obtain the vibrational quantum number of the bond given
+!the bond distance when outstretched
+!
+! Evib = (1/2) (force_constant) (r0 - bond_distance)^2
+!
+! With ZPE:
+!
+! Evib = (epsilon_factor1) (upsilon + 1/2)
+!
+!Rearranging:
+!
+! upsilon = Evib / epsilon_factor1 - 1/2
+!         = (1/2) (force_constant) (r0 - bond_distance)^2 / epsilon_factor1 - 1/2
+!
+write(gnuplotchannel,*) 'upsilon_factor1 = ', 0.5d0 * HOke_hydrogen / epsilon_factor1
 write(gnuplotchannel,*) 'HOr0 = ', HOr0_hydrogen
-write(gnuplotchannel,*) 'min_upsilon = upsilon_factor1*(HOr0 -',min_r0, ')**2'
-write(gnuplotchannel,*) 'max_upsilon = upsilon_factor1*(HOr0 -',max_r0, ')**2'
+write(gnuplotchannel,*) 'min_upsilon = upsilon_factor1*(HOr0 -',min_r0, ')**2 - 0.5'
+write(gnuplotchannel,*) 'max_upsilon = upsilon_factor1*(HOr0 -',max_r0, ')**2 - 0.5'
+
+!
+! Without ZPE:
+!
+! Evib = (epsilon_factor1) (upsilon)
+!
+!Rearranging:
+!
+! upsilon = Evib / epsilon_factor1
+!         = (1/2) (force_constant) (r0 - bond_distance)^2 / epsilon_factor1
+!
+!write(gnuplotchannel,*) 'min_upsilon = upsilon_factor1*(HOr0 -',min_r0, ')**2'
+!write(gnuplotchannel,*) 'max_upsilon = upsilon_factor1*(HOr0 -',max_r0, ')**2'
+
 write(gnuplotchannel,*) 'box_width = (max_upsilon-min_upsilon) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_upsilon)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_upsilon+box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set xlabel "Vibrational Quantum Number" font ",18"'
 write(gnuplotchannel,*) 'set xtics min_upsilon, (max_upsilon-min_upsilon)/5, max_upsilon'
-write(gnuplotchannel,*) "set format x '%.4f'"
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Bibrational Quantum Number" font ",18"'
+write(gnuplotchannel,*) 'set format x "%5.1e'
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'set xrange [min_upsilon:max_upsilon]'
 write(gnuplotchannel,*) 'set yrange [0:]'
-write(Ntraj_text,FMT="(I6)") i*6 - 5
-!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-!			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
-!			')):(1.0) smooth frequency with boxes'
+write(gnuplotchannel,*) 'uf1 = ', upsilon_factor1
+write(gnuplotchannel,*) 'uf2 = ', upsilon_factor2
+
+!
+!Plot the theoretical distribution for a specific number of trajectories
+!and distribution box width
+!
+!The area under the curve should equal the area that all boxes occupy
+!
+!f(upsilon) = (1/N(upsilon)) * P(upsilon) * Area_Under_Curve(f)
+!
+!f(upsilon) = (1/N(upsilon)) * P(upsilon) * (Ntrajectories * box_width)
+!
+!           = (upsilon_factor2) e^(-(upsilon) (upsilon_factor1)) *
+!                     (box_width) (Ntrajectories) / N(upsilon)
+!
+write(gnuplotchannel,*) 'f(x) = uf2 * exp(-x*uf1) * box_width *', Ntraj_max / N_upsilon
+write(gnuplotchannel,*) 'set style line 1 linecolor rgb "red" linewidth 1.5'
+
+!
+! With ZPE:
+!
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded(upsilon_factor1*(HOr0-$'//trim(adjustl(Ntraj_text))//&
-			')**2)):(1.0) smooth frequency with boxes'
-!write(gnuplotchannel,*) 'min_rot = ', min_rot
-!write(gnuplotchannel,*) 'max_rot = ', max_rot
-!write(gnuplotchannel,*) 'box_width = (max_rot-min_rot) /', initialBins
-!write(gnuplotchannel,*) 'set boxwidth box_width'
-!write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_rot)/box_width)'
-!write(gnuplotchannel,*) 'rounded(x) = min_rot+box_width * (bin_number(x) + 0.5)'
-!write(gnuplotchannel,*) 'set xlabel "Rotational Speed (A/fs)" font ",18"'
-!write(gnuplotchannel,*) 'set xtics min_rot, (max_rot-min_rot)/5, max_rot'
-!write(gnuplotchannel,*) 'set ylabel "Initial H2 Rotational Speed Occurence" font ",18"'
-!write(gnuplotchannel,*) 'set xrange [min_rot:max_rot]'
-!write(gnuplotchannel,*) 'set yrange [0:]'
+			'" u (rounded((upsilon_factor1*(HOr0-$'//trim(adjustl(Ntraj_text))//&
+			')**2)-0.5)):(1.0) smooth frequency with boxes,\'
+!
+! Without ZPE:
+!
+!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
+!			'" u (rounded(upsilon_factor1*(HOr0-$'//trim(adjustl(Ntraj_text))//&
+!			')**2)):(1.0) smooth frequency with boxes,\'
+write(gnuplotchannel,*) '     f(x) with line linestyle 1'
+
+!
+! Rotational Quantum Number Distribution
+!
+! Plotted based on linear rotational speeds in the 2nd column
+! as well as bond distances in the 1st column
+!
+
+write(variable_length_text,FMT="(I5)") i*6 - 5
+write(Ntraj_text,FMT="(I6)") i*6 - 4
+
+!
+!Obtain the rotational quantum number of the bond given
+!the bond distance when outstretched and the
+!linera rotational speed
+!
+! Erot  = (2) (moment_inertia) (linear_rotational_speed)^2 / bond_length^2
+!       = (2) ((1/2) (mass_hydrogen) (bond_length)^2) *
+!             (linear_rotational_speed)^2 / bond_length^2
+!       = (mass_hydrogen) (linear_rotational_speed)^2
+!
+! Erot = (epsilon_factor2) (J) (J + 1) / moment_inertia
+!      = (epsilon_factor2) (J) (J + 1) / ((1/2) (mass_hydrogen) (bond_length)^2)
+!
+!Rearranging:
+!
+! 0 =J^2 + J - (1/2) (Erot) (mass_hydrogen) (bond_length)^2 / epsilon_factor2
+!
+! J = (-1/2) + (1/2) *
+!              sqrt(1 + (2) (Erot) (mass_hydrogen)
+!                           (bond_length)^2 / epsilon_factor2)
+!   = (-1/2) + (1/2) *
+!              sqrt(1 + (2) (mass_hydrogen)^2 (linear_rotational_speed)^2
+!                           (bond_length)^2 / epsilon_factor2)
+!   = (-1/2) + (1/2) *
+!              sqrt(1 + ((2) (mass_hydrogen^2) / epsilon_factor2) *
+!                       ((linear_rotational_speed) (bond_length))^2)
+!
 write(gnuplotchannel,*) 'J_factor1 = ', 2.0d0 * (mass_hydrogen**2) / epsilon_factor2
-write(gnuplotchannel,*) 'min_J = -0.5 + 0.5*sqrt(1.0+2.0*J_factor1*', (min_rot*min_r0)**2, ')'
-write(gnuplotchannel,*) 'max_J = -0.5 + 0.5*sqrt(1.0+2.0*J_factor1*', (max_rot*max_r0)**2, ')'
+write(gnuplotchannel,*) 'min_J = -0.5 + 0.5*sqrt(1.0+J_factor1*', (min_rot*min_r0)**2, ')'
+write(gnuplotchannel,*) 'max_J = -0.5 + 0.5*sqrt(1.0+J_factor1*', (max_rot*max_r0)**2, ')'
 write(gnuplotchannel,*) 'box_width = (max_J-min_J) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_J)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_J+box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set xlabel "Rotational Quantum Number" font ",18"'
 write(gnuplotchannel,*) 'set xtics min_J, (max_J-min_J)/5, max_J'
-write(gnuplotchannel,*) 'set ylabel "Initial H2 Rotational Quantum Number" font ",18"'
+write(gnuplotchannel,*) "set format x '%.1f'"
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'set xrange [min_J:max_J]'
 write(gnuplotchannel,*) 'set yrange [0:]'
-write(variable_length_text,FMT="(I5)") i*6 - 5
-write(Ntraj_text,FMT="(I6)") i*6 - 4
-!write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-!			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
-!			')):(1.0) smooth frequency with boxes'
+
+!
+!Plot the theoretical distribution for a specific number of trajectories
+!and distribution box width
+!
+!The area under the curve should equal the area that all boxes occupy
+!
+!Assume for simplicity that all bonds are the length of the
+!average bond length
+!
+!f(J) = (1/N(J)) * P(J) * Area_Under_Curve(f)
+!
+!f(J) = (1/N(J)) * P(J) * (Ntrajectories * box_width)
+!
+!     = ((2) (J) + 1) (J_factor1) e^(-(J_factor1) (J) (J + 1)) *
+!                     (box_width) (Ntrajectories) / N(J)
+!
+write(gnuplotchannel,*) 'Jf1 = ', 2.0d0 * ((hbar/(RU_energy*RU_time))**2) / &
+                                  (temperature * mass_hydrogen * (kb / RU_energy) * average_r0**2)
+write(gnuplotchannel,*) 'f(x) = Jf1 * (2*x+1) * exp(-Jf1*x*(x+1)) * box_width * ', Ntraj_max / N_J
+
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded(-0.5+0.5*sqrt(1.0+2.0*J_factor1*(($'//trim(adjustl(Ntraj_text))//&
-			')*($'//trim(adjustl(variable_length_text))//'))**2))):(1.0) smooth frequency with boxes'
+			'" u (rounded(-0.5+0.5*sqrt(1.0+J_factor1*(($'//trim(adjustl(Ntraj_text))//&
+			')*($'//trim(adjustl(variable_length_text))//'))**2))):(1.0) '//&
+                        'smooth frequency with boxes,\'
+write(gnuplotchannel,*) '     f(x) with line linestyle 1'
 end do
 
 close(gnuplotchannel)
