@@ -1714,9 +1714,10 @@ real,allocatable :: referenceSDs(:)
 integer,allocatable :: binTotal(:,:)
 real :: comparisonRMSD, comparisonKS, comparisonCDF, comparisonKRP
 real :: lambda_penalty = 2.0
-real :: minsd_penalty = 0.01
+real :: minsd_penalty
 integer :: Nbins
 
+!Initialization
 if (SATRVname == "ScatteringAngle") then
         Nbins = scatteringangleBins
 else
@@ -1727,6 +1728,9 @@ allocate(referenceBins(Nbins),&
          referenceMeans(Nbins),&
          referenceSDs(Nbins))
 allocate(binTotal(Nbins,comparison_number))
+
+minsd_penalty = sqrt( ((Nsamples_max * Ntesttraj - 1)**2 + Nsamples_max - 1) * 1.0 / &
+                      (Nsamples_max - 1) ) * 1.0 / (Nsamples_max * Ntesttraj)
 
 open(filechannel1,file=gridpath0//"Adjusted"//SATRVname//cumulativefile//".dat")
 do j = 1, Nbins
