@@ -118,6 +118,12 @@ integer :: comparison_SATRVcolumn
 real,parameter :: comparison_lowerlimit = 0.0d0
 real,parameter :: comparison_upperlimit = 0.0d0
 
+!Some variables used to calculate the KRP
+!Useful to be global so that the convergence can
+!communicate with the comparison
+real :: lambda_penalty
+real :: minsd_penalty
+
 integer,parameter :: comparison_number = 1
 character(11),parameter :: allprefixes = "placeholder"
 integer,dimension(comparison_number),parameter :: alllengths = (/ 69 /)

@@ -598,8 +598,6 @@ real,allocatable :: binAverage(:), binSD(:),sampleKS(:), sampleRMSD(:), sampleKR
 integer,allocatable :: binCumulative(:,:), binTotal(:,:),sampleSize(:)
 integer :: binTally
 real :: binThreshold = 1.0
-real :: lambda_penalty = 2.0
-real :: minsd_penalty
 
 !FORMATTING OF PNG FILES
 character(5) :: variable_length_text
@@ -643,6 +641,10 @@ allocate(binCumulative(scatteringangleBins,Nsamples_max),&
 !
 minsd_penalty = sqrt( ((Nsamples_max * Ntesttraj - 1)**2 + Nsamples_max - 1) * 1.0 / &
                       (Nsamples_max - 1) ) * 1.0 / (Nsamples_max * Ntesttraj)
+
+!And the lambda used in the KRP is just set to be 2
+!to mimic the RMSD
+lambda_penalty = 2.0
 
 !Now we want a reference distribution
 !This will be the distribution of ALL trajectories
@@ -1713,8 +1715,6 @@ real,allocatable :: referenceMeans(:)
 real,allocatable :: referenceSDs(:)
 integer,allocatable :: binTotal(:,:)
 real :: comparisonRMSD, comparisonKS, comparisonCDF, comparisonKRP
-real :: lambda_penalty = 2.0
-real :: minsd_penalty
 integer :: Nbins
 
 !Initialization
@@ -1728,9 +1728,6 @@ allocate(referenceBins(Nbins),&
          referenceMeans(Nbins),&
          referenceSDs(Nbins))
 allocate(binTotal(Nbins,comparison_number))
-
-minsd_penalty = sqrt( ((Nsamples_max * Ntesttraj - 1)**2 + Nsamples_max - 1) * 1.0 / &
-                      (Nsamples_max - 1) ) * 1.0 / (Nsamples_max * Ntesttraj)
 
 open(filechannel1,file=gridpath0//"Adjusted"//SATRVname//cumulativefile//".dat")
 do j = 1, Nbins
