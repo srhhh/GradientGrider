@@ -131,9 +131,6 @@ character(33),parameter :: FMTnow = "('Time: ',I2.2,':',I2.2,':',I2.2)"
 !But to adjust to different sizes of strings, we need to establish
 !the length of certain strings
 integer,parameter :: trajectory_text_length = 5
-integer,parameter :: scaling1_text_length = 3
-integer,parameter :: scaling2_text_length = 3
-integer,parameter :: overcrowd0_text_length = 5
 integer,parameter :: Ngrid_text_length = 3
 
 !Gridpath is one variable that must be supplied by the user and is changed
@@ -177,118 +174,89 @@ integer,parameter :: Ngradientcoordsvals = Nvar+Ncoords*2
 
 !Norder_max controls how many children generation we will make
 integer,parameter :: Norder_max = 2
-logical,parameter :: order0_flag = (1 > Norder_max)
-logical,parameter :: order1_flag = (2 > Norder_max)
-logical,parameter :: order2_flag = (3 > Norder_max)
-
-!The spacing is the spacing of the parent-level grid
-!Because the variables may be unbound, we define the
-!parent-level grid in terms of gridline spacing
-real,parameter :: spacing1 = 0.01        !Angstroms
-real,parameter :: spacing2 = 0.01        !Angstroms
-real,parameter :: spacing3 = 0.1         !Not in use
-
-!There are some outliers; making a maximum throws these away
-!real,parameter :: max_var2 = 10.0	!Angstroms
-real,parameter :: max_var1 = 10.0       !Angstroms
-real,parameter :: max_var2 = 12.0	!Angstroms (cos(angle) + 1 \in [0,2])
-!real,parameter :: max_var2 = 2.0	!Unitless (cos(angle) + 1 \in [0,2])
-integer,parameter :: bounds1 = ceiling(max_var1/spacing1)+400 !if var > max_var every 500 steps
-integer,parameter :: bounds2 = ceiling(max_var2/spacing2)+400 !if var > max_var every 500 steps
-!integer,parameter :: bounds2 = ceiling(max_var2/spacing2)+4	!For the cos(theta) definition
-!integer,parameter :: bounds2 = ceiling(max_var1/spacing1)+400 !This 4 is a cushioning because we only check
-!Consequently, we know the maximum number of cells in the grid
-integer, parameter :: counter0_max = bounds1*bounds2
-
-!The threshold of "overcrowded" for a cell of order N
-integer,parameter :: overcrowd0 = 50
-integer,parameter :: overcrowd1 = 10000
-integer,parameter :: overcrowd2 = 50
-integer,parameter :: overcrowd3 = 50
-
-!The scaling is the amount that is resolved for an overcrowded cell
-! (10,10,10) = x1000 magnification
-! For now, only two variables are used
-integer,parameter :: scaling1_0 = 4
-integer,parameter :: scaling2_0 = 4
-integer,parameter :: resolution_0 = scaling1_0*scaling2_0
-integer,dimension(1+Nvar),parameter :: SP0=(/scaling1_0,scaling2_0,resolution_0/)
-
-integer,parameter :: scaling1_1 = 10
-integer,parameter :: scaling2_1 = 10
-integer,parameter :: resolution_1 = scaling1_1*scaling2_1
-integer,dimension(1+Nvar),parameter :: SP1=(/scaling1_1,scaling2_1,resolution_1/)
-
-integer,parameter :: scaling1_2 = 10
-integer,parameter :: scaling2_2 = 10
-integer,parameter :: resolution_2 = scaling1_2*scaling2_2
-integer,dimension(1+Nvar),parameter :: SP2=(/scaling1_2,scaling2_2,resolution_2/)
-
-!The formatting of the subcell of a particular order
-character(6), parameter :: FMTorder0 = "(F9.2)"
-character(6), parameter :: FMTorder1 = "(F9.4)"
-character(6), parameter :: FMTorder2 = "(F9.5)"
-character(6), parameter :: FMTorder3 = "(F9.6)"
-integer,parameter :: FMTlength = 9
 
 
-!Some useful constants to have calculated beforehand
-!The variable multiplier is the length of the subcell of a particular order
-real, parameter :: multiplier1_0 = spacing1
-real, parameter :: multiplier2_0 = spacing2
-real, parameter :: multiplier1_1 = spacing1/scaling1_0
-real, parameter :: multiplier2_1 = spacing2/scaling2_0
-real, parameter :: multiplier1_2 = spacing1/(scaling1_0*scaling1_1)
-real, parameter :: multiplier2_2 = spacing2/(scaling2_0*scaling2_1)
-real, parameter :: multiplier1_3 = spacing1/(scaling1_0*scaling1_1*scaling1_2)
-real, parameter :: multiplier2_3 = spacing2/(scaling2_0*scaling2_1*scaling2_2)
+!Some default values are good if we don't know at execution
+!how many variables we plan to use
 
-real, parameter :: divisor1_0  = 1.0 / multiplier1_0
-real, parameter :: divisor2_0  = 1.0 / multiplier2_0
-real, parameter :: divisor1_1  = 1.0 / multiplier1_1
-real, parameter :: divisor2_1  = 1.0 / multiplier2_1
-real, parameter :: divisor1_2  = 1.0 / multiplier1_2
-real, parameter :: divisor2_2  = 1.0 / multiplier2_2
-real, parameter :: divisor1_3  = 1.0 / multiplier1_3
-real, parameter :: divisor2_3  = 1.0 / multiplier2_3
+real,parameter,dimension(4) :: default_spacing = &
+        (/ 0.01, 0.01, 0.01, 0.01 /)
+real,parameter,dimension(4) :: default_maxvar = &
+        (/ 10.0, 12.0, 10.0, 10.0 /)
+integer,parameter,dimension(4,4) :: default_scaling = &
+        reshape( &
+                (/  4,  4,  4,  4, &
+                    10, 10, 10, 10, &
+                    10, 10, 10, 10, &
+                    10, 10, 10, 10    /), &
+                (/ 4, 4 /))
+integer,parameter,dimension(4) :: default_overcrowd = &
+        (/     50,     10000,      50,       50 /)
+integer,dimension(4),parameter :: default_Norder_order = &
+        (/ 1, 0, 2, 3 /)
 
-real,dimension(2*Nvar),parameter :: MP0=(/multiplier1_0,multiplier2_0,&
-					  divisor1_0,divisor2_0/)
-real,dimension(2*Nvar),parameter :: MP1=(/multiplier1_1,multiplier2_1,&
-					  divisor1_1,divisor2_1/)
-real,dimension(2*Nvar),parameter :: MP2=(/multiplier1_2,multiplier2_2,&
-					  divisor1_2,divisor2_2/)
-real,dimension(2*Nvar),parameter :: MP3=(/multiplier1_3,multiplier2_3,&
-					  divisor1_3,divisor2_3/)
+!After making these default values, we decide how many we
+!can use, then simply truncate the extra variables off
+
+real,parameter,dimension(Nvar) :: var_spacing = &
+        default_spacing(1:Nvar)
+real,parameter,dimension(Nvar) :: var_maxvar = &
+        default_maxvar(1:Nvar)
+integer,parameter,dimension(Nvar,Norder_max+1) :: var_scaling = &
+        default_scaling(1:Nvar,1:Norder_max+1)
+integer,parameter,dimension(Norder_max+1) :: var_overcrowd = &
+        default_overcrowd(1:Norder_max+1)
+integer,dimension(Norder_max+1) :: Norder_order = &
+        default_Norder_order(1:Norder_max+1)
+
+!We also need to define some default formats for cells
+!of different orders;
+!The singleFMT strings are formats for each variable, which
+!will be combined later to formats for each cell
+!
+!One crucial thing here is that each string is of the length
+!specified in singleFMT_length
+
+integer,parameter :: singleFMT_length = 6
+character(singleFMT_length*4),parameter :: default_singleFMT = &
+        "(F0.2)"// &
+        "(F0.4)"// &
+        "(F0.5)"// &
+        "(F0.6)"
+
+character(singleFMT_length*(Norder_max+1)),parameter :: var_singleFMT = &
+        default_singleFMT(1:singleFMT_length*(Norder_max+1))
+
+integer,parameter :: multipleFMT_length = (Nvar) * singleFMT_length + &
+                                          5 * (Nvar - 1) + 7 + 2
+character(multipleFMT_length*(Norder_max+1)) :: var_multipleFMT
+
+
+!The "bounds", or the upper limit to the indexing of
+!the variables, is given a little padding (400 in this case)
+
+integer,parameter,dimension(Nvar) :: var_bounds = &
+        (/ (ceiling(var_maxvar(increment) / var_spacing(increment)) + 400, increment=1,Nvar) /)
+
+!The "resolution" is how many new cells are created when a cell
+!of a certain order has divyUp called on it
+
+integer,parameter,dimension(Norder_max+1) :: var_resolution = &
+        (/ (product(var_scaling(:,increment),DIM=1), increment=1,Norder_max+1) /)
+
+!And then some scaling factors useful to save calculation time later
+
+real,dimension(Nvar,Norder_max+1) :: multiplier
+real,dimension(Nvar,Norder_max+1) :: divisor
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                    MEMORY OVERHEAD COST
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!We need to estimate how many cells will be overcrowded in counter0
-!Must not be greater than 99999*resolution
-integer,parameter :: header1_max = 90000
-integer,parameter :: counter1_max = header1_max*resolution_0
-!We need to estimate how many subcells will be overcrowded in counter1
-!Must not be greater than 99999*resolution
-integer,parameter :: header2_max = 10
-integer,parameter :: counter2_max = header2_max*resolution_1
-!We need to estimate how many subcells will be overcrowded in counter2
-!Must not be greater than 99999*resolution
-integer,parameter :: header3_max = 10
-integer,parameter :: counter3_max = header3_max*resolution_2
-
-!The counter arrays hold information on the population of the subcell
-!And the index to get to deeper subcells in the following counter
-!If the value is XXXXYYYY, then XXXX is the key to the next
-!counter and YYYY is the population of the current counter
-integer,parameter :: population_max = 999
-integer,parameter :: key_start = population_max + 1
-
 !This takes much more time but you can force the checkState subroutine
 !to also check the rmsd of frames in adjacent cells
 !Not heavily tested in the newer updates so is deprecated (for now)
-logical,parameter :: force_Neighbors = .false.
+logical,parameter :: force_Neighbors = .true.
 
 !If we want to add duplicate copies of a state (but permuted labels)
 !Then set this to .true.
@@ -302,7 +270,6 @@ logical,parameter :: force_Duplicates = .false.
 !Note: this makes it so that two indistinguishable frames
 !      possibly do not have the same RMSD or even cell index
 logical,parameter :: force_NoLabels = .false.
-
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -337,11 +304,9 @@ integer,parameter :: Ngrid_check = max(Ntraj_max/10,Ngrid_check_min)
 !                      COUNTERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer :: header1, header2, header3
-integer, dimension(counter0_max) :: counter0
-integer, dimension(counter1_max) :: counter1
-integer, dimension(counter2_max) :: counter2
-integer, dimension(counter3_max) :: counter3
+integer,dimension(Norder_max+1) :: headers
+integer,dimension(Norder_max+1) :: headers_old
+integer,dimension(Norder_max+1) :: Norder_total
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                      TRAVERSAL
@@ -372,8 +337,8 @@ integer, allocatable :: traversal1(:,:)
 
 integer :: Ngrid
 character(gridpath_length+Ngrid_text_length+1) :: gridpath1
-character(gridpath_length+Ngrid_text_length+1+5) :: gridpath2
-!$OMP THREADPRIVATE(Ngrid,gridpath1,gridpath2)
+character(gridpath_length+Ngrid_text_length+1+5) :: gridpath2, gridpath3
+!$OMP THREADPRIVATE(Ngrid,gridpath1,gridpath2,gridpath3)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                    PLOT FORMATTING

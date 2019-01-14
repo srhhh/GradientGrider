@@ -19,8 +19,6 @@ integer, parameter :: Nthreads = 1
 
 !Set the number of children cells to be checked
 integer,parameter :: Norder_cap = 1
-!The number of children cells we will end up check (never more than Ngrid_cap)
-integer :: Norder_total
 
 !Set .true. to generate top-level heat maps for each complete grid
 logical,parameter :: heatmap_flag = .true.
@@ -62,7 +60,7 @@ logical,parameter :: testtraj_flag = .true.
    !Set .true. to generate the checkTrajectory plots for each
    !trajectory tested for each grid
    !(Not recommended for large Ntesttraj or Ngrid_total_cap)
-   logical,parameter :: testtrajDetailedRMSD_flag = .true.
+   logical :: testtrajDetailedRMSD_flag = .false.
 
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD
@@ -95,6 +93,10 @@ logical,parameter :: testtraj_flag = .true.
       !accept_worst indicates to accept the frame with the
       !maximum RMSD (instead of the minimum RMSD)
       logical :: accept_worst = .false.
+
+      !Set .true. if the real force calculations we do should be
+      !added to the grid
+      logical :: grid_addition = .true.
 
       !$OMP THREADPRIVATE(reject_flag,accept_first,accept_worst)
 

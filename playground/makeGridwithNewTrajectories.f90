@@ -63,12 +63,14 @@ use VARIABLES
 use ANALYSIS
 use PHYSICS
 use analyzeScatteringAngleswithMultipleGrids
+use analyzeRMSDThresholdwithMultipleGrids
 use analyzeHeatMapswithMultipleGrids
 implicit none
 
 !Grid Directory/File Formatting Strings
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
+character(trajectory_text_length) :: Ntraj_text
 character(12) :: prefix_text
 
 !Trajectory Variables
@@ -78,6 +80,8 @@ real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
 real(dp) :: totalEnergy
 integer :: header1_old,header2_old,header3_old
 integer :: max_header1_delta, max_header2_delta, max_header3_delta
+integer,dimension(Norder_max) :: max_headers_delta
+integer,allocatable :: filechannels(:)
 
 !Trajectory Output
 real(dp),dimension(3,Natoms) :: coords_initial, velocities_initial
@@ -125,11 +129,57 @@ write(FMTtimeslice,FMT="(A19)") "("//Natom_text//"(12(F12.7)))"
 write(FMT2,FMT="(A22)") "("//Natom_text//"(6(1x,F14.10)))"
 write(FMT3,FMT="(A22)") "("//Natom_text//"(3(1x,F14.10)))"  
 
+!We need to initialize how we format the text
+!This is big and unruly
+
+var_multipleFMT = ""
+do m = 1, Norder_max+1
+var_multipleFMT = trim(adjustl(var_multipleFMT))//"("
+
+do n = 1, Nvar
+        var_multipleFMT = trim(adjustl(var_multipleFMT))//&
+        var_singleFMT(1+singleFMT_length*(m-1):&
+                        singleFMT_length*m)
+
+        if (n == Nvar) exit
+
+        var_multipleFMT = trim(adjustl(var_multipleFMT))//&
+                ',"_",'
+end do
+
+var_multipleFMT = trim(adjustl(var_multipleFMT))//',".dat")'
+end do
+
+!We also need to initialize a few scaling factors to
+!speed up computation
+
+multiplier(:,1) = var_spacing(:)
+do m = 1, Norder_max
+do n = 1, Nvar
+        multiplier(n,m+1) = var_spacing(n) / product(var_scaling(n,1:m),DIM=1)
+end do
+end do
+
+do m = 1, Norder_max+1
+do n = 1, Nvar
+        divisor(n,m) = 1.0 / multiplier(n,m)
+end do
+end do
+
+
+
 !Initialize the clock
 call system_clock(count_rate=cr)
 system_clock_rate = 1.0/real(cr)
 
 call getPrefixText(prefix_text)
+
+allocate(filechannels(1+Ngrid_max))
+
+!The grid number will uniquely identify one trajectory
+!Open all these files under filechannels
+filechannels(1) = 1000 !+ OMP_GET_THREAD_NUM()
+filechannels(2) = 1000 + 69
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -139,29 +189,29 @@ call getPrefixText(prefix_text)
 
 do Ngrid = 1, Ngrid_max
 
-	!Time the grid creation
-	call system_clock(grid_t0)
+        !Time the grid creation
+        call system_clock(grid_t0)
 
-	!This formats the name of the grid directory (001/, 002/, ...)
-	write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+        !This formats the name of the grid directory (001/, 002/, ...)
+        write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
         write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 
-	!This names the paths formally
+        !This names the paths formally
         gridpath1 = gridpath0//Ngrid_text//"/"
         gridpath2 = gridpath1//"grid/"
 
-	!Gridpath1 is the directory 001/
+        !Gridpath1 is the directory 001/
         call system("mkdir "//gridpath1)
 
-	!Gridpath2 is the directory housing the files with coordinates and gradients
+        !Gridpath2 is the directory housing the files with coordinates and gradients
         call system("mkdir "//gridpath2)
 
-	call itime(now)
-	write(6,FMT=FMTnow) now
-	print *, "           Making grid ", Ngrid_text 
-	print *, ""
+        call itime(now)
+        write(6,FMT=FMTnow) now
+        print *, "           Making grid ", Ngrid_text 
+        print *, ""
 
-	!Inside the directory, we monitor the progress of the grid's creation
+        !Inside the directory, we monitor the progress of the grid's creation
         open(progresschannel,file=gridpath1//progressfile)
         write(progresschannel,*) ""
         write(progresschannel,*) ""
@@ -169,36 +219,16 @@ do Ngrid = 1, Ngrid_max
         write(progresschannel,*) ""
         close(progresschannel)
 
-	!We start off with zero trajectories
+        !We start off with zero trajectories
         Ntraj = 0
 
-	!We start off with zero files
-	Nfile = 0
+        !We start off with zero files
+        Nfile = 0
 
-	!We start off with no overcrowded files
-        header1 = 1
-	header1_old = 1
-        max_header1_delta = 0
-        header2 = 1
-	header2_old = 1
-        max_header2_delta = 0
-        header3 = 1
-	header3_old = 1
-        max_header3_delta = 0
-
-	!We start off with zero frames in all files
-        do m = 1, counter0_max
-                counter0(m) = 0
-        end do
-        do m = 1, counter1_max
-                counter1(m) = 0
-        end do
-        do m = 1, counter2_max
-                counter2(m) = 0
-        end do
-        do m = 1, counter3_max
-                counter3(m) = 0
-        end do
+        !We start off with no overcrowded files
+        headers = 0
+        headers_old = 0
+        max_headers_delta = 0
 
         !If we are doing "grid-checking" by occaisionally
         !doing a test trajectory, then we can reduce some
@@ -216,15 +246,6 @@ do Ngrid = 1, Ngrid_max
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        !$OMP PARALLEL
-        !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(n,m,l,INITIAL_BOND_DATA,steps,&
-        !                                       coords_initial,velocities_initial,coords_final,velocities_final,&
-        !                                       trajectory_CPU_time,trajectory_wall_time,r1,r2,c1,c2)
-        !$OMP DO
-
-
-
-
 
 !!! TEST !!!
 if (heatmap_evolution_flag) then
@@ -237,20 +258,6 @@ end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!                GRID CREATION MONITORING
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-                !This big if-statement is if we want to monitor our grid creation
-                !The check only happens every Ngrid_check
-                !Right now it is spaced so that we get (at most) ten graphs over the period of its creation
-                if ((modulo(n,Ngrid_check) == 0)) then
-                        INITIAL_BOND_DATA = INITIAL_BOND_DATA_test
-                        call makeCheckTrajectoryGraphs()
-                end if
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !		TRAJECTORY ADDITION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -260,52 +267,61 @@ end if
 
                 call InitialSampling3()
 
-		!$OMP CRITICAL
-
                 open(progresschannel,file=gridpath1//progressfile,position="append")
                 write(progresschannel,*) ""
                 write(progresschannel,*) ""
                 write(progresschannel,*) "Starting trajectory ", n
                 write(progresschannel,*) "  Initial Conditions: "
-		do m = 1, Nbonds
-	                write(progresschannel,*) "          BOND ", m, ":"
-	                write(progresschannel,*) "  		Bond Distance: ", INITIAL_BOND_DATA(1,m)
-	                write(progresschannel,*) "  		 Bond Angle 1: ", INITIAL_BOND_DATA(4,m)
-	                write(progresschannel,*) "  		 Bond Angle 2: ", INITIAL_BOND_DATA(5,m)
-		end do
+                do m = 1, Nbonds
+                        write(progresschannel,*) "          BOND ", m, ":"
+                        write(progresschannel,*) "                  Bond Distance: ", INITIAL_BOND_DATA(1,m)
+                        write(progresschannel,*) "                   Bond Angle 1: ", INITIAL_BOND_DATA(4,m)
+                        write(progresschannel,*) "                   Bond Angle 2: ", INITIAL_BOND_DATA(5,m)
+                end do
                 close(progresschannel)
 
-		!$OMP END CRITICAL
+                write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+                write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
+                write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+                write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") n
 
-		!We time how much time each trajectory takes, wall-time and CPU time
+                !How many grids we can check, meaning all the grids
+                !up until this grid
+                Ngrid_total = Ngrid
+
+!                testtrajDetailedRMSD_flag = .true.
+                if (testtrajDetailedRMSD_flag) &
+                     open(filechannels(2),file=gridpath0//Ngrid_text//"/"//&
+                                          prefix_text//'_'//Ntraj_text//".dat")
+
+                !We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
-                call addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
+!                call addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
+                call checkaddTrajectory(filechannels,coords_initial,velocities_initial,coords_final,velocities_final)
                 call CPU_time(r2)
                 call system_clock(c2)
                 trajectory_CPU_time = r2 - r1
                 trajectory_wall_time = (c2 -c1) * system_clock_rate
 
-		!If there have been a large number of subdivisions (so many that our array will go
-		!out of bounds) then we stop; we also stop if it is taking too long
-                if ((header1 == header1_max).or.&
-                   (trajectory_CPU_time > trajectory_CPU_time_max)) then
-			Ntraj_allowed = min(Ntraj_allowed,Ntraj)
-			exit
-		end if
+                if (testtrajDetailedRMSD_flag) close(filechannels(2))
+
+!                call makeCheckTrajectoryGraphs()
+!                testtrajDetailedRMSD_flag = .false.
+
+                !If it is taking too long then we stop
+                if (trajectory_CPU_time > trajectory_CPU_time_max) then
+                        Ntraj_allowed = min(Ntraj_allowed,Ntraj)
+                        exit
+                end if
 
                 Ntraj = Ntraj + 1
-
-		!$OMP CRITICAL
 
                 open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//initialfile,&
                                   position="append")
                 write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(l,m),l=1,6),m=1,Nbonds)
                 close(filechannel1)
 
-		!$OMP END CRITICAL
-
-		!$OMP CRITICAL
 
                 open(progresschannel,file=gridpath1//progressfile,position="append")
                 write(progresschannel,*) "Finished trajectory ", n
@@ -316,52 +332,59 @@ end if
                                                 trajectory_CPU_time
                 close(progresschannel)
 
-		!$OMP END CRITICAL
 
-		!$OMP CRITICAL
+                !There is an informatics files for data on the grid while creating
+                open(filechannel1,file=gridpath1//"Initial"//informaticsfile,position="append")
+!                write(filechannel1,FMTinformatics) trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps), &
+!                                                   Ntraj,header1-header1_old,header2-header2_old,Nfile,Norder1*100.0/steps
+                write(filechannel1,FMTinformatics) trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps), &
+                                                   Ntraj,headers(1)-headers_old(1),headers(2)-headers_old(2),&
+                                                   Nfile,Norder_total(2)*100.0/steps
+                close(filechannel1)
 
-		!There is an informatics files for data on the grid while creating
-		open(filechannel1,file=gridpath1//"Initial"//informaticsfile,position="append")
-		write(filechannel1,FMTinformatics) trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps), &
-		                                   Ntraj,header1-header1_old,header2-header2_old,Nfile,Norder1*100.0/steps
-		close(filechannel1)
 
-		!$OMP END CRITICAL
+                !This is a temporary file to store information on how fast
+                !Children level cells are filling up
+!                open(filechannel1,file=gridpath1//"maxframesofsubcells.dat",position="append")
+!                write(filechannel1,FMT=*) Ntraj, min(maxval(counter1),overcrowd1), min(maxval(counter2),overcrowd2)
+!                close(filechannel1)
 
-		!$OMP CRITICAL
 
-		!This is a temporary file to store information on how fast
-		!Children level cells are filling up
-		open(filechannel1,file=gridpath1//"maxframesofsubcells.dat",position="append")
-		write(filechannel1,FMT=*) Ntraj, min(maxval(counter1),overcrowd1), min(maxval(counter2),overcrowd2)
-		close(filechannel1)
-
-		!$OMP END CRITICAL
-
-		!$OMP CRITICAL
-
-		!There is a timeslice file for snapshots of the trajectory at the beginning and end
-		open(filechannel1,file=gridpath1//"Initial"//timeslicefile,position="append")
-		write(filechannel1,FMTtimeslice) &
+                !There is a timeslice file for snapshots of the trajectory at the beginning and end
+                open(filechannel1,file=gridpath1//"Initial"//timeslicefile,position="append")
+                write(filechannel1,FMTtimeslice) &
                                                  ((coords_initial(l,m),l=1,3),m=1,Natoms),&
                                                  ((velocities_initial(l,m),l=1,3),m=1,Natoms),&
                                                  ((coords_final(l,m),l=1,3),m=1,Natoms),&
                                                  ((velocities_final(l,m),l=1,3),m=1,Natoms)
                 close(filechannel1)
 
-                !$OMP END CRITICAL
+                do m = 1, Norder_max+1
+                        max_headers_delta(m) = max(&
+                        max_headers_delta(m),headers(m)-headers_old(m))
+                        headers_old(m) = headers(m)
+                end do
 
-                max_header1_delta = max(max_header1_delta,header1-header1_old)
-                max_header2_delta = max(max_header2_delta,header2-header2_old)
-                max_header3_delta = max(max_header3_delta,header3-header3_old)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                GRID CREATION MONITORING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-		header1_old = header1
-		header2_old = header2
-		header3_old = header3
+                !This big if-statement is if we want to monitor our grid creation
+                !The check only happens every Ngrid_check
+                !Right now it is spaced so that we get (at most) ten graphs over the period of its creation
+                if ((modulo(n,Ngrid_check) == 0)) then
+                        INITIAL_BOND_DATA = INITIAL_BOND_DATA_test
+
+                        testtrajDetailedRMSD_flag = .true.
+                        call makeCheckTrajectoryGraphs()
+                        call getRMSDDifferences1(gridpath1//&
+                                  prefix_text//"_"//Ntraj_text//"_PercentRMSDThreshold")
+                        testtrajDetailedRMSD_flag = .false.
+                end if
+
         end do
-
-	!$OMP END PARALLEL
-	!$OMP END DO NOWAIT
 
 
 	!Grid Timing
@@ -384,35 +407,11 @@ end if
 	write(progresschannel,*) ""
 	close(progresschannel)
 
-        call makeGridCreationGraph(Nfile,max_header1_delta,grid_wall_time)
+!        call makeGridCreationGraph(Nfile,max_header1_delta,grid_wall_time)
+        call makeGridCreationGraph(Nfile,max_headers_delta(1),grid_wall_time)
 
-        call makeMaxFramesOfSubcellsGraph()
+!        call makeMaxFramesOfSubcellsGraph()
 
-        !Finally, we save all of the counters to their respective counter files in the folder
-        open(filechannel1,file=trim(gridpath1)//counter0file)
-        do n = 1, counter0_max
-                write(filechannel1,FMT=FMT8_counter) counter0(n)
-        end do
-        close(filechannel1)
-        
-        open(filechannel1,file=trim(gridpath1)//counter1file)
-        do n = 1, counter1_max
-                write(filechannel1,FMT=FMT8_counter) counter1(n)
-        end do
-        close(filechannel1)
-        
-        open(filechannel1,file=trim(gridpath1)//counter2file)
-        do n = 1, counter2_max
-                write(filechannel1,FMT=FMT8_counter) counter2(n)
-        end do
-        close(filechannel1)
-        
-        open(filechannel1,file=trim(gridpath1)//counter3file)
-        do n = 1, counter3_max
-                write(filechannel1,FMT=FMT8_counter) counter3(n)
-        end do
-        close(filechannel1)
-        
         max_absenergychange = 0.0
         min_absenergychange = 1.0e9
         max_relenergychange = 0.0
@@ -497,7 +496,10 @@ implicit none
 
 !Grid Directory/File Formatting Strings
 character(5) :: variable_length_text
+character(Ngrid_text_length) :: Ngrid_text
+character(trajectory_text_length) :: Ntraj_text
 character(12) :: prefix_text
+integer,allocatable :: filechannels(:)
 
 !Trajectory Variables
 integer :: iostate
@@ -527,20 +529,37 @@ real :: checktrajectory_wall_time
 character(10) :: checktrajectory_wall_time_text
 integer,dimension(3) :: now
 
+integer :: k
+
 !Initialize the clock
 call system_clock(count_rate=cr)
 system_clock_rate = 1.0/real(cr)
 
-!Check first how the trajectory behaves with the OPPOSITE
-!rejection method
+call InitialSampling3()
+
+write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
+write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
+
+!The grid number will uniquely identify one trajectory
+!Open all these files under filechannels
+allocate(filechannels(1+Ngrid_total))
+write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+filechannels(1) = 1000 !+ OMP_GET_THREAD_NUM()
+
+do k = 1, Ngrid_total
+        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") k
+        filechannels(1+k) = 1000 + 69 * k !+ OMP_GET_THREAD_NUM()
+        open(filechannels(1+k),file=gridpath0//Ngrid_text//"/dump.dat")
+end do
+
 reject_flag = (.not.(reject_flag))
 call getPrefixText(prefix_text)
 
 !Next, run the trajectory
-!Remark: output of checkTrajectory is in the checkstatefile
-!
 call system_clock(trajectory_t0)
-call checkTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
+call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
+                               coords_initial,velocities_initial,&
+                               coords_final,velocities_final)
 call system_clock(trajectory_t1)
 checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
 
@@ -556,7 +575,7 @@ trajectory_total_frames = 0
 trajectory_max_frames = 0
 trajectory_max_neighbor_check = 0
 trajectory_min_rmsd = 1.0d9
-open(filechannel1,file=gridpath1//checkstatefile)
+open(filechannel1,file=gridpath0//checkstatefile)
 do
         read(filechannel1,FMT=*,iostat=iostate) number_of_frames,order,neighbor_check,steps,&
                                                 min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
@@ -575,22 +594,16 @@ do
 end do
 close(filechannel1)
 
-!To uniquely define this trajectory from other trajectories we check
-!the trajectory number is concatenated to the image name
-!
-write(checkstateTrajectory,FMT=FMT6_pos_int) Ntraj
-
 print *, ""
 call itime(now)
 write(6,FMT=FMTnow) now
-print *, "   Making plot: "//gridpath1//'checkTrajectory_'//prefix_text//'_'//checkstateTrajectory//'.png"'
+print *, '   Making plot: "'//gridpath0//'checkTrajectory_'//prefix_text//'.png"'
 print *, ""
 
 !Finally, plot the data obtained from this trajectory
-open(gnuplotchannel,file=gridpath1//gnuplotfile)
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath1//'checkTrajectory_'//prefix_text//&
-                         '_'//checkstateTrajectory//'.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath1//'checkTrajectory_'//Ntraj_text//"_"//prefix_text//'.png"'
 write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
 write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
 write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
@@ -628,7 +641,7 @@ write(gnuplotchannel,*) 'delta_var1 = (max_var1 - min_var1) / 4'
 write(gnuplotchannel,*) 'delta_var2 = (max_var2 - min_var2) / 4'
 write(gnuplotchannel,*) 'max_frames = ', trajectory_max_frames
 write(gnuplotchannel,*) 'max_steps = ', trajectory_total_frames
-write(gnuplotchannel,*) 'max_neighbor_check = ', min(trajectory_max_neighbor_check,4)
+write(gnuplotchannel,*) 'max_neighbor_check = ', max(trajectory_max_neighbor_check,4)
 write(gnuplotchannel,*) 'min_rmsd = ', trajectory_min_rmsd
 
 write(gnuplotchannel,*) 'steps_scaling = 1000'
@@ -640,7 +653,7 @@ write(gnuplotchannel,*) 'unset xlabel'
 write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
 write(gnuplotchannel,*) 'set yrange [min_var1-delta_var1*.25 : max_var1+delta_var1*.25]'
 write(gnuplotchannel,*) 'set ytics min_var1, delta_var1, max_var2'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
                         '" u (($4)/steps_scaling):7 w lines'
 
 !write(gnuplotchannel,*) 'unset label 1'
@@ -650,7 +663,7 @@ write(gnuplotchannel,*) 'unset label 3'
 write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
 write(gnuplotchannel,*) 'set yrange [min_var2-delta_var2*.25 : max_var2+delta_var2*.25]'
 write(gnuplotchannel,*) 'set ytics min_var2, delta_var2, max_var2'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
                         '" u (($4)/steps_scaling):8 w lines'
 
 !write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
@@ -662,20 +675,20 @@ write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
 write(gnuplotchannel,*) 'set ylabel "Number of\nFrames Checked"'
 write(gnuplotchannel,*) 'set yrange [-max_frames*.10:max_frames+max_frames*.10]'
 write(gnuplotchannel,*) 'set ytics 0, floor(max_frames*.25), max_frames'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-                        '" u (($4)/steps_scaling):1 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):1 w points'
 
 write(gnuplotchannel,*) 'set ylabel "Order of Cells\nChecked"'
-write(gnuplotchannel,*) 'set yrange [-1.25:1.25]'
+write(gnuplotchannel,*) 'set yrange [-0.25:2.25]'
 write(gnuplotchannel,*) 'set ytics 1'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-                        '" u (($4)/steps_scaling):2 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):2 w points'
 
 write(gnuplotchannel,*) 'set ylabel "Number of Cells\nChecked"'
 write(gnuplotchannel,*) 'set yrange [0:max_neighbor_check+max_neighbor_check*.10]'
 write(gnuplotchannel,*) 'set ytics 1, floor(max_neighbor_check*.25), max_neighbor_check'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-                        '" u (($4)/steps_scaling):3 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):3 w points'
 
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set format x'
@@ -687,24 +700,24 @@ write(gnuplotchannel,*) 'set ylabel "Timestep\nRMSD (A)"'
 !write(gnuplotchannel,*) 'set ytics (".1" .1, ".05" .05, ".01" .01, ".001" .001, ".0001" .0001)'
 write(gnuplotchannel,*) 'set ytics ("5e-1" .5, "5e-2" .05, "5e-3" .005,'//&
                                    '"5e-4" .0005, "5e-5" .00005)'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-                        '" u (($4)/steps_scaling):5 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):($6==$5?$5:1/0) w points lc rgb "blue",\'
+write(gnuplotchannel,*) '     "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):($6>$5?$5:1/0) w points lc rgb "red",\'
+write(gnuplotchannel,*) '     "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):($6<$5?$6:1/0) w points lc rgb "green"'
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
-
-
-!Second, check the trajectory with the rejection method
-!from before (as specified by the user)
 reject_flag = (.not.(reject_flag))
 call getPrefixText(prefix_text)
 
-!Run the trajectory as usual
-!Remark: output of checkTrajectory is in the checkstatefile
-!
+!Next, run the trajectory
 call system_clock(trajectory_t0)
-call checkTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
+call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
+                               coords_initial,velocities_initial,&
+                               coords_final,velocities_final)
 call system_clock(trajectory_t1)
 checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
 
@@ -720,7 +733,7 @@ trajectory_total_frames = 0
 trajectory_max_frames = 0
 trajectory_max_neighbor_check = 0
 trajectory_min_rmsd = 1.0d9
-open(filechannel1,file=gridpath1//checkstatefile)
+open(filechannel1,file=gridpath0//checkstatefile)
 do
         read(filechannel1,FMT=*,iostat=iostate) number_of_frames,order,neighbor_check,steps,&
                                                 min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
@@ -739,22 +752,16 @@ do
 end do
 close(filechannel1)
 
-!To uniquely define this trajectory from other trajectories we check
-!the trajectory number is concatenated to the image name
-!
-write(checkstateTrajectory,FMT=FMT6_pos_int) Ntraj
-
 print *, ""
 call itime(now)
 write(6,FMT=FMTnow) now
-print *, "   Making plot: "//gridpath1//'checkTrajectory_'//prefix_text//'_'//checkstateTrajectory//'.png"'
+print *, '   Making plot: "'//gridpath0//'checkTrajectory_'//prefix_text//'.png"'
 print *, ""
 
 !Finally, plot the data obtained from this trajectory
-open(gnuplotchannel,file=gridpath1//gnuplotfile)
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath1//'checkTrajectory_'//prefix_text//&
-                         '_'//checkstateTrajectory//'.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath1//'checkTrajectory_'//Ntraj_text//"_"//prefix_text//'.png"'
 write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
 write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
 write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
@@ -792,7 +799,7 @@ write(gnuplotchannel,*) 'delta_var1 = (max_var1 - min_var1) / 4'
 write(gnuplotchannel,*) 'delta_var2 = (max_var2 - min_var2) / 4'
 write(gnuplotchannel,*) 'max_frames = ', trajectory_max_frames
 write(gnuplotchannel,*) 'max_steps = ', trajectory_total_frames
-write(gnuplotchannel,*) 'max_neighbor_check = ', trajectory_max_neighbor_check
+write(gnuplotchannel,*) 'max_neighbor_check = ', max(trajectory_max_neighbor_check,4)
 write(gnuplotchannel,*) 'min_rmsd = ', trajectory_min_rmsd
 
 write(gnuplotchannel,*) 'steps_scaling = 1000'
@@ -804,7 +811,7 @@ write(gnuplotchannel,*) 'unset xlabel'
 write(gnuplotchannel,*) 'set ylabel "Var1 (A)"'
 write(gnuplotchannel,*) 'set yrange [min_var1-delta_var1*.25 : max_var1+delta_var1*.25]'
 write(gnuplotchannel,*) 'set ytics min_var1, delta_var1, max_var2'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
                         '" u (($4)/steps_scaling):7 w lines'
 
 !write(gnuplotchannel,*) 'unset label 1'
@@ -814,7 +821,7 @@ write(gnuplotchannel,*) 'unset label 3'
 write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
 write(gnuplotchannel,*) 'set yrange [min_var2-delta_var2*.25 : max_var2+delta_var2*.25]'
 write(gnuplotchannel,*) 'set ytics min_var2, delta_var2, max_var2'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
                         '" u (($4)/steps_scaling):8 w lines'
 
 !write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
@@ -826,20 +833,20 @@ write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
 write(gnuplotchannel,*) 'set ylabel "Number of\nFrames Checked"'
 write(gnuplotchannel,*) 'set yrange [-max_frames*.10:max_frames+max_frames*.10]'
 write(gnuplotchannel,*) 'set ytics 0, floor(max_frames*.25), max_frames'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-                        '" u (($4)/steps_scaling):1 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):1 w points'
 
 write(gnuplotchannel,*) 'set ylabel "Order of Cells\nChecked"'
-write(gnuplotchannel,*) 'set yrange [-1.25:1.25]'
+write(gnuplotchannel,*) 'set yrange [-0.25:2.25]'
 write(gnuplotchannel,*) 'set ytics 1'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-                        '" u (($4)/steps_scaling):2 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):2 w points'
 
 write(gnuplotchannel,*) 'set ylabel "Number of Cells\nChecked"'
 write(gnuplotchannel,*) 'set yrange [0:max_neighbor_check+max_neighbor_check*.10]'
 write(gnuplotchannel,*) 'set ytics 1, floor(max_neighbor_check*.25), max_neighbor_check'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-                        '" u (($4)/steps_scaling):3 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):3 w points'
 
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set format x'
@@ -851,11 +858,18 @@ write(gnuplotchannel,*) 'set ylabel "Timestep\nRMSD (A)"'
 !write(gnuplotchannel,*) 'set ytics (".1" .1, ".05" .05, ".01" .01, ".001" .001, ".0001" .0001)'
 write(gnuplotchannel,*) 'set ytics ("5e-1" .5, "5e-2" .05, "5e-3" .005,'//&
                                    '"5e-4" .0005, "5e-5" .00005)'
-write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-                        '" u (($4)/steps_scaling):5 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):($6==$5?$5:1/0) w points lc rgb "blue",\'
+write(gnuplotchannel,*) '     "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):($6>$5?$5:1/0) w points lc rgb "red",\'
+write(gnuplotchannel,*) '     "'//gridpath0//checkstatefile//&
+                        '" u (($4)/steps_scaling):($6<$5?$6:1/0) w points lc rgb "green"'
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+deallocate(filechannels)
+return
 
 end subroutine makeCheckTrajectoryGraphs
 
@@ -922,7 +936,7 @@ integer,dimension(3) :: now
 print *, ""
 call itime(now)
 write(6,FMT=FMTnow) now
-print *, "   Making plot: "//gridpath1//'GridCreationGraph.png"'
+print *, '   Making plot: "'//gridpath1//'GridCreationGraph.png"'
 print *, ""
 
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
@@ -1047,7 +1061,7 @@ integer,dimension(3) :: now
 print *, ""
 call itime(now)
 write(6,FMT=FMTnow) now
-print *, "   Making plot: "//gridpath1//'MaxFramesOfSubcells.png"'
+print *, '   Making plot: "'//gridpath1//'MaxFramesOfSubcells.png"'
 print *, ""
 
 !We can also glean some information on the concentration of frames in subcells by checking
