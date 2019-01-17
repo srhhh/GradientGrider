@@ -101,9 +101,9 @@ threshold_rmsd4=.050000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
-accept_worst=.true.
+accept_worst=.false.
 grid_addition=.false.
-Ngrid_cap=1
+Ngrid_cap=4
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
 Ntrajectories=350
@@ -125,9 +125,9 @@ initialbondname="001reject.05000"
 
 #If the comparison lower and upper limits are the same, the program will
 #use whatever the minimum and maximum is of the data (bad if outliers exist)
-comparison_flag=notScatteringAngle
+comparison_flag=notRotationalEnergyChange
 comparison_lowerlimit="0.0d0"
-comparison_upperlimit="0.300d0"
+comparison_upperlimit="0.0180d0"
 
 declare -a prefixes
 #prefixes[0]="001accept.15000"
@@ -164,7 +164,7 @@ newGRID_check_min=100
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=3
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)

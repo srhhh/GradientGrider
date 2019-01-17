@@ -127,14 +127,14 @@ integer,dimension(Norder_max+1) :: local_frame_count
 !shell of a Nvar-dimensional cube (not diamond, like
 !used in the program)
 integer,parameter :: number_of_cells_max = &
-        2*((1 + 2 * (5))**(Nvar) - (1 + 2 * (5 - 1))**(Nvar))
+        2 * ((1 + 2 * (5))**(Nvar) - (1 + 2 * (5 - 1))**(Nvar))
 integer,parameter :: number_of_frames_max = &
         number_of_cells_max * var_overcrowd(2)
 
 !Store the index of the best candidate in approximation_index
 
 integer :: number_of_cells
-integer :: approximation_index(number_of_cells_max)
+integer,allocatable :: approximation_index(:)
 
 !Other global variables to clean things up
 
@@ -1095,7 +1095,7 @@ do l = 1, Norder_max+1
                 end do
         end if
         
-        if (stop_flag) exit
+        if (stop_flag) cycle
 
 end do
 
@@ -1255,6 +1255,7 @@ real(dp),allocatable :: temp_coordsbuffer1(:,:,:)
 real(dp),allocatable :: temp_gradientbuffer1(:,:,:)
 real(dp),allocatable :: temp_Ubuffer1(:,:,:)
 real(dp),allocatable :: temp_RMSDbuffer1(:)
+integer,allocatable :: temp_approximation_index(:)
 
 !Incremental integers and iostate checking
 integer :: i,j,k,iostate
@@ -1275,6 +1276,7 @@ if (.not. subcell_existence) then
         return
 else
         number_of_cells = number_of_cells + 1
+        approximation_index(number_of_cells) = 0
 end if
 
 !Open the file corresponding to the cell
@@ -1403,7 +1405,8 @@ do
                  temp_coordsbuffer1(3,Natoms,buffer1_size),&
                  temp_gradientbuffer1(3,Natoms,buffer1_size),&
                  temp_Ubuffer1(3,3,buffer1_size),&
-                 temp_RMSDbuffer1(buffer1_size))
+                 temp_RMSDbuffer1(buffer1_size),&
+                 temp_approximation_index(buffer1_size))
         
         !Store the buffer in the temporary buffer
         temp_valsbuffer1 = valsbuffer1
@@ -1411,14 +1414,17 @@ do
         temp_gradientbuffer1 = gradientbuffer1
         temp_Ubuffer1 = Ubuffer1
         temp_RMSDbuffer1 = RMSDbuffer1
+        temp_approximation_index = approximation_index
         
         !For now, we simply double the buffer size each time it overfills
-        deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1)
+        deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
+                   approximation_index)
         allocate(valsbuffer1(Nvar,buffer1_size*2),&
                  coordsbuffer1(3,Natoms,buffer1_size*2),&
                  gradientbuffer1(3,Natoms,buffer1_size*2),&
                  Ubuffer1(3,3,buffer1_size*2),&
-                 RMSDbuffer1(buffer1_size*2))
+                 RMSDbuffer1(buffer1_size*2),&
+                 approximation_index(buffer1_size*2))
         
         !And reload all the frames back into the buffer
         valsbuffer1(:,1:buffer1_size) = temp_valsbuffer1
@@ -1426,10 +1432,11 @@ do
         gradientbuffer1(:,:,1:buffer1_size) = temp_gradientbuffer1
         Ubuffer1(:,:,1:buffer1_size) = temp_Ubuffer1
         RMSDbuffer1(1:buffer1_size) = temp_RMSDbuffer1
+        approximation_index(1:buffer1_size) = temp_approximation_index
 
         !Destroy the temporary buffer
         deallocate(temp_valsbuffer1,temp_coordsbuffer1,temp_gradientbuffer1,&
-                   temp_Ubuffer1,temp_RMSDbuffer1)
+                   temp_Ubuffer1,temp_RMSDbuffer1,temp_approximation_index)
 
         !Permanently increase the buffer size so this will not
         !have to happen next time

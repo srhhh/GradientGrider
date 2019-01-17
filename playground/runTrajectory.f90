@@ -377,7 +377,8 @@ if (testtrajDetailedRMSD_flag) open(filechannel2,file=gridpath1//checkstatefile)
                  coordsbuffer1(3,Natoms,buffer1_size),&
                  gradientbuffer1(3,Natoms,buffer1_size),&
                  Ubuffer1(3,3,buffer1_size),&
-                 RMSDbuffer1(buffer1_size))
+                 RMSDbuffer1(buffer1_size),&
+                 approximation_index(buffer1_size))
 
         do steps = 1, Nsteps
 
@@ -468,7 +469,8 @@ end if
 
 if (testtrajDetailedRMSD_flag) close(filechannel2)
 
-        deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1)
+        deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
+                   approximation_index)
 
         coords_final = coords
         velocities_final = velocities
@@ -823,7 +825,8 @@ subroutine checkMultipleTrajectories(filechannels,&
                  coordsbuffer1(3,Natoms,buffer1_size),&
                  gradientbuffer1(3,Natoms,buffer1_size),&
                  Ubuffer1(3,3,buffer1_size),&
-                 RMSDbuffer1(buffer1_size))
+                 RMSDbuffer1(buffer1_size),&
+                 approximation_index(buffer1_size))
 
         coords_initial = coords
         velocities_initial = velocities
@@ -964,7 +967,8 @@ end if
         end do
 
         if (testtrajDetailedRMSD_flag) close(filechannel2)
-        deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1)
+        deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
+                   approximation_index)
 
         coords_final = coords
         velocities_final = velocities
