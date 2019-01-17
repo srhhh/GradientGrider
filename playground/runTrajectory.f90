@@ -419,7 +419,7 @@ if (testtrajDetailedRMSD_flag) open(filechannel2,file=gridpath1//checkstatefile)
                        !Check for a frame in the grid
                        !Set the default value beforehand though
                        min_rmsd = default_rmsd
-                       subcellsearch_max = (/ 0, 0 /)
+                       subcellsearch_max = subcellsearch_max1
                        call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd,&
                                 filechannels,number_of_frames,order,neighbor_check)
 
@@ -427,7 +427,7 @@ if (testtrajDetailedRMSD_flag) then
 
         min_rmsd_prime = default_rmsd
 
-        subcellsearch_max = (/ 2, 2 /)
+        subcellsearch_max = subcellsearch_max2
         call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd_prime,&
                 filechannels,number_of_frames,order,neighbor_check)
 
@@ -915,7 +915,7 @@ subroutine checkMultipleTrajectories(filechannels,&
                        else
                                min_rmsd = default_rmsd
                        end if
-                       subcellsearch_max = (/ 0, 0 /)
+                       subcellsearch_max = subcellsearch_max1
                        call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd,&
                                 filechannels,number_of_frames,order0,neighbor_check)
 
@@ -923,7 +923,7 @@ if (testtrajDetailedRMSD_flag) then
 
         min_rmsd_prime = default_rmsd
 
-        subcellsearch_max = (/ 2, 2 /)
+        subcellsearch_max = subcellsearch_max2
         call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd_prime,&
                 filechannels,number_of_frames,order1,neighbor_check)
 

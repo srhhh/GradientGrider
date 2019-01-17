@@ -116,15 +116,18 @@ integer :: buffer1_size
 !It is useful to estimate how many cells we may be
 !looking at at one time
 
-integer,dimension(Norder_max+1) :: subcellsearch_max = (/ 1, 1 /)
+integer,dimension(Norder_max+1) :: subcellsearch_max1 = (/ 1, 5 /)
+integer,dimension(Norder_max+1) :: subcellsearch_max2 = (/ 2, 2 /)
+
+integer,dimension(Norder_max+1) :: subcellsearch_max = (/ 1, 5 /)
 integer,dimension(Norder_max+1) :: local_frame_count
 
-!Assuming that each subcellsearch_max < 2
+!Assuming that each subcellsearch_max < 5
 !This only approximates the number of cells in the outer
 !shell of a Nvar-dimensional cube (not diamond, like
 !used in the program)
 integer,parameter :: number_of_cells_max = &
-        2*((1 + 2 * (1))**(Nvar) - (1 + 2 * (1 - 1))**(Nvar))
+        2*((1 + 2 * (5))**(Nvar) - (1 + 2 * (5 - 1))**(Nvar))
 integer,parameter :: number_of_frames_max = &
         number_of_cells_max * var_overcrowd(2)
 

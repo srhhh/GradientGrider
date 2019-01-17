@@ -70,10 +70,10 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0700
 
 #The number of grids to add to a new library
-Ngrid_max=1
+Ngrid_max=4
 
 #Whether to add duplicate copies or use a labelling scheme
 force_Duplicates=.false.
@@ -93,26 +93,26 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.500000d0
-threshold_rmsd1=.500000d0
-threshold_rmsd2=.100000d0
-threshold_rmsd3=.100000d0
+threshold_rmsd=.050000d0
+threshold_rmsd1=.050000d0
+threshold_rmsd2=.037500d0
+threshold_rmsd3=.025000d0
 threshold_rmsd4=.050000d0
 threshold_rmsd5=.050000d0
-reject_flag=.true.
+reject_flag=.false.
 accept_first=.false.
-accept_worst=.false.
-grid_addition=.true.
+accept_worst=.true.
+grid_addition=.false.
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=50
+Ntrajectories=350
 Nthreads=1
 
 #These are flags relating to using old data
 useolddata_flag=.false.
-useoldinitialbonddata_flag=.false.
-initialbondname="001omegaA.20000"
+useoldinitialbonddata_flag=.true.
+initialbondname="001reject.05000"
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -125,9 +125,9 @@ initialbondname="001omegaA.20000"
 
 #If the comparison lower and upper limits are the same, the program will
 #use whatever the minimum and maximum is of the data (bad if outliers exist)
-comparison_flag=NOTScatteringAngle
+comparison_flag=notScatteringAngle
 comparison_lowerlimit="0.0d0"
-comparison_upperlimit="0.000d0"
+comparison_upperlimit="0.300d0"
 
 declare -a prefixes
 #prefixes[0]="001accept.15000"
@@ -138,10 +138,10 @@ declare -a prefixes
 #prefixes[0]="004accept.05000"
 #prefixes[1]="004accept.01000"
 #prefixes[2]="004accept.00500"
-prefixes[0]="001omegaA.20000"
-prefixes[1]="001omegaA.15000"
-prefixes[2]="001omegaA.10000"
-prefixes[3]="001omegaA.05000"
+prefixes[0]="001omegaA.05000"
+prefixes[1]="001omegaA.03750"
+prefixes[2]="001omegaA.02500"
+prefixes[3]="001reject.05000"
 #prefixes[0]="001reject.05000"
 
 ###############################################################################################################################################
@@ -152,7 +152,7 @@ prefixes[3]="001omegaA.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="Jan9_H2H2_new"
+newGRID="H2H2_Dec31"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -160,11 +160,11 @@ newGRID_flag=0
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 #Just set this to a very large number if no progress checks are wanted
-newGRID_check_min=10
+newGRID_check_min=100
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=3
 
 #The path that has the original source code
 currentPATH=$(pwd)

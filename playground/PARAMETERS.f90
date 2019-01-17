@@ -148,7 +148,7 @@ integer, parameter :: SAfiles_text_length = gridpath_length +&
 !The number of atoms in the system
 !Natoms is another variable that must be supplied by the user and is changed
 !on the LOCAL version of a library; this must be changed MANUALLY
-integer,parameter :: Natoms = 3
+integer,parameter :: Natoms = 4
 integer,parameter :: Ncoords = Natoms*3
 
 !The number of variables in use
@@ -256,7 +256,7 @@ real,dimension(Nvar,Norder_max+1) :: divisor
 !This takes much more time but you can force the checkState subroutine
 !to also check the rmsd of frames in adjacent cells
 !Not heavily tested in the newer updates so is deprecated (for now)
-logical,parameter :: force_Neighbors = .true.
+logical,parameter :: force_Neighbors = .false.
 
 !If we want to add duplicate copies of a state (but permuted labels)
 !Then set this to .true.
@@ -280,7 +280,7 @@ logical,parameter :: force_NoLabels = .false.
 !the user to change the grid-making procedure; this is updated AUTOMATICALLY
 
 !The number of trajectories we add to a grid
-integer,parameter :: Ntraj_max = 1000
+integer,parameter :: Ntraj_max = 0700
 !The maximum amount of time (seconds) we are willing to wait for a single trajectory to finish
 real,parameter :: trajectory_CPU_time_max = 60.0
 !The number of grids we will make

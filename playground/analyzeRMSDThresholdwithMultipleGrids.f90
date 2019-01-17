@@ -506,6 +506,7 @@ integer :: frames
 !RMSD
 real(dp) :: min_rmsd, min_rmsd_prime
 real(dp) :: min_min_rmsd
+integer :: number_of_frames_accepted
 
 !FORMAT OF JPG FILES TO BE MADE
 character(*), intent(in) :: JPGfilename
@@ -529,11 +530,28 @@ real(dp) :: bin_width
 integer :: n
 
 
-Nbins = 50
-bin_width = 2 * log10(default_rmsd/.00001) / Nbins
-
 frames = 0
+number_of_frames_accepted = 0
 min_min_rmsd = default_rmsd
+
+open(filechannel2,file=gridpath0//checkstatefile)
+!read(filechannel1) number_of_frames,order,neighbor_check,steps,&
+!                   min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
+do 
+        read(filechannel2,FMT=*,iostat=iostate) i1, i2, i3, i4,&
+                           min_rmsd,min_rmsd_prime,r1,r2,r3,r4
+        if (iostate /= 0) exit
+
+        min_min_rmsd = min(min_min_rmsd,min_rmsd,min_rmsd_prime)
+        if (min_rmsd_prime < threshold_rmsd) &
+            number_of_frames_accepted = number_of_frames_accepted + 1
+        frames = frames + 1
+end do
+close(filechannel2)
+
+
+Nbins = 50
+bin_width = 2 * log10(default_rmsd/min_min_rmsd) / Nbins
 
 write(variable_length_text,"(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") 4
@@ -547,15 +565,16 @@ do
                            min_rmsd,min_rmsd_prime,r1,r2,r3,r4
         if (iostate /= 0) exit
 
-        write(filechannel1,FMT="(I6,1x,F9.6,1x,F9.6,1x,I8,1x,I8)") &
+        write(filechannel1,FMT="(I6,1x,F9.6,1x,F9.6,1x,I8,1x,I8,1x,I8)") &
                            i4, min_rmsd, min_rmsd_prime, i2, &
-                           nint(log10((min_rmsd/min_rmsd_prime)/(.00001/default_rmsd)) / bin_width)
-        min_min_rmsd = min(min_min_rmsd,min_rmsd,min_rmsd_prime)
-        frames = frames + 1
+                           nint(log10((min_rmsd_prime)/(min_min_rmsd/default_rmsd)) / (0.5*bin_width)),&
+                           nint(log10((min_rmsd/min_rmsd_prime)/(min_min_rmsd/default_rmsd)) / bin_width)
 end do
 close(filechannel2)
 
 close(filechannel1)
+
+
 
 
 
@@ -590,8 +609,8 @@ write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered for Zero vs Two Ne
                         'For One Trajectory"'
 write(gnuplotchannel,*) 'set key left top'
 write(gnuplotchannel,*) 'scaling = ', frames
-write(gnuplotchannel,*) 'xmin = ', .00001 / default_rmsd
-write(gnuplotchannel,*) 'xmax = ', default_rmsd / .00001
+write(gnuplotchannel,*) 'xmin = ', min_min_rmsd / default_rmsd
+write(gnuplotchannel,*) 'xmax = ', default_rmsd / min_min_rmsd
 write(gnuplotchannel,*) 'set xlabel "RMSD0/RMSD2"'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
 
@@ -617,17 +636,62 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                                '"10^5" (5-log10(xmin))/bin_width)'
 
 write(gnuplotchannel,*) 'plot "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
-                               '5:($4==2?(1.0/scaling):0.0) '//&
+                               '6:($4==2?(1.0/scaling):0.0) '//&
                                'smooth frequency w boxes lc rgb "green" title "Both Order 1",\'
 write(gnuplotchannel,*) '     "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
-                               '5:($4==1?(1.0/scaling):0.0) '//&
+                               '6:($4==1?(1.0/scaling):0.0) '//&
                                'smooth frequency w boxes lc rgb "blue" title "One Order 1",\'
 write(gnuplotchannel,*) '     "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
-                               '5:($4==0?(1.0/scaling):0.0) '//&
+                               '6:($4==0?(1.0/scaling):0.0) '//&
                                'smooth frequency w boxes lc rgb "red" title "Both Order 0"'
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//JPGfilename//'_2.jpg"'
+write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered for Zero vs Two Neighbor Check\n'//&
+                        'For One Trajectory"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'scaling = ', frames
+write(gnuplotchannel,*) 'xmin = ', min_min_rmsd
+write(gnuplotchannel,*) 'xmax = ', default_rmsd
+write(gnuplotchannel,*) 'set xlabel "RMSD After the Two Neighbor Check"'
+write(gnuplotchannel,*) 'set ylabel "Occurence"'
+
+write(variable_length_text,"(F5.2)") number_of_frames_accepted * 100.0 / frames
+write(gnuplotchannel,*) 'set label 1 "Acceptance Rate: '//variable_length_text//'%" at graph 0.1,0.8'
+
+write(gnuplotchannel,*) 'Nbins = ', Nbins
+write(gnuplotchannel,*) 'bin_width = ', 0.5*bin_width
+write(gnuplotchannel,*) 'set boxwidth 1'
+write(gnuplotchannel,*) 'min(x,y) = (x < y) ? x : y'
+write(gnuplotchannel,*) 'set xrange [-0.5:Nbins+.05]'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'set style fill transparent solid 0.5'
+
+write(gnuplotchannel,*) 'set xtics ('//&
+                                           '"10^{-5}" (-5-log10(xmin))/bin_width, '//&
+                                           '"10^{-4}" (-4-log10(xmin))/bin_width, '//&
+                                           '"10^{-3}" (-3-log10(xmin))/bin_width, '//&
+                                           '"10^{-2}" (-2-log10(xmin))/bin_width, '//&
+                                           '"10^{-1}" (-1-log10(xmin))/bin_width, '//&
+                                               '"10^0" (0-log10(xmin))/bin_width, '//&
+                                               '"10^1" (1-log10(xmin))/bin_width, '//&
+                                               '"10^2" (2-log10(xmin))/bin_width, '//&
+                                               '"10^3" (3-log10(xmin))/bin_width, '//&
+                                               '"10^4" (4-log10(xmin))/bin_width, '//&
+                                               '"10^5" (5-log10(xmin))/bin_width)'
+
+write(gnuplotchannel,*) 'plot "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+                               '5:(1.0/scaling) '//&
+                               'smooth frequency w boxes lc rgb "green"'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+
 
 end subroutine getRMSDDifferences1
 

@@ -49,8 +49,8 @@
 module VARIABLES
 use DOUBLE
 implicit none
-!integer,dimension(4,2),parameter :: BOND_LABELS_TENTATIVE = reshape((/ 1, 2, 1, 2, &
-!                                                                       3, 4, 4, 3 /),    (/ 4, 2 /))
+integer,dimension(4,2),parameter :: BOND_LABELS_TENTATIVE = reshape((/ 1, 2, 1, 2, &
+                                                                       3, 4, 4, 3 /),    (/ 4, 2 /))
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -111,10 +111,10 @@ integer,intent(in) :: Natoms, Nvar
 real(dp),dimension(3,Natoms),intent(in) :: coords
 real(dp),dimension(Nvar),intent(out) :: vals
 integer,dimension(Natoms),intent(inout) :: labelling
-real(dp) :: length1,length2
-!real(dp),dimension(4) :: lengths
-!integer :: min1_length, min2_length, max_length
-!integer :: i, start_label
+!real(dp) :: length1,length2
+real(dp),dimension(4) :: lengths
+integer :: min1_length, min2_length, max_length
+integer :: i, start_label
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -139,124 +139,124 @@ real(dp) :: length1,length2
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! H - H2  (normal)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!In this labeling scheme, we implicitly assume the nonbonded hydrogen
-!is the 1st atom (as it is when I define it in PHYSICS)
-!Otherwise, make sure you label it as the first atom
-
-!Get the length between atoms 1 and 2
-call getDistanceSquared(coords(:,1),coords(:,2),length1)
-
-!Get the length between atoms 1 and 3
-call getDistanceSquared(coords(:,1),coords(:,3),length2)
-
-!If length1 < length2, then the 2nd atom must be closest to the
-!nonbonded hydrogen, so it is labeled as 2nd
-if (length1 < length2) then
-	labelling(2) = 2
-	labelling(3) = 3
-	vals(1) = sqrt(length1)
-	vals(2) = sqrt(length2)
-
-!Otherwise, the 2nd atom is the farthest from the
-!nonbonded hydrogen, so it is labeled as 3rd
-else
-	labelling(2) = 3
-	labelling(3) = 2
-	vals(1) = sqrt(length2)
-	vals(2) = sqrt(length1)
-end if
-
+!
+!!In this labeling scheme, we implicitly assume the nonbonded hydrogen
+!!is the 1st atom (as it is when I define it in PHYSICS)
+!!Otherwise, make sure you label it as the first atom
+!
+!!Get the length between atoms 1 and 2
+!call getDistanceSquared(coords(:,1),coords(:,2),length1)
+!
+!!Get the length between atoms 1 and 3
+!call getDistanceSquared(coords(:,1),coords(:,3),length2)
+!
+!!If length1 < length2, then the 2nd atom must be closest to the
+!!nonbonded hydrogen, so it is labeled as 2nd
+!if (length1 < length2) then
+!	labelling(2) = 2
+!	labelling(3) = 3
+!	vals(1) = sqrt(length1)
+!	vals(2) = sqrt(length2)
+!
+!!Otherwise, the 2nd atom is the farthest from the
+!!nonbonded hydrogen, so it is labeled as 3rd
+!else
+!	labelling(2) = 3
+!	labelling(3) = 2
+!	vals(1) = sqrt(length2)
+!	vals(2) = sqrt(length1)
+!end if
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! H2 - H2 (normal)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!!First, get all lengths between nonbonded hydrogen
-!!In PHYSICS, we define nonbonded hydrogen pairs by rows in the variable
-!!BOND_LABELS_TENTATIVE; consequently, this variable must be 4x2 in dimension
-!
-!do i = 1, 4
-!	call getDistanceSquared(coords(:,BOND_LABELS_TENTATIVE(i,1)),&
-!				coords(:,BOND_LABELS_TENTATIVE(i,2)),lengths(i))
-!end do
-!
-!!Next, locate the MIN, 2nd MIN, and MAX distance between nonbonded hydrogens
-!!(Bear with me, this actually works)
-!!Basically, because there are only 4 lengths, we can reduce this to
-!!a psuedo-case statement that only checks whether the last two lengths
-!!(between 1,4 and 3,2) are 1) lower, 2) in-between, or 3) greater
-!!than the established MIN and MAX between the first two lengths
-!
-!min1_length = minloc(lengths(1:2),1)
-!min2_length = 3 - min1_length
-!max_length = min2_length
-!do i = 3, 4
-!	if (lengths(i) < lengths(min2_length)) then
-!		if (lengths(i) < lengths(min1_length)) then
-!			min2_length = min1_length
-!			min1_length = i
-!		else
-!			min2_length = i
-!		end if
-!	else if (lengths(i) > lengths(max_length)) then
-!		max_length = i
-!	else
-!	end if
-!end do
-!
-!!Unfortunately, because of how we define the variable and grid, we
-!!must take two square roots here
-!
-!vals(1) = sqrt(lengths(min1_length))
-!vals(2) = sqrt(lengths(max_length))
-!
-!!Now, on to labeling
-!!If the MIN AND MAX lengths both involve the same hydrogen then
-!!we label that hydrogen as the first atom
-!
-!start_label = 0
-!do i = 1, 4
-!	if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
-!	  (any(BOND_LABELS_TENTATIVE(max_length,:) == i, 1))) then
-!		start_label = i
-!	end if
-!end do
-!
-!!If not, then we label the first hydrogen as the hydrogen involved
-!!in both the MIN AND 2nd MIN lengths
-!
-!if (start_label == 0) then
-!	do i = 1, 4
-!		if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
-!		  (any(BOND_LABELS_TENTATIVE(min2_length,:) == i, 1))) then
-!			start_label = i
-!		end if
-!	end do
-!end if
-!
-!!After deciding the first atom, we label the second atom
-!!as the hydrogen not bonded to the first atom (using minimal length)
-!
-!labelling(1) = start_label
-!if (BOND_LABELS_TENTATIVE(min1_length,1) == start_label) then
-!	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,2)
-!else
-!	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,1)
-!end if
-!
-!!Then we label the third atom to be the hydrogen not bonded
-!!to the first atom (using maximal length)
-!
-!if (BOND_LABELS_TENTATIVE(max_length,1) == start_label) then
-!	labelling(3) = BOND_LABELS_TENTATIVE(max_length,2)
-!else
-!	labelling(3) = BOND_LABELS_TENTATIVE(max_length,1)
-!end if
-!
-!!And the fourth atom must be whichever index
-!!we have not used yet, which is 4+3+2+1 - (x1+x2+x3)
-!
-!labelling(4) = 10 - sum(labelling(1:3))
+!First, get all lengths between nonbonded hydrogen
+!In PHYSICS, we define nonbonded hydrogen pairs by rows in the variable
+!BOND_LABELS_TENTATIVE; consequently, this variable must be 4x2 in dimension
+
+do i = 1, 4
+	call getDistanceSquared(coords(:,BOND_LABELS_TENTATIVE(i,1)),&
+				coords(:,BOND_LABELS_TENTATIVE(i,2)),lengths(i))
+end do
+
+!Next, locate the MIN, 2nd MIN, and MAX distance between nonbonded hydrogens
+!(Bear with me, this actually works)
+!Basically, because there are only 4 lengths, we can reduce this to
+!a psuedo-case statement that only checks whether the last two lengths
+!(between 1,4 and 3,2) are 1) lower, 2) in-between, or 3) greater
+!than the established MIN and MAX between the first two lengths
+
+min1_length = minloc(lengths(1:2),1)
+min2_length = 3 - min1_length
+max_length = min2_length
+do i = 3, 4
+	if (lengths(i) < lengths(min2_length)) then
+		if (lengths(i) < lengths(min1_length)) then
+			min2_length = min1_length
+			min1_length = i
+		else
+			min2_length = i
+		end if
+	else if (lengths(i) > lengths(max_length)) then
+		max_length = i
+	else
+	end if
+end do
+
+!Unfortunately, because of how we define the variable and grid, we
+!must take two square roots here
+
+vals(1) = sqrt(lengths(min1_length))
+vals(2) = sqrt(lengths(max_length))
+
+!Now, on to labeling
+!If the MIN AND MAX lengths both involve the same hydrogen then
+!we label that hydrogen as the first atom
+
+start_label = 0
+do i = 1, 4
+	if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
+	  (any(BOND_LABELS_TENTATIVE(max_length,:) == i, 1))) then
+		start_label = i
+	end if
+end do
+
+!If not, then we label the first hydrogen as the hydrogen involved
+!in both the MIN AND 2nd MIN lengths
+
+if (start_label == 0) then
+	do i = 1, 4
+		if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
+		  (any(BOND_LABELS_TENTATIVE(min2_length,:) == i, 1))) then
+			start_label = i
+		end if
+	end do
+end if
+
+!After deciding the first atom, we label the second atom
+!as the hydrogen not bonded to the first atom (using minimal length)
+
+labelling(1) = start_label
+if (BOND_LABELS_TENTATIVE(min1_length,1) == start_label) then
+	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,2)
+else
+	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,1)
+end if
+
+!Then we label the third atom to be the hydrogen not bonded
+!to the first atom (using maximal length)
+
+if (BOND_LABELS_TENTATIVE(max_length,1) == start_label) then
+	labelling(3) = BOND_LABELS_TENTATIVE(max_length,2)
+else
+	labelling(3) = BOND_LABELS_TENTATIVE(max_length,1)
+end if
+
+!And the fourth atom must be whichever index
+!we have not used yet, which is 4+3+2+1 - (x1+x2+x3)
+
+labelling(4) = 10 - sum(labelling(1:3))
 
 end subroutine getVarsMaxMin
 

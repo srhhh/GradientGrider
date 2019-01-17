@@ -446,9 +446,40 @@ end if
 
 !for bugtesting
 if (makeCheckTrajectory_flag) then
+        call InitialSampling3()
+
         testtrajDetailedRMSD_flag = .true.
+
+        subcellsearch_max1 = (/ 0, 0 /)
+        subcellsearch_max2 = (/ 1, 1 /)
+
         call makeCheckTrajectoryGraphs
-        call getRMSDDifferences1(gridpath0//prefix_text//"_PercentRMSDThreshold")
+        call getRMSDDifferences1(gridpath0//prefix_text//"_PercentRMSDThreshold(1)")
+
+        subcellsearch_max1 = (/ 0, 0 /)
+        subcellsearch_max2 = (/ 2, 2 /)
+
+        call makeCheckTrajectoryGraphs
+        call getRMSDDifferences1(gridpath0//prefix_text//"_PercentRMSDThreshold(2)")
+
+        subcellsearch_max1 = (/ 0, 0 /)
+        subcellsearch_max2 = (/ 3, 3 /)
+
+        call makeCheckTrajectoryGraphs
+        call getRMSDDifferences1(gridpath0//prefix_text//"_PercentRMSDThreshold(3)")
+
+        subcellsearch_max1 = (/ 0, 0 /)
+        subcellsearch_max2 = (/ 4, 4 /)
+
+        call makeCheckTrajectoryGraphs
+        call getRMSDDifferences1(gridpath0//prefix_text//"_PercentRMSDThreshold(4)")
+
+        subcellsearch_max1 = (/ 0, 0 /)
+        subcellsearch_max2 = (/ 5, 5 /)
+
+        call makeCheckTrajectoryGraphs
+        call getRMSDDifferences1(gridpath0//prefix_text//"_PercentRMSDThreshold(5)")
+
         return_flag = .true.
 end if
 
@@ -906,8 +937,6 @@ integer,dimension(3) :: now
 !Initialize the clock
 call system_clock(count_rate=cr)
 system_clock_rate = 1.0/real(cr)
-
-call InitialSampling3()
 
 !The grid number will uniquely identify one trajectory
 !Open all these files under filechannels
