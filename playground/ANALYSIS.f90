@@ -62,6 +62,10 @@ logical,parameter :: testtraj_flag = .true.
    !(Not recommended for large Ntesttraj or Ngrid_total_cap)
    logical :: testtrajDetailedRMSD_flag = .false.
 
+   !This takes much more time but you can force the checkState subroutine
+   !to also check the rmsd of frames in adjacent cells
+   logical :: force_Neighbors = .false.
+
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD
    logical,parameter :: percentthreshold_flag = .true.

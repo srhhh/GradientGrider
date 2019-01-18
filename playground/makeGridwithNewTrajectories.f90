@@ -56,6 +56,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 program makeGridwithNewTrajectories
+use interactMultipleGrids
 use runTrajectory
 use PARAMETERS
 use FUNCTIONS
@@ -378,9 +379,16 @@ end if
                         INITIAL_BOND_DATA = INITIAL_BOND_DATA_test
 
                         testtrajDetailedRMSD_flag = .true.
+                        force_Neighbors = .true.
+
+                        subcellsearch_max1 = (/ 0, 0 /)
+                        subcellsearch_max2 = (/ 5, 5 /)
+
                         call makeCheckTrajectoryGraphs()
                         call getRMSDDifferences1(gridpath1//&
                                   prefix_text//"_"//Ntraj_text//"_PercentRMSDThreshold")
+
+                        force_Neighbors = .false.
                         testtrajDetailedRMSD_flag = .false.
                 end if
 

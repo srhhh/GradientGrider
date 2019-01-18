@@ -449,6 +449,7 @@ if (makeCheckTrajectory_flag) then
         call InitialSampling3()
 
         testtrajDetailedRMSD_flag = .true.
+        force_Neighbors = .true.
 
         subcellsearch_max1 = (/ 0, 0 /)
         subcellsearch_max2 = (/ 1, 1 /)

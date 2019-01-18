@@ -253,11 +253,6 @@ real,dimension(Nvar,Norder_max+1) :: divisor
 !                    MEMORY OVERHEAD COST
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!This takes much more time but you can force the checkState subroutine
-!to also check the rmsd of frames in adjacent cells
-!Not heavily tested in the newer updates so is deprecated (for now)
-logical,parameter :: force_Neighbors = .false.
-
 !If we want to add duplicate copies of a state (but permuted labels)
 !Then set this to .true.
 !Otherwise, all frames are relabelled to a specific format

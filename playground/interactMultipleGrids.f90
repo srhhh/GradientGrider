@@ -1002,11 +1002,15 @@ integer :: OMP_GET_THREAD_NUM
 logical :: stop_flag
 real(dp), dimension(Nvar), intent(in) :: vals
 real(dp), dimension(3,Natoms), intent(in) :: coords
+real(dp), dimension(3,Natoms) :: new_coords
 real(dp), dimension(3,Natoms), intent(out) :: gradient
 real(dp), intent(inout) :: min_rmsd
 integer, dimension(1+Ngrid_total),intent(in) :: filechannels
 character(Ngrid_text_length) :: Ngrid_text
 character(5) :: variable_length_text
+real(dp), dimension(3) :: x_center, y_center
+real(dp), allocatable :: g(:,:)
+real(dp), dimension(3,3) :: new_U
 
 real(dp),dimension(Nvar) :: var_cell
 integer,dimension(Nvar,Norder_max+1) :: var_index
@@ -1143,6 +1147,12 @@ if (chosen_index > 0) then
 
         gradient = matmul(Ubuffer1(:,:,chosen_index),&
                           gradientbuffer1(:,:,chosen_index))
+
+!         call getWeightedGradient(new_coords,gradient)
+!
+!         call rmsd_dp(Natoms,new_coords,var_coords,&
+!                      1,new_U,x_center,y_center,&
+!                      min_rmsd)
 else
         min_rmsd = default_rmsd
 end if
@@ -1226,6 +1236,52 @@ else
 end if
 
 end subroutine getRelativeIndex
+
+
+subroutine getWeightedGradient(weighted_coords,weighted_gradient)
+use ls_rmsd_original
+use ANALYSIS
+use PARAMETERS
+implicit none
+
+!Information of the frame is held here
+real(dp), dimension(3,Natoms), intent(out) :: weighted_coords
+real(dp), dimension(3,Natoms), intent(out) :: weighted_gradient
+
+real(dp) :: weight
+real(dp) :: total_weight
+
+!Incremental integers
+integer :: i, j, k
+
+weighted_coords = 0.0d0
+weighted_gradient = 0.0d0
+total_weight = 0.0d0
+
+do i = 1, Totalnumber_of_frames
+
+        if (RMSDbuffer1(i) > threshold_rmsd) cycle
+        
+        weight = (RMSDbuffer1(i))**(-1)
+        
+        weighted_coords = weighted_coords + &
+                          weight * matmul(Ubuffer1(:,:,i),&
+                                     coordsbuffer1(:,:,i))
+        
+        weighted_gradient = weighted_gradient + &
+                            weight * matmul(Ubuffer1(:,:,i),&
+                                     gradientbuffer1(:,:,i))
+        
+        total_weight = total_weight + weight
+
+end do
+
+weighted_coords = (weighted_coords) / total_weight
+weighted_gradient = (weighted_gradient) / total_weight
+
+return
+
+end subroutine getWeightedGradient
 
 
 subroutine getRMSD_1(var_index,population)
@@ -1469,7 +1525,7 @@ integer,dimension(Nvar,Norder_max+1) :: var_index
 character(50) :: var_filename
 
 !Incremental integers
-integer :: i,j
+integer :: i,j, k,l
 
 !Retrive the index of each variable with respect to the grid
 !and the real number (rounded) that represents that index
@@ -1481,7 +1537,9 @@ do i = 1, Nvar
        end do
 end do
 
-do Norder = 0, Norder_max
+do l = 1, Norder_max+1
+
+        Norder = Norder_order(l)
 
         population = local_frame_count(Norder+1)
         
@@ -1506,7 +1564,15 @@ do Norder = 0, Norder_max
 
         else if (population < var_overcrowd(Norder+1)) then
 
-                if (population == 0) Nfile = Nfile + 1
+                if (population == 0) then
+
+                        if ((Norder == 1) .and. &
+                            (local_frame_count(1) <= &
+                             var_overcrowd(1))) cycle
+
+                        Nfile = Nfile + 1
+
+                end if
         
                 call frameAddition(vals,coords,gradient,&
                                    var_index(:,Norder+1))
