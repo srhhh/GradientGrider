@@ -1408,17 +1408,20 @@ do i = 1, Nbonds
 ! Plotted based on theta angles in the 4th column
 !
 
-write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'box_width = 2 * pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xrange [-pi:pi]'
+
 write(gnuplotchannel,*) 'set xlabel "Initial Bond Theta Angle (rad)" font ",18"'
+write(gnuplotchannel,*) 'set xrange [-pi:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
-write(gnuplotchannel,*) 'set xtics pi/2'
 write(gnuplotchannel,*) "set format x '%.1P π'"
+write(gnuplotchannel,*) 'unset xtics'
+if (i == Nbonds) write(gnuplotchannel,*) 'set xtics pi/2'
+
 write(Ntraj_text,FMT="(I6)") i*6 - 2
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
                         '" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
@@ -1429,13 +1432,18 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
 ! Plotted based on phi angles in the 5th column
 !
 
-write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
-write(gnuplotchannel,*) 'set xlabel "Initial Bond Phi Angle (rad)" font ",18"'
 write(gnuplotchannel,*) 'box_width = pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
+
+write(gnuplotchannel,*) 'set xlabel "Initial Bond Phi Angle (rad)" font ",18"'
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) "set format x '%.1P π'"
+write(gnuplotchannel,*) 'unset xtics'
+if (i == Nbonds) write(gnuplotchannel,*) 'set xtics pi/2'
+
 write(Ntraj_text,FMT="(I6)") i*6 - 1
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
 			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
 			')):(1.0) smooth frequency with boxes'
@@ -1486,8 +1494,9 @@ write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_upsilon)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_upsilon+box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set xlabel "Vibrational Quantum Number" font ",18"'
-write(gnuplotchannel,*) 'set xtics min_upsilon, (max_upsilon-min_upsilon)/5, max_upsilon'
 write(gnuplotchannel,*) 'set format x "%5.1e'
+write(gnuplotchannel,*) 'unset xtics'
+if (i == Nbonds) write(gnuplotchannel,*) 'set xtics min_upsilon, (max_upsilon-min_upsilon)/5, max_upsilon'
 write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'set xrange [min_upsilon:max_upsilon]'
 write(gnuplotchannel,*) 'set yrange [0:]'
@@ -1569,8 +1578,9 @@ write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_J)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_J+box_width * (bin_number(x) + 0.5)'
 write(gnuplotchannel,*) 'set xlabel "Rotational Quantum Number" font ",18"'
-write(gnuplotchannel,*) 'set xtics min_J, (max_J-min_J)/5, max_J'
 write(gnuplotchannel,*) "set format x '%.1f'"
+write(gnuplotchannel,*) 'unset xtics'
+if (i == Nbonds) write(gnuplotchannel,*) 'set xtics min_J, (max_J-min_J)/5, max_J'
 write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'set xrange [min_J:max_J]'
 write(gnuplotchannel,*) 'set yrange [0:]'

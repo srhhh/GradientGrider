@@ -64,7 +64,7 @@ logical,parameter :: testtraj_flag = .true.
 
    !This takes much more time but you can force the checkState subroutine
    !to also check the rmsd of frames in adjacent cells
-   logical :: force_Neighbors = .false.
+   logical :: force_Neighbors = .true.
 
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD
@@ -103,6 +103,31 @@ logical,parameter :: testtraj_flag = .true.
       logical :: grid_addition = .true.
 
       !$OMP THREADPRIVATE(reject_flag,accept_first,accept_worst)
+
+         !Set .true. if interpolation should be used; that is to say
+         !a weighted combination of acceptable frames are used to
+         !calculate an approximate gradient
+         logical :: interpolation_flag = .false.
+
+         !Interpolation requires a scaling parameter for the weights
+         !This is a positive, nonzero real number
+         real(dp) :: interpolation_alpha1 = 3.0
+
+         !For persistent data collection and analysis, a new file
+         !is dedicated to interpolation results
+         !Whether we record or not to this file is governed by the
+         !gather_interpolation_flag
+         logical :: gather_interpolation_flag = .false.
+         character(17),parameter :: interpolationfile = "interpolation.dat"
+
+         !Interpolation data can be checked at any point
+         !whenever the interpolation counter reaches the
+         !interpolation check, the data is checked
+         !If the visual flag is true, then a visual is also
+         !made when the data is checked
+         integer :: interpolation_check = 1000
+         integer :: interpolation_counter
+         logical :: interpolation_check_visual = .true.
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

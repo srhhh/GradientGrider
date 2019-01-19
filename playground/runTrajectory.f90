@@ -788,6 +788,7 @@ subroutine checkMultipleTrajectories(filechannels,&
         use VARIABLES
         use ANALYSIS
         use interactMultipleGrids
+        use analyzeRMSDThresholdwithMultipleGrids
         implicit none
 
         !Coordinates, Velocities, and Variables
@@ -820,6 +821,8 @@ subroutine checkMultipleTrajectories(filechannels,&
         end if
 
         if (testtrajDetailedRMSD_flag) open(filechannel2,file=gridpath0//checkstatefile)
+        if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfile,position="append")
+
         buffer1_size = 1 + var_overcrowd(1)
         allocate(valsbuffer1(Nvar,buffer1_size),&
                  coordsbuffer1(3,Natoms,buffer1_size),&
@@ -958,6 +961,33 @@ end if
                                do n = 1, Natoms
                                         gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
                                end do
+
+                               if (gather_interpolation_flag) then
+
+                                        approx_gradient = gradient
+
+                                        call Acceleration(vals,coords,gradient)
+
+                                        write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
+                                                    interpolation_alpha1, threshold_rmsd, min_rmsd, &
+                                                    sqrt(sum((gradient-approx_gradient)**2)/Natoms)
+
+                                        interpolation_counter = interpolation_counter + 1
+
+                                        if (interpolation_counter == interpolation_check) then
+
+                                                close(filechannel3)
+
+                                                if (interpolation_check_visual) call &
+                                                        getRMSDinterpolation("InterpolationCheck")
+
+                                                open(filechannel3,file=gridpath0//interpolationfile,&
+                                                        position="append")
+
+                                                interpolation_counter = 0
+
+                                        end if
+                               end if
                        end if
                 end if
 
@@ -967,6 +997,8 @@ end if
         end do
 
         if (testtrajDetailedRMSD_flag) close(filechannel2)
+        if (gather_interpolation_flag) close(filechannel3)
+
         deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
                    approximation_index)
 

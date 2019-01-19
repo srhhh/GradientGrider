@@ -510,6 +510,9 @@ if (traversal_flag) allocate(traversal0(Ngrid_total,(var_bounds(1))**Nvar),&
 !instantiate its own filechannels
 allocate(filechannels(1+Ngrid_total))
 
+!And also reset the interpolation counter
+interpolation_counter = 0
+
 !$OMP DO
 do n_testtraj = initial_n_testtraj, Ntesttraj
 

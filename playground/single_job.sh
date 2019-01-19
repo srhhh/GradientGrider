@@ -99,20 +99,20 @@ threshold_rmsd2=.037500d0
 threshold_rmsd3=.025000d0
 threshold_rmsd4=.050000d0
 threshold_rmsd5=.050000d0
-reject_flag=.false.
+reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
 grid_addition=.false.
-Ngrid_cap=4
+Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=350
+Ntrajectories=10
 Nthreads=1
 
 #These are flags relating to using old data
 useolddata_flag=.false.
 useoldinitialbonddata_flag=.true.
-initialbondname="001reject.05000"
+initialbondname="001omegaA.05000"
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -155,7 +155,7 @@ prefixes[3]="001reject.05000"
 newGRID="H2H2_Jan17"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
 
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
@@ -164,7 +164,7 @@ newGRID_check_min=100
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)

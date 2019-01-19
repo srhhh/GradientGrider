@@ -136,6 +136,10 @@ integer,parameter :: number_of_frames_max = &
 integer :: number_of_cells
 integer,allocatable :: approximation_index(:)
 
+!Variables related to interpolation
+
+integer :: Ninterpolation
+
 !Other global variables to clean things up
 
 integer :: Totalnumber_of_frames
@@ -1022,9 +1026,11 @@ var_coords = coords
 !We start off with zero frames having been checked
 local_frame_count = 0
 Totalnumber_of_frames = 0
+order = 0
 number_of_cells = 0
 neighbor_check = 0
 approximation_index = 0
+Ninterpolation = 0
 stop_flag = .false.
 
 candidate_rmsd = min_rmsd
@@ -1099,17 +1105,19 @@ do l = 1, Norder_max+1
                 end do
         end if
         
-        if (stop_flag) cycle
+        if (stop_flag) exit
 
 end do
+
+order = order + Norder
 
 if (testtraj_flag) write(filechannels(1+k),FMT=FMT6) candidate_rmsd
 
 end do
 
 number_of_frames = Totalnumber_of_frames
-order = Norder
 neighbor_check = number_of_cells
+Norder_total(order/Ngrid_total) = Norder_total(order/Ngrid_total) + 1
 
 !print *, ""
 !print *, "step: ", steps
@@ -1125,7 +1133,6 @@ neighbor_check = number_of_cells
 if (number_of_cells == 0) then
         return
 else
-        Norder_total(Norder+1) = Norder_total(Norder+1) + 1
 
 !if (Norder == 1) then
 !print *, ""
@@ -1143,16 +1150,55 @@ else
 end if
 
 if (chosen_index > 0) then
-        min_rmsd = RMSDbuffer1(chosen_index)
 
-        gradient = matmul(Ubuffer1(:,:,chosen_index),&
-                          gradientbuffer1(:,:,chosen_index))
+        if (interpolation_flag) call getWeightedGradient(new_coords,gradient)
 
-!         call getWeightedGradient(new_coords,gradient)
-!
-!         call rmsd_dp(Natoms,new_coords,var_coords,&
-!                      1,new_U,x_center,y_center,&
-!                      min_rmsd)
+        if ((interpolation_flag).and.(Ninterpolation > 0)) then
+
+                do i = 1, 3
+                        new_coords(i,:) = new_coords(i,:) + &
+                                          (sum(var_coords(i,:),dim=1) - &
+                                           sum(new_coords(i,:),dim=1)) / &
+                                          Natoms
+                end do
+        
+                !Remark: Ken Dill's code uses a version of the RMSD that divides
+                !        by N, not N - 1
+
+                min_rmsd = sqrt(sum((new_coords - var_coords)**2)/(Natoms))
+
+!print *, "interpolation used"
+!print *, "     Ninterpolation: ", Ninterpolation
+!print *, "calculated min_rmsd: ", min_rmsd
+!print *, " tabulated min_rmsd: ", RMSdbuffer1(chosen_index)
+
+        else
+
+                gradient = matmul(Ubuffer1(:,:,chosen_index),&
+                                  gradientbuffer1(:,:,chosen_index))
+
+!                min_rmsd = RMSDbuffer1(chosen_index)
+
+                new_coords = matmul(Ubuffer1(:,:,chosen_index),&
+                                  coordsbuffer1(:,:,chosen_index))
+
+                do i = 1, 3
+                        new_coords(i,:) = new_coords(i,:) + &
+                                          (sum(var_coords(i,:),dim=1) - &
+                                           sum(new_coords(i,:),dim=1)) / &
+                                          Natoms
+                end do
+
+                !Remark: Ken Dill's code uses a version of the RMSD that divides
+                !        by N, not N - 1
+
+                min_rmsd = sqrt(sum((new_coords - var_coords)**2)/(Natoms))
+
+!print *, "no interpolation"
+!print *, "calculated min_rmsd: ", min_rmsd
+!print *, " tabulated min_rmsd: ", RMSdbuffer1(chosen_index)
+        
+        end if
 else
         min_rmsd = default_rmsd
 end if
@@ -1261,8 +1307,10 @@ total_weight = 0.0d0
 do i = 1, Totalnumber_of_frames
 
         if (RMSDbuffer1(i) > threshold_rmsd) cycle
+
+        Ninterpolation = Ninterpolation + 1
         
-        weight = (RMSDbuffer1(i))**(-1)
+        weight = (RMSDbuffer1(i))**(-interpolation_alpha1)
         
         weighted_coords = weighted_coords + &
                           weight * matmul(Ubuffer1(:,:,i),&
@@ -1588,7 +1636,7 @@ end do
 end subroutine addState_new
 
 
-subroutine frameAddition(vals,coords,gradient,var_index)
+subroutine frameAddition(vals,coords,gradient,var_index,nolabel_flag)
 use PARAMETERS
 use PHYSICS
 implicit none
@@ -1601,6 +1649,8 @@ integer,dimension(Nvar),intent(in) :: var_index
 !Character strings used to identify the file
 character(50) :: var_filename
 
+logical,optional :: nolabel_flag
+
 !Incremental integers
 integer :: i,j,k
 
@@ -1611,7 +1661,7 @@ write(var_filename,FMT=var_multipleFMT&
 !Pretty self-explanatory
 if (unreadable_flag) then
         open(filechannel1,file=gridpath3//trim(var_filename),position="append",form="unformatted")
-        if (force_NoLabels) then
+        if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
                 write(filechannel1) (vals(j),j=1,Nvar)
                 write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
                 write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
@@ -1622,7 +1672,7 @@ if (unreadable_flag) then
         end if
 else
         open(filechannel1,file=gridpath3//trim(var_filename),position="append")
-        if (force_NoLabels) then
+        if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
                 write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
                 write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
                 write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
@@ -1649,6 +1699,8 @@ integer,intent(in) :: frames
 !An index used to uniquely identify the cell
 integer,dimension(Nvar) :: var_index
 
+logical :: nolabel_flag = .true.
+
 integer :: i, j
 
 Norder = Norder + 1
@@ -1660,7 +1712,7 @@ do i = 1, frames
         end do
 
         call frameAddition(valsbuffer1(:,i),coordsbuffer1(:,:,i),&
-                           gradientbuffer1(:,:,i),var_index)
+                           gradientbuffer1(:,:,i),var_index,nolabel_flag)
 end do
 
 Norder = Norder - 1

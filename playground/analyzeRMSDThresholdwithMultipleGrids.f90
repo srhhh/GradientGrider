@@ -696,4 +696,228 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 end subroutine getRMSDDifferences1
 
 
+subroutine getRMSDinterpolation(PNGfilename)
+use PARAMETERS
+use ANALYSIS
+implicit none
+
+!NUMBER OF FRAMES IN THE DATA
+integer :: frames
+
+!RMSD
+real(dp) :: rmsd_x, rmsd_fx
+real(dp) :: min_rmsd_x, max_rmsd_x
+real(dp) :: min_rmsd_fx, max_rmsd_fx
+
+!FORMAT OF PNG FILES TO BE MADE
+character(*), intent(in) :: PNGfilename
+
+!FORMATTING OF PNG FILES
+character(5) :: variable_length_text
+character(Ngrid_text_length) :: Ngrid_text
+
+!VARIABLES IN THE INTERPOLATION FILE
+integer :: Ninterpolation
+integer :: min_Ninterpolation, max_Ninterpolation
+real :: vals1, vals2
+real(dp) :: interpolation_alpha
+real(dp) :: min_interpolation_alpha, max_interpolation_alpha
+real(dp) :: threshold_rmsd_1
+
+!I/O HANDLING
+integer :: iostate
+
+!HISTOGRAM VARIABLES
+integer :: Nbins
+real(dp) :: bin_width
+integer :: Nbin, min_Nbin, max_Nbin
+
+!INTEGER INCREMENTALS
+integer :: n
+
+
+frames = 0
+
+min_rmsd_x = default_rmsd
+min_rmsd_fx = 1.0d9
+min_Ninterpolation = 1000
+max_rmsd_x = 0.0d0
+max_rmsd_fx = 0.0d0
+max_Ninterpolation = 0
+
+open(filechannel2,file=gridpath0//interpolationfile)
+do 
+        read(filechannel2,FMT=*,iostat=iostate) vals1, vals2, Ninterpolation, &
+                                       interpolation_alpha, threshold_rmsd_1, &
+                                       rmsd_x, rmsd_fx
+        if (iostate /= 0) exit
+
+        min_rmsd_x = min(min_rmsd_x, rmsd_x)
+        max_rmsd_x = max(max_rmsd_x, rmsd_x)
+        min_rmsd_fx = min(min_rmsd_fx, rmsd_fx)
+        max_rmsd_fx = max(max_rmsd_fx, rmsd_fx)
+        min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
+        max_Ninterpolation = max(max_Ninterpolation, Ninterpolation)
+
+        frames = frames + 1
+end do
+close(filechannel2)
+
+Nbins = 50
+min_Nbin = 10
+max_Nbin = 0
+bin_width = log10((max_rmsd_fx/min_rmsd_x) / (min_rmsd_fx/max_rmsd_x)) / Nbins
+
+write(variable_length_text,"(I5)") Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") 4
+open(filechannel1,file=gridpath0//"percent_rmsd"//Ngrid_text//".dat")
+
+open(filechannel2,file=gridpath0//interpolationfile)
+do 
+        read(filechannel2,FMT=*,iostat=iostate) vals1, vals2, Ninterpolation, &
+                                       interpolation_alpha, threshold_rmsd_1, &
+                                       rmsd_x, rmsd_fx
+        if (iostate /= 0) exit
+
+        Nbin = nint(log10((rmsd_fx/rmsd_x) / (min_rmsd_fx/max_rmsd_x)) / bin_width)
+
+        min_Nbin = min(min_Nbin,Nbin)
+        max_Nbin = max(max_Nbin,Nbin)
+
+        write(filechannel1,FMT=*) vals1, vals2, Nbin
+end do
+close(filechannel2)
+
+close(filechannel1)
+
+
+
+
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath0//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'set title "RMSD Comparison of a Frame and Gradient with Interpolation"'
+write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set logscale x'
+write(gnuplotchannel,*) 'set logscale y'
+write(gnuplotchannel,*) 'min_x = ', min_rmsd_x
+write(gnuplotchannel,*) 'max_x = ', max_rmsd_x
+write(gnuplotchannel,*) 'min_y = ', min_rmsd_fx
+write(gnuplotchannel,*) 'max_y = ', max_rmsd_fx
+write(gnuplotchannel,*) 'min_cx = ', min_Ninterpolation
+write(gnuplotchannel,*) 'max_cx = ', max_Ninterpolation
+write(gnuplotchannel,*) 'set xrange [min_x:max_x]'
+write(gnuplotchannel,*) 'set yrange [min_y:max_y]'
+write(gnuplotchannel,*) 'set cbrange [min_cx:max_cx]'
+write(gnuplotchannel,*) 'set palette defined (min_cx "blue", max_cx "red")'
+write(gnuplotchannel,*) 'set xlabel "RMSD Between the Input Frame and the Interpolation"'
+write(gnuplotchannel,*) 'set ylabel "RMSD Between the Output Gradient and the Interpolation"'
+write(gnuplotchannel,*) 'set cblabel "Number of Frames Used to Interpolate"'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                           '"1e-5" .00001, '//&
+                                           '"5e-5" .00005, '//&
+                                           '"1e-4"  .0001, '//&
+                                           '"5e-4"  .0005, '//&
+                                           '"1e-3"   .001, '//&
+                                           '"5e-3"   .005, '//&
+                                           '"1e-2"    .01, '//&
+                                           '"5e-2"    .05, '//&
+                                           '"1e-1"     .1, '//&
+                                           '"5e-1"     .5, '//&
+                                           ' "1e0"      1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set ytics ('//&
+                                           '"1e-5" .00001, '//&
+                                           '"5e-5" .00005, '//&
+                                           '"1e-4"  .0001, '//&
+                                           '"5e-4"  .0005, '//&
+                                           '"1e-3"   .001, '//&
+                                           '"5e-3"   .005, '//&
+                                           '"1e-2"    .01, '//&
+                                           '"5e-2"    .05, '//&
+                                           '"1e-1"     .1, '//&
+                                           '"5e-1"     .5, '//&
+                                           ' "1e0"      1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'plot "'//gridpath0//interpolationfile//'" u '//&
+                               '6:7:3 w p lw 6 palette'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath0//PNGfilename//'_1.png"'
+write(gnuplotchannel,*) 'set title "Ratio of RMSD Between the Frame and the Gradient"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'scaling = ', frames
+write(gnuplotchannel,*) 'xmin = ', min_rmsd_fx / max_rmsd_x
+write(gnuplotchannel,*) 'xmax = ', max_rmsd_fx / min_rmsd_x
+write(gnuplotchannel,*) 'set xlabel "Ratio of RMSD"'
+write(gnuplotchannel,*) 'set ylabel "Occurence"'
+
+write(gnuplotchannel,*) 'Nbins = ', Nbins
+write(gnuplotchannel,*) 'bin_width = ', bin_width
+write(gnuplotchannel,*) 'set boxwidth 1'
+write(gnuplotchannel,*) 'set xrange [-0.5:Nbins+.05]'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'set style fill transparent solid 0.5'
+
+write(gnuplotchannel,*) 'set xtics ('//&
+                                           '"1e-5" (-5-log10(xmin))/bin_width, '//&
+                                           '"1e-4" (-4-log10(xmin))/bin_width, '//&
+                                           '"1e-3" (-3-log10(xmin))/bin_width, '//&
+                                           '"1e-2" (-2-log10(xmin))/bin_width, '//&
+                                           '"1e-1" (-1-log10(xmin))/bin_width, '//&
+                                               '"1e0" (0-log10(xmin))/bin_width, '//&
+                                               '"1e1" (1-log10(xmin))/bin_width, '//&
+                                               '"1e2" (2-log10(xmin))/bin_width, '//&
+                                               '"1e3" (3-log10(xmin))/bin_width, '//&
+                                               '"1e4" (4-log10(xmin))/bin_width, '//&
+                                               '"1e5" (5-log10(xmin))/bin_width)'
+
+write(gnuplotchannel,*) 'plot "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+                               '3:(1.0/scaling) '//&
+                               'smooth frequency w boxes lc rgb "green"'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+
+open(gnuplotchannel,file=gridpath0//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath0//PNGfilename//'_2.png"'
+write(gnuplotchannel,*) 'set title "RMSD Ratio Dependence on Variables"'
+write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'scaling = ', bin_width
+write(gnuplotchannel,*) 'min_x = ', min_rmsd_x
+write(gnuplotchannel,*) 'max_x = ', max_rmsd_x
+write(gnuplotchannel,*) 'min_y = ', min_rmsd_fx
+write(gnuplotchannel,*) 'max_y = ', max_rmsd_fx
+write(gnuplotchannel,*) 'min_cx = ', min_Nbin
+write(gnuplotchannel,*) 'max_cx = ', max_Nbin
+write(gnuplotchannel,*) 'set xrange [0:',var_maxvar(1),']'
+write(gnuplotchannel,*) 'set yrange [0:',var_maxvar(2),']'
+write(gnuplotchannel,*) 'set cbrange [min_cx:max_cx]'
+write(gnuplotchannel,*) 'set palette defined (min_cx "blue", max_cx "red")'
+write(gnuplotchannel,*) 'set xlabel "Var1 (A)"'
+write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
+write(gnuplotchannel,*) 'set cblabel "Ratio of RMSD"'
+
+write(gnuplotchannel,*) 'plot "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+                               '1:2:3 w p lw 4 palette'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+
+
+
+
+end subroutine getRMSDinterpolation
+
+
+
 end module analyzeRMSDThresholdwithMultipleGrids
