@@ -102,16 +102,16 @@ threshold_rmsd5=.050000d0
 reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
-grid_addition=.false.
+grid_addition=.true.
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=10
+Ntrajectories=100
 Nthreads=1
 
 #These are flags relating to using old data
 useolddata_flag=.false.
-useoldinitialbonddata_flag=.true.
+useoldinitialbonddata_flag=.false.
 initialbondname="001omegaA.05000"
 
 #If you have special set of parameters you want to compare, list them here
@@ -152,10 +152,10 @@ prefixes[3]="001reject.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Jan17"
+newGRID="H2H2_Jan23"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
@@ -164,7 +164,7 @@ newGRID_check_min=100
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)
