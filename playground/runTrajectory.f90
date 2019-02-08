@@ -397,13 +397,19 @@ if (testtrajDetailedRMSD_flag) open(filechannel2,file=gridpath1//checkstatefile)
                 !that means we don't do any special label switching when using the
                 !approximated gradient and inputing the frame
                 if ((force_Duplicates) .or. (force_NoLabels)) then
-                        min_rmsd = default_rmsd
+
+                        if (accept_worst) then
+                                min_rmsd = 0.0d0
+                        else
+                                min_rmsd = default_rmsd
+                        end if
+
                         subcellsearch_max = (/ 0, 0 /)
                         call checkState_new(vals,coords,approx_gradient,min_rmsd,&
                                  filechannels,number_of_frames,order,neighbor_check)
 
                         if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)&
-                            .or.(accept_worst)) then
+                            .or.((accept_worst).and.(min_rmsd == 0.0d0))) then
                                 call Acceleration(vals,coords,gradient)
                                 if (grid_addition) call addState_new(vals,coords,gradient)
                         else
@@ -419,14 +425,23 @@ if (testtrajDetailedRMSD_flag) open(filechannel2,file=gridpath1//checkstatefile)
 
                        !Check for a frame in the grid
                        !Set the default value beforehand though
-                       min_rmsd = default_rmsd
+                       if (accept_worst) then
+                               min_rmsd = 0.0d0
+                       else
+                               min_rmsd = default_rmsd
+                       end if
+
                        subcellsearch_max = subcellsearch_max1
                        call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd,&
                                 filechannels,number_of_frames,order,neighbor_check)
 
 if (testtrajDetailedRMSD_flag) then
 
-        min_rmsd_prime = default_rmsd
+        if (accept_worst) then
+                min_rmsd_prime = 0.0d0
+        else
+                min_rmsd_prime = default_rmsd
+        end if
 
         subcellsearch_max = subcellsearch_max2
         call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd_prime,&
@@ -451,8 +466,8 @@ end if
 
                        !Update the gradient with either the approximation or by acclerating
                        !This is dependent on the threshold and the rejection method
-                       if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)&
-                            .or.(accept_worst)) then
+                        if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)&
+                            .or.((accept_worst).and.(min_rmsd == 0.0d0))) then
                                 call Acceleration(vals,coords,gradient)
                                 if (grid_addition) call addState_new(vals,coords,gradient)
                         else
@@ -927,7 +942,11 @@ subroutine checkMultipleTrajectories(filechannels,&
 
 if (testtrajDetailedRMSD_flag) then
 
-        min_rmsd_prime = default_rmsd
+        if (accept_worst) then
+                min_rmsd_prime = 0.0d0
+        else
+                min_rmsd_prime = default_rmsd
+        end if
 
         subcellsearch_max = subcellsearch_max2
         call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd_prime,&

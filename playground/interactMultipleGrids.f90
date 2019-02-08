@@ -116,7 +116,7 @@ integer :: buffer1_size
 !It is useful to estimate how many cells we may be
 !looking at at one time
 
-integer,dimension(Norder_max+1) :: subcellsearch_max1 = (/ 1, 5 /)
+integer,dimension(Norder_max+1) :: subcellsearch_max1 = (/ 0, 5 /)
 integer,dimension(Norder_max+1) :: subcellsearch_max2 = (/ 2, 2 /)
 
 integer,dimension(Norder_max+1) :: subcellsearch_max = (/ 1, 5 /)
@@ -1117,7 +1117,7 @@ end do
 
 number_of_frames = Totalnumber_of_frames
 neighbor_check = number_of_cells
-Norder_total(order/Ngrid_total) = Norder_total(order/Ngrid_total) + 1
+Norder_total(1+order/Ngrid_total) = Norder_total(1+order/Ngrid_total) + 1
 
 !print *, ""
 !print *, "step: ", steps
