@@ -108,6 +108,9 @@ real(dp),allocatable :: gradientbuffer1(:,:,:)
 real(dp),allocatable :: Ubuffer1(:,:,:)
 real(dp),allocatable :: RMSDbuffer1(:)
 
+logical, allocatable :: acceptable_frame_mask(:)
+real(dp),allocatable :: inputCLS(:,:)
+
 !In the latter case, we need to keep track of how large
 !the buffer gets, and increase it if it gets too large
 
@@ -116,8 +119,8 @@ integer :: buffer1_size
 !It is useful to estimate how many cells we may be
 !looking at at one time
 
-integer,dimension(Norder_max+1) :: subcellsearch_max1 = (/ 0, 5 /)
-integer,dimension(Norder_max+1) :: subcellsearch_max2 = (/ 2, 2 /)
+integer,dimension(Norder_max+1) :: subcellsearch_max1 = (/ 0, 3 /)
+integer,dimension(Norder_max+1) :: subcellsearch_max2 = (/ 0, 3 /)
 
 integer,dimension(Norder_max+1) :: subcellsearch_max = (/ 1, 5 /)
 integer,dimension(Norder_max+1) :: local_frame_count
@@ -139,6 +142,9 @@ integer,allocatable :: approximation_index(:)
 !Variables related to interpolation
 
 integer :: Ninterpolation
+real(dp) :: largest_rmsd
+real(dp) :: largest_weighted_rmsd
+integer  :: largest_rmsd_index
 
 !Other global variables to clean things up
 
@@ -1020,6 +1026,9 @@ real(dp),dimension(Nvar) :: var_cell
 integer,dimension(Nvar,Norder_max+1) :: var_index
 integer,dimension(Nvar,Norder_max+1) :: var_index_diff
 
+integer  :: largest_rmsd_error_index
+real(dp) :: largest_rmsd_error
+
 var_filechannel = filechannels(1)
 var_coords = coords
 
@@ -1032,6 +1041,8 @@ neighbor_check = 0
 approximation_index = 0
 Ninterpolation = 0
 stop_flag = .false.
+
+acceptable_frame_mask = .false.
 
 candidate_rmsd = min_rmsd
 
@@ -1130,7 +1141,7 @@ Norder_total(1+order/Ngrid_total) = Norder_total(1+order/Ngrid_total) + 1
 !print *, "RMSDbuffer1: ", RMSDbuffer1(1:Totalnumber_of_frames)
 !print *, "candidatermsd: ", candidate_rmsd
 
-if (number_of_cells == 0) then
+if ((number_of_cells == 0)) then
         return
 else
 
@@ -1151,26 +1162,39 @@ end if
 
 if (chosen_index > 0) then
 
-        if (interpolation_flag) call getWeightedGradient(new_coords,gradient)
+!       if (interpolation_flag) call getWeightedGradient(new_coords,gradient)
+!       if (interpolation_flag) &
+        if ((interpolation_flag).and.(Ninterpolation > 1)) then
+                call getInterpolatedGradient(new_coords,gradient)
 
-        if ((interpolation_flag).and.(Ninterpolation > 0)) then
+!       if ((interpolation_flag).and.(Ninterpolation > 0)) then
+!       if ((interpolation_flag).and.(Ninterpolation > 0)) then
+!       if ((interpolation_flag).and.(Ninterpolation > 2)) then
 
-                do i = 1, 3
-                        new_coords(i,:) = new_coords(i,:) + &
-                                          (sum(var_coords(i,:),dim=1) - &
-                                           sum(new_coords(i,:),dim=1)) / &
-                                          Natoms
-                end do
+!               do i = 1, 3
+!                       new_coords(i,:) = new_coords(i,:) + &
+!                                         (sum(var_coords(i,:),dim=1) - &
+!                                          sum(new_coords(i,:),dim=1)) / &
+!                                         Natoms
+!               end do
         
                 !Remark: Ken Dill's code uses a version of the RMSD that divides
                 !        by N, not N - 1
 
                 min_rmsd = sqrt(sum((new_coords - var_coords)**2)/(Natoms))
 
-!print *, "interpolation used"
-!print *, "     Ninterpolation: ", Ninterpolation
-!print *, "calculated min_rmsd: ", min_rmsd
-!print *, " tabulated min_rmsd: ", RMSdbuffer1(chosen_index)
+!write(6,FMT="(A)") "interpolation used"
+!write(6,FMT="(A,I8)") &
+!        "               Ninterpolation: ", Ninterpolation
+!write(6,FMT="(A,F10.6)") &
+!        "      interpolated frame rmsd: ", min_rmsd
+!write(6,FMT="(A,F10.6,A,F10.6,A)") &
+!        "interpolated gradient O(rmsd): ", min_rmsd ,&
+!        " + (", largest_rmsd, ")^2"
+!write(6,FMT="(A,F10.6)") &
+!        "         tabulated frame rmsd: ", RMSDbuffer1(chosen_index)
+!write(6,FMT="(A,F10.6)") &
+!        "   tabulated gradient O(rmsd): ", RMSDbuffer1(chosen_index)
 
         else
 
@@ -1179,24 +1203,25 @@ if (chosen_index > 0) then
 
 !                min_rmsd = RMSDbuffer1(chosen_index)
 
-                new_coords = matmul(Ubuffer1(:,:,chosen_index),&
-                                  coordsbuffer1(:,:,chosen_index))
-
                 do i = 1, 3
-                        new_coords(i,:) = new_coords(i,:) + &
+                        new_coords(i,:) = coordsbuffer1(i,:,chosen_index) + &
                                           (sum(var_coords(i,:),dim=1) - &
-                                           sum(new_coords(i,:),dim=1)) / &
+                                           sum(coordsbuffer1(i,:,chosen_index),dim=1)) / &
                                           Natoms
                 end do
+
+                new_coords = matmul(Ubuffer1(:,:,chosen_index),new_coords(:,:))
 
                 !Remark: Ken Dill's code uses a version of the RMSD that divides
                 !        by N, not N - 1
 
                 min_rmsd = sqrt(sum((new_coords - var_coords)**2)/(Natoms))
+                largest_rmsd = min_rmsd
+                largest_weighted_rmsd = min_rmsd
 
-!print *, "no interpolation"
-!print *, "calculated min_rmsd: ", min_rmsd
-!print *, " tabulated min_rmsd: ", RMSdbuffer1(chosen_index)
+!write(6,FMT="(A)") "no interpolation"
+!write(6,FMT="(A,F10.6)") "      tabulated frame rmsd: ", min_rmsd
+!write(6,FMT="(A,F10.6)") "tabulated gradient O(rmsd): ", RMSDbuffer1(chosen_index)
         
         end if
 else
@@ -1284,6 +1309,95 @@ end if
 end subroutine getRelativeIndex
 
 
+subroutine getInterpolatedGradient(weighted_coords,weighted_gradient)
+use ls_rmsd_original
+use FUNCTIONS
+use ANALYSIS
+use PARAMETERS
+implicit none
+
+!Information of the frame is held here
+real(dp), dimension(3,Natoms), intent(out) :: weighted_coords
+real(dp), dimension(3,Natoms), intent(out) :: weighted_gradient
+real(dp) :: current_rmsd
+
+real(dp), allocatable :: outputCLS(:)
+real(dp), allocatable :: restraints(:,:)
+
+real(dp), allocatable :: frame_weights(:)
+real(dp), allocatable :: restraint_values(:)
+
+integer :: Ninterpolation_true
+real(dp) :: weight_threshold = 1.0d-6
+real(dp) :: weight
+real(dp) :: total_weight
+
+!Incremental integers
+integer :: i, j, k
+
+allocate(frame_weights(Ninterpolation),&
+         outputCLS(Ncoords+Ninterpolation),&
+         restraints(1,Ninterpolation),&
+         restraint_values(1))
+
+do i = 1, Ninterpolation
+        inputCLS(Ncoords+i,:) = 0.0d0
+        inputCLS(Ncoords+i,i) = weight_threshold
+end do
+
+restraints = 1.0d0
+restraint_values = 1.0d0
+outputCLS(1:Ncoords) = reshape(var_coords,(/Ncoords/))
+outputCLS(Ncoords+1:Ncoords+Ninterpolation) = 0.0d0
+
+call CLS2(inputCLS(1:Ncoords+Ninterpolation,&
+          1:Ninterpolation),Ncoords+Ninterpolation,Ninterpolation,&
+          restraints,1,restraint_values,&
+          outputCLS,frame_weights)
+
+Ninterpolation_true = 0
+weighted_coords = 0.0d0
+weighted_gradient = 0.0d0
+total_weight = 0.0d0
+largest_rmsd = 0.0d0
+largest_weighted_rmsd = 0.0d0
+
+do i = 1, Ninterpolation
+
+        do
+                Ninterpolation_true = Ninterpolation_true + 1
+                if (acceptable_frame_mask(Ninterpolation_true)) exit
+        end do
+
+        weight = frame_weights(i)
+        if (abs(weight) < 1.0d-9) cycle
+
+        total_weight = total_weight + weight
+        largest_rmsd = max(largest_rmsd,RMSDbuffer1(Ninterpolation_true))
+        largest_weighted_rmsd = max(largest_weighted_rmsd,&
+                abs(weight)*RMSDbuffer1(Ninterpolation_true))
+
+        weighted_coords = weighted_coords + weight * reshape(&
+                          inputCLS(1:Ncoords,i),(/3,Natoms/))
+        
+        weighted_gradient = weighted_gradient + &
+                            weight * matmul(Ubuffer1(:,:,Ninterpolation_true),&
+                                     gradientbuffer1(:,:,Ninterpolation_true))
+end do
+
+!print *, ""
+!print *, "           weight threshold: ", weight_threshold
+!print *, "total weight of next coords: ", total_weight
+!print *, ""
+
+deallocate(frame_weights,outputCLS,&
+           restraints,restraint_values)
+
+return
+
+end subroutine getInterpolatedGradient
+
+
 subroutine getWeightedGradient(weighted_coords,weighted_gradient)
 use ls_rmsd_original
 use ANALYSIS
@@ -1361,6 +1475,13 @@ real(dp),allocatable :: temp_Ubuffer1(:,:,:)
 real(dp),allocatable :: temp_RMSDbuffer1(:)
 integer,allocatable :: temp_approximation_index(:)
 
+logical ,allocatable :: temp_acceptable_frame_mask(:)
+real(dp),allocatable :: temp_inputCLS(:,:)
+
+!Stores values temporarily
+real(dp) :: current_rmsd
+real(dp),dimension(3,Natoms) :: current_coords
+
 !Incremental integers and iostate checking
 integer :: i,j,k,iostate
 integer :: endpoint
@@ -1422,7 +1543,7 @@ do
         
                         !The next line is the coordinates
                         read(var_filechannel) &
-                               ((coordsbuffer1(i,j,k),i=1,3),j=1,Natoms)
+                               ((current_coords(i,j),i=1,3),j=1,Natoms)
         
                         !In unformatted files, the last line is the gradient
                         read(var_filechannel) &
@@ -1443,29 +1564,32 @@ do
         
                         !In formatted files, FMT3 reads the coordinates
                         read(var_filechannel,FMT=FMT7,advance="no") &
-                               ((coordsbuffer1(i,j,k),i=1,3),j=1,Natoms)
+                               ((current_coords(i,j),i=1,3),j=1,Natoms)
         
                         !In formatted files, FMT3 reads the gradient as well
                         read(var_filechannel,FMT=FMT3) &
                                 ((gradientbuffer1(i,j,k),i=1,3),j=1,Natoms)
                 end if
+
+                coordsbuffer1(:,:,k) = current_coords
         
                 !Calculate the RMSD between this frame and the incoming frame
-                call rmsd_dp(Natoms,coordsbuffer1(:,:,k),var_coords,&
+                call rmsd_dp(Natoms,current_coords,var_coords,&
                              1,Ubuffer1(:,:,k),x_center,y_center,&
-                             RMSDbuffer1(k))                               !,.false.,g)
+                             current_rmsd)                               !,.false.,g)
+                RMSDbuffer1(k) = current_rmsd
         
                 !If in the "accept worst" method:
                 if (accept_worst) then
         
                         !If the RMSD is too low, reject the candidate frame for it is "too good"
-                        if (RMSDbuffer1(k) < candidate_rmsd) then
+                        if (current_rmsd < candidate_rmsd) then
                 
                         !And if the RMSD if lower than the threshold, designate this frame as the "worst"
-                        else if (RMSDbuffer1(k) < threshold_rmsd) then
+                        else if (current_rmsd < threshold_rmsd) then
                 
                                 approximation_index(number_of_cells) = k
-                                candidate_rmsd = RMSDbuffer1(k)
+                                candidate_rmsd = current_rmsd
                 
                                 !In special cases, we exit immediately afterwards
                                 if (accept_first) exit
@@ -1477,12 +1601,36 @@ do
         
                 !If in the "accept best" method:
                 else
+                        if ((interpolation_flag).and.&
+                            (current_rmsd < threshold_rmsd)) then
+
+                                acceptable_frame_mask(k) = .true.
+
+                                Ninterpolation = Ninterpolation + 1
+
+                                do i = 1, 3
+                                        current_coords(i,:) = &
+                                        current_coords(i,:) - x_center(i)
+                                end do
+
+                                current_coords = matmul(&
+                                        Ubuffer1(:,:,k),current_coords)
+
+                                do i = 1, 3
+                                        current_coords(i,:) = &
+                                        current_coords(i,:) + y_center(i)
+                                end do
+
+                                inputCLS(1:Ncoords,Ninterpolation) =&
+                                           reshape(current_coords,(/Ncoords/))
+
+                        end if
 
                         !If the RMSD is low enough, designate this frame as the "best"
-                        if (RMSDbuffer1(k) < candidate_rmsd) then
+                        if (current_rmsd < candidate_rmsd) then
                         
                                 approximation_index(number_of_cells) = k
-                                candidate_rmsd = RMSDbuffer1(k)
+                                candidate_rmsd = current_rmsd
                 
                                 !In special cases, we exit immediately afterwards
                                 if (accept_first) exit
@@ -1510,7 +1658,9 @@ do
                  temp_gradientbuffer1(3,Natoms,buffer1_size),&
                  temp_Ubuffer1(3,3,buffer1_size),&
                  temp_RMSDbuffer1(buffer1_size),&
-                 temp_approximation_index(buffer1_size))
+                 temp_approximation_index(buffer1_size),&
+                 temp_acceptable_frame_mask(buffer1_size),&
+                 temp_inputCLS(Ncoords+buffer1_size,buffer1_size))
         
         !Store the buffer in the temporary buffer
         temp_valsbuffer1 = valsbuffer1
@@ -1519,17 +1669,23 @@ do
         temp_Ubuffer1 = Ubuffer1
         temp_RMSDbuffer1 = RMSDbuffer1
         temp_approximation_index = approximation_index
+        temp_acceptable_frame_mask = acceptable_frame_mask
+        temp_inputCLS = inputCLS
         
         !For now, we simply double the buffer size each time it overfills
         deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
-                   approximation_index)
+                   approximation_index,acceptable_frame_mask,inputCLS)
         allocate(valsbuffer1(Nvar,buffer1_size*2),&
                  coordsbuffer1(3,Natoms,buffer1_size*2),&
                  gradientbuffer1(3,Natoms,buffer1_size*2),&
                  Ubuffer1(3,3,buffer1_size*2),&
                  RMSDbuffer1(buffer1_size*2),&
-                 approximation_index(buffer1_size*2))
+                 approximation_index(buffer1_size*2),&
+                 acceptable_frame_mask(buffer1_size*2),&
+                 inputCLS(Ncoords+buffer1_size,buffer1_size*2))
         
+        acceptable_frame_mask = .false.
+
         !And reload all the frames back into the buffer
         valsbuffer1(:,1:buffer1_size) = temp_valsbuffer1
         coordsbuffer1(:,:,1:buffer1_size) = temp_coordsbuffer1
@@ -1537,10 +1693,13 @@ do
         Ubuffer1(:,:,1:buffer1_size) = temp_Ubuffer1
         RMSDbuffer1(1:buffer1_size) = temp_RMSDbuffer1
         approximation_index(1:buffer1_size) = temp_approximation_index
+        acceptable_frame_mask(1:buffer1_size) = temp_acceptable_frame_mask
+        inputCLS(1:Ncoords+buffer1_size,1:buffer1_size) = temp_inputCLS
 
         !Destroy the temporary buffer
         deallocate(temp_valsbuffer1,temp_coordsbuffer1,temp_gradientbuffer1,&
-                   temp_Ubuffer1,temp_RMSDbuffer1,temp_approximation_index)
+                   temp_Ubuffer1,temp_RMSDbuffer1,temp_approximation_index,&
+                   temp_acceptable_frame_mask,temp_inputCLS)
 
         !Permanently increase the buffer size so this will not
         !have to happen next time
@@ -1667,8 +1826,10 @@ if (unreadable_flag) then
                 write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
         else
                 write(filechannel1) (vals(j),j=1,Nvar)
-                write(filechannel1) ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
-                write(filechannel1) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+!               write(filechannel1) ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+!               write(filechannel1) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+                write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
+                write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
         end if
 else
         open(filechannel1,file=gridpath3//trim(var_filename),position="append")
@@ -1678,8 +1839,10 @@ else
                 write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         else
                 write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
-                write(filechannel1,FMT=FMT3,advance="no") ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
-                write(filechannel1,FMT=FMT3) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+!               write(filechannel1,FMT=FMT3,advance="no") ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+!               write(filechannel1,FMT=FMT3) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
+                write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
+                write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
         end if
 end if
 close(filechannel1)

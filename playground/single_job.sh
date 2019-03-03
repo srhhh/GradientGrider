@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=4000
+Ntraj_max=0100
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -93,8 +93,8 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.666660d0
-threshold_rmsd1=.666660d0
+threshold_rmsd=.100000d0
+threshold_rmsd1=.100000d0
 threshold_rmsd2=.100050d0
 threshold_rmsd3=.500050d0
 threshold_rmsd4=.010050d0
@@ -106,12 +106,12 @@ grid_addition=.true.
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=5
+Ntrajectories=100
 Nthreads=1
 
 #These are flags relating to using old data
 useolddata_flag=.false.
-useoldinitialbonddata_flag=.true.
+useoldinitialbonddata_flag=.false.
 initialbondname="001reject.10000"
 
 #If you have special set of parameters you want to compare, list them here
@@ -152,15 +152,15 @@ prefixes[4]="001reject.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Feb3"
+newGRID="H2H2_Feb23test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 #Just set this to a very large number if no progress checks are wanted
-newGRID_check_min=100
+newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
@@ -277,6 +277,9 @@ echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
 echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "GRIDMAKING %E  %U  %S  %P  %O" ./a.out
+##valgrind --leak-check=yes ./a.out
+
+exit
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS

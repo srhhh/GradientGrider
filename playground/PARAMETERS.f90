@@ -277,7 +277,7 @@ logical,parameter :: force_NoLabels = .false.
 !The number of trajectories we add to a grid
 integer,parameter :: Ntraj_max = 0700
 !The maximum amount of time (seconds) we are willing to wait for a single trajectory to finish
-real,parameter :: trajectory_CPU_time_max = 60.0
+real,parameter :: trajectory_CPU_time_max = 600.0
 !The number of grids we will make
 integer :: Ngrid_max = 1
 !$OMP THREADPRIVATE(Ngrid_max)

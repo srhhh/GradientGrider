@@ -74,6 +74,8 @@ character(Ngrid_text_length) :: Ngrid_text
 character(trajectory_text_length) :: Ntraj_text
 character(12) :: prefix_text
 
+character(15) :: vals_interpolation_text
+
 !Trajectory Variables
 real(dp) :: trajectory_CPU_time,trajectory_wall_time
 real(dp) :: scattering_angle
@@ -417,6 +419,24 @@ end if
 
 !        call makeGridCreationGraph(Nfile,max_header1_delta,grid_wall_time)
         call makeGridCreationGraph(Nfile,max_headers_delta(1),grid_wall_time)
+
+        do n = 3, 7
+                write(vals_interpolation_text,&
+                        FMT="(F7.3,'_',F7.3)") &
+                        n*1.0,n*1.0+0.5
+                if (interpolation_check_visual) call &
+                        getRMSDinterpolation(&
+                        (/n*1.0d0,n*1.0d0+0.5d0/),&
+                        (/0.1d0,0.1d0/),&
+                        vals_interpolation_text//&
+                        "InterpolationCheck")
+        end do
+
+        if (interpolation_check_visual) call &
+                getRMSDinterpolation(&
+                (/0.0d0,0.0d0/),&
+                (/1.0d3,1.0d3/),&
+                "InterpolationCheck")
 
 !        call makeMaxFramesOfSubcellsGraph()
 

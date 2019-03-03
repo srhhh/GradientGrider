@@ -103,7 +103,7 @@ integer :: iostate
 integer,allocatable :: filechannels(:)
 integer :: OMP_GET_THREAD_NUM
 logical :: return_flag = .false.
-logical :: makeCheckTrajectory_flag = .true.
+logical :: makeCheckTrajectory_flag = .false.
 
 !Timing
 real :: r1, r2, system_clock_rate
