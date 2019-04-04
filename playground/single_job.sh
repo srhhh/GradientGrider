@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0010
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -93,8 +93,8 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.100000d0
-threshold_rmsd1=.100000d0
+threshold_rmsd=.010000d0
+threshold_rmsd1=.010000d0
 threshold_rmsd2=.100050d0
 threshold_rmsd3=.500050d0
 threshold_rmsd4=.010050d0
@@ -152,7 +152,7 @@ prefixes[4]="001reject.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Feb23test"
+newGRID="H2H2_Mar37test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1

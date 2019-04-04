@@ -257,6 +257,9 @@ exit
 end if
 !!!!!!!!!!!!
 
+Ngrid_total = 1
+call errorCheck2(filechannels)
+
         do n = 1, Ntraj_max
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -423,11 +426,11 @@ end if
         do n = 3, 7
                 write(vals_interpolation_text,&
                         FMT="(F7.3,'_',F7.3)") &
-                        n*1.0,n*1.0+0.5
+                        n*1.0+0.7,n*1.0+1.1
                 if (interpolation_check_visual) call &
                         getRMSDinterpolation(&
-                        (/n*1.0d0,n*1.0d0+0.5d0/),&
-                        (/0.1d0,0.1d0/),&
+                        (/n*1.0d0+0.7d0,n*1.0d0+1.1d0/),&
+                        (/0.2d0,0.2d0/),&
                         vals_interpolation_text//&
                         "InterpolationCheck")
         end do

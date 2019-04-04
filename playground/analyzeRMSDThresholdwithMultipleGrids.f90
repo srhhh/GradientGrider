@@ -924,7 +924,7 @@ write(gnuplotchannel,*) 'set xrange [min_x:max_x]'
 write(gnuplotchannel,*) 'set yrange [min_y:max_y]'
 write(gnuplotchannel,*) 'set cbrange [min_cx:max_cx+1]'
 write(gnuplotchannel,*) 'set palette defined (min_cx "blue", max_cx "red")'
-write(gnuplotchannel,*) 'set xlabel "RMSD Between the Input Frame and the Interpolation"'
+write(gnuplotchannel,*) 'set xlabel "Largest RMSD Between the Input Frame and the Interpolation Points"'
 write(gnuplotchannel,*) 'set ylabel "RMSD Between the Output Gradient and the Interpolation"'
 write(gnuplotchannel,*) 'set cblabel "Number of Frames Used to Interpolate"'
 write(gnuplotchannel,*) 'set xtics ('//&
@@ -947,8 +947,8 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                            ' "1e0"       1, '//&
                                    ')'
 write(gnuplotchannel,*) 'set ytics ('//&
-                                         '"1e-8" .00000001, '//&
-                                         '"5e-8" .00000005, '//&
+!                                        '"1e-8" .00000001, '//&
+!                                        '"5e-8" .00000005, '//&
                                           '"1e-7" .0000001, '//&
                                           '"5e-7" .0000005, '//&
                                            '"1e-6" .000001, '//&
@@ -969,26 +969,26 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//vals_interpolation_text//interpolat
                                '(($5)):7:3 w p lw 6 palette'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
-write(gnuplotchannel,*) 'set xlabel "Largest RMSD Between the Input Frame and the Interpolation Points"'
+write(gnuplotchannel,*) 'set xlabel "SQRT of Weighted Largest RMSD Squared Between the Input Frame and the Interpolation Points"'
 write(gnuplotchannel,*) 'set ylabel "RMSD Between the Output Gradient and the Interpolation"'
 !write(gnuplotchannel,*) 'min_x = ', min_rmsd_y
 !write(gnuplotchannel,*) 'max_x = ', max_rmsd_y
 write(gnuplotchannel,*) 'min_x = ', min_rmsd_vals(1)
 write(gnuplotchannel,*) 'max_x = ', max_rmsd_vals(1)
-write(gnuplotchannel,*) 'set xrange [0.5*min_x**2:2*max_x**2]'
+write(gnuplotchannel,*) 'set xrange [0.5*sqrt(min_x):2*sqrt(max_x)]'
 write(gnuplotchannel,*) 'plot "'//gridpath0//vals_interpolation_text//interpolationfile//'" u '//&
-                               '(($4)**2):7:3 w p lw 6 palette'
+                               '(sqrt($4)):7:3 w p lw 6 palette'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
-write(gnuplotchannel,*) 'set xlabel "Weighted Largest RMSD Between the Input Frame and the Interpolation Points"'
+write(gnuplotchannel,*) 'set xlabel "Weighted RMSD Between the Input Frame and the Interpolation Points"'
 write(gnuplotchannel,*) 'set ylabel "RMSD Between the Output Gradient and the Interpolation"'
 !write(gnuplotchannel,*) 'min_x = ', min_rmsd_z
 !write(gnuplotchannel,*) 'max_x = ', max_rmsd_z
 write(gnuplotchannel,*) 'min_x = ', min_rmsd_vals(5)
 write(gnuplotchannel,*) 'max_x = ', max_rmsd_vals(5)
-write(gnuplotchannel,*) 'set xrange [0.5*min_x**2:2*max_x**2]'
+write(gnuplotchannel,*) 'set xrange [0.5*min_x:2*max_x]'
 write(gnuplotchannel,*) 'plot "'//gridpath0//vals_interpolation_text//interpolationfile//'" u '//&
-                               '(($6)**2):7:3 w p lw 6 palette'
+                               '(($6)):7:3 w p lw 6 palette'
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
@@ -1004,8 +1004,8 @@ write(gnuplotchannel,FMT="(A,F7.3,',',F7.3,A)") &
         'set label 1 "Vals = (',vals(1),vals(2),')" at screen 0.1,0.800 front'
 write(gnuplotchannel,FMT="(A,I6,A)") &
         'set label 2 "Ntraj = ', Ntraj, '" at screen 0.1,0.775 front'
-write(gnuplotchannel,*) 'xmin = ', min_rmsd_vals(2)
-write(gnuplotchannel,*) 'xmax = ', max_rmsd_vals(2)
+write(gnuplotchannel,*) 'xmin = ', min_rmsd_vals(1)
+write(gnuplotchannel,*) 'xmax = ', max_rmsd_vals(1)
 write(gnuplotchannel,*) 'ymin = ', min_rmsd_vals(5)
 write(gnuplotchannel,*) 'ymax = ', max_rmsd_vals(5)
 !write(gnuplotchannel,*) 'xmin = ', min_rmsd_z
@@ -1013,7 +1013,7 @@ write(gnuplotchannel,*) 'ymax = ', max_rmsd_vals(5)
 !write(gnuplotchannel,*) 'ymin = ', min_rmsd_x
 !write(gnuplotchannel,*) 'ymax = ', max_rmsd_x
 write(gnuplotchannel,*) 'min_cx = ', 1.0e-7
-write(gnuplotchannel,*) 'max_cx = ', max(max_rmsd_vals(4),1.0e-7)
+write(gnuplotchannel,*) 'max_cx = ', max(max_rmsd_vals(6),1.0e-7)
 !write(gnuplotchannel,*) 'max_cx = ', max(max_rmsd_fx,1.0e-7)
 write(gnuplotchannel,*) 'set cbrange [log10(.0000001):log10(.0001)]'
 write(gnuplotchannel,*) 'set palette defined ('//&
@@ -1335,8 +1335,8 @@ do
         rmsd_fx_ratio = rmsd_vals(6) / rmsd_vals(4)
 
         min_rmsd_vals(1:6) = min(min_rmsd_vals(1:6),rmsd_vals)
-        min_rmsd_vals(7) = min(min_rmsd_vals(7),rmsd_fx_ratio)
         max_rmsd_vals(1:6) = max(max_rmsd_vals(1:6),rmsd_vals)
+        min_rmsd_vals(7) = min(min_rmsd_vals(7),rmsd_fx_ratio)
         max_rmsd_vals(7) = max(max_rmsd_vals(7),rmsd_fx_ratio)
 !       min_rmsd_x = min(min_rmsd_x, rmsd_x)
 !       max_rmsd_x = max(max_rmsd_x, rmsd_x)
@@ -1385,11 +1385,12 @@ RMSDratio_freq = 0
 open(filechannel2,file=gridpath0//interpolationfile)
 do 
         read(filechannel2,FMT=*,iostat=iostate) vals1, vals2, Ninterpolation, &
-                                       rmsd_y, rmsd_z, &
+                                       rmsd_z, rmsd_y, &
                                        rmsd_x_prime, rmsd_fx_prime, &
                                        rmsd_x, rmsd_fx
         if (iostate /= 0) exit
 
+        if (Ninterpolation == 1) cycle
         if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
             (abs(vals2-vals(2)) > delta_vals(2))) cycle
 
@@ -1426,8 +1427,8 @@ do Nratio = 1, Nbins/5
 end do
 close(filechannel2)
 
-min_rmsd_z = min_rmsd_vals(2)
-max_rmsd_z = max_rmsd_vals(2)
+min_rmsd_z = min_rmsd_vals(1)
+max_rmsd_z = max_rmsd_vals(1)
 min_rmsd_x = min_rmsd_vals(5)
 max_rmsd_x = max_rmsd_vals(5)
 
@@ -1440,7 +1441,7 @@ RMSDheatmap = 1.0d-7
 open(filechannel2,file=gridpath0//interpolationfile)
 do 
         read(filechannel2,FMT=*,iostat=iostate) vals1, vals2, Ninterpolation, &
-                                       rmsd_y, rmsd_z, &
+                                       rmsd_z, rmsd_y, &
                                        rmsd_x_prime, rmsd_fx_prime, &
                                        rmsd_x, rmsd_fx
         if (iostate /= 0) exit

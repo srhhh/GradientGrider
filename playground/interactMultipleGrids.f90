@@ -145,6 +145,10 @@ integer :: Ninterpolation
 real(dp) :: largest_rmsd
 real(dp) :: largest_weighted_rmsd
 integer  :: largest_rmsd_index
+real(dp) :: largest_weighted_rmsd2
+
+real(dp), allocatable :: temp_frame_weights(:)
+real(dp), allocatable :: temp_rmsd_weights(:)
 
 !Other global variables to clean things up
 
@@ -1181,7 +1185,7 @@ if (chosen_index > 0) then
                 !Remark: Ken Dill's code uses a version of the RMSD that divides
                 !        by N, not N - 1
 
-                min_rmsd = sqrt(sum((new_coords - var_coords)**2)/(Natoms))
+                min_rmsd = sqrt(sum((new_coords)**2)/(Natoms))
 
 !write(6,FMT="(A)") "interpolation used"
 !write(6,FMT="(A,I8)") &
@@ -1201,23 +1205,25 @@ if (chosen_index > 0) then
                 gradient = matmul(Ubuffer1(:,:,chosen_index),&
                                   gradientbuffer1(:,:,chosen_index))
 
-!                min_rmsd = RMSDbuffer1(chosen_index)
+                min_rmsd = RMSDbuffer1(chosen_index)
 
-                do i = 1, 3
-                        new_coords(i,:) = coordsbuffer1(i,:,chosen_index) + &
-                                          (sum(var_coords(i,:),dim=1) - &
-                                           sum(coordsbuffer1(i,:,chosen_index),dim=1)) / &
-                                          Natoms
-                end do
+!               do i = 1, 3
+!                       new_coords(i,:) = coordsbuffer1(i,:,chosen_index) + &
+!                                         (sum(var_coords(i,:),dim=1) - &
+!                                          sum(coordsbuffer1(i,:,chosen_index),dim=1)) / &
+!                                         Natoms
+!               end do
 
-                new_coords = matmul(Ubuffer1(:,:,chosen_index),new_coords(:,:))
+!               new_coords = matmul(Ubuffer1(:,:,chosen_index),new_coords(:,:))
 
                 !Remark: Ken Dill's code uses a version of the RMSD that divides
                 !        by N, not N - 1
 
-                min_rmsd = sqrt(sum((new_coords - var_coords)**2)/(Natoms))
-                largest_rmsd = min_rmsd
+!               min_rmsd = sqrt(sum((new_coords - var_coords)**2)/(Natoms))
+!               largest_rmsd = min_rmsd
                 largest_weighted_rmsd = min_rmsd
+!               largest_weighted_rmsd2 = 3*Natoms*min_rmsd**2
+                largest_weighted_rmsd2 = min_rmsd**2
 
 !write(6,FMT="(A)") "no interpolation"
 !write(6,FMT="(A,F10.6)") "      tabulated frame rmsd: ", min_rmsd
@@ -1327,6 +1333,8 @@ real(dp), allocatable :: restraints(:,:)
 real(dp), allocatable :: frame_weights(:)
 real(dp), allocatable :: restraint_values(:)
 
+real(dp),allocatable :: minimized_differences2(:,:)
+
 integer :: Ninterpolation_true
 real(dp) :: weight_threshold = 1.0d-6
 real(dp) :: weight
@@ -1338,16 +1346,17 @@ integer :: i, j, k
 allocate(frame_weights(Ninterpolation),&
          outputCLS(Ncoords+Ninterpolation),&
          restraints(1,Ninterpolation),&
-         restraint_values(1))
+         restraint_values(1),&
+         minimized_differences2(Ninterpolation,1))
 
 do i = 1, Ninterpolation
         inputCLS(Ncoords+i,:) = 0.0d0
-        inputCLS(Ncoords+i,i) = weight_threshold
+        inputCLS(Ncoords+i,i) = maxval(abs(inputCLS(1:Ncoords,i)))**2
 end do
 
 restraints = 1.0d0
 restraint_values = 1.0d0
-outputCLS(1:Ncoords) = reshape(var_coords,(/Ncoords/))
+outputCLS(1:Ncoords) = 0.0d0
 outputCLS(Ncoords+1:Ncoords+Ninterpolation) = 0.0d0
 
 call CLS2(inputCLS(1:Ncoords+Ninterpolation,&
@@ -1361,6 +1370,12 @@ weighted_gradient = 0.0d0
 total_weight = 0.0d0
 largest_rmsd = 0.0d0
 largest_weighted_rmsd = 0.0d0
+
+minimized_differences2 = matmul(inputCLS(Ncoords+1:&
+                         Ncoords+Ninterpolation,1:&
+                         Ninterpolation),reshape(&
+                         frame_weights,(/Ninterpolation,1/)))
+largest_weighted_rmsd2 = maxval(abs(minimized_differences2))**2
 
 do i = 1, Ninterpolation
 
@@ -1390,8 +1405,11 @@ end do
 !print *, "total weight of next coords: ", total_weight
 !print *, ""
 
+temp_frame_weights(1:Ninterpolation) = frame_weights
+
 deallocate(frame_weights,outputCLS,&
-           restraints,restraint_values)
+           restraints,restraint_values,&
+           minimized_differences2)
 
 return
 
@@ -1577,6 +1595,9 @@ do
                 call rmsd_dp(Natoms,current_coords,var_coords,&
                              1,Ubuffer1(:,:,k),x_center,y_center,&
                              current_rmsd)                               !,.false.,g)
+!               call rmsd_dp(Natoms,var_coords,current_coords,&
+!                            1,Ubuffer1(:,:,k),y_center,x_center,&
+!                            current_rmsd)                               !,.false.,g)
                 RMSDbuffer1(k) = current_rmsd
         
                 !If in the "accept worst" method:
@@ -1622,7 +1643,9 @@ do
                                 end do
 
                                 inputCLS(1:Ncoords,Ninterpolation) =&
-                                           reshape(current_coords,(/Ncoords/))
+                                           reshape(current_coords-var_coords,(/Ncoords/))
+
+                                temp_rmsd_weights(Ninterpolation) = current_rmsd
 
                         end if
 
@@ -1648,7 +1671,7 @@ do
         
         !If the last line of the file has been read, we can exit out of the loop
         if (iostate /= 0) exit
-        
+
         !Otherwise, the buffer has run out of room, and we need to first increase
         !it, then continuereading in frames
         
@@ -1682,7 +1705,7 @@ do
                  RMSDbuffer1(buffer1_size*2),&
                  approximation_index(buffer1_size*2),&
                  acceptable_frame_mask(buffer1_size*2),&
-                 inputCLS(Ncoords+buffer1_size,buffer1_size*2))
+                 inputCLS(Ncoords+buffer1_size*2,buffer1_size*2))
         
         acceptable_frame_mask = .false.
 
@@ -1734,7 +1757,7 @@ character(50) :: var_filename
 !Incremental integers
 integer :: i,j, k,l
 
-!Retrive the index of each variable with respect to the grid
+!Retreive the index of each variable with respect to the grid
 !and the real number (rounded) that represents that index
 do i = 1, Nvar
        !Repeat this for however many orders of cells deep
@@ -1865,6 +1888,7 @@ integer,dimension(Nvar) :: var_index
 logical :: nolabel_flag = .true.
 
 integer :: i, j
+print *, "divyUp called"
 
 Norder = Norder + 1
 
