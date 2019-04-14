@@ -209,6 +209,9 @@ do Ngrid = 1, Ngrid_max
         !Gridpath2 is the directory housing the files with coordinates and gradients
         call system("mkdir "//gridpath2)
 
+        !A special folder is used to house interpolation and other error files
+        call system("mkdir "//gridpath0//interpolationfolder)
+
         call itime(now)
         write(6,FMT=FMTnow) now
         print *, "           Making grid ", Ngrid_text 
@@ -232,6 +235,10 @@ do Ngrid = 1, Ngrid_max
         headers = 0
         headers_old = 0
         max_headers_delta = 0
+
+        !For the checkstate, we specify we want to add
+        !frames to the current grid
+        grid_addition = Ngrid
 
         !If we are doing "grid-checking" by occaisionally
         !doing a test trajectory, then we can reduce some
@@ -257,8 +264,8 @@ exit
 end if
 !!!!!!!!!!!!
 
-Ngrid_total = 1
-call errorCheck2(filechannels)
+!Ngrid_total = 1
+!call errorCheck2(filechannels)
 
         do n = 1, Ntraj_max
 
@@ -296,9 +303,15 @@ call errorCheck2(filechannels)
                 Ngrid_total = Ngrid
 
 !                testtrajDetailedRMSD_flag = .true.
-                if (testtrajDetailedRMSD_flag) &
+                if (testtrajDetailedRMSD_flag) then
+                     !If we are doing trajectory checking then open the file
                      open(filechannels(2),file=gridpath0//Ngrid_text//"/"//&
                                           prefix_text//'_'//Ntraj_text//".dat")
+                else
+                        !Otherwise, keep cell searching to a minimum
+                        !We only check to divyUp
+                        subcellsearch_max = 0
+                end if
 
                 !We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)

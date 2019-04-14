@@ -60,6 +60,7 @@ logical,parameter :: testtraj_flag = .true.
    !Set .true. to generate the checkTrajectory plots for each
    !trajectory tested for each grid
    !(Not recommended for large Ntesttraj or Ngrid_total_cap)
+   !(Required for interpolation checking)
    logical :: testtrajDetailedRMSD_flag = .true.
 
    !This takes much more time but you can force the checkState subroutine
@@ -100,7 +101,7 @@ logical,parameter :: testtraj_flag = .true.
 
       !Set .true. if the real force calculations we do should be
       !added to the grid
-      logical :: grid_addition = .true.
+      integer :: grid_addition = 0
 
       !$OMP THREADPRIVATE(reject_flag,accept_first,accept_worst)
 
@@ -111,14 +112,16 @@ logical,parameter :: testtraj_flag = .true.
 
          !Interpolation requires a scaling parameter for the weights
          !This is a positive, nonzero real number
+         !(Now deprecated from introduction of 2nd order LS minimization)
          real(dp) :: interpolation_alpha1 = 2.0d0
 
          !For persistent data collection and analysis, a new file
          !is dedicated to interpolation results
          !Whether we record or not to this file is governed by the
          !gather_interpolation_flag
-         logical :: gather_interpolation_flag = .true.
+         logical :: gather_interpolation_flag = .false.
          character(17),parameter :: interpolationfile = "interpolation.dat"
+         character(14),parameter :: interpolationfolder = "interpolation/"
 
             !Interpolation data can be checked at any point
             !whenever the interpolation counter reaches the
@@ -127,9 +130,9 @@ logical,parameter :: testtraj_flag = .true.
             !made when the data is checked
             integer :: interpolation_check = 50000
             integer :: interpolation_counter
-            logical :: interpolation_check_visual = .true.
+            logical :: interpolation_check_visual = .false.
 
-            real(dp) :: alpha_ratio = 1.0d-6
+            real(dp) :: alpha_ratio = 1.0d-1
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

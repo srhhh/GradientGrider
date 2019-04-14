@@ -157,6 +157,7 @@ integer :: Norder
 integer :: var_filechannel
 real(dp),dimension(3,Natoms) :: var_coords
 real(dp) :: candidate_rmsd
+real(dp),dimension(3,Natoms) :: candidate_gradient
 
 
 
@@ -1088,7 +1089,8 @@ do l = 1, Norder_max+1
         
         !Read the frames in the cells and process their RMSDs
         call getRMSD_1(var_index(:,Norder+1),population)
-        local_frame_count(Norder+1) = population
+        if (k == grid_addition) &
+                local_frame_count(Norder+1) = population
         
         !If the cell is populated...
         if (population > 0) then
@@ -1230,6 +1232,9 @@ if (chosen_index > 0) then
 !write(6,FMT="(A,F10.6)") "tabulated gradient O(rmsd): ", RMSDbuffer1(chosen_index)
         
         end if
+
+        candidate_rmsd = RMSDbuffer1(chosen_index)
+        candidate_gradient = gradientbuffer1(:,:,chosen_index)
 else
         min_rmsd = default_rmsd
 end if
@@ -1405,7 +1410,7 @@ end do
 !print *, "total weight of next coords: ", total_weight
 !print *, ""
 
-temp_frame_weights(1:Ninterpolation) = frame_weights
+!temp_frame_weights(1:Ninterpolation) = frame_weights
 
 deallocate(frame_weights,outputCLS,&
            restraints,restraint_values,&
@@ -1645,7 +1650,7 @@ do
                                 inputCLS(1:Ncoords,Ninterpolation) =&
                                            reshape(current_coords-var_coords,(/Ncoords/))
 
-                                temp_rmsd_weights(Ninterpolation) = current_rmsd
+!                               temp_rmsd_weights(Ninterpolation) = current_rmsd
 
                         end if
 
@@ -1842,7 +1847,7 @@ write(var_filename,FMT=var_multipleFMT&
 
 !Pretty self-explanatory
 if (unreadable_flag) then
-        open(filechannel1,file=gridpath3//trim(var_filename),position="append",form="unformatted")
+        open(filechannel1,file=gridpath2//trim(var_filename),position="append",form="unformatted")
         if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
                 write(filechannel1) (vals(j),j=1,Nvar)
                 write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
@@ -1855,7 +1860,7 @@ if (unreadable_flag) then
                 write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
         end if
 else
-        open(filechannel1,file=gridpath3//trim(var_filename),position="append")
+        open(filechannel1,file=gridpath2//trim(var_filename),position="append")
         if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
                 write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
                 write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
@@ -1922,7 +1927,7 @@ use PARAMETERS
 implicit none
 integer,intent(out) :: population
 real(dp),intent(inout), dimension(3,Natoms) :: gradient
-real(dp),dimension(3,Natoms) :: candidate_gradient
+!real(dp),dimension(3,Natoms) :: candidate_gradient
 real(dp),intent(inout) :: min_rmsd
 integer,intent(in) :: filechannel_thread
 integer :: OMP_GET_THREAD_NUM

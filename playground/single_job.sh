@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0010
+Ntraj_max=0100
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -93,20 +93,20 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.010000d0
-threshold_rmsd1=.010000d0
-threshold_rmsd2=.100050d0
-threshold_rmsd3=.500050d0
+threshold_rmsd=.150000d0
+threshold_rmsd1=.150000d0
+threshold_rmsd2=.100000d0
+threshold_rmsd3=.050000d0
 threshold_rmsd4=.010050d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
 accept_worst=.false.
-grid_addition=.true.
+grid_addition=1
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=100
+Ntrajectories=010
 Nthreads=1
 
 #These are flags relating to using old data
@@ -152,7 +152,7 @@ prefixes[4]="001reject.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Mar37test"
+newGRID="H2H2_Mar42test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=1
@@ -164,7 +164,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=3
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -245,10 +245,10 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/comparison_flag = .*/comparison_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
-     s/reject_flag = .*/reject_flag = $reject_flag/
+     s/reject_flag = .*/reject_flag = .true./
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
-     s/grid_addition = .*/grid_addition = .true./
+     s/grid_addition = .*/grid_addition = $grid_addition/
      s/testheatmapSA_flag = .*/testheatmapSA_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = .false./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
 

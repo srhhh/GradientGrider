@@ -293,6 +293,15 @@ prefix_text = Ngrid_text//short_prefix_text
 !Currently, this is the main use of this program
 if (testtraj_flag) then
 
+!If grid addition > 0, add new frames
+!to the specified grid
+if (grid_addition > 0) then
+        write(Ngrid_text,FMT="(I0."//&
+                trim(adjustl(variable_length_text))//")")&
+                grid_addition
+        gridpath2 = gridpath0//Ngrid_text"/grid/"
+end if
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       PRE-CREATION LIBRARY OVERVIEW
@@ -601,7 +610,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        !If this flag is one, we are also checking the RMSD of a trajectory per timestpe
+        !If this flag is on, we are also checking the RMSD of a trajectory per timestpe
         !This is very expensive so please don't turn this on
         !(and you have to manually turn it on in checkMultipleTrajectories anyway)
         if (testtrajRMSD_flag) then
@@ -649,6 +658,19 @@ if (return_flag) then
         return
 end if
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       POST-CREATION INTERPOLATION ANALYSIS
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+if (gather_interpolation_flag) then
+        call processInterpolationFile2((/0.0d0,0.0d0/),(/100.0d0,100.0d0/))
+        call getRMSDinterpolation2((/0.0d0,0.0d0/),&
+                (/100.0d0,100.0d0/),"TDDCED.png")
+
+end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
