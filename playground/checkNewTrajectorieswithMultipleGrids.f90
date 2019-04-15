@@ -299,7 +299,7 @@ if (grid_addition > 0) then
         write(Ngrid_text,FMT="(I0."//&
                 trim(adjustl(variable_length_text))//")")&
                 grid_addition
-        gridpath2 = gridpath0//Ngrid_text"/grid/"
+        gridpath2 = gridpath0//Ngrid_text//"/grid/"
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -519,8 +519,9 @@ if (traversal_flag) allocate(traversal0(Ngrid_total,(var_bounds(1))**Nvar),&
 !instantiate its own filechannels
 allocate(filechannels(1+Ngrid_total))
 
-!And also reset the interpolation counter
+!And also reset the interpolation counter and file
 interpolation_counter = 0
+call system("rm "//gridpath0//interpolationfile)
 
 !$OMP DO
 do n_testtraj = initial_n_testtraj, Ntesttraj

@@ -1148,6 +1148,7 @@ Norder_total(1+order/Ngrid_total) = Norder_total(1+order/Ngrid_total) + 1
 !print *, "candidatermsd: ", candidate_rmsd
 
 if ((number_of_cells == 0)) then
+!if (.true.) then
         return
 else
 

@@ -394,8 +394,6 @@ if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfi
 
                 !Check every 500 steps to see if we are out-of-bounds
                 if (modulo(steps,500) == 1) then
-                        print *, "step:", steps
-                        print *, "vals:", vals
                         if (any(vals > var_maxvar)) exit
                 endif
 

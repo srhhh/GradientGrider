@@ -89,7 +89,7 @@ real(dp),parameter :: RU_energy = RU_mass*(RU_length/RU_time)**2
 !                    TIME PARAMETERS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-real(dp),parameter :: dt = (1.0d-19)/RU_time
+real(dp),parameter :: dt = (1.0d-17)/RU_time
 integer,parameter :: Nsteps = 30000
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -291,7 +291,7 @@ real(dp),parameter :: collision_skew = HOr0_hydrogen*0.00d0
 
 !For the BONDING_VALUE_DATA:
 !If some variable in the acceleration subroutine (particularly
-!the distance between two atoms) was calculated beforehand by,
+!the distance between two atoms) was calculated beforehand by
 !the VARIABLES module, increment Nvar_eff and signify between
 !which atoms this was by 1s and 0s
 

@@ -60,8 +60,7 @@ logical,parameter :: testtraj_flag = .true.
    !Set .true. to generate the checkTrajectory plots for each
    !trajectory tested for each grid
    !(Not recommended for large Ntesttraj or Ngrid_total_cap)
-   !(Required for interpolation checking)
-   logical :: testtrajDetailedRMSD_flag = .true.
+   logical :: testtrajDetailedRMSD_flag = .false.
 
    !This takes much more time but you can force the checkState subroutine
    !to also check the rmsd of frames in adjacent cells
@@ -119,7 +118,7 @@ logical,parameter :: testtraj_flag = .true.
          !is dedicated to interpolation results
          !Whether we record or not to this file is governed by the
          !gather_interpolation_flag
-         logical :: gather_interpolation_flag = .false.
+         logical :: gather_interpolation_flag = .true.
          character(17),parameter :: interpolationfile = "interpolation.dat"
          character(14),parameter :: interpolationfolder = "interpolation/"
 
