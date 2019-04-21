@@ -29,6 +29,9 @@ module PARAMETERS
 !                      FILENAMES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!All intermediate files are kept in this folder
+character(5) :: intermediatefolder = "data/"
+
 !File that will keep the trajectory folder names
 character(16),parameter :: trajectories = "trajectories.txt"
 !File that writes the progress of the program

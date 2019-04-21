@@ -177,6 +177,11 @@ system_clock_rate = 1.0/real(cr)
 
 call getPrefixText(prefix_text)
 
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+call system("mkdir "//gridpath5)
+
 allocate(filechannels(1+Ngrid_max))
 
 !The grid number will uniquely identify one trajectory
@@ -210,7 +215,7 @@ do Ngrid = 1, Ngrid_max
         call system("mkdir "//gridpath2)
 
         !A special folder is used to house interpolation and other error files
-        call system("mkdir "//gridpath0//interpolationfolder)
+!       call system("mkdir "//gridpath0//interpolationfolder)
 
         call itime(now)
         write(6,FMT=FMTnow) now
@@ -240,7 +245,7 @@ do Ngrid = 1, Ngrid_max
         !frames to the current grid
         grid_addition = Ngrid
 
-        !If we are doing "grid-checking" by occaisionally
+        !If we are doing "grid-checking" by occasionally
         !doing a test trajectory, then we can reduce some
         !random variables by making them all start with
         !the same set of initial conditions.
@@ -336,7 +341,7 @@ end if
 
                 Ntraj = Ntraj + 1
 
-                open(filechannel1,file=gridpath0//Ngrid_text//"/Initial"//initialfile,&
+                open(filechannel1,file=gridpath1//initialfile,&
                                   position="append")
                 write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(l,m),l=1,6),m=1,Nbonds)
                 close(filechannel1)
@@ -353,7 +358,7 @@ end if
 
 
                 !There is an informatics files for data on the grid while creating
-                open(filechannel1,file=gridpath1//"Initial"//informaticsfile,position="append")
+                open(filechannel1,file=gridpath1//informaticsfile,position="append")
 !                write(filechannel1,FMTinformatics) trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps), &
 !                                                   Ntraj,header1-header1_old,header2-header2_old,Nfile,Norder1*100.0/steps
                 write(filechannel1,FMTinformatics) trajectory_CPU_time/real(steps),trajectory_wall_time/real(steps), &
@@ -370,7 +375,7 @@ end if
 
 
                 !There is a timeslice file for snapshots of the trajectory at the beginning and end
-                open(filechannel1,file=gridpath1//"Initial"//timeslicefile,position="append")
+                open(filechannel1,file=gridpath1//timeslicefile,position="append")
                 write(filechannel1,FMTtimeslice) &
                                                  ((coords_initial(l,m),l=1,3),m=1,Natoms),&
                                                  ((velocities_initial(l,m),l=1,3),m=1,Natoms),&
@@ -465,13 +470,13 @@ end if
         
         !Finally, do a post-creation timeslice-to-SA conversions here
         !We use the SA often so we do this at the beginning
-        call postProcess(Ngrid_text//"/Initial")
+        call postProcess(Ngrid_text//"/")
 
         !Also, make a scattering angle plot
-        call getScatteringAngles2(Ngrid_text//"/Initial","InitialScatteringAngleDistribution_"//Ngrid_text)
+        call getScatteringAngles2(Ngrid_text//"/","InitialScatteringAngleDistribution_"//Ngrid_text)
 
         !Also, make an initial bond distribution plot
-        call getInitialimages(Ngrid_text//"/Initial","InitialBondDistribution_"//Ngrid_text)
+        call getInitialimages(Ngrid_text//"/","InitialBondDistribution_"//Ngrid_text)
 end do
 
 print *, ""
@@ -990,7 +995,8 @@ write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 !There is also some other interesting data
 open(gnuplotchannel,file=gridpath1//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath1//'GridCreationGraph.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath0//expfolder//&
+                        'GridCreationGraph.png_'//Ngrid_text//'"'
 write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
 write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
 write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
@@ -1012,20 +1018,20 @@ write(gnuplotchannel,*) 'set ylabel "Number of Files\n(Thousands)"'
 write(gnuplotchannel,*) 'delta_Nfile = (',Nfile_in,' / 5.0)/1000.0'
 write(gnuplotchannel,*) 'set yrange [-delta_Nfile*tic_spacing:delta_Nfile*(5.0+tic_spacing)]'
 write(gnuplotchannel,*) 'set ytics 0, floor(delta_Nfile)'
-write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($6)/1000.0) w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath1//informaticsfile//'" u 3:(($6)/1000.0) w lines'
 
 write(gnuplotchannel,*) 'set ylabel "Number of Calls\nto DivyUp"'
 write(gnuplotchannel,*) 'delta_header1 = (',max_header1_delta_in,' / 5.0)'
 write(gnuplotchannel,*) 'set yrange [-delta_header1*tic_spacing:delta_header1*(5.0+tic_spacing)]'
 write(gnuplotchannel,*) 'set ytics 0, floor(delta_header1)'
-write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:4 w lines, '//&
-                           '"'//gridpath1//"Initial"//informaticsfile//'" u 3:5 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath1//informaticsfile//'" u 3:4 w lines, '//&
+                           '"'//gridpath1//informaticsfile//'" u 3:5 w lines'
 
 write(gnuplotchannel,*) 'set ylabel "Percentage of Frames\nAdded to Order 1"'
 write(gnuplotchannel,*) 'delta_percentage = 20'
 write(gnuplotchannel,*) 'set yrange [-delta_percentage*tic_spacing:100+delta_percentage*tic_spacing]'
 write(gnuplotchannel,*) 'set ytics 0, delta_percentage, 100'
-write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:7 w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath1//informaticsfile//'" u 3:7 w lines'
 
 write(grid_wall_time_text,FMT="(F10.2)") grid_wall_time_in
 write(gnuplotchannel,*) 'set label 1 "Total Wall Time (including grid checking): '//&
@@ -1035,7 +1041,7 @@ write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'set ytics autofreq'
 write(gnuplotchannel,*) 'set format y "%.1e"'
 write(gnuplotchannel,*) 'set ylabel "Wall Time\nPer Frame (ms)"'
-write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($2)*1000.0) w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath1//informaticsfile//'" u 3:(($2)*1000.0) w lines'
 
 write(gnuplotchannel,*) 'unset label 1'
 
@@ -1048,7 +1054,7 @@ write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'set ytics autofreq'
 write(gnuplotchannel,*) 'set format y "%.1e"'
 write(gnuplotchannel,*) 'set ylabel "CPU Time\nPer Frame (ms)"'
-write(gnuplotchannel,*) 'plot "'//gridpath1//"Initial"//informaticsfile//'" u 3:(($1)*1000.0) w lines'
+write(gnuplotchannel,*) 'plot "'//gridpath1//informaticsfile//'" u 3:(($1)*1000.0) w lines'
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath1//gnuplotfile)

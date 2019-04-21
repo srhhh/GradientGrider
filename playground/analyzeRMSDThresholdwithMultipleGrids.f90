@@ -127,6 +127,8 @@ integer,dimension(Ngrid_max) :: grid_selection
 integer :: selection_current
 
 !FORMAT OF JPG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
 character(*), intent(in) :: JPGfilename
 character(*), intent(in) :: prefix_filename
 
@@ -145,6 +147,9 @@ integer :: iostate
 
 !INTEGER INCREMENTALS
 integer :: n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
 
 !If we only want to plot a select number of grids, then that can be passed in by the user
 if (present(selection)) then
@@ -182,7 +187,7 @@ write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") &
 
 !We will bin data by GRID, not by trajectory
 !So we uniquely name each output .dat and graph by the grid number
-open(filechannel1,file=gridpath0//"percent_rmsd"//Ngrid_text//".dat")
+open(filechannel1,file=gridpath5//"percent_rmsd"//Ngrid_text//".dat")
 do n_testtraj = 1, Ntesttraj
         write(variable_length_text,"(I5)") trajectory_text_length
         write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") n_testtraj
@@ -190,7 +195,7 @@ do n_testtraj = 1, Ntesttraj
         !Read the trajectory (which has the rmsd) across all grids line-by-line
         frames = 0
         total_threshold_rmsd = 0
-        open(filechannel2,file=gridpath0//Ngrid_text//"/"//prefix_filename//&
+        open(filechannel2,file=gridpath0//prefix_filename//Ngrid_text//&
                                "_"//Ntraj_text//".dat")
 
         do
@@ -215,9 +220,9 @@ close(filechannel1)
 end do
 
 !Finally, plot the data
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath0//JPGfilename//'.jpg"'
+write(gnuplotchannel,*) 'set output "'//gridpath4//JPGfilename//'.jpg"'
 write(gnuplotchannel,*) 'set tmargin 0'
 write(gnuplotchannel,*) 'set bmargin 0'
 write(gnuplotchannel,*) 'set lmargin 1'
@@ -226,7 +231,7 @@ write(variable_length_text,"(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I"//trim(adjustl(variable_length_text))//")") Ngrid_plotting
 write(gnuplotchannel,*) 'set multiplot layout '//trim(adjustl(Ngrid_text))//&
                         ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0'&
-                        //' title "Trajectory RMSD Distribution with '//prefix_filename//' method"'
+                        //' title "Trajectory RMSD Distribution with '//expfolder//' method"'
 write(gnuplotchannel,*) 'set title "Percentages of Trajectories with RMSD Below Threshold"'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 write(gnuplotchannel,*) 'scaling = 1'
@@ -254,7 +259,7 @@ end if
 
 write(variable_length_text,"(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") grid_selection(Ngrid)
-write(gnuplotchannel,*) 'plot "'//gridpath0//'percent_rmsd'//Ngrid_text//'.dat'//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//'percent_rmsd'//Ngrid_text//'.dat'//&
                         '" u (rounded($2)):(1.0/scaling) smooth frequency with boxes'
 write(gnuplotchannel,*) 'unset title'
 end do
@@ -276,7 +281,7 @@ if (Ngrid == Ngrid_plotting) then
 end if
 
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") grid_selection(Ngrid)
-write(gnuplotchannel,*) 'plot "'//gridpath0//'percent_rmsd'//Ngrid_text//'.dat'//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//'percent_rmsd'//Ngrid_text//'.dat'//&
                         '" u 2:(($3)/scaling) with points'
 write(gnuplotchannel,*) 'unset title'
 
@@ -284,12 +289,12 @@ end do
 
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 write(variable_length_text,"(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_plotting
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") grid_selection(Ngrid)
-call system("rm "//gridpath0//"percent_rmsd"//Ngrid_text//".dat")
+call system("rm "//gridpath5//"percent_rmsd"//Ngrid_text//".dat")
 end do
 
 
@@ -509,6 +514,8 @@ real(dp) :: min_min_rmsd
 integer :: number_of_frames_accepted
 
 !FORMAT OF JPG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
 character(*), intent(in) :: JPGfilename
 
 !FORMATTING OF JPG FILES
@@ -529,12 +536,14 @@ real(dp) :: bin_width
 !INTEGER INCREMENTALS
 integer :: n
 
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
 
 frames = 0
 number_of_frames_accepted = 0
 min_min_rmsd = default_rmsd
 
-open(filechannel2,file=gridpath0//checkstatefile)
+open(filechannel2,file=gridpath5//checkstatefile)
 !read(filechannel1) number_of_frames,order,neighbor_check,steps,&
 !                   min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
 do 
@@ -555,9 +564,9 @@ bin_width = 2 * log10(default_rmsd/min_min_rmsd) / Nbins
 
 write(variable_length_text,"(I5)") Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") 4
-open(filechannel1,file=gridpath0//"percent_rmsd"//Ngrid_text//".dat")
+open(filechannel1,file=gridpath5//"percent_rmsd"//Ngrid_text//".dat")
 
-open(filechannel2,file=gridpath0//checkstatefile)
+open(filechannel2,file=gridpath5//checkstatefile)
 !read(filechannel1) number_of_frames,order,neighbor_check,steps,&
 !                   min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
 do 
@@ -579,7 +588,7 @@ close(filechannel1)
 
 
 
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//JPGfilename//'.jpg"'
 write(gnuplotchannel,*) 'set title "RMSD Comparison of a Zero Neighbor and Two Neighbor Check\n'//&
@@ -592,17 +601,17 @@ write(gnuplotchannel,*) 'set xrange [min_min_rmsd:',default_rmsd,']'
 write(gnuplotchannel,*) 'set yrange [min_min_rmsd:',default_rmsd,']'
 write(gnuplotchannel,*) 'set xlabel "RMSD Encountered for a Zero Neighbor Check (A)"'
 write(gnuplotchannel,*) 'set ylabel "RMSD Encountered for a Two Neighbor Check (A)"'
-write(gnuplotchannel,*) 'plot "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
                                '($4==0?$2:1/0):3 w p lc rgb "red" title "Both Order 0",\'
-write(gnuplotchannel,*) '     "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+write(gnuplotchannel,*) '     "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
                                '($4==1?$2:1/0):3 w p lc rgb "blue" title "One Order 1",\'
-write(gnuplotchannel,*) '     "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+write(gnuplotchannel,*) '     "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
                                '($4==2?$2:1/0):3 w p lc rgb "green" title "Both Order 1"'
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//JPGfilename//'_1.jpg"'
 write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered for Zero vs Two Neighbor Check\n'//&
@@ -635,20 +644,20 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                                '"10^4" (4-log10(xmin))/bin_width, '//&
                                                '"10^5" (5-log10(xmin))/bin_width)'
 
-write(gnuplotchannel,*) 'plot "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
                                '6:($4==2?(1.0/scaling):0.0) '//&
                                'smooth frequency w boxes lc rgb "green" title "Both Order 1",\'
-write(gnuplotchannel,*) '     "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+write(gnuplotchannel,*) '     "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
                                '6:($4==1?(1.0/scaling):0.0) '//&
                                'smooth frequency w boxes lc rgb "blue" title "One Order 1",\'
-write(gnuplotchannel,*) '     "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+write(gnuplotchannel,*) '     "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
                                '6:($4==0?(1.0/scaling):0.0) '//&
                                'smooth frequency w boxes lc rgb "red" title "Both Order 0"'
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//JPGfilename//'_2.jpg"'
 write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered for Zero vs Two Neighbor Check\n'//&
@@ -684,12 +693,12 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                                '"10^4" (4-log10(xmin))/bin_width, '//&
                                                '"10^5" (5-log10(xmin))/bin_width)'
 
-write(gnuplotchannel,*) 'plot "'//gridpath0//"percent_rmsd"//Ngrid_text//'.dat" u '//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
                                '5:(1.0/scaling) '//&
                                'smooth frequency w boxes lc rgb "green"'
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 
 
@@ -717,6 +726,8 @@ real(dp) :: min_rmsd_z, max_rmsd_z
 real(dp) :: min_rmsd_fx, max_rmsd_fx
 
 !FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
 character(*), intent(in) :: PNGfilename
 
 !FORMATTING OF PNG FILES
@@ -738,6 +749,8 @@ integer :: Nbins
 !INTEGER INCREMENTALS
 integer :: n
 
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
 
 !frames = 0
 !tally1 = 0
@@ -897,9 +910,9 @@ call processInterpolationFile(vals,delta_vals,&
 
 write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
 
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,2400'
-write(gnuplotchannel,*) 'set output "'//gridpath0//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set title "RMSD Comparison of a Frame and Gradient with Interpolation"'
 write(gnuplotchannel,*) 'set multiplot layout 3,1'
 write(gnuplotchannel,*) 'set pm3d map'
@@ -965,7 +978,7 @@ write(gnuplotchannel,*) 'set ytics ('//&
                                            '"5e-1"      .5, '//&
                                            ' "1e0"       1, '//&
                                    ')'
-write(gnuplotchannel,*) 'plot "'//gridpath0//vals_interpolation_text//interpolationfile//'" u '//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//vals_interpolation_text//interpolationfile//'" u '//&
                                '(($5)):7:3 w p lw 6 palette'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
@@ -976,7 +989,7 @@ write(gnuplotchannel,*) 'set ylabel "RMSD Between the Output Gradient and the In
 write(gnuplotchannel,*) 'min_x = ', min_rmsd_vals(1)
 write(gnuplotchannel,*) 'max_x = ', max_rmsd_vals(1)
 write(gnuplotchannel,*) 'set xrange [0.5*sqrt(min_x):2*sqrt(max_x)]'
-write(gnuplotchannel,*) 'plot "'//gridpath0//vals_interpolation_text//interpolationfile//'" u '//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//vals_interpolation_text//interpolationfile//'" u '//&
                                '(sqrt($4)):7:3 w p lw 6 palette'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
@@ -987,15 +1000,15 @@ write(gnuplotchannel,*) 'set ylabel "RMSD Between the Output Gradient and the In
 write(gnuplotchannel,*) 'min_x = ', min_rmsd_vals(5)
 write(gnuplotchannel,*) 'max_x = ', max_rmsd_vals(5)
 write(gnuplotchannel,*) 'set xrange [0.5*min_x:2*max_x]'
-write(gnuplotchannel,*) 'plot "'//gridpath0//vals_interpolation_text//interpolationfile//'" u '//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//vals_interpolation_text//interpolationfile//'" u '//&
                                '(($6)):7:3 w p lw 6 palette'
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath0//"heatmap"//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath4//"heatmap"//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set title "RMSD Comparison of a Frame and Gradient with Interpolation"'
 write(gnuplotchannel,*) 'set multiplot layout 1,2'
 write(gnuplotchannel,*) 'set pm3d map'
@@ -1067,7 +1080,7 @@ write(gnuplotchannel,*) 'set cbtics ('//&
                                            '"5e-1"      log10(.5), '//&
                                            ' "1.0"       log10(1), '//&
                                    ')'
-write(gnuplotchannel,*) 'splot "'//gridpath0//'heatmap_rmsd.dat" u '//&
+write(gnuplotchannel,*) 'splot "'//gridpath5//'heatmap_rmsd.dat" u '//&
                                 '1:2:(log10($3)) w image palette'
 write(gnuplotchannel,FMT="(A)") 'unset label 1'
 write(gnuplotchannel,FMT="(A,F9.5,A,F9.5,A,F9.5,A)") &
@@ -1075,15 +1088,15 @@ write(gnuplotchannel,FMT="(A,F9.5,A,F9.5,A,F9.5,A)") &
                                   RMSDheatmap_coeff(2),'y + ',&
                                   RMSDheatmap_coeff(3),'" at screen 0.7,0.800 front'
 write(gnuplotchannel,FMT="(A)") 'unset label 2'
-write(gnuplotchannel,*) 'splot "'//gridpath0//'heatmap_rmsd.dat" u '//&
+write(gnuplotchannel,*) 'splot "'//gridpath5//'heatmap_rmsd.dat" u '//&
                                 '1:2:(log10($4)) w image palette'
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath0//"heatmap_freq"//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'set output "'//gridpath4//"heatmap_freq"//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set multiplot layout 1,2'
 write(gnuplotchannel,*) 'set title "RMSD Comparison of a Frame and Gradient with Interpolation"'
 write(gnuplotchannel,*) 'set pm3d map'
@@ -1136,7 +1149,7 @@ write(gnuplotchannel,*) 'set ytics ('//&
                                            '"1e-1" log10(0.1/(ymin)), '//&
                                                '"1e0" log10(1.0/(ymin)), '//&
                                                '"1e1" log10(10.0/(ymin)))'
-write(gnuplotchannel,*) 'splot "'//gridpath0//'heatmap_freq1_rmsd.dat" u '//&
+write(gnuplotchannel,*) 'splot "'//gridpath5//'heatmap_freq1_rmsd.dat" u '//&
                                 '1:2:3 w image palette'
 write(gnuplotchannel,*) 'unset pm3d'
 write(gnuplotchannel,*) 'xmin = ', min_rmsd_vals(7)
@@ -1165,11 +1178,11 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                                '"5e2" log10(500.0/(xmin)))'
 write(gnuplotchannel,*) 'set xlabel "Ratio of RMSD Between Approximate and Real Gradient (N=1) and (N>=1)"'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
-write(gnuplotchannel,*) 'plot "'//gridpath0//'heatmap_freq2_rmsd.dat" u '//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//'heatmap_freq2_rmsd.dat" u '//&
                                '1:2 w boxes'
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 
 
@@ -1278,6 +1291,8 @@ real(dp) :: min_rmsd_fx, max_rmsd_fx
 real(dp) :: min_rmsd_fx_prime, max_rmsd_fx_prime
 
 !FORMATTING OF PNG FILES
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 
@@ -1301,6 +1316,8 @@ real(dp),allocatable :: A(:,:), b(:)
 !INTEGER INCREMENTALS
 integer :: n
 
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
 
 frames = 0
 
@@ -1318,8 +1335,8 @@ min_Ninterpolation = 1000
 max_Ninterpolation = 0
 
 write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
-open(filechannel1,file=gridpath0//vals_interpolation_text//interpolationfile)
-open(filechannel2,file=gridpath0//interpolationfile)
+open(filechannel1,file=gridpath5//vals_interpolation_text//interpolationfile)
+open(filechannel2,file=gridpath5//interpolationfile)
 do 
         read(filechannel2,FMT=*,iostat=iostate) &
                 vals1, vals2, Ninterpolation, rmsd_vals
@@ -1382,7 +1399,7 @@ allocate(RMSDheatmap_freq(Nbins,Nbins),RMSDratio_freq(Nbins/5))
 RMSDheatmap_freq = 0
 RMSDratio_freq = 0
 
-open(filechannel2,file=gridpath0//interpolationfile)
+open(filechannel2,file=gridpath5//interpolationfile)
 do 
         read(filechannel2,FMT=*,iostat=iostate) vals1, vals2, Ninterpolation, &
                                        rmsd_z, rmsd_y, &
@@ -1410,7 +1427,7 @@ do
 end do
 close(filechannel2)
 
-open(filechannel2,file=gridpath0//"heatmap_freq1_rmsd.dat")
+open(filechannel2,file=gridpath5//"heatmap_freq1_rmsd.dat")
 do Nrmsd1 = 1, Nbins
         do Nrmsd2 = 1, Nbins
                 write(filechannel2,FMT=*) (Nrmsd1-0.5)*bin_width1,&
@@ -1420,7 +1437,7 @@ do Nrmsd1 = 1, Nbins
 end do
 close(filechannel2)
 
-open(filechannel2,file=gridpath0//"heatmap_freq2_rmsd.dat")
+open(filechannel2,file=gridpath5//"heatmap_freq2_rmsd.dat")
 do Nratio = 1, Nbins/5
         write(filechannel2,FMT=*) (Nratio-0.5)*bin_width,&
                 RMSDratio_freq(Nratio)
@@ -1438,7 +1455,7 @@ bin_width2 = log10(max_rmsd_x / min_rmsd_x) / Nbins
 allocate(RMSDheatmap(Nbins,Nbins))
 RMSDheatmap = 1.0d-7
 
-open(filechannel2,file=gridpath0//interpolationfile)
+open(filechannel2,file=gridpath5//interpolationfile)
 do 
         read(filechannel2,FMT=*,iostat=iostate) vals1, vals2, Ninterpolation, &
                                        rmsd_z, rmsd_y, &
@@ -1483,7 +1500,7 @@ end do
 
 call LS(A,Nheatmap,3,b,RMSDheatmap_coeff)
 
-open(filechannel2,file=gridpath0//"heatmap_rmsd.dat")
+open(filechannel2,file=gridpath5//"heatmap_rmsd.dat")
 do Nrmsd1 = 1, Nbins
         do Nrmsd2 = 1, Nbins
                 write(filechannel2,FMT=*) (Nrmsd1-0.5)*bin_width1,&
@@ -1521,23 +1538,31 @@ real(dp) :: error_best,error_interpolated
 integer :: frames,neginfinity_counter,posinfinity_counter
 character(31) :: firstliner
 
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+
 !I/O HANDLING
 integer :: iostate
 
 !INTEGER INCREMENTALS
 integer :: n
 
-call getPrefixText(short_prefix_text)
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+!call getPrefixText(short_prefix_text)
 
 frames = 0
 neginfinity_counter = 0
 posinfinity_counter = 0
 
 write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
-open(filechannel1,file=gridpath0//interpolationfolder//&
+open(filechannel1,file=gridpath4//interpolationfolder//&
+!       short_prefix_text//interpolationfile)
+        expfolder(1:expfolder_length-1)//&
         vals_interpolation_text//&
-        short_prefix_text//interpolationfile)
-open(filechannel2,file=gridpath0//interpolationfile)
+        interpolationfile)
+open(filechannel2,file=gridpath5//interpolationfile)
 do 
         read(filechannel2,FMT=*,iostat=iostate) &
                 vals1, vals2, Ninterpolation, &
@@ -1574,9 +1599,11 @@ write(firstliner,FMT="(A1,3(I9,1x))") &
         neginfinity_counter, frames
 
 call system("sed -i '1i\"//firstliner//"' '"//&
-        gridpath0//interpolationfolder//&
+        gridpath4//interpolationfolder//&
+!       short_prefix_text//interpolationfile//"'")
+        expfolder(1:expfolder_length-1)//&
         vals_interpolation_text//&
-        short_prefix_text//interpolationfile//"'")
+        interpolationfile//"'")
 
 end subroutine processInterpolationFile2
 
@@ -1594,7 +1621,8 @@ implicit none
 !COLLECTIVE VARIABLES TO FILTER DATA
 real(dp),dimension(Nvar),intent(in) :: vals, delta_vals
 real :: vals1, vals2
-character(27) :: longtext
+character(expfolder_length-1) :: otherexpfolder
+character(70) :: longtext
 
 !FORMATTING OF PNG FILES
 character(5) :: variable_length_text
@@ -1608,6 +1636,9 @@ real(dp) :: min_error_ratio,max_error_ratio,error_ratio
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
 integer,allocatable :: frames_trials(:)
 
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+
 !I/O HANDLING
 integer :: iostate
 
@@ -1619,7 +1650,10 @@ real(dp),allocatable :: Ninterpolation_binning(:,:)
 real(dp),allocatable :: error_ratio_binning(:,:)
 
 !INTEGER INCREMENTALS
-integer :: n,m
+integer :: n,m,l
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
 
 frames = 0
 
@@ -1633,22 +1667,39 @@ allocate(frames_trials(Ntrials))
 RMSD_trials = 0.0d0
 frames_trials = 0
 
-open(filechannel1,file=gridpath0//&
+open(filechannel1,file=gridpath5//&
         "interpolations.dat")
-open(filechannel3,file=gridpath0//"tmp"//interpolationfile)
+open(filechannel3,file=gridpath5//"tmp"//interpolationfile)
 do n = 1, Ntrials
-        read(filechannel1,FMT="(F7.3,1x,F7.3,6x,1"//&
-                FMT6_pos_real0//",A)",iostat=iostate) &
-                vals1,vals2,RMSD_trials(n),longtext
+!       read(filechannel1,FMT="(F7.3,1x,F7.3,6x,1"//&
+!               FMT6_pos_real0//",A)",iostat=iostate) &
+!               vals1,vals2,RMSD_trials(n),longtext
+        write(variable_length_text,FMT="(I5)") expfolder_length-1
+        read(filechannel1,FMT="(A"//&
+                trim(adjustl(variable_length_text))//&
+                ",F7.3,1x,F7.3,A)",iostat=iostate) &
+                otherexpfolder,vals1,vals2,longtext
+
+        call system("grep 'threshold_rmsd =' "//&
+                gridpath0//otherexpfolder//&
+                "/"//analysisfile//&
+                " > "//gridpath5//trajectories)
+        call system('sed -i "s/[^=]*=//" '//&
+                gridpath5//trajectories)
+
+        open(filechannel2,file=gridpath5//trajectories)
+        read(filechannel2,FMT=*) RMSD_trials(n)
+        close(filechannel2)
 
         if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
             (abs(vals2-vals(2)) > delta_vals(2))) cycle
 
         backspace(filechannel1)
-        read(filechannel1,FMT="(27A,A)") longtext
+!       read(filechannel1,FMT="(27A,A)") longtext
+        read(filechannel1,FMT="(A)") longtext
 
-        open(filechannel2,file=gridpath0//interpolationfolder//&
-                longtext//interpolationfile)
+        open(filechannel2,file=gridpath4//interpolationfolder//&
+                trim(adjustl(longtext)))
 
 !       read(filechannel2,FMT="(#,3(I9,1x))",iostat=iostate) &
 !               posinfinity_counter,&
@@ -1677,24 +1728,44 @@ close(filechannel1)
 close(filechannel3)
 
 if (any(frames_trials == 0)) then
-        print *, "MAJOR ERROR IN TRIALS SELECTED FOR"//&
+        print *, "MAJOR ERROR IN TRIALS SELECTED FOR "//&
                  "INTERPOLATION ANALYSIS"
+        frames_trials = 0
         return
 end if
 
-Nbins = 100
+Nbins = max_Ninterpolation - min_Ninterpolation
+do
+        if (Nbins < 61) then
+                exit
+        else if (modulo(Nbins,2) == 0) then
+                Nbins = Nbins / 2
+        else if (modulo(Nbins,3) == 0) then
+                Nbins = Nbins / 3
+        else if (modulo(Nbins,5) == 0) then
+                Nbins = Nbins / 5
+        else
+                exit
+        end if
+end do
 
-Ninterpolation_binwidth = (max_Ninterpolation -&
-        min_Ninterpolation) *1.0d0/ Nbins
+if (Nbins == 0) Nbins = 50
+!if (Nbins < 30) Nbins = Nbins * 2
+
+Ninterpolation_binwidth = ceiling((max_Ninterpolation -&
+        min_Ninterpolation) *1.0d0/ Nbins)
+
+if (Nbins > 100) Nbins = 100
+
 error_ratio_binwidth = log10(max_error_ratio /&
         min_error_ratio) *1.0d0/ Nbins
 
 allocate(Ninterpolation_binning(Ntrials,Nbins),&
-         error_ratio_binning(Ntrials,Nbins))
+         error_ratio_binning(3*Ntrials,Nbins))
 Ninterpolation_binning = 0
 error_ratio_binning = 0
 
-open(filechannel1,file=gridpath0//"tmp"//interpolationfile)
+open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
 do n = 1, Ntrials
         do m = 1, frames_trials(n)
                 read(filechannel1,FMT=*) Ninterpolation, error_ratio
@@ -1714,16 +1785,20 @@ do n = 1, Ntrials
                 if (error_ratio_bin < 1) error_ratio_bin = 1
                 if (error_ratio_bin > Nbins) error_ratio_bin = Nbins
         
-                error_ratio_binning(n,error_ratio_bin) = &
-                        error_ratio_binning(n,error_ratio_bin) + &
-                        1.0d0/frames_trials(n)
+                do l = 3*(n-1) + 1, 3*n
+                if (Ninterpolation > 5*(modulo(l-1,3)) ) then
+                        error_ratio_binning(l,error_ratio_bin) = &
+                                error_ratio_binning(l,error_ratio_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                end do
         end do
 end do
 close(filechannel1)
 
 
 
-open(filechannel1,file=gridpath0//"Ninterpolation_binning.dat")
+open(filechannel1,file=gridpath5//"Ninterpolation_binning.dat")
 do n = 1, Nbins
         write(filechannel1,FMT=*) min_Ninterpolation + &
                 Ninterpolation_binwidth*n,&
@@ -1731,7 +1806,7 @@ do n = 1, Nbins
 end do
 close(filechannel1)
 
-open(filechannel1,file=gridpath0//"error_ratio_binning.dat")
+open(filechannel1,file=gridpath5//"error_ratio_binning.dat")
 do n = 1, Nbins
         write(filechannel1,FMT=*) log10(min_error_ratio) + &
                 error_ratio_binwidth*n,&
@@ -1757,6 +1832,8 @@ real(dp),dimension(Nvar),intent(in) :: vals, delta_vals
 character(15) :: vals_interpolation_text
 
 !FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
 character(*), intent(in) :: PNGfilename
 
 integer :: Ntrials
@@ -1768,12 +1845,14 @@ integer :: iostate
 !INTEGER INCREMENTALS
 integer :: n
 
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
 
-call system("ls "//gridpath0//interpolationfolder//" > "//&
-        gridpath0//"interpolations.dat")
+call system("ls "//gridpath4//interpolationfolder//" > "//&
+        gridpath5//"interpolations.dat")
 
 Ntrials = 0
-open(filechannel1,file=gridpath0//&
+open(filechannel1,file=gridpath5//&
         "interpolations.dat")
 do
         read(filechannel1,FMT="(A)",iostat=iostate)
@@ -1782,25 +1861,42 @@ do
 end do
 close(filechannel1)
 
+if (Ntrials == 0) then
+        print *, ""
+        print *, "NO INTERPOLATIONS TO ANALYZE"
+        print *, ""
+        return
+end if
+
 allocate(counters(Ntrials,3),RMSD_trials(Ntrials))
 
 call processMultipleInterpolationFiles(vals,delta_vals,&
         Ntrials,counters,RMSD_trials)
 
+if (all(counters == 0)) then
+        return
+end if
+
 write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
 
-open(gnuplotchannel,file=gridpath0//gnuplotfile)
-write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
-write(gnuplotchannel,*) 'set output "'//gridpath0//PNGfilename//'.png"'
-write(gnuplotchannel,*) 'set title "Interpolation Error With Varying Threshold"'
-write(gnuplotchannel,*) 'set multiplot layout 2,1'
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,3600'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,*) 'set multiplot layout ',Ntrials,&
+                        ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
+                        '"Interpolation Error with Varying Threshold" font ",36" offset 0,3'
+!write(gnuplotchannel,*) 'unset key'
 
 write(gnuplotchannel,FMT="(A,F7.3,',',F7.3,A)") &
-        'set label 1 "Vals = (',vals(1),vals(2),')" at screen 0.1,0.900'
+        'set label 1 "Vals = (',vals(1),vals(2),')" at screen 0.3,0.950'
 write(gnuplotchannel,FMT="(A,I6,A)") &
-        'set label 2 "Ntraj = ', Ntraj_max, '" at screen 0.1,0.875'
+        'set label 2 "Ntraj = ', Ntraj_max, '" at screen 0.3,0.940'
 write(gnuplotchannel,FMT='(A,F9.4,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, &
-        '" at screen 0.1,0.850'
+        '" at screen 0.3,0.930'
 
 !write(gnuplotchannel,*) 'min_x = ', min_rmsd_vals(2)
 !write(gnuplotchannel,*) 'max_x = ', max_rmsd_vals(2)
@@ -1808,31 +1904,106 @@ write(gnuplotchannel,FMT='(A,F9.4,A)') 'set label 3 "AlphaRatio = ',alpha_ratio,
 !write(gnuplotchannel,*) 'max_y = ', max_rmsd_vals(6)
 !write(gnuplotchannel,*) 'set xrange [min_x:max_x]'
 !write(gnuplotchannel,*) 'set yrange [min_y:max_y]'
-write(gnuplotchannel,*) 'set xlabel "Number of Points Below Threshold (Ninterpolation)"'
-write(gnuplotchannel,*) 'set ylabel "Frequency"'
+write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set grid xtics lw 2'
+write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,*) 'set format x ""'
 
-write(gnuplotchannel,FMT="(A,I1,A,F9.6,A,F9.6,A)") &
-        'plot "'//gridpath0//&
+if (Ntrials > 1) then
+write(gnuplotchannel,FMT="(A,I0.2,A,F9.6,A,F9.6,A)") &
+        'plot "'//gridpath5//&
         'Ninterpolation_binning.dat" u '//'1:',2,' w boxes t "',&
         RMSD_trials(1),' A" '//&
-        'fs transparent solid ',1.0d0/Ntrials,' noborder,\'
+        'fs transparent solid ',1.0d0,' noborder'
+
 do n = 2, Ntrials-1
 
-write(gnuplotchannel,FMT="(A,I1,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath0//&
+write(gnuplotchannel,FMT="(A,I0.2,A,F9.6,A,F9.6,A)") &
+        'plot "'//gridpath5//&
         'Ninterpolation_binning.dat" u '//'1:',n+1,' w boxes t "',&
         RMSD_trials(n),' A" '//&
-        'fs transparent solid ',1.0d0/Ntrials,' noborder,\'
+        'fs transparent solid ',1.0d0,' noborder'
 
 end do
+end if
 
-write(gnuplotchannel,FMT="(A,I1,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath0//&
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'set xtics out nomirror'
+write(gnuplotchannel,*) 'set format x'
+
+write(gnuplotchannel,*) 'set xlabel "Number of Points Below Threshold (Ninterpolation)" font ",24"'
+write(gnuplotchannel,FMT="(A,I0.2,A,F9.6,A,F9.6,A)") &
+        'plot "'//gridpath5//&
         'Ninterpolation_binning.dat" u '//'1:',Ntrials+1,' w boxes t "',&
         RMSD_trials(Ntrials),' A" '//&
-        'fs transparent solid ',1.0d0/Ntrials,' noborder'
+        'fs transparent solid ',1.0d0,' noborder'
 
-write(gnuplotchannel,*) 'set xlabel "Relative Error of Accept Best to Interpolation"'
+write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"" log10(.00000001), '//&
+                                         '"" log10(.00000005), '//&
+                                          '"" log10(.0000001), '//&
+                                          '"" log10(.0000005), '//&
+                                           '"" log10(.000001), '//&
+                                           '"" log10(.000005), '//&
+                                           '""  log10(.00001), '//&
+                                           '""  log10(.00005), '//&
+                                           '""   log10(.0001), '//&
+                                           '""   log10(.0005), '//&
+                                           '""    log10(.001), '//&
+                                           '""    log10(.005), '//&
+                                           '""     log10(.01), '//&
+                                           '""     log10(.05), '//&
+                                           '""      log10(.1), '//&
+                                           '""      log10(.5), '//&
+                                           ' ""       log10(1), '//&
+                                           ' ""       log10(5), '//&
+                                           ' ""      log10(10), '//&
+                                           ' ""      log10(50), '//&
+                                           ' ""     log10(100), '//&
+                                           ' ""     log10(500), '//&
+                                           ' ""    log10(1000), '//&
+                                           ' ""    log10(5000), '//&
+                                           ' ""   log10(10000), '//&
+                                   ')'
+
+if (Ntrials > 1) then
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        'plot "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',2,' w boxes t "',&
+        RMSD_trials(1),' A" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        '     "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        '     "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+
+do n = 2, Ntrials-1
+
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        'plot "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "',&
+        RMSD_trials(n),' A" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        '     "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        '     "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+
+end do
+end if
+
+write(gnuplotchannel,*) 'set xtics out nomirror'
 write(gnuplotchannel,*) 'set xtics ('//&
                                          '"1e-8" log10(.00000001), '//&
                                          '"5e-8" log10(.00000005), '//&
@@ -1861,30 +2032,24 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                            ' "1e4"   log10(10000), '//&
                                    ')'
 
-write(gnuplotchannel,FMT="(A,I1,A,F9.6,A,F9.6,A)") &
-        'plot "'//gridpath0//&
-        'error_ratio_binning.dat" u '//'1:',2,' w boxes t "',&
-        RMSD_trials(1),' A" '//&
-        'fs transparent solid ',1.0d0/Ntrials,' noborder,\'
-do n = 2, Ntrials-1
-
-write(gnuplotchannel,FMT="(A,I1,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath0//&
-        'error_ratio_binning.dat" u '//'1:',n+1,' w boxes t "',&
-        RMSD_trials(n),' A" '//&
-        'fs transparent solid ',1.0d0/Ntrials,' noborder,\'
-
-end do
-
-write(gnuplotchannel,FMT="(A,I1,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath0//&
-        'error_ratio_binning.dat" u '//'1:',Ntrials+1,' w boxes t "',&
+write(gnuplotchannel,*) 'set xlabel "Relative Error of Accept Best to Interpolation" font ",24"'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        'plot "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',3*Ntrials-1,' w boxes t "',&
         RMSD_trials(Ntrials),' A" '//&
-        'fs transparent solid ',1.0d0/Ntrials,' noborder'
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        '     "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',3*Ntrials,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
+        '     "'//gridpath5//&
+        'error_ratio_binning.dat" u '//'1:',3*Ntrials+1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
 
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 end subroutine getRMSDinterpolation2
 

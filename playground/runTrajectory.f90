@@ -87,7 +87,12 @@
 
 
 module runTrajectory
+use PARAMETERS
+use ANALYSIS
 implicit none
+
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
 
 contains
 
@@ -373,8 +378,10 @@ subroutine checkaddTrajectory(filechannels,&
 
         !We keep this file open for the whole trajectory (instead of
         !continually opening and closing) to keep data of each frame
-if (testtrajDetailedRMSD_flag) open(filechannel2,file=gridpath1//checkstatefile)
-if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfile,position="append")
+        if (testtrajDetailedRMSD_flag) open(filechannel2,file=&
+                gridpath5//checkstatefile)
+        if (gather_interpolation_flag) open(filechannel3,file=&
+                gridpath5//interpolationfile,position="append")
 
         buffer1_size = 1 + var_overcrowd(1)
         allocate(valsbuffer1(Nvar,buffer1_size),&
@@ -384,11 +391,11 @@ if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfi
                  RMSDbuffer1(buffer1_size),&
                  approximation_index(buffer1_size))
 
-        if (interpolation_flag) then
+!       if (interpolation_flag) then
                 allocate(acceptable_frame_mask(buffer1_size),&
                          inputCLS(Ncoords+buffer1_size,buffer1_size))
                 interpolation_counter = 0
-        end if
+!       end if
 
         do steps = 1, Nsteps
 
@@ -514,7 +521,7 @@ end if
                                end do
                                approx_gradient_prime = gradient
 
-                               if (gather_interpolation_flag) then
+                               if ((interpolation_flag).and.(gather_interpolation_flag)) then
 
                                         call Acceleration(vals,coords,gradient)
 
@@ -561,7 +568,7 @@ end if
                                                         (/0.1d3,0.1d3/),&
                                                         "InterpolationCheck")
 
-                                                open(filechannel3,file=gridpath0//interpolationfile,&
+                                                open(filechannel3,file=gridpath5//interpolationfile,&
                                                         position="append")
 
                                                 interpolation_counter = 0
@@ -575,13 +582,13 @@ end if
                 velocities = velocities + gradient
         end do
 
-if (testtrajDetailedRMSD_flag) close(filechannel2)
-if (gather_interpolation_flag) close(filechannel3)
+        if (testtrajDetailedRMSD_flag) close(filechannel2)
+        if (gather_interpolation_flag) close(filechannel3)
 
         deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
                    approximation_index)
 
-        if (interpolation_flag) deallocate(acceptable_frame_mask,inputCLS)
+!       if (interpolation_flag) deallocate(acceptable_frame_mask,inputCLS)
 
         coords_final = coords
         velocities_final = velocities
@@ -931,8 +938,10 @@ subroutine checkMultipleTrajectories(filechannels,&
                 traversal1 = 0
         end if
 
-        if (testtrajDetailedRMSD_flag) open(filechannel2,file=gridpath0//checkstatefile)
-        if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfile,position="append")
+        if (testtrajDetailedRMSD_flag) open(filechannel2,file=&
+                gridpath5//checkstatefile)
+        if (gather_interpolation_flag) open(filechannel3,file=&
+                gridpath5//interpolationfile,position="append")
 
         buffer1_size = 1 + var_overcrowd(1)
         allocate(valsbuffer1(Nvar,buffer1_size),&
@@ -942,11 +951,11 @@ subroutine checkMultipleTrajectories(filechannels,&
                  RMSDbuffer1(buffer1_size),&
                  approximation_index(buffer1_size))
 
-        if (interpolation_flag) then
+!       if (interpolation_flag) then
                 allocate(acceptable_frame_mask(buffer1_size),&
                          inputCLS(Ncoords+buffer1_size,buffer1_size))
                 interpolation_counter = 0
-        end if
+!       end if
 
         coords_initial = coords
         velocities_initial = velocities
@@ -1038,7 +1047,13 @@ subroutine checkMultipleTrajectories(filechannels,&
                        else
                                min_rmsd = default_rmsd
                        end if
-                       subcellsearch_max = subcellsearch_max1
+
+                       if (testtrajDetailedRMSD_flag) then
+                               subcellsearch_max = subcellsearch_max1
+                               if (gather_interpolation_flag) then 
+                                       interpolation_flag = .false.
+                               end if
+                       end if
                        call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd,&
                                 filechannels,number_of_frames,order0,neighbor_check)
 
@@ -1051,6 +1066,8 @@ if (testtrajDetailedRMSD_flag) then
         end if
 
         subcellsearch_max = subcellsearch_max2
+        if (gather_interpolation_flag) interpolation_flag = .true.
+
         call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd_prime,&
                 filechannels,number_of_frames,order1,neighbor_check)
 
@@ -1083,7 +1100,7 @@ end if
                                         gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
                                end do
 
-                               if (gather_interpolation_flag) then
+                               if ((interpolation_flag).and.(gather_interpolation_flag)) then
 
                                         approx_gradient = gradient
 
@@ -1094,12 +1111,13 @@ end if
 !                                                   sqrt(sum((gradient-approx_gradient)**2)/Natoms)
                                         write(filechannel3,FMT=*) vals(1),vals(2),Ninterpolation,&
                                                 candidate_rmsd,min_rmsd,&
-                                                sqrt((sum(gradient-candidate_gradient)**2)/Natoms),&
-                                                sqrt((sum(gradient-approx_gradient)**2)/Natoms)
+                                                sqrt(sum((gradient-candidate_gradient)**2)/Natoms),&
+                                                sqrt(sum((gradient-approx_gradient)**2)/Natoms)
 
                                         interpolation_counter = interpolation_counter + 1
 
-                                        if (interpolation_counter == interpolation_check) then
+                                        if (.false.) then
+!                                       if (interpolation_counter == interpolation_check) then
 
                                                 close(filechannel3)
 
@@ -1107,7 +1125,7 @@ end if
                                                         getRMSDinterpolation((/5.0d0,5.5d0/),&
                                                         (/0.1d0,0.1d0/),"InterpolationCheck")
 
-                                                open(filechannel3,file=gridpath0//interpolationfile,&
+                                                open(filechannel3,file=gridpath5//interpolationfile,&
                                                         position="append")
 
                                                 interpolation_counter = 0
@@ -1128,7 +1146,7 @@ end if
         deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
                    approximation_index)
 
-        if (interpolation_flag) &
+!       if (interpolation_flag) &
                 deallocate(acceptable_frame_mask,inputCLS)
 
         coords_final = coords
@@ -1744,7 +1762,7 @@ subroutine errorCheck1(filechannels)
 
         !We keep this file open for the whole trajectory (instead of
         !continually opening and closing) to keep data of each frame
-if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfile,position="append")
+if (gather_interpolation_flag) open(filechannel3,file=gridpath5//interpolationfile,position="append")
 
         buffer1_size = 1 + var_overcrowd(1)
         allocate(valsbuffer1(Nvar,buffer1_size),&
@@ -1799,7 +1817,7 @@ if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfi
         print *, "vals:", vals
         print *, ""
 
-        open(filechannel2,file=gridpath0//"new"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"new"//errorcheckfile)
 
         do Nsample = 1, Nsamples
 
@@ -1916,7 +1934,7 @@ if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfi
                 if (maxval(rmsd_fx(1:steps,Nsample),dim=1) < rmsd_fx_interpolated(steps,Nsample)) then
                         Nanomaly = Nanomaly + 1
                         write(Nanomaly_text,FMT="(I3)") Nanomaly
-                        open(filechannel3,file=gridpath0//"anomaly"//&
+                        open(filechannel3,file=gridpath5//"anomaly"//&
                                 trim(adjustl(Nanomaly_text))//".xyz")
                         write(filechannel3,FMT="(I4)") Natoms*2
                         write(filechannel3,FMT="(A)") "Fixed Frame then Offset Frame"
@@ -1934,7 +1952,7 @@ if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfi
 
         close(filechannel2)
 
-        open(filechannel2,file=gridpath0//errorcheckfile)
+        open(filechannel2,file=gridpath5//errorcheckfile)
         do steps = 1, Ntest
                 selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
                 selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
@@ -1959,7 +1977,7 @@ if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfi
         end do
         close(filechannel2)
 
-        open(filechannel2,file=gridpath0//"weight"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"weight"//errorcheckfile)
         do steps = 1, Ntest
                 selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
                 selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
@@ -1982,7 +2000,7 @@ if (gather_interpolation_flag) open(filechannel3,file=gridpath0//interpolationfi
                 rmsd_fx(:,Nsample) = rmsd_fx(1,Nsample) / rmsd_fx(:,Nsample)
         end do
 
-        open(filechannel2,file=gridpath0//"relative"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
         do steps = 1, Ntest
                 selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
                 selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
@@ -2123,12 +2141,12 @@ subroutine errorCheck2(filechannels)
         allocate(inputCLS(Ncoords+Ntest,Ntest),gradient_steps(3,Natoms,Ntest))
         rmsd_weights = 0.0d0
 
-        open(filechannel3,file=gridpath0//"convergence"//errorcheckfile)
+        open(filechannel3,file=gridpath5//"convergence"//errorcheckfile)
 
         do
 
         Nanomaly_index = 0
-        call system("rm "//gridpath0//"weight1"//errorcheckfile)
+        call system("rm "//gridpath5//"weight1"//errorcheckfile)
 
         do steps = 1, 1000
                 !Upate the coordinates with the velocities
@@ -2157,7 +2175,7 @@ subroutine errorCheck2(filechannels)
         end do
         print *, "vals:", vals
 
-        open(filechannel2,file=gridpath0//"new"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"new"//errorcheckfile)
 
         do Nsample = 1, Nsamples
 
@@ -2318,7 +2336,7 @@ subroutine errorCheck2(filechannels)
                         Nanomaly_index = Nsample
                         Nanomaly = Nanomaly + 1
                         write(Nanomaly_text,FMT="(I3)") Nanomaly
-                        open(filechannel4,file=gridpath0//"anomaly"//&
+                        open(filechannel4,file=gridpath5//"anomaly"//&
                                 trim(adjustl(Nanomaly_text))//".xyz")
                         write(filechannel4,FMT="(I4)") Natoms*2
                         write(filechannel4,FMT="(A)") "Fixed Frame then Offset Frame"
@@ -2336,7 +2354,7 @@ subroutine errorCheck2(filechannels)
 
         close(filechannel2)
 
-        open(filechannel2,file=gridpath0//errorcheckfile)
+        open(filechannel2,file=gridpath5//errorcheckfile)
         do steps = 1, Ntest
                 selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
                 selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
@@ -2361,7 +2379,7 @@ subroutine errorCheck2(filechannels)
         end do
         close(filechannel2)
 
-        open(filechannel2,file=gridpath0//"linear"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"linear"//errorcheckfile)
         do steps = 1, Ntest
                 do Nsample = 1, Nsamples
                 write(filechannel2,FMT="(I3,3(1x,F15.11))") steps, &
@@ -2375,7 +2393,7 @@ subroutine errorCheck2(filechannels)
         allocate(LSa1(Ntest),LSa2(Ntest),LSerror(Ntest))
         allocate(convergence(Nsample),dropoff(Nsample))
 
-        open(filechannel2,file=gridpath0//"dropoff"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"dropoff"//errorcheckfile)
         do Nsample = 1, Nsamples
 
         convergence(Nsample) = 0.0d0
@@ -2438,7 +2456,7 @@ subroutine errorCheck2(filechannels)
 
         deallocate(LSa1,LSa2,LSerror,convergence,dropoff)
 
-        open(filechannel2,file=gridpath0//"heatmapline"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"heatmapline"//errorcheckfile)
         do steps = 1, Ntest
                 write(filechannel2,FMT="(I3,3(1x,F15.11))") steps, &
                         rmsd_x_interpolated(steps,min(Nsamples/2,69)),&
@@ -2447,7 +2465,7 @@ subroutine errorCheck2(filechannels)
         end do
         close(filechannel2)
 
-        open(filechannel2,file=gridpath0//"ratio"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"ratio"//errorcheckfile)
         do steps = 1, Ntest
                 do Nsample = 1, Nsamples
                 write(filechannel2,FMT="(I3,3(1x,F15.11))") steps, &
@@ -2462,7 +2480,7 @@ subroutine errorCheck2(filechannels)
         close(filechannel2)
 
         if (Nanomaly_index > 0) then
-        open(filechannel2,file=gridpath0//"weight1"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"weight1"//errorcheckfile)
         do steps = 1, Ntest
                 selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
                 selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
@@ -2508,7 +2526,7 @@ subroutine errorCheck2(filechannels)
                 rmsd_fx(:,Nsample) = rmsd_fx(1,Nsample) / rmsd_fx(:,Nsample)
         end do
 
-        open(filechannel2,file=gridpath0//"relative"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
         do steps = 1, Ntest
                 selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
                 selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
@@ -2594,7 +2612,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         min_rmsd = default_rmsd
         Ninterpolation = 0
 
-        open(filechannel2,file=gridpath0//errorcheckfile)
+        open(filechannel2,file=gridpath5//errorcheckfile)
         do
                 read(filechannel2,iostat=iostate,FMT=*) n, rmsd_x,dum1,&
                         rmsd_x_interpolated,dum2,&
@@ -2612,10 +2630,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         end do
         close(filechannel2)
 
-        open(gnuplotchannel,file=gnuplotfile)
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) "set term pngcairo size 1200,1200"
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath0, vals, '.png"'
+                'set output "'//gridpath4, vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Convergence As More Points Interpolate"'
         write(gnuplotchannel,*) 'set xlabel "Ninterpolation"'
         write(gnuplotchannel,*) 'set ylabel "RMSD Between Interpolated and Target Gradient"'
@@ -2660,22 +2678,22 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                                            '"5e-1"      .5, '//&
                                            ' "1.0"       1, '//&
                                    ')'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//errorcheckfile//'" u 1:6:7 w yerr lc "green" notitle,\'
-        write(gnuplotchannel,*) '     "'//gridpath0//errorcheckfile//'" u 1:6 w lines lc "green" t "Interpolation",\'
-        write(gnuplotchannel,*) '     "'//gridpath0//errorcheckfile//'" u 1:8:9 w yerr lc "red" notitle,\'
-        write(gnuplotchannel,*) '     "'//gridpath0//errorcheckfile//'" u 1:8 w lines lc "red" t "Accept Current",\'
-!       write(gnuplotchannel,*) '     "'//gridpath0//errorcheckfile//'" u 1:(y0):(y0_err) w yerr lc "blue" notitle,\'
-        write(gnuplotchannel,*) '     "'//gridpath0//errorcheckfile//'" u 1:(y0+y0_err) w lines lc "blue" notitle,\'
-        write(gnuplotchannel,*) '     "'//gridpath0//errorcheckfile//'" u 1:(y0-y0_err) w lines lc "blue" t "Accept Best"'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//errorcheckfile//'" u 1:6:7 w yerr lc "green" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:6 w lines lc "green" t "Interpolation",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:8:9 w yerr lc "red" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:8 w lines lc "red" t "Accept Current",\'
+!       write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0):(y0_err) w yerr lc "blue" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0+y0_err) w lines lc "blue" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0-y0_err) w lines lc "blue" t "Accept Best"'
         close(gnuplotchannel)
 
-        call system("gnuplot < "//gnuplotfile)
+        call system("gnuplot < "//gridpath5//gnuplotfile)
 
         max_rmsd = 0.0d0
         min_rmsd = 1.0d9
         Ninterpolation = 0
 
-        open(filechannel2,file=gridpath0//"relative"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
         do
                 read(filechannel2,iostat=iostate,FMT=*) n, rmsd_x,dum1,&
                         rmsd_x_interpolated,dum2,&
@@ -2688,10 +2706,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         end do
         close(filechannel2)
 
-        open(gnuplotchannel,file=gnuplotfile)
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) "set term pngcairo size 1200,1200"
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath0//"relative_", vals, '.png"'
+                'set output "'//gridpath5//"relative_", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Convergence As More Points Interpolate"'
         write(gnuplotchannel,*) 'set xlabel "Ninterpolation"'
         write(gnuplotchannel,*) 'set ylabel "Relative RMSD Between Interpolated and Target Gradient"'
@@ -2736,17 +2754,17 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                                            ' "1e4"   10000, '//&
                                            ' "5e4"   50000, '//&
                                    ')'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"relative"//errorcheckfile//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"relative"//errorcheckfile//&
                 '" u 1:6:7 w yerr lc "green" notitle,\'
-        write(gnuplotchannel,*) '     "'//gridpath0//"relative"//errorcheckfile//&
+        write(gnuplotchannel,*) '     "'//gridpath5//"relative"//errorcheckfile//&
                 '" u 1:6 w lines lc "green" t "Interpolation",\'
-        write(gnuplotchannel,*) '     "'//gridpath0//"relative"//errorcheckfile//&
+        write(gnuplotchannel,*) '     "'//gridpath5//"relative"//errorcheckfile//&
                 '" u 1:(1.0) w lines lc "red" t "Accept Current",\'
         close(gnuplotchannel)
 
-        call system("gnuplot < "//gnuplotfile)
+        call system("gnuplot < "//gridpath5//gnuplotfile)
 
-        inquire(file=gridpath0//"weight1"//errorcheckfile,exist=file_exists)
+        inquire(file=gridpath5//"weight1"//errorcheckfile,exist=file_exists)
         if (file_exists) then
 
         max_rmsd = 0.0d0
@@ -2755,7 +2773,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 
         allocate(frame_weights(Ninterpolation),frame_rmsds(Ninterpolation))
 
-        open(filechannel2,file=gridpath0//"weight1"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"weight1"//errorcheckfile)
         do
                 read(filechannel2,iostat=iostate,FMT=*) n, &
                         interpolated_rmsd,frame_weights,frame_rmsds
@@ -2770,10 +2788,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 !       max_rmsd = max(max_rmsd, maxval(frame_rmsds,dim=1))
 !       min_rmsd = min(min_rmsd, minval(frame_rmsds,dim=1))
 
-        open(gnuplotchannel,file=gnuplotfile)
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) "set term pngcairo size 1200,1200"
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath0//"weight1_", vals, '.png"'
+                'set output "'//gridpath5//"weight1_", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Convergence As More Points Interpolate"'
         write(gnuplotchannel,*) 'set multiplot'
         write(gnuplotchannel,*) 'set size 1.0, 1.0'
@@ -2837,14 +2855,14 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                                 '0.950 "red", '//&
                                 '1 "orange"'//&
                                 ')'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"weight1"//errorcheckfile//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"weight1"//errorcheckfile//&
                 '" u 1:3:Ninterpolation+3 w lines lw 2 palette,\'
         do n = 2, Ninterpolation-1
         write(gnuplotchannel,FMT="(A,I3,A,I3,A)") &
-                '     "'//gridpath0//"weight1"//errorcheckfile//&
+                '     "'//gridpath5//"weight1"//errorcheckfile//&
                 '" u 1:',n+2,':',Ninterpolation+n+2,' w lines lw 2 palette,\'
         end do
-        write(gnuplotchannel,*) '     "'//gridpath0//"weight1"//errorcheckfile//&
+        write(gnuplotchannel,*) '     "'//gridpath5//"weight1"//errorcheckfile//&
                 '" u 1:Ninterpolation+2:Ninterpolation*2+2 w lines lw 2 palette'
 
         write(gnuplotchannel,*) 'set size 0.4, 0.4'
@@ -2902,18 +2920,18 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         write(gnuplotchannel,*) 'set xtics'
         write(gnuplotchannel,*) 'unset ytics'
         write(gnuplotchannel,*) 'unset ylabel'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"weight1"//errorcheckfile//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"weight1"//errorcheckfile//&
                 '" u 1:2:2 w l lc "black"'
         close(gnuplotchannel)
 
-        call system("gnuplot < "//gnuplotfile)
+        call system("gnuplot < "//gridpath5//gnuplotfile)
 
         end if
 
-        open(gnuplotchannel,file=gnuplotfile)
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) "set term pngcairo size 1200,1200"
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath0//"new", vals, '.png"'
+                'set output "'//gridpath5//"new", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Convergence As Frames Get Closer"'
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,*) 'set xlabel "RMSD Between Nearby and Target Frame"'
@@ -2966,10 +2984,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                                            '"5e-4"   .0005, '//&
                                            '"1e-3"    .001, '//&
                                    ')'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"new"//errorcheckfile//'" u 1:2 w points'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"new"//errorcheckfile//'" u 1:2 w points'
         close(gnuplotchannel)
 
-        call system("gnuplot < "//gnuplotfile)
+        call system("gnuplot < "//gridpath5//gnuplotfile)
 
         max_rmsd1 = 0.0d1
         min_rmsd1 = 1.0d9
@@ -2978,7 +2996,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         max_rmsd3 = 0.0d1
         min_rmsd3 = 1.0d9
 
-        open(filechannel2,file=gridpath0//"linear"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"linear"//errorcheckfile)
         do
                 read(filechannel2,iostat=iostate,FMT=*) n, &
                         rmsd1,rmsd2,rmsd3
@@ -2998,10 +3016,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         if (min_rmsd2 == 0.0d0) min_rmsd2 = 1.0d-11
         if (min_rmsd3 == 0.0d0) min_rmsd3 = 1.0d-11
 
-        open(gnuplotchannel,file=gnuplotfile)
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) 'set term pngcairo size 1200,2400'
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath0//"linear", vals, '.png"'
+                'set output "'//gridpath5//"linear", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Comparison of a Frame and Gradient with its Interpolation"'
         write(gnuplotchannel,*) 'set multiplot layout 2,1'
         write(gnuplotchannel,*) 'set pm3d map'
@@ -3025,7 +3043,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         write(gnuplotchannel,*) 'set ylabel "Error Between the Output Gradient and the Interpolation"'
         write(gnuplotchannel,*) 'set cblabel "Number of Frames Used to Interpolate"'
 
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"linear"//errorcheckfile//'" u '//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"linear"//errorcheckfile//'" u '//&
                                '($2>0?$2:1/0):4:1 w p lw 6 palette'
         write(gnuplotchannel,*) 'set logscale x'
         write(gnuplotchannel,*) 'set logscale y'
@@ -3034,11 +3052,11 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         write(gnuplotchannel,*) 'min_x = ', min_rmsd2
         write(gnuplotchannel,*) 'max_x = ', max_rmsd2
         write(gnuplotchannel,*) 'set xrange [0.9*min_x:1.1*max_x]'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"linear"//errorcheckfile//'" u '//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"linear"//errorcheckfile//'" u '//&
                                '($3>0?$3:1/0):4:1 w p lw 6 palette'
         close(gnuplotchannel)
         
-        call system(path_to_gnuplot//"gnuplot < "//gnuplotfile)
+        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
         Nbins = 50
         allocate(RMSDheatmap(Nbins,Nbins))
@@ -3051,7 +3069,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 !       drmsd2 = (max_rmsd2-min_rmsd2)/Nbins
 !       drmsd3 = (max_rmsd3-min_rmsd3)/Nbins
         
-        open(filechannel2,file=gridpath0//"linear"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"linear"//errorcheckfile)
         do
                 read(filechannel2,FMT=*,iostat=iostate) Ninterpolation,&
                         rmsd1,rmsd2,rmsd3
@@ -3076,7 +3094,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 !       min_rmsd2 = log10(min_rmsd2)
 !       min_rmsd3 = log10(min_rmsd3)
 
-!       open(filechannel2,file=gridpath0//"heatmap_linear"//errorcheckfile)
+!       open(filechannel2,file=gridpath5//"heatmap_linear"//errorcheckfile)
 !       do n = 1, Nbins
 !       do m = 1, Nbins
 !               write(filechannel2,FMT=*) (n-0.5)*drmsd1 + min_rmsd1,&
@@ -3288,7 +3306,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 
         print *, "Converged!"
 
-        open(filechannel2,file=gridpath0//"heatmap_linear"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"heatmap_linear"//errorcheckfile)
         do n = 1, Nbins
                 do m = 1, Nbins
                         dum1 = (n-0.5)*drmsd1
@@ -3309,10 +3327,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 
         deallocate(A,b,RMSDheatmap)
 
-        open(gnuplotchannel,file=gnuplotfile)
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath0//"heatmap_linear", vals, '.png"'
+                'set output "'//gridpath5//"heatmap_linear", vals, '.png"'
         write(gnuplotchannel,*) 'set multiplot layout 1,2'
         write(gnuplotchannel,*) 'set title "Interpolation Error Comparison by RMSD Variables 1 and 2"'
         write(gnuplotchannel,*) 'set pm3d map'
@@ -3421,7 +3439,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 !                                                  '"5e-1"      log10(.5), '//&
                                                    ' "1.0"       log10(1), '//&
                                            ')'
-        write(gnuplotchannel,*) 'splot "'//gridpath0//'heatmap_linear'//errorcheckfile//&
+        write(gnuplotchannel,*) 'splot "'//gridpath5//'heatmap_linear'//errorcheckfile//&
                 '" u 1:2:3 w image palette'
         write(gnuplotchannel,*) 'set title "Linear Best Fit of Interpolation Error"'
         write(gnuplotchannel,*) 'unset colorbox'
@@ -3431,22 +3449,22 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                                           RMSDheatmap_coeff(Niteration+1,3),'" at screen 0.75,0.850 front'
         write(gnuplotchannel,*) 'set xlabel "RMSD Variable 1 (x)"'
         write(gnuplotchannel,*) 'set ylabel "RMSD Variable 2 (y)"'
-        write(gnuplotchannel,*) 'splot "'//gridpath0//'heatmap_linear'//errorcheckfile//&
+        write(gnuplotchannel,*) 'splot "'//gridpath5//'heatmap_linear'//errorcheckfile//&
                 '" u 1:2:4 w image palette'
         close(gnuplotchannel)
 
-        call system(path_to_gnuplot//"gnuplot < "//gnuplotfile)
+        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 !
-!        call system("rm -r "//gridpath0//"png/")
-!        call system("mkdir "//gridpath0//"png")
+!        call system("rm -r "//gridpath5//"png/")
+!        call system("mkdir "//gridpath5//"png")
 !        Ngif = Ninterpolation
 !        do n = 1, Ngif
 !        write(ntext,FMT="(I0.3)") n
 !
-!        open(gnuplotchannel,file=gnuplotfile)
+!        open(gnuplotchannel,file=gridpath5//gnuplotfile)
 !        write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
 !        write(gnuplotchannel,FMT="(A)") &
-!                'set output "'//gridpath0//"png/"//ntext//'.png"'
+!                'set output "'//gridpath5//"png/"//ntext//'.png"'
 !        write(gnuplotchannel,*) 'set multiplot'
 !        write(gnuplotchannel,*) 'set size 0.5, 1.0'
 !        write(gnuplotchannel,*) 'set origin 0.0, 0.0'
@@ -3563,7 +3581,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 !        write(gnuplotchannel,*) "set rmargin at screen 0.45"
 !        write(gnuplotchannel,*) "set bmargin at screen 0.10"
 !        write(gnuplotchannel,*) "set tmargin at screen 0.95"
-!        write(gnuplotchannel,*) 'splot "'//gridpath0//'heatmap_linear'//errorcheckfile//&
+!        write(gnuplotchannel,*) 'splot "'//gridpath5//'heatmap_linear'//errorcheckfile//&
 !                '" u 1:2:3 w image palette'
 !
 !        write(gnuplotchannel,*) "unset title"
@@ -3572,7 +3590,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 !        write(gnuplotchannel,*) 'unset xtics'
 !        write(gnuplotchannel,*) 'unset ytics'
 !        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
-!                'p'' '//gridpath0//"heatmapline"//errorcheckfile//&
+!                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
 !                ')" u (log10($2)-xmin):(log10($3)-ymin) w l lw 3 lc "black"'
 !        write(gnuplotchannel,FMT="(A,F15.11,A)") 'f(x) = (ymax-ymin)/2 + x/(', alpha_ratio, '*(10**(xmin/ymin)))'
 !        write(gnuplotchannel,*) 'plot f(x) w l lw 2 lc "black"'
@@ -3593,7 +3611,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 !        write(gnuplotchannel,*) 'set yrange [',min_rmsd1,':',max_rmsd1,']'
 !        write(gnuplotchannel,*) 'set ylabel "RMSD Variable 1"'
 !        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
-!                'p'' '//gridpath0//"heatmapline"//errorcheckfile//&
+!                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
 !                ')" u 1:2 w l lc "black" lw 3'
 !
 !        write(gnuplotchannel,*) 'set size 0.5, 0.5'
@@ -3602,17 +3620,17 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 !        write(gnuplotchannel,*) 'set yrange [',min_rmsd2,':',max_rmsd2,']'
 !        write(gnuplotchannel,*) 'set ylabel "RMSD Variable 2"'
 !        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
-!                'p'' '//gridpath0//"heatmapline"//errorcheckfile//&
+!                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
 !                ')" u 1:3 w l lc "black" lw 3'
 !        close(gnuplotchannel)
 !
-!        call system(path_to_gnuplot//"gnuplot < "//gnuplotfile)
+!        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 !        end do
 !
 !        print *, "Started making the gif!"
 !        call system("convert -background white -alpha remove -layers OptimizePlus "//&
 !                "-delay 20 -loop 0 "//gridpath0//"png/*.png "//&
-!                gridpath0//"heatmap_trajectory.gif")
+!                gridpath5//"heatmap_trajectory.gif")
 !        print *, "Finished making the gif!"
 !        call sleep(5)
 !
@@ -3626,7 +3644,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         Nbins = 50
         allocate(rmsd1_bins(Nbins),rmsd2_bins(Nbins),rmsd3_bins(Nbins))
 
-        open(filechannel2,file=gridpath0//"ratio"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"ratio"//errorcheckfile)
         do
                 read(filechannel2,iostat=iostate,FMT=*) n, &
                         rmsd1,rmsd2,rmsd3
@@ -3653,7 +3671,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         rmsd1_bins = 0
         rmsd2_bins = 0
         rmsd3_bins = 0
-        open(filechannel2,file=gridpath0//"ratio"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"ratio"//errorcheckfile)
         do
                 read(filechannel2,iostat=iostate,FMT=*) n, &
                         rmsd1,rmsd2,rmsd3
@@ -3675,7 +3693,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         min_rmsd2 = log10(min_rmsd2)
         min_rmsd3 = log10(min_rmsd3)
 
-        open(filechannel2,file=gridpath0//"binned_ratio"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"binned_ratio"//errorcheckfile)
         do n = 1, Nbins
                 write(filechannel2,FMT=*) &
                         min_rmsd1 + ((n-0.5)*drmsd1), rmsd1_bins(n),&
@@ -3685,10 +3703,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         close(filechannel2)
         deallocate(rmsd1_bins,rmsd2_bins,rmsd3_bins)
 
-        open(gnuplotchannel,file=gnuplotfile)
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) 'set term pngcairo size 1200,2400'
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath0//"ratio", vals, '.png"'
+                'set output "'//gridpath5//"ratio", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Comparison of a Frame and Gradient with its Interpolation"'
         write(gnuplotchannel,*) 'set multiplot layout 3,1'
         write(gnuplotchannel,*) 'unset key'
@@ -3715,7 +3733,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                                                '"1e1" log10(10.0))'
         write(gnuplotchannel,*) 'set xrange [1.1*min_x:max(1.1*max_x,0.9*max_x)]'
         write(gnuplotchannel,*) 'set xlabel "Error Relative to Accept Best"'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"binned_ratio"//errorcheckfile//'" u '//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"binned_ratio"//errorcheckfile//'" u '//&
                                '1:2 w boxes lc rgb "green"'
 
         write(gnuplotchannel,*) 'min_x = ', min_rmsd2
@@ -3733,7 +3751,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                                                '"1e1" log10(10.0))'
         write(gnuplotchannel,*) 'set xrange [1.1*min_x:max(1.1*max_x,0.9*max_x)]'
         write(gnuplotchannel,*) 'set xlabel "Error Relative to Current Error"'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"binned_ratio"//errorcheckfile//'" u '//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"binned_ratio"//errorcheckfile//'" u '//&
                                '3:4 w boxes lc rgb "blue"'
 
         write(gnuplotchannel,*) 'min_x = ', min_rmsd3
@@ -3752,11 +3770,11 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                                                '"1e1" log10(10.0))'
         write(gnuplotchannel,*) 'set xrange [1.1*min_x:max(1.1*max_x,0.9*max_x)]'
         write(gnuplotchannel,*) 'set xlabel "Error Relative to Maximum Error"'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//"binned_ratio"//errorcheckfile//'" u '//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"binned_ratio"//errorcheckfile//'" u '//&
                                '5:6 w boxes lc rgb "red"'
         close(gnuplotchannel)
         
-        call system(path_to_gnuplot//"gnuplot < "//gnuplotfile)
+        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 !       call sleep(5)
 
@@ -3781,7 +3799,7 @@ subroutine plotFinalErrorCheck1(Nsamples)
         min_var = var_maxvar
         min_convergence = 1.0d9
         max_convergence = -1.0d9
-        open(filechannel2,file=gridpath0//"convergence"//errorcheckfile)
+        open(filechannel2,file=gridpath5//"convergence"//errorcheckfile)
         do
                 read(filechannel2,iostat=iostate,FMT=*) vals,&
                         dropoff_mean,dropoff_SD,&
@@ -3796,10 +3814,10 @@ subroutine plotFinalErrorCheck1(Nsamples)
         end do
         close(filechannel2)
 
-        open(gnuplotchannel,file=gnuplotfile)
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
         write(gnuplotchannel,FMT="(A)") &
-                'set output "'//gridpath0//'LocalErrorConvergence.png"'
+                'set output "'//gridpath5//'LocalErrorConvergence.png"'
         write(gnuplotchannel,*) 'set title "Local Error Convergence over a Trajectory"'
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.05,0.925'
@@ -3854,11 +3872,11 @@ subroutine plotFinalErrorCheck1(Nsamples)
 !                                                  '"5e-1"      log10(.5), '//&
                                                    ' "1.0"       log10(1), '//&
                                            ')'
-        write(gnuplotchannel,*) 'plot "'//gridpath0//'convergence'//errorcheckfile//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//'convergence'//errorcheckfile//&
                 '" u 1:2:5 linecolor palette pt 7 ps 1'
         close(gnuplotchannel)
 
-        call system(path_to_gnuplot//"gnuplot < "//gnuplotfile)
+        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 end subroutine plotFinalErrorCheck1
 

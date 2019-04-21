@@ -6,6 +6,10 @@ implicit none
 !wants to analyze from a grid that was made.
 !Analysis is done in roughly the order they appear here
 
+!The name of this experiment
+integer,parameter :: expfolder_length = 7
+character(expfolder_length),parameter :: expfolder = "exp001/"
+
 !Set the number of grids to be analyzed; will start at 001 and increment
 !If this number is larger than the number of grids in the folder,
 !then it will default to the number of grids in the folder
@@ -45,8 +49,8 @@ logical,parameter :: testtraj_flag = .true.
    !Set .true. if you want to use the initial conditions of a
    !previous test; specify which one in the variable that follows
    logical,parameter :: useoldinitialbonddata_flag = .false.
-   integer,parameter :: initialbondname_length = 40
-   character(initialbondname_length),parameter :: initialbondname = ""
+   integer,parameter :: initialbondfolder_length = 40
+   character(initialbondfolder_length),parameter :: initialbondfolder = ""
 
    !Set how many trajectories will be generated for the test
    !If old data is being used, this number will be decreased internally
@@ -102,12 +106,15 @@ logical,parameter :: testtraj_flag = .true.
       !added to the grid
       integer :: grid_addition = 0
 
+      !Set .true. if you are continuing a previous analysis
+      logical,parameter :: continue_analysis = .false.
+
       !$OMP THREADPRIVATE(reject_flag,accept_first,accept_worst)
 
          !Set .true. if interpolation should be used; that is to say
          !a weighted combination of acceptable frames are used to
          !calculate an approximate gradient
-         logical :: interpolation_flag = .true.
+         logical :: interpolation_flag = .false.
 
          !Interpolation requires a scaling parameter for the weights
          !This is a positive, nonzero real number
@@ -163,6 +170,7 @@ integer,parameter :: comparison_number = 1
 character(11),parameter :: allprefixes = "placeholder"
 integer,dimension(comparison_number),parameter :: alllengths = (/ 69 /)
 
+character(11),parameter :: analysisfile = "placeholder"
 
 
 contains

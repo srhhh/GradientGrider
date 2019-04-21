@@ -122,7 +122,7 @@ integer :: buffer1_size
 integer,dimension(Norder_max+1) :: subcellsearch_max1 = (/ 0, 3 /)
 integer,dimension(Norder_max+1) :: subcellsearch_max2 = (/ 0, 3 /)
 
-integer,dimension(Norder_max+1) :: subcellsearch_max = (/ 1, 5 /)
+integer,dimension(Norder_max+1) :: subcellsearch_max = (/ 0, 3 /)
 integer,dimension(Norder_max+1) :: local_frame_count
 
 !Assuming that each subcellsearch_max < 5
@@ -1088,12 +1088,23 @@ do l = 1, Norder_max+1
         Norder = Norder_order(l)
         
         !Read the frames in the cells and process their RMSDs
-        call getRMSD_1(var_index(:,Norder+1),population)
-        if (k == grid_addition) &
+        if (k == grid_addition) then
+                if ((l==1).or.(Totalnumber_of_frames == 0)) then
+                call getRMSD_1(var_index(:,Norder+1),population)
+                else
+                call getRMSD_2(var_index(:,Norder+1),population)
+                end if
                 local_frame_count(Norder+1) = population
+        else
+                if ((l==1).or.(Totalnumber_of_frames == 0)) then
+                call getRMSD_1(var_index(:,Norder+1),population)
+                else
+                end if
+        end if
         
         !If the cell is populated...
         if (population > 0) then
+                if ((l==1).or.(Totalnumber_of_frames == 0)) then
         
                 !However many frames are in the subcell we
                 !increment to number_of_frames
@@ -1102,6 +1113,8 @@ do l = 1, Norder_max+1
                 
                 !This is good enough, no need to look at more frames
                 stop_flag = .true.
+
+                end if
         end if
         
         !If the cell is unpopulated or a certain flag is true,
@@ -1122,7 +1135,9 @@ do l = 1, Norder_max+1
                 end do
         end if
         
-        if (stop_flag) exit
+        !Psyche!
+!       if (stop_flag) exit
+        if (population > 0) exit
 
 end do
 
@@ -1264,7 +1279,7 @@ integer,dimension(Nvar),intent(inout) :: var_index_diff
 logical,intent(inout) :: stop_flag
 
 if (currentVar == 1) then
-       stop_flag = .false.
+!      stop_flag = .false.
        var_index_diff = 0
        k = 0
 else
@@ -1738,6 +1753,116 @@ close(var_filechannel)
 
 end subroutine getRMSD_1
 
+subroutine getRMSD_2(var_index,population)
+use ls_rmsd_original
+use ANALYSIS
+use PARAMETERS
+implicit none
+
+!Inputs for file reading
+!character(*),intent(in) :: subcell
+integer,dimension(Nvar),intent(in) :: var_index
+
+character(50) :: var_filename
+character(150) :: subcell
+logical :: subcell_existence
+
+!Outputs from file reading
+integer,intent(out) :: population
+
+real(dp),dimension(Nvar) :: dummy_vals
+real(dp),dimension(3,Natoms) :: dummy_coords
+
+!Incremental integers and iostate checking
+integer :: i,j,k,iostate
+integer :: endpoint
+
+write(var_filename,FMT=var_multipleFMT&
+      (1+Norder*multipleFMT_length:(Norder+1)*multipleFMT_length) )&
+        var_index * multiplier(:,Norder+1)
+
+!Construct the subcell filename
+subcell = gridpath3//trim(var_filename)
+
+!See whether this subcell exists
+inquire(file=trim(subcell),exist=subcell_existence)
+
+if (.not. subcell_existence) then
+        population = 0
+        return
+else
+end if
+
+!Open the file corresponding to the cell
+if (unreadable_flag) then
+        open(var_filechannel,action="read",form="unformatted",&
+             file=trim(subcell))
+else
+        open(var_filechannel,action="read",&
+             file=trim(subcell))
+end if
+
+!Initialize a variable
+population = 1
+
+!Because the buffer may not be large enough to hold all the frames
+!and, theoretically, we don't know how many times we need to
+!increase the buffer, we need an overarching do loop that is capable
+!of increasing the buffer without bounds
+do
+        !Read the candidate frame
+        if (unreadable_flag) then
+
+                !In unformatted files, the first line are the variables
+                !which do not need to be stored
+                read(var_filechannel,iostat=iostate) &
+                        (dummy_vals(i),i=1,Nvar)
+
+                !If there are no more lines, stop; the population of the cell should be
+                !one less the number of times that this portion of the loop was called
+	        if (iostate /= 0) then
+                        population = population - 1
+                        exit
+                end if
+
+                !The next line is the coordinates
+                read(var_filechannel) &
+                       ((dummy_coords(i,j),i=1,3),j=1,Natoms)
+
+                !In unformatted files, the last line is the gradient
+                read(var_filechannel) &
+                        ((dummy_coords(i,j),i=1,3),j=1,Natoms)
+        else
+
+                !In formatted files, everything (variables, coordinates, and gradient)
+                !are stored in one line; FMT1 reads the variables
+                read(var_filechannel,FMT=FMT1,advance="no",iostat=iostate) &
+                        (dummy_vals(i),i=1,Nvar)
+
+                !If there are no more lines, stop; the population of the cell should be
+                !one less the number of times that this portion of the loop was called
+	        if (iostate /= 0) then
+                        population = population - 1
+                        exit
+                end if
+
+                !In formatted files, FMT3 reads the coordinates
+                read(var_filechannel,FMT=FMT7,advance="no") &
+                       ((dummy_coords(i,j),i=1,3),j=1,Natoms)
+
+                !In formatted files, FMT3 reads the gradient as well
+                read(var_filechannel,FMT=FMT3) &
+                        ((dummy_coords(i,j),i=1,3),j=1,Natoms)
+        end if
+
+        !Increment the number of frames visited
+        population = population + 1
+end do
+close(var_filechannel)
+
+end subroutine getRMSD_2
+
+
 
 
 
@@ -1778,7 +1903,7 @@ do l = 1, Norder_max+1
         Norder = Norder_order(l)
 
         population = local_frame_count(Norder+1)
-        
+
         if (population == var_overcrowd(Norder+1)) then
         
                 call frameAddition(vals,coords,gradient,&
@@ -1894,7 +2019,6 @@ integer,dimension(Nvar) :: var_index
 logical :: nolabel_flag = .true.
 
 integer :: i, j
-print *, "divyUp called"
 
 Norder = Norder + 1
 

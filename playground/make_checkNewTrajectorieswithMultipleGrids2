@@ -3,6 +3,7 @@ a.out : DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o ANALYSIS.o VARIABLES.o ls_rm
 
 FC = gfortran
 SOURCE = /home/kazuumi/Desktop/GradientGrider/playground/
+EXPSOURCE = /home/kazuumi/Desktop/GradientGrider/playground/
 
 DOUBLE.o : $(SOURCE)DOUBLE.f90
 	$(FC) -fopenmp -c $(SOURCE)DOUBLE.f90
@@ -14,8 +15,8 @@ VARIABLES.o : $(SOURCE)VARIABLES.f90
 	$(FC) -fopenmp -c $(SOURCE)VARIABLES.f90
 PHYSICS.o : $(SOURCE)PHYSICS.f90
 	$(FC) -fopenmp -c $(SOURCE)PHYSICS.f90
-ANALYSIS.o : $(SOURCE)ANALYSIS.f90
-	$(FC) -fopenmp -c $(SOURCE)ANALYSIS.f90
+ANALYSIS.o : $(EXPSOURCE)ANALYSIS.f90
+	$(FC) -fopenmp -c $(EXPSOURCE)ANALYSIS.f90
 ls_rmsd_original.o : $(SOURCE)ls_rmsd_original.f90
 	$(FC) -fopenmp -c $(SOURCE)ls_rmsd_original.f90
 #interactSingleGrid.o : $(SOURCE)interactSingleGrid.f90

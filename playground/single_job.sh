@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0500
+Ntraj_max=0700
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -97,7 +97,7 @@ threshold_rmsd=.150000d0
 threshold_rmsd1=.150000d0
 threshold_rmsd2=.100000d0
 threshold_rmsd3=.050000d0
-threshold_rmsd4=.010050d0
+threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 reject_flag=.false.
 accept_first=.false.
@@ -106,13 +106,24 @@ grid_addition=1
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=020
+Ntrajectories=015
 Nthreads=1
 
-#These are flags relating to using old data
-useolddata_flag=.false.
-useoldinitialbonddata_flag=.false.
-initialbondname="001reject.10000"
+#Names of the experiments
+exp1name=exp002
+exp2name=exp003
+exp3name=exp004
+exp4name=exp014
+exp5name=exp015
+
+#This flag states whether we are continuing an old experiment
+continue_analysis=.false.
+
+#If we want to use a fixed set of initial conditions,
+#specify which experiment they come from here
+useoldinitialbonddata_flag=.true.
+#initialbondfolder="001reject.10000"
+initialbondfolder=exp001/
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -138,11 +149,14 @@ declare -a prefixes
 #prefixes[0]="004accept.05000"
 #prefixes[1]="004accept.01000"
 #prefixes[2]="004accept.00500"
-prefixes[0]="001omegaA.50005"
-prefixes[1]="001omegaA.37505"
-prefixes[2]="001omegaA.25005"
-prefixes[3]="001omegaA.12505"
-prefixes[4]="001reject.05000"
+#prefixes[0]="001omegaA.50005"
+#prefixes[1]="001omegaA.37505"
+#prefixes[2]="001omegaA.25005"
+#prefixes[3]="001omegaA.12505"
+#prefixes[4]="001reject.05000"
+prefixes[0]="exp001"
+prefixes[1]="exp002"
+prefixes[2]="exp003"
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -152,10 +166,10 @@ prefixes[4]="001reject.05000"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Mar43test"
+newGRID="H2H2_Mar47test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
 
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
@@ -164,7 +178,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=3
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -196,6 +210,8 @@ mkdir $newPATH/
 cp $currentPATH/*.f90 $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 
+mkdir $gridPATH/startup/
+
 #Make changes to the parameters file as specified in the variables above
 #Unless you want to change MORE variables, don't touch this
 sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max| 
@@ -207,7 +223,7 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
      s|force_Duplicates = .*|force_Duplicates = $force_Duplicates|
      s|force_NoLabels = .*|force_NoLabels = $force_NoLabels|
      s|gridpath0 = .*|gridpath0 = \\&\\n\"$gridPATH/\"|
-     s|$oldPARAMETERS\\.f90|$newPARAMETERS.f90|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
+     s|character([0-9]*),parameter :: parametersfile = .*|character($((${#newPARAMETERS}+4))),parameter :: parametersfile = \"$newPARAMETERS.f90\"|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
 
 longtext="/default_scaling/{N;N;N;N;s|\\(default_scaling\\s=\\s&\\n\\s*reshape(\\s&\\)"
 longtext="$longtext""\\n.*\\n.*\\n"
@@ -226,9 +242,11 @@ longtext="$longtext""|}"
 
 sed -i "$longtext" $newPATH/$newPARAMETERS.f90
 
-
 #Make changes to the analysis file as specified in the variables above
-#This first post-grid-making analysis does nothing but look at the data
+#This analysis file controls any analysis done during grid creation:
+#particularly things like rejecting frames and not checking too many cells.
+#
+#It also controls the first post-grid-making analysis for the trajectories
 #in the grid that was just made (heatmap, scattering angle, etc)
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s|Norder_cap = [0-9]*|Norder_cap = $Norder_cap|
@@ -236,10 +254,10 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/trueSA_flag = .*/trueSA_flag = .true./
      s/trueED_flag = .*/trueED_flag = .true./
      s/testtraj_flag = .*/testtraj_flag = .false./
-     s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/continue_analysis = .*/continue_analysis = $continue_analysis/
      s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
-     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
-     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
+     s|initialbondfolder_length = .*|initialbondfolder_length = $((${#initialbondfolder}))|
+     s|initialbondfolder = .*|initialbondfolder = \"$initialbondfolder\"|
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/comparison_flag = .*/comparison_flag = .false./
@@ -249,13 +267,18 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
+     s/gather_interpolation_flag = .*/gather_interpolation_flag = .false./
      s/testheatmapSA_flag = .*/testheatmapSA_flag = .false./
-     s/testtrajSA_flag = .*/testtrajSA_flag = .false./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = .*/testtrajSA_flag = .false./
+     s|expfolder_length = .*|expfolder_length = 8|
+     s|expfolder = .*|expfolder = \"startup/\"|
+     s|character([0-9]*),parameter :: analysisfile = .*|character($((${#newANALYSIS}+4))),parameter :: analysisfile = \"$newANALYSIS.f90\"|" <$currentPATH/$oldANALYSIS.f90 >$gridPATH/startup/$newANALYSIS.f90
 
 #DO NOT TOUCH THIS
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
+     s|EXPSOURCE = .*|EXPSOURCE = $gridPATH/startup/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEGRID >$newPATH/$newMAKEGRID
 
@@ -263,6 +286,7 @@ sed "s/$oldPARAMETERS\\.o/$newPARAMETERS.o/
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
+     s|EXPSOURCE = .*|EXPSOURCE = $gridPATH/startup/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
@@ -275,18 +299,18 @@ make -f $newPATH/$newMAKEGRID
 
 echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
-echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
+echo "Grid Creation" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "GRIDMAKING %E  %U  %S  %P  %O" ./a.out
 ##valgrind --leak-check=yes ./a.out
 
-exit
+#exit
 
 make clean -f $newPATH/$newMAKEANALYSIS
 make -f $newPATH/$newMAKEANALYSIS
 
 echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
-echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
+echo "Post Analysis" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS00 %E  %U  %S  %P  %O" ./a.out
 
 fi
@@ -305,7 +329,7 @@ fi
 #While at the same time, updating all of the .f90 files
 #Remember, the parameters file should never change after creation!
 shopt -s extglob
-cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS|$oldPHYSICS|$oldVARIABLES)+(.f90) $newPATH/
+cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS|$oldPHYSICS|$oldVARIABLES|$oldANALYSIS|$newANALYSIS)+(.f90) $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
 
@@ -323,16 +347,19 @@ alllengths_statement=$(IFS=, ; echo "${alllengths[*]}")
 if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ]
 then
 
+rm -r $gridPATH/comparison/
+mkdir $gridPATH/comparison/
+
 #Change the comparison analysis as specified in the variables above
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = .false./
      s/trueSA_flag = .*/trueSA_flag = .false./
      s/trueED_flag = .*/trueED_flag = .false./
      s/testtraj_flag = .*/testtraj_flag = .false./
-     s/useolddata_flag = .*/useolddata_flag = .false./
+     s/continue_analysis = .*/continue_analysis = .false./
      s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
-     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
-     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
+     s|initialbondfolder_length = .*|initialbondfolder_length = $((${#initialbondfolder}))|
+     s|initialbondfolder = .*|initialbondfolder = \"$initialbondfolder\"|
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
@@ -349,11 +376,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/character(11),parameter :: allprefixes = .*/character(${#allprefixes}),parameter :: allprefixes = \"$allprefixes\"/
      s|alllengths = .*|alllengths = (/$alllengths_statement/)|
      s/testheatmapSA_flag = .*/testheatmapSA_flag = .false./
-     s/testtrajSA_flag = .*/testtrajSA_flag = .false./" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = .*/testtrajSA_flag = .false./
+     s|expfolder_length = .*|expfolder_length = 11|
+     s|expfolder = .*|expfolder = \"comparison/\"|
+     s|character([0-9]*),parameter :: analysisfile = .*|character($((${#newANALYSIS}+4))),parameter :: analysisfile = \"$newANALYSIS.f90\"|" <$currentPATH/$oldANALYSIS.f90 >$gridPATH/comparison/$newANALYSIS.f90
+
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
+     s|EXPSOURCE = .*|EXPSOURCE = $gridPATH/comparison/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
@@ -364,7 +396,7 @@ make -f $newPATH/$newMAKEANALYSIS
 
 echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
-echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
+echo "Comparison" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "COMPARISON %E  %U  %S  %P  %O" ./a.out
 
 fi
@@ -419,19 +451,22 @@ fi
 #While at the same time, updating all of the .f90 files
 #Remember, the parameters file should never change after creation!
 shopt -s extglob
-cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS|$oldPHYSICS|$oldVARIABLES)+(.f90) $newPATH/
+cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS|$oldPHYSICS|$oldVARIABLES|$oldANALYSIS|$newANALYSIS)+(.f90) $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
+
+rm -r $gridPATH/$exp1name/
+mkdir $gridPATH/$exp1name/
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
-     s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/continue_analysis = .*/continue_analysis = $continue_analysis/
      s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
-     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
-     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
+     s|initialbondfolder_length = .*|initialbondfolder_length = $((${#initialbondfolder}))|
+     s|initialbondfolder = .*|initialbondfolder = \"$initialbondfolder\"|
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
@@ -443,11 +478,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
-     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
+     s|expfolder_length = .*|expfolder_length = $((${#exp1name}+1))|
+     s|expfolder = .*|expfolder = \"$exp1name/\"|
+     s|character([0-9]*),parameter :: analysisfile = .*|character($((${#newANALYSIS}+4))),parameter :: analysisfile = \"$newANALYSIS.f90\"|" <$currentPATH/$oldANALYSIS.f90 >$gridPATH/$exp1name/$newANALYSIS.f90
+
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
+     s|EXPSOURCE = .*|EXPSOURCE = $gridPATH/$exp1name/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
@@ -458,7 +498,7 @@ make -f $newPATH/$newMAKEANALYSIS
 
 echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
-echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check ($exp1name)" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS01 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
@@ -475,15 +515,18 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
+rm -r $gridPATH/$exp2name/
+mkdir $gridPATH/$exp2name/
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
-     s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/continue_analysis = .*/continue_analysis = $continue_analysis/
      s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
-     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
-     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
+     s|initialbondfolder_length = .*|initialbondfolder_length = $((${#initialbondfolder}))|
+     s|initialbondfolder = .*|initialbondfolder = \"$initialbondfolder\"|
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
@@ -495,11 +538,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
-     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
+     s|expfolder_length = .*|expfolder_length = $((${#exp2name}+1))|
+     s|expfolder = .*|expfolder = \"$exp2name/\"|
+     s|character([0-9]*),parameter :: analysisfile = .*|character($((${#newANALYSIS}+4))),parameter :: analysisfile = \"$newANALYSIS.f90\"|" <$currentPATH/$oldANALYSIS.f90 >$gridPATH/$exp2name/$newANALYSIS.f90
+
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
+     s|EXPSOURCE = .*|EXPSOURCE = $gridPATH/$exp2name/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
@@ -508,7 +556,7 @@ make -f $newPATH/$newMAKEANALYSIS
 
 echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
-echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check ($exp2name)" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS02 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
@@ -525,15 +573,18 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
+rm -r $gridPATH/$exp3name/
+mkdir $gridPATH/$exp3name/
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
-     s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/continue_analysis = .*/continue_analysis = $continue_analysis/
      s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
-     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
-     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
+     s|initialbondfolder_length = .*|initialbondfolder_length = $((${#initialbondfolder}))|
+     s|initialbondfolder = .*|initialbondfolder = \"$initialbondfolder\"|
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
@@ -545,11 +596,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
-     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
+     s|expfolder_length = .*|expfolder_length = $((${#exp3name}+1))|
+     s|expfolder = .*|expfolder = \"$exp3name/\"|
+     s|character([0-9]*),parameter :: analysisfile = .*|character($((${#newANALYSIS}+4))),parameter :: analysisfile = \"$newANALYSIS.f90\"|" <$currentPATH/$oldANALYSIS.f90 >$gridPATH/$exp3name/$newANALYSIS.f90
+
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
+     s|EXPSOURCE = .*|EXPSOURCE = $gridPATH/$exp3name/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
@@ -558,7 +614,7 @@ make -f $newPATH/$newMAKEANALYSIS
 
 echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
-echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check ($exp3name)" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS03 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
@@ -575,15 +631,18 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
+rm -r $gridPATH/$exp4name/
+mkdir $gridPATH/$exp4name/
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
-     s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/continue_analysis = .*/continue_analysis = $continue_analysis/
      s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
-     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
-     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
+     s|initialbondfolder_length = .*|initialbondfolder_length = $((${#initialbondfolder}))|
+     s|initialbondfolder = .*|initialbondfolder = \"$initialbondfolder\"|
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
@@ -595,11 +654,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
-     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
+     s|expfolder_length = .*|expfolder_length = $((${#exp4name}+1))|
+     s|expfolder = .*|expfolder = \"$exp4name/\"|
+     s|character([0-9]*),parameter :: analysisfile = .*|character($((${#newANALYSIS}+4))),parameter :: analysisfile = \"$newANALYSIS.f90\"|" <$currentPATH/$oldANALYSIS.f90 >$gridPATH/$exp4name/$newANALYSIS.f90
+
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
+     s|EXPSOURCE = .*|EXPSOURCE = $gridPATH/$exp4name/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
@@ -608,7 +672,7 @@ make -f $newPATH/$newMAKEANALYSIS
 
 echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
-echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check ($exp4name)" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS04 %E  %U  %S  %P  %O" ./a.out
 
 ###############################################################################################################################################
@@ -625,15 +689,18 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
+rm -r $gridPATH/$exp5name/
+mkdir $gridPATH/$exp5name/
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
      s/trueED_flag = .*/trueED_flag = $trueED_flag/
      s/testtraj_flag = .*/testtraj_flag = $testtraj_flag/
-     s/useolddata_flag = .*/useolddata_flag = $useolddata_flag/
+     s/continue_analysis = .*/continue_analysis = $continue_analysis/
      s/useoldinitialbonddata_flag = .*/useoldinitialbonddata_flag = $useoldinitialbonddata_flag/
-     s|initialbondname_length = .*|initialbondname_length = $((${#initialbondname}))|
-     s/initialbondname = .*/initialbondname = \"$initialbondname\"/
+     s|initialbondfolder_length = .*|initialbondfolder_length = $((${#initialbondfolder}))|
+     s|initialbondfolder = .*|initialbondfolder = \"$initialbondfolder\"|
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
@@ -645,11 +712,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
-     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/" <$currentPATH/$oldANALYSIS.f90 >$newPATH/$newANALYSIS.f90
+     s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
+     s|expfolder_length = .*|expfolder_length = $((${#exp5name}+1))|
+     s|expfolder = .*|expfolder = \"$exp5name/\"|
+     s|character([0-9]*),parameter :: analysisfile = .*|character($((${#newANALYSIS}+4))),parameter :: analysisfile = \"$newANALYSIS.f90\"|" <$currentPATH/$oldANALYSIS.f90 >$gridPATH/$exp5name/$newANALYSIS.f90
+
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
      s|SOURCE = .*|SOURCE = $newPATH/|
+     s|EXPSOURCE = .*|EXPSOURCE = $gridPATH/$exp5name/|
      s/$oldANALYSIS\\.o/$newANALYSIS.o/
      s/$oldANALYSIS\\.f90/$newANALYSIS.f90/" <$currentPATH/$oldMAKEANALYSIS >$newPATH/$newMAKEANALYSIS
 
@@ -658,5 +730,5 @@ make -f $newPATH/$newMAKEANALYSIS
 
 echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
-echo "$Ntrajectories Trajectories Check" >> $newPATH/$bashout
+echo "$Ntrajectories Trajectories Check ($exp5name)" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "ANALYSIS05 %E  %U  %S  %P  %O" ./a.out
