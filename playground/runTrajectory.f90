@@ -515,11 +515,11 @@ end if
                                end do
                                approx_gradient = gradient
 
-                               do n = 1, Natoms
-                                        gradient(:,BOND_LABELLING_DATA(n)) = &
-                                                approx_gradient_prime(:,n)
-                               end do
-                               approx_gradient_prime = gradient
+!                              do n = 1, Natoms
+!                                       gradient(:,BOND_LABELLING_DATA(n)) = &
+!                                               approx_gradient_prime(:,n)
+!                              end do
+!                              approx_gradient_prime = gradient
 
                                if ((interpolation_flag).and.(gather_interpolation_flag)) then
 
@@ -537,17 +537,17 @@ end if
 
 !                                       if ((sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)&
 !                                               > .0001).and.(min_rmsd_prime < .005)) then
-                                        if ((sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)&
-                                                > .000001)) then
-                                               write(6,FMT=*) ""
-                                               write(6,FMT="(A,I7)") "Step: ", steps
-                                               write(6,FMT="(A,F9.6,1x,F9.6)") &
-                                                       "(mu1,E): ", min_rmsd_prime,&
-                                               sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)
-                                               write(6,FMT="(A,F9.6)") "rmsd:", largest_rmsd
-                                               write(6,FMT="(A,F7.3,1x,F7.3)") "vals: ", vals
-                                               write(6,FMT="(A,I5)") "Ninter: ", Ninterpolation
-                                        end if
+!                                       if ((sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)&
+!                                               > .000001)) then
+!                                              write(6,FMT=*) ""
+!                                              write(6,FMT="(A,I7)") "Step: ", steps
+!                                              write(6,FMT="(A,F9.6,1x,F9.6)") &
+!                                                      "(mu1,E): ", min_rmsd_prime,&
+!                                              sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)
+!                                              write(6,FMT="(A,F9.6)") "rmsd:", largest_rmsd
+!                                              write(6,FMT="(A,F7.3,1x,F7.3)") "vals: ", vals
+!                                              write(6,FMT="(A,I5)") "Ninter: ", Ninterpolation
+!                                       end if
 
                                         end if
 
@@ -575,6 +575,8 @@ end if
 
                                         end if
                                end if
+
+                               gradient = approx_gradient
                        end if
                 end if
 
@@ -588,7 +590,8 @@ end if
         deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
                    approximation_index)
 
-!       if (interpolation_flag) deallocate(acceptable_frame_mask,inputCLS)
+!       if (interpolation_flag)&
+                deallocate(acceptable_frame_mask,inputCLS)
 
         coords_final = coords
         velocities_final = velocities
@@ -1095,14 +1098,15 @@ end if
                        else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                call Acceleration(vals,coords,gradient)
                        else
+
                                !And we need to use the approximation after "unlabeling"
                                do n = 1, Natoms
-                                        gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
+                                        gradient(:,BOND_LABELLING_DATA(n)) = &
+                                                approx_gradient(:,n)
                                end do
+                               approx_gradient = gradient
 
                                if ((interpolation_flag).and.(gather_interpolation_flag)) then
-
-                                        approx_gradient = gradient
 
                                         call Acceleration(vals,coords,gradient)
 
@@ -1132,6 +1136,8 @@ end if
 
                                         end if
                                end if
+
+                               gradient = approx_gradient
                        end if
                 end if
 
@@ -2036,7 +2042,8 @@ if (gather_interpolation_flag) open(filechannel3,file=gridpath5//interpolationfi
 
         deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
                    approximation_index)
-        if (interpolation_flag) deallocate(acceptable_frame_mask,inputCLS)
+        if (interpolation_flag)&
+                deallocate(acceptable_frame_mask,inputCLS)
 
         deallocate(rmsd_x_interpolated,rmsd_fx,&
                    rmsd_fx_interpolated,rmsd_x,&
