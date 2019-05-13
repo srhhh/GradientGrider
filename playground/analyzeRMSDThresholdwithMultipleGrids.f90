@@ -1571,8 +1571,14 @@ do
                 
         if (iostate /= 0) exit
 
+        if ((delta_vals(1)>0).and.(delta_vals(2)>0)) then
         if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
             (abs(vals2-vals(2)) > delta_vals(2))) cycle
+
+        else
+        if ((abs(vals1-vals(1)) <= abs(delta_vals(1))).or.&
+            (abs(vals2-vals(2)) <= abs(delta_vals(2)))) cycle
+        end if
 
         if ((error_best == 0.0d0).and.&
                 (error_interpolated==0.0d0)) then
@@ -1691,8 +1697,14 @@ do n = 1, Ntrials
         read(filechannel2,FMT=*) RMSD_trials(n)
         close(filechannel2)
 
+        if ((delta_vals(1)>0).and.(delta_vals(2)>0)) then
         if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
             (abs(vals2-vals(2)) > delta_vals(2))) cycle
+
+        else
+        if ((abs(vals1-vals(1)) <= abs(delta_vals(1))).or.&
+            (abs(vals2-vals(2)) <= abs(delta_vals(2)))) cycle
+        end if
 
         backspace(filechannel1)
 !       read(filechannel1,FMT="(27A,A)") longtext
@@ -1751,11 +1763,12 @@ end do
 
 if (Nbins == 0) Nbins = 50
 !if (Nbins < 30) Nbins = Nbins * 2
+if (Nbins > 100) Nbins = 100
 
 Ninterpolation_binwidth = ceiling((max_Ninterpolation -&
         min_Ninterpolation) *1.0d0/ Nbins)
 
-if (Nbins > 100) Nbins = 100
+!if (Nbins > 100) Nbins = 100
 
 error_ratio_binwidth = log10(max_error_ratio /&
         min_error_ratio) *1.0d0/ Nbins
@@ -1801,7 +1814,7 @@ close(filechannel1)
 open(filechannel1,file=gridpath5//"Ninterpolation_binning.dat")
 do n = 1, Nbins
         write(filechannel1,FMT=*) min_Ninterpolation + &
-                Ninterpolation_binwidth*n,&
+                Ninterpolation_binwidth*(n-0.5),&
                 Ninterpolation_binning(:,n)
 end do
 close(filechannel1)

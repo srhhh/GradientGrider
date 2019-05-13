@@ -992,8 +992,9 @@ subroutine checkMultipleTrajectories(filechannels,&
         do steps = 1, Nsteps
 
                 !Just for bug-testing
-                if (.false.) then !(modulo(steps,50) == 1) then
-                        open(filechannel1,file=gridpath0//trajectoryfile,position="append")
+                if (modulo(steps,50) == 1) then
+!               if (.false.) then
+                        open(filechannel1,file=gridpath5//trajectoryfile,position="append")
                         write(filechannel1,'(I6)') Natoms
                         write(filechannel1,*) ""
                         do n = 1, Natoms

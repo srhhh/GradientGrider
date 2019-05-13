@@ -99,18 +99,18 @@ threshold_rmsd2=.100000d0
 threshold_rmsd3=.050000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
-reject_flag=.false.
+reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
-grid_addition=1
+grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=015
+Ntrajectories=700
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp002
+exp1name=exp004
 exp2name=exp003
 exp3name=exp004
 exp4name=exp014
@@ -121,7 +121,7 @@ continue_analysis=.false.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.true.
+useoldinitialbonddata_flag=.false.
 #initialbondfolder="001reject.10000"
 initialbondfolder=exp001/
 
@@ -136,9 +136,10 @@ initialbondfolder=exp001/
 
 #If the comparison lower and upper limits are the same, the program will
 #use whatever the minimum and maximum is of the data (bad if outliers exist)
-comparison_flag=notRotationalEnergyChange
+comparison_flag=ScatteringAngle
 comparison_lowerlimit="0.0d0"
-comparison_upperlimit="0.0180d0"
+comparison_upperlimit="0.2500d0"
+#comparison_upperlimit="0.0180d0"
 
 declare -a prefixes
 #prefixes[0]="001accept.15000"
@@ -154,9 +155,9 @@ declare -a prefixes
 #prefixes[2]="001omegaA.25005"
 #prefixes[3]="001omegaA.12505"
 #prefixes[4]="001reject.05000"
-prefixes[0]="exp001"
-prefixes[1]="exp002"
-prefixes[2]="exp003"
+prefixes[0]="exp002"
+prefixes[1]="exp003"
+#prefixes[2]="exp003"
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -166,7 +167,7 @@ prefixes[2]="exp003"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Mar47test"
+newGRID="H2H2_Mar44test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -178,7 +179,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)

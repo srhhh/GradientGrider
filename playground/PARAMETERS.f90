@@ -55,7 +55,7 @@ character(15),parameter :: informaticsfile = "informatics.dat"
 !File for storing scattering angle data over multiple trajectories
 character(15),parameter :: SAfile = "SA_trajectories.dat"
 !File for storing initial bonding data over multiple trajectories
-character(22),parameter :: initialfile = "initbonds_trajectories.dat"
+character(26),parameter :: initialfile = "initbonds_trajectories.dat"
 !File for storing TRV energy changes
 character(16),parameter :: TRVfile = "TRV_trajectories.dat"
 !File for both Eenrgy Decomposition and Scattering Angle over multiple trajectories

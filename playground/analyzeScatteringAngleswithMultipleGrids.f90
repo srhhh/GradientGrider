@@ -1802,15 +1802,16 @@ write(gnuplotchannel,*) 'set lmargin 1'
 write(gnuplotchannel,*) 'set rmargin 1'
 write(gnuplotchannel,*) 'unset xtics'
 write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-write(Ntraj_text,FMT="(I0."//variable_length_text//")") Ntraj
+write(Ntraj_text,FMT="(I"//variable_length_text//")") Ntraj
 write(gnuplotchannel,*) 'set multiplot layout ',comparison_number,&
                         ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
                         '"'//SATRVname//' Distribution of '//trim(adjustl(Ntraj_text))//&
-                        ' Trajectories" font ",18" offset 0,3'
+                        ' Trajectories" font ",32" offset 0,-3'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
-write(gnuplotchannel,*) 'set ylabel "Occurence"'
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",24"'
 write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'set ytics font ",16"'
 
 if (SATRVname == "ScatteringAngle") then
         write(gnuplotchannel,*) 'scaling = 1'
@@ -1839,7 +1840,7 @@ do j = 1, Nbins
                                         max(minsd_penalty,referenceSDs(j)))**lambda_penalty
 end do
 
-write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1))//'" at graph 0.825, 0.9'
+!write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1))//'" at graph 0.825, 0.9'
 write(difference_text,FMT="(F8.4)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
 write(gnuplotchannel,*) 'set label 2" RMSD: '//difference_text//'" at graph 0.85,0.825'
 write(difference_text,FMT="(F8.4)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
@@ -1869,8 +1870,8 @@ do i = 1, comparison_number-1
                                                 max(minsd_penalty,referenceSDs(j)))**lambda_penalty
         end do
 
-        write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
-                                '" at graph 0.825, 0.9'
+!        write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
+!                                '" at graph 0.825, 0.9'
         write(difference_text,FMT="(F8.4)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
         write(gnuplotchannel,*) 'set label ',3*i+2,'" RMSD: '//difference_text//'" at graph 0.85,0.825'
         write(difference_text,FMT="(F8.2)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
@@ -1880,13 +1881,13 @@ do i = 1, comparison_number-1
         write(gnuplotchannel,*) 'unset label ', 3*i
         if (i == comparison_number-1) then
                 if (SATRVname == "ScatteringAngle") then
-                        write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)"'
+                        write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)" font ",24"'
                         write(gnuplotchannel,*) 'set xtics lowerlimit, 10*(upperlimit-lowerlimit)/',&
-                                                Nbins,', upperlimit'
+                                                Nbins,', upperlimit font ",16"'
                         write(gnuplotchannel,*) "set format x '%.3P π'"
                 else
-                        write(gnuplotchannel,*) 'set xlabel "Energy Change (meV)"'
-                        write(gnuplotchannel,*) 'set xtics lowerlimit, 10*box_width, upperlimit'
+                        write(gnuplotchannel,*) 'set xlabel "Energy Change (meV)" font ",24"'
+                        write(gnuplotchannel,*) 'set xtics lowerlimit, 10*box_width, upperlimit font ",16"'
                         write(gnuplotchannel,*) "set format x '%.3f'"
                 end if
         end if

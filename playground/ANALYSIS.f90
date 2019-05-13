@@ -114,7 +114,7 @@ logical,parameter :: testtraj_flag = .true.
          !Set .true. if interpolation should be used; that is to say
          !a weighted combination of acceptable frames are used to
          !calculate an approximate gradient
-         logical :: interpolation_flag = .false.
+         logical :: interpolation_flag = .true.
 
          !Interpolation requires a scaling parameter for the weights
          !This is a positive, nonzero real number

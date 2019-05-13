@@ -210,16 +210,15 @@ end do
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-inquire(file=gridpath0//expfolder//progressfile,&
-        exist=file_exists)
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+inquire(file=gridpath5//initialfile,exist=file_exists)
 
 if ((.not.(continue_analysis)).and.(file_exists)) then
         print *, "Cannot go on; will overwrite old experiment"
         return_flag = .true.
 end if
-
-gridpath4 = gridpath0//expfolder
-gridpath5 = gridpath4//intermediatefolder
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -257,7 +256,7 @@ Ngrid_total = min(Ngrid_cap, Ngrid_max)
 initial_n_testtraj = 1
 
 if ((.not.(continue_analysis)).or.(.not.file_exists)) then
-        call system("mkdir "//gridpath4)
+!       call system("mkdir "//gridpath4)
         call system("mkdir "//gridpath5)
         call system("mkdir "//gridpath4//interpolationfolder)
 else
@@ -278,8 +277,8 @@ else
         write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
         write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
         write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-        call system("ls "//gridpath4//Ngrid_text//"/ | grep -E '^"//&
-                    "[0123456789]{"//trim(adjustl(variable_length_text))//&
+        call system("ls "//gridpath5//" | grep -E '^"//Ngrid_text//&
+                    "_[0123456789]{"//trim(adjustl(variable_length_text))//&
                     "}.dat' > "//gridpath5//trajectories)
 
         !Then we simply have to read the file to see how many we have
@@ -717,9 +716,25 @@ end if
 
 if (gather_interpolation_flag) then
 if (.not.comparison_flag) then
-        if (interpolation_flag) &
+        if (interpolation_flag) then
+        call system("rm "//gridpath4//interpolationfolder//"*")
+        call processInterpolationFile2((/0.0d0,0.0d0/),&
+                (/100.0d0,100.0d0/))
         call getRMSDinterpolation2((/0.0d0,0.0d0/),&
-                (/100.0d0,100.0d0/),"TDDCED.png")
+                (/100.0d0,100.0d0/),"TDDCED_All.png")
+!       call system("rm "//gridpath4//interpolationfolder//"*")
+!       call processInterpolationFile2((/2.990d0,3.780d0/),&
+!               (/0.05d0,0.05d0/))
+!       call getRMSDinterpolation2((/2.990d0,3.780d0/),&
+!               (/0.05d0,0.05d0/),"TDDCED_Collision.png")
+!       call system("rm "//gridpath4//interpolationfolder//"*")
+!       call processInterpolationFile2((/2.990d0,3.780d0/),&
+!               (/-0.05d0,-0.05d0/))
+!       call getRMSDinterpolation2((/2.990d0,3.780d0/),&
+!               (/-0.05d0,-0.05d0/),"TDDCED_NonCollision.png")
+        end if
+
+!TDDCED comparison currently in disarray
 else
         call system("cp "//gridpath0//&
                 allprefixes(1:alllengths(1))//&
