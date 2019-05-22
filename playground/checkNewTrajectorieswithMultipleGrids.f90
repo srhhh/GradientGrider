@@ -728,11 +728,10 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-if (gather_interpolation_flag) then
-
-
 if (.not.comparison_flag) then
-        if (interpolation_flag) then
+
+if ((gather_interpolation_flag).and.&
+        (interpolation_flag)) then
 
         call itime(now)
         write(6,FMT=FMTnow) now
@@ -752,7 +751,7 @@ if (.not.comparison_flag) then
         call system("rm "//gridpath0//comparison_file)
         call system('echo "2.990 3.780 -0.55 -0.55" >>'//gridpath0//comparison_file)
         call getRMSDinterpolation2("TDDRED_NonCollision")
-        end if
+end if
 
 !TDDCED comparison currently in disarray
 else
@@ -822,16 +821,29 @@ else
 !       else
 !       end if
 
-        i = INDEX(comparison_SATRVname,"Interpolation")+13
+i = INDEX(comparison_SATRVname,"Interpolation")+13
+if ((i > 13).and.(&
+        (trim(adjustl(comparison_SATRVname(i:)))=="ARD").or.&
+        (trim(adjustl(comparison_SATRVname(i:)))=="IRD").or.&
+        (trim(adjustl(comparison_SATRVname(i:)))=="RSV1D").or.&
+        (trim(adjustl(comparison_SATRVname(i:)))=="RSV2D").or.&
+        (trim(adjustl(comparison_SATRVname(i:)))=="AED").or.&
+        (trim(adjustl(comparison_SATRVname(i:)))=="IED").or.&
+        (trim(adjustl(comparison_SATRVname(i:)))=="RED")&
+                 )) then
 
         call itime(now)
         write(6,FMT=FMTnow) now
-!       print *, "   Making plot: ", trim(adjustl(comparison_SATRVname))(14:)
         print *, "   Making plot: ", trim(adjustl(comparison_SATRVname(i:)))
         print *, ""
 
-!       call getInterpolationplot(trim(adjustl(comparison_SATRVname))(14:))
         call getInterpolationplot(trim(adjustl(comparison_SATRVname(i:))))
+
+        print *, ""
+        call itime(now)
+        write(6,FMT=FMTnow) now
+        print *, "Successfully exited analysis"
+        print *, ""
 
         return
 end if

@@ -1530,20 +1530,22 @@ character(12) :: short_prefix_text
 
 !VARIABLES IN THE INTERPOLATION FILE
 real(dp),dimension(Nvar) :: vals
-real(dp) :: rmsd_best,rmsd_interpolated
-real(dp) :: min_error_interpolated,max_error_interpolated,error_interpolated
-real(dp) :: min_rsv1,max_rsv1,rsv1
-real(dp) :: min_rsv2,max_rsv2,rsv2
-real(dp) :: min_error_ratio,max_error_ratio,error_ratio
-real(dp) :: min_error_best, max_error_best, error_best
-real(dp) :: min_rmsd_interpolated, max_rmsd_interpolated
+!real(dp) :: rmsd_best,rmsd_interpolated
+!real(dp) :: min_error_interpolated,max_error_interpolated,error_interpolated
+!real(dp) :: min_rsv1,max_rsv1,rsv1
+!real(dp) :: min_rsv2,max_rsv2,rsv2
+!real(dp) :: min_error_ratio,max_error_ratio,error_ratio
+!real(dp) :: min_error_best, max_error_best, error_best
+!real(dp) :: min_rmsd_interpolated, max_rmsd_interpolated
+real(dp),dimension(7) :: rsv, min_rsv, max_rsv
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
 
 integer :: frames,neginfinity_counter,posinfinity_counter
 !character(79) :: firstliner
 !character(113) :: firstliner
 !character(147) :: firstliner
-character(249) :: firstliner
+!character(249) :: firstliner
+character(1+3*10+2*7+2*7*17) :: firstliner
 
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
@@ -1557,127 +1559,134 @@ integer :: n
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
-min_rsv1 = 1.0d9
-max_rsv1 = 0.0d9
-
-min_rsv2 = 1.0d9
-max_rsv2 = 0.0d9
-
-min_error_best = 1.0d9
-max_error_best = 0.0d9
-
-min_error_interpolated = 1.0d9
-max_error_interpolated = 0.0d9
-
-min_error_ratio = 1.0d9
-max_error_ratio = 0.0d9
-
-min_rmsd_interpolated = 1.0d9
-max_rmsd_interpolated = 0.0d9
+!min_rsv1 = 1.0d9
+!max_rsv1 = 0.0d9
+!
+!min_rsv2 = 1.0d9
+!max_rsv2 = 0.0d9
+!
+!min_error_best = 1.0d9
+!max_error_best = 0.0d9
+!
+!min_error_interpolated = 1.0d9
+!max_error_interpolated = 0.0d9
+!
+!min_error_ratio = 1.0d9
+!max_error_ratio = 0.0d9
+!
+!min_rmsd_interpolated = 1.0d9
+!max_rmsd_interpolated = 0.0d9
 
 min_Ninterpolation = 1000
 max_Ninterpolation = 0
+
+min_rsv = 1.0d9
+max_rsv = 0.0d0
 
 frames = 0
 neginfinity_counter = 0
 posinfinity_counter = 0
 
-!write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
-!open(filechannel1,file=gridpath4//interpolationfolder//&
-!       short_prefix_text//interpolationfile)
-!        expfolder(1:expfolder_length-1)//&
-!        vals_interpolation_text//&
-!        interpolationfile)
 open(filechannel1,file=gridpath5//"truncated"//interpolationfile)
 open(filechannel2,file=gridpath5//interpolationfile)
 do 
-!       read(filechannel2,FMT=*,iostat=iostate) &
-!               vals, Ninterpolation, &
-!               rmsd_best, rmsd_interpolated, &
-!               error_best, error_interpolated
         read(filechannel2,FMT=*,iostat=iostate) &
                 vals, Ninterpolation, &
-                rsv1, rsv2, &
-                rmsd_best, rmsd_interpolated, &
-                error_best, error_interpolated
+!               rsv1, rsv2, &
+!               rmsd_best, rmsd_interpolated, &
+!               error_best, error_interpolated
+                rsv(3), rsv(4), &
+                rsv(1), rsv(2), &
+                rsv(5), rsv(6)
                 
         if (iostate /= 0) exit
 
-!       if ((delta_vals(1)>0).and.(delta_vals(2)>0)) then
-!       if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
-!           (abs(vals2-vals(2)) > delta_vals(2))) cycle
-
-!       else
-!       if ((abs(vals1-vals(1)) <= abs(delta_vals(1))).or.&
-!           (abs(vals2-vals(2)) <= abs(delta_vals(2)))) cycle
-!       end if
-
-        if ((error_best == 0.0d0).and.&
-                (error_interpolated==0.0d0)) then
-                error_ratio = 1.0d0
+!       if ((error_best == 0.0d0).and.&
+!               (error_interpolated==0.0d0)) then
+!               error_ratio = 1.0d0
+!               write(filechannel1,FMT=*) &
+!                       vals, Ninterpolation, &
+!                       error_ratio,error_best,error_interpolated,&
+!                       rmsd_interpolated,rsv1,rsv2
+        if ((rsv(5) == 0.0d0).and.(rsv(6)==0.0d0)) then
+                rsv(7) = 1.0d0
                 write(filechannel1,FMT=*) &
-                        vals, Ninterpolation, &
-                        error_ratio,error_best,error_interpolated,&
-                        rmsd_interpolated,rsv1,rsv2
+                        vals, Ninterpolation, rsv
 
-                min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
-                max_Ninterpolation = max(max_Ninterpolation, Ninterpolation)
+                min_Ninterpolation = min(min_Ninterpolation,&
+                        Ninterpolation)
+                max_Ninterpolation = max(max_Ninterpolation,&
+                        Ninterpolation)
+
+                do n = 1, 7
+                        min_rsv(n) = min(min_rsv(n),rsv(n))
+                        max_rsv(n) = max(max_rsv(n),rsv(n))
+                end do
                 
-                min_error_ratio = min(min_error_ratio,error_ratio)
-                max_error_ratio = max(max_error_ratio,error_ratio)
+!               min_error_ratio = min(min_error_ratio,error_ratio)
+!               max_error_ratio = max(max_error_ratio,error_ratio)
 
-                min_error_best = min(min_error_best,error_best)
-                max_error_best = max(max_error_best,error_best)
+!               min_error_best = min(min_error_best,error_best)
+!               max_error_best = max(max_error_best,error_best)
 
-                min_error_interpolated = min(min_error_interpolated,error_interpolated)
-                max_error_interpolated = max(max_error_interpolated,error_interpolated)
+!               min_error_interpolated = min(min_error_interpolated,error_interpolated)
+!               max_error_interpolated = max(max_error_interpolated,error_interpolated)
 
-                min_rmsd_interpolated = min(min_rmsd_interpolated,&
-                        rmsd_interpolated)
-                max_rmsd_interpolated = max(max_rmsd_interpolated,&
-                        rmsd_interpolated)
+!               min_rmsd_interpolated = min(min_rmsd_interpolated,&
+!                       rmsd_interpolated)
+!               max_rmsd_interpolated = max(max_rmsd_interpolated,&
+!                       rmsd_interpolated)
 
-                min_rsv1 = min(min_rsv1,rsv1)
-                max_rsv1 = max(max_rsv1,rsv1)
+!               min_rsv1 = min(min_rsv1,rsv1)
+!               max_rsv1 = max(max_rsv1,rsv1)
 
-                min_rsv2 = min(min_rsv2,rsv2)
-                max_rsv2 = max(max_rsv2,rsv2)
+!               min_rsv2 = min(min_rsv2,rsv2)
+!               max_rsv2 = max(max_rsv2,rsv2)
         
-        else if (error_best == 0.0d0) then
+!       else if (error_best == 0.0d0) then
+        else if (rsv(5) == 0.0d0) then
                 neginfinity_counter = neginfinity_counter + 1
 
-        else if (error_interpolated == 0.0d0) then
+!       else if (error_interpolated == 0.0d0) then
+        else if (rsv(6) == 0.0d0) then
                 posinfinity_counter = posinfinity_counter + 1
 
         else
-                error_ratio = error_best/error_interpolated
+!               error_ratio = error_best/error_interpolated
+                rsv(7) = rsv(5)/rsv(6)
                 write(filechannel1,FMT=*) &
-                        vals, Ninterpolation, &
-                        error_ratio,error_best,error_interpolated,&
-                        rmsd_interpolated,rsv1,rsv2
+!                       vals, Ninterpolation, &
+!                       error_ratio,error_best,error_interpolated,&
+!                       error_ratio,error_best,error_interpolated,&
+                        vals, Ninterpolation, rsv
 
                 min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
                 max_Ninterpolation = max(max_Ninterpolation, Ninterpolation)
+
+                do n = 1, 7
+                        min_rsv(n) = min(min_rsv(n),rsv(n))
+                        max_rsv(n) = max(max_rsv(n),rsv(n))
+                end do
         
-                min_error_ratio = min(min_error_ratio,error_ratio)
-                max_error_ratio = max(max_error_ratio,error_ratio)
+!               min_error_ratio = min(min_error_ratio,error_ratio)
+!               max_error_ratio = max(max_error_ratio,error_ratio)
 
-                min_error_best = min(min_error_best,error_best)
-                max_error_best = max(max_error_best,error_best)
+!               min_error_best = min(min_error_best,error_best)
+!               max_error_best = max(max_error_best,error_best)
 
-                min_error_interpolated = min(min_error_interpolated,error_interpolated)
-                max_error_interpolated = max(max_error_interpolated,error_interpolated)
+!               min_error_interpolated = min(min_error_interpolated,error_interpolated)
+!               max_error_interpolated = max(max_error_interpolated,error_interpolated)
 
-                min_rmsd_interpolated = min(min_rmsd_interpolated,&
-                        rmsd_interpolated)
-                max_rmsd_interpolated = max(max_rmsd_interpolated,&
-                        rmsd_interpolated)
+!               min_rmsd_interpolated = min(min_rmsd_interpolated,&
+!                       rmsd_interpolated)
+!               max_rmsd_interpolated = max(max_rmsd_interpolated,&
+!                       rmsd_interpolated)
 
-                min_rsv1 = min(min_rsv1,rsv1)
-                max_rsv1 = max(max_rsv1,rsv1)
+!               min_rsv1 = min(min_rsv1,rsv1)
+!               max_rsv1 = max(max_rsv1,rsv1)
 
-                min_rsv2 = min(min_rsv2,rsv2)
-                max_rsv2 = max(max_rsv2,rsv2)
+!               min_rsv2 = min(min_rsv2,rsv2)
+!               max_rsv2 = max(max_rsv2,rsv2)
         end if
 
         frames = frames + 1
@@ -1685,17 +1694,20 @@ end do
 close(filechannel1)
 close(filechannel2)
 
+!write(firstliner,FMT="(A1,3(I9,1x),2(I6,1x),"//&
+!        "2(E16.6,1x),2(E16.6,1x),2(E16.6,1x),"//&
+!        "2(E16.6,1x),2(E16.6,1x),2(E16.6,1x))") &
 write(firstliner,FMT="(A1,3(I9,1x),2(I6,1x),"//&
-        "2(E16.6,1x),2(E16.6,1x),2(E16.6,1x),"//&
-        "2(E16.6,1x),2(E16.6,1x),2(E16.6,1x))") &
+        "2(7(E16.6,1x)))") &
         "#",posinfinity_counter,&
         neginfinity_counter, frames, &
         min_Ninterpolation, max_Ninterpolation,&
-        min_error_ratio, max_error_ratio,&
-        min_error_best, max_error_best,&
-        min_error_interpolated, max_error_interpolated,&
-        min_rmsd_interpolated, max_rmsd_interpolated,&
-        min_rsv1, max_rsv1, min_rsv2, max_rsv2
+!       min_error_ratio, max_error_ratio,&
+!       min_error_best, max_error_best,&
+!       min_error_interpolated, max_error_interpolated,&
+!       min_rmsd_interpolated, max_rmsd_interpolated,&
+!       min_rsv1, max_rsv1, min_rsv2, max_rsv2
+        min_rsv, max_rsv
 
 !call system("sed -i '1i\"//firstliner//"' '"//&
 !        gridpath4//interpolationfolder//&
@@ -1732,18 +1744,20 @@ character(Ngrid_text_length) :: Ngrid_text
 integer,dimension(comparison_number,3),intent(out) :: counters
 integer,dimension(comparison_number) :: frames_trials
 
-real(dp) :: lower_rsv1,upper_rsv1
-real(dp) :: min_rsv1,max_rsv1,rsv1
-real(dp) :: lower_rsv2,upper_rsv2
-real(dp) :: min_rsv2,max_rsv2,rsv2
-real(dp) :: lower_error_ratio,upper_error_ratio
-real(dp) :: min_error_ratio,max_error_ratio,error_ratio
-real(dp) :: lower_error_best,upper_error_best
-real(dp) :: min_error_best,max_error_best,error_best
-real(dp) :: lower_error_interpolated,upper_error_interpolated
-real(dp) :: min_error_interpolated,max_error_interpolated,error_interpolated
-real(dp) :: lower_rmsd_interpolated,upper_rmsd_interpolated
-real(dp) :: min_rmsd_interpolated,max_rmsd_interpolated,rmsd_interpolated
+!real(dp) :: lower_rsv1,upper_rsv1
+!real(dp) :: min_rsv1,max_rsv1,rsv1
+!real(dp) :: lower_rsv2,upper_rsv2
+!real(dp) :: min_rsv2,max_rsv2,rsv2
+!real(dp) :: lower_error_ratio,upper_error_ratio
+!real(dp) :: min_error_ratio,max_error_ratio,error_ratio
+!real(dp) :: lower_error_best,upper_error_best
+!real(dp) :: min_error_best,max_error_best,error_best
+!real(dp) :: lower_error_interpolated,upper_error_interpolated
+!real(dp) :: min_error_interpolated,max_error_interpolated,error_interpolated
+!real(dp) :: lower_rmsd_interpolated,upper_rmsd_interpolated
+!real(dp) :: min_rmsd_interpolated,max_rmsd_interpolated,rmsd_interpolated
+real(dp),dimension(7) :: rsv, min_rsv, max_rsv
+real(dp),dimension(7) :: lower_rsv, upper_rsv
 integer :: lower_Ninterpolation,upper_Ninterpolation
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
 
@@ -1755,20 +1769,24 @@ integer :: iostate
 
 !HISTOGRAM VARIABLES
 real(dp) :: Ninterpolation_binwidth
-real(dp) :: error_ratio_binwidth,error_best_binwidth
-integer :: rsv1_bin, rsv2_bin
-real(dp) :: rsv1_binwidth,rsv2_binwidth
-real(dp) :: error_interpolated_binwidth,rmsd_interpolated_binwidth
-integer :: Ninterpolation_bin, error_ratio_bin
-integer :: error_best_bin, error_interpolated_bin
-integer :: rmsd_interpolated_bin
+integer :: Ninterpolation_bin
+real(dp), dimension(7) :: rsv_binwidth
+integer, dimension(7) :: rsv_bin
+!real(dp) :: error_ratio_binwidth,error_best_binwidth
+!integer :: rsv1_bin, rsv2_bin
+!real(dp) :: rsv1_binwidth,rsv2_binwidth
+!real(dp) :: error_interpolated_binwidth,rmsd_interpolated_binwidth
+!integer :: error_ratio_bin
+!integer :: error_best_bin, error_interpolated_bin
+!integer :: rmsd_interpolated_bin
 integer :: frames, Nbins
 real(dp),allocatable :: Ninterpolation_binning(:,:)
-real(dp),allocatable :: error_ratio_binning(:,:)
-real(dp),allocatable :: error_best_binning(:,:)
-real(dp),allocatable :: rmsd_interpolated_binning(:,:)
-real(dp),allocatable :: error_interpolated_binning(:,:)
-real(dp),allocatable :: rsv1_binning(:,:),rsv2_binning(:,:)
+!real(dp),allocatable :: error_ratio_binning(:,:)
+!real(dp),allocatable :: error_best_binning(:,:)
+!real(dp),allocatable :: rmsd_interpolated_binning(:,:)
+!real(dp),allocatable :: error_interpolated_binning(:,:)
+!real(dp),allocatable :: rsv1_binning(:,:),rsv2_binning(:,:)
+real(dp),allocatable :: rsv_binning(:,:,:)
 integer :: starting_index
 
 !INTEGER INCREMENTALS
@@ -1777,29 +1795,33 @@ integer :: n,m,l
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
+counters = 0
 frames_trials = 0
 frames = 0
 
-min_rsv1 = 1.0d9
-max_rsv1 = 0.0d9
-
-min_rsv2 = 1.0d9
-max_rsv2 = 0.0d9
-
-min_error_ratio = 1.0d9
-max_error_ratio = 0.0d9
-
-min_error_best = 1.0d9
-max_error_best = 0.0d9
-
-min_error_interpolated = 1.0d9
-max_error_interpolated = 0.0d9
-
-min_rmsd_interpolated = 1.0d9
-max_rmsd_interpolated = 0.0d9
+!min_rsv1 = 1.0d9
+!max_rsv1 = 0.0d9
+!
+!min_rsv2 = 1.0d9
+!max_rsv2 = 0.0d9
+!
+!min_error_ratio = 1.0d9
+!max_error_ratio = 0.0d9
+!
+!min_error_best = 1.0d9
+!max_error_best = 0.0d9
+!
+!min_error_interpolated = 1.0d9
+!max_error_interpolated = 0.0d9
+!
+!min_rmsd_interpolated = 1.0d9
+!max_rmsd_interpolated = 0.0d9
 
 min_Ninterpolation = 1000
 max_Ninterpolation = 0
+
+min_rsv = 1.0d9
+max_rsv = 0.0d9
 
 open(filechannel1,file=gridpath0//comparison_file)
 open(filechannel3,file=gridpath5//"tmp"//interpolationfile)
@@ -1823,54 +1845,66 @@ do n = 1, comparison_number
                 allprefixes(starting_index+1:sum(alllengths(1:n)))//&
                 intermediatefolder//"truncated"//interpolationfile)
 
+!       read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
+!               "2(G16.6,1x),2(G16.6,1x),2(G16.6,1x),"//&
+!               "2(G16.6,1x),2(G16.6,1x),2(G16.6,1x))",&
+!               iostat=iostate) &
+!               counters(n,1),counters(n,2),counters(n,3),&
+!               lower_Ninterpolation, upper_Ninterpolation,&
+!               lower_error_ratio, upper_error_ratio,&
+!               lower_error_best, upper_error_best,&
+!               lower_error_interpolated, upper_error_interpolated,&
+!               lower_rmsd_interpolated, upper_rmsd_interpolated,&
+!               lower_rsv1, upper_rsv1,lower_rsv2, upper_rsv2
         read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
-                "2(G16.6,1x),2(G16.6,1x),2(G16.6,1x),"//&
-                "2(G16.6,1x),2(G16.6,1x),2(G16.6,1x))",&
-                iostat=iostate) &
+                "2(7(G16.6,1x)))",iostat=iostate) &
                 counters(n,1),counters(n,2),counters(n,3),&
                 lower_Ninterpolation, upper_Ninterpolation,&
-                lower_error_ratio, upper_error_ratio,&
-                lower_error_best, upper_error_best,&
-                lower_error_interpolated, upper_error_interpolated,&
-                lower_rmsd_interpolated, upper_rmsd_interpolated,&
-                lower_rsv1, upper_rsv1,lower_rsv2, upper_rsv2
+                lower_rsv, upper_rsv
 
         min_Ninterpolation = min(min_Ninterpolation,&
                 lower_Ninterpolation)
         max_Ninterpolation = max(max_Ninterpolation,&
                 upper_Ninterpolation)
 
-        min_error_ratio = min(min_error_ratio,&
-                lower_error_ratio)
-        max_error_ratio = max(max_error_ratio,&
-                upper_error_ratio)
+        do m = 1, 7
+                min_rsv(m) = min(min_rsv(m),lower_rsv(m))
+                max_rsv(m) = max(max_rsv(m),upper_rsv(m))
+        end do
 
-        min_error_best = min(min_error_best,&
-                lower_error_best)
-        max_error_best = max(max_error_best,&
-                upper_error_best)
+!       min_error_ratio = min(min_error_ratio,&
+!               lower_error_ratio)
+!       max_error_ratio = max(max_error_ratio,&
+!               upper_error_ratio)
 
-        min_error_interpolated = min(min_error_interpolated,&
-                lower_error_interpolated)
-        max_error_interpolated = max(max_error_interpolated,&
-                upper_error_interpolated)
+!       min_error_best = min(min_error_best,&
+!               lower_error_best)
+!       max_error_best = max(max_error_best,&
+!               upper_error_best)
 
-        min_rmsd_interpolated = min(min_rmsd_interpolated,&
-                lower_rmsd_interpolated)
-        max_rmsd_interpolated = max(max_rmsd_interpolated,&
-                upper_rmsd_interpolated)
+!       min_error_interpolated = min(min_error_interpolated,&
+!               lower_error_interpolated)
+!       max_error_interpolated = max(max_error_interpolated,&
+!               upper_error_interpolated)
 
-        min_rsv1 = min(min_rsv1,lower_rsv1)
-        max_rsv1 = max(max_rsv1,upper_rsv1)
+!       min_rmsd_interpolated = min(min_rmsd_interpolated,&
+!               lower_rmsd_interpolated)
+!       max_rmsd_interpolated = max(max_rmsd_interpolated,&
+!               upper_rmsd_interpolated)
 
-        min_rsv2 = min(min_rsv2,lower_rsv2)
-        max_rsv2 = max(max_rsv2,upper_rsv2)
+!       min_rsv1 = min(min_rsv1,lower_rsv1)
+!       max_rsv1 = max(max_rsv1,upper_rsv1)
+
+!       min_rsv2 = min(min_rsv2,lower_rsv2)
+!       max_rsv2 = max(max_rsv2,upper_rsv2)
 
         do
+!               read(filechannel2,FMT=*,iostat=iostate)&
+!                       tmpvals, Ninterpolation, &
+!                       error_ratio,error_best,error_interpolated,&
+!                       rmsd_interpolated,rsv1,rsv2
                 read(filechannel2,FMT=*,iostat=iostate)&
-                        tmpvals, Ninterpolation, &
-                        error_ratio,error_best,error_interpolated,&
-                        rmsd_interpolated,rsv1,rsv2
+                        tmpvals, Ninterpolation, rsv
                 if (iostate /= 0) exit
 
                 tmpvals = abs(tmpvals-vals) - abs(delta_vals)
@@ -1891,9 +1925,10 @@ do n = 1, comparison_number
                 end if
 
                 frames_trials(n) = frames_trials(n) + 1
-                write(filechannel3,FMT=*) Ninterpolation,&
-                        error_ratio,error_best,error_interpolated,&
-                        rmsd_interpolated,rsv1,rsv2
+!               write(filechannel3,FMT=*) Ninterpolation,&
+!                       error_ratio,error_best,error_interpolated,&
+!                       rmsd_interpolated,rsv1,rsv2
+                write(filechannel3,FMT=*) Ninterpolation,rsv
         end do
         close(filechannel2)
 end do
@@ -1932,221 +1967,174 @@ Ninterpolation_binwidth = ceiling((max_Ninterpolation -&
 
 !if (Nbins > 100) Nbins = 100
 
-error_ratio_binwidth = log10(max_error_ratio /&
-        min_error_ratio) *1.0d0/ Nbins
-error_best_binwidth = log10(max_error_best /&
-        min_error_best) *1.0d0/ Nbins
-error_interpolated_binwidth = log10(max_error_interpolated /&
-        min_error_interpolated) *1.0d0/ Nbins
-rmsd_interpolated_binwidth = log10(max_rmsd_interpolated /&
-        min_rmsd_interpolated) *1.0d0/ Nbins
-rsv1_binwidth = log10(max_rsv1 / min_rsv1) *1.0d0/ Nbins
-rsv2_binwidth = log10(max_rsv2 / min_rsv2) *1.0d0/ Nbins
+!error_ratio_binwidth = log10(max_error_ratio /&
+!        min_error_ratio) *1.0d0/ Nbins
+!error_best_binwidth = log10(max_error_best /&
+!        min_error_best) *1.0d0/ Nbins
+!error_interpolated_binwidth = log10(max_error_interpolated /&
+!        min_error_interpolated) *1.0d0/ Nbins
+!rmsd_interpolated_binwidth = log10(max_rmsd_interpolated /&
+!        min_rmsd_interpolated) *1.0d0/ Nbins
+!rsv1_binwidth = log10(max_rsv1 / min_rsv1) *1.0d0/ Nbins
+!rsv2_binwidth = log10(max_rsv2 / min_rsv2) *1.0d0/ Nbins
+
+rsv_binwidth = log10(max_rsv/min_rsv)*1.0d0/Nbins
+
+!allocate(Ninterpolation_binning(3*comparison_number,Nbins),&
+!         error_best_binning(3*comparison_number,Nbins),&
+!         error_ratio_binning(3*comparison_number,Nbins),&
+!         rmsd_interpolated_binning(3*comparison_number,Nbins),&
+!         error_interpolated_binning(3*comparison_number,Nbins),&
+!         rsv1_binning(3*comparison_number,Nbins),&
+!         rsv2_binning(3*comparison_number,Nbins))
+!Ninterpolation_binning = 0
+!error_ratio_binning = 0
+!error_best_binning = 0
+!rmsd_interpolated_binning = 0
+!error_interpolated_binning = 0
+!rsv1_binning = 0
+!rsv2_binning = 0
 
 allocate(Ninterpolation_binning(3*comparison_number,Nbins),&
-         error_best_binning(3*comparison_number,Nbins),&
-         error_ratio_binning(3*comparison_number,Nbins),&
-         rmsd_interpolated_binning(3*comparison_number,Nbins),&
-         error_interpolated_binning(3*comparison_number,Nbins),&
-         rsv1_binning(3*comparison_number,Nbins),&
-         rsv2_binning(3*comparison_number,Nbins))
-Ninterpolation_binning = 0
-error_ratio_binning = 0
-error_best_binning = 0
-rmsd_interpolated_binning = 0
-error_interpolated_binning = 0
-rsv1_binning = 0
-rsv2_binning = 0
+         rsv_binning(7,3*comparison_number,Nbins))
+Ninterpolation_binning = 0.0d0
+rsv_binning = 0.0d0
 
 open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
 do n = 1, comparison_number
         do m = 1, frames_trials(n)
-                read(filechannel1,FMT=*) Ninterpolation,&
-                        error_ratio,error_best,error_interpolated,&
-                        rmsd_interpolated,rsv1,rsv2
+!               read(filechannel1,FMT=*) Ninterpolation,&
+!                       error_ratio,error_best,error_interpolated,&
+!                       rmsd_interpolated,rsv1,rsv2
+                read(filechannel1,FMT=*) Ninterpolation,rsv
         
-!               Ninterpolation_bin = floor((Ninterpolation&
-!                       - min_Ninterpolation)&
-!                       / Ninterpolation_binwidth) + 1
-!               if (Ninterpolation_bin < 1) Ninterpolation_bin = 1
-!               if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
-!       
-!               Ninterpolation_binning(n,Ninterpolation_bin) = &
-!                       Ninterpolation_binning(n,Ninterpolation_bin) + &
-!                       1.0d0/frames_trials(n)
-!       
-!               error_ratio_bin = floor(log10(error_ratio/min_error_ratio)/&
-!                       error_ratio_binwidth) + 1
-!               if (error_ratio_bin < 1) error_ratio_bin = 1
-!               if (error_ratio_bin > Nbins) error_ratio_bin = Nbins
-!       
-!               do l = 3*(n-1) + 1, 3*n
-!               if (Ninterpolation > 5*(modulo(l-1,3)) ) then
-!                       error_ratio_binning(l,error_ratio_bin) = &
-!                               error_ratio_binning(l,error_ratio_bin) + &
-!                               1.0d0/frames_trials(n)
-!               end if
-!               end do
-
-!               error_best_bin = floor(log10(error_best/min_error_best)/&
-!                       error_best_binwidth) + 1
-!               if (error_best_bin < 1) error_best_bin = 1
-!               if (error_best_bin > Nbins) error_best_bin = Nbins
-!       
-!               do l = 3*(n-1) + 1, 3*n
-!               if (Ninterpolation > 5*(modulo(l-1,3)) ) then
-!                       error_best_binning(l,error_best_bin) = &
-!                               error_best_binning(l,error_best_bin) + &
-!                               1.0d0/frames_trials(n)
-!               end if
-!               end do
-
                 Ninterpolation_bin = floor((Ninterpolation&
                         - min_Ninterpolation)&
                         / Ninterpolation_binwidth) + 1
                 if (Ninterpolation_bin < 1) Ninterpolation_bin = 1
                 if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
+
+                rsv_bin = floor(log10(rsv/min_rsv)/rsv_binwidth) + 1
+                do l = 1, 7
+                        if (rsv_bin(l) < 1) rsv_bin(l) = 1
+                        if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
+                end do
+
+!               error_ratio_bin = floor(log10(error_ratio/min_error_ratio)/&
+!                       error_ratio_binwidth) + 1
+!               if (error_ratio_bin < 1) error_ratio_bin = 1
+!               if (error_ratio_bin > Nbins) error_ratio_bin = Nbins
+
+!               error_best_bin = floor(log10(error_best/min_error_best)/&
+!                       error_best_binwidth) + 1
+!               if (error_best_bin < 1) error_best_bin = 1
+!               if (error_best_bin > Nbins) error_best_bin = Nbins
+
+!               error_interpolated_bin = floor(log10(error_interpolated/min_error_interpolated)/&
+!                       error_interpolated_binwidth) + 1
+!               if (error_interpolated_bin < 1) error_interpolated_bin = 1
+!               if (error_interpolated_bin > Nbins) error_interpolated_bin = Nbins
+
+!               rmsd_interpolated_bin = floor(log10(rmsd_interpolated/min_rmsd_interpolated)/&
+!                       rmsd_interpolated_binwidth) + 1
+!               if (rmsd_interpolated_bin < 1) rmsd_interpolated_bin = 1
+!               if (rmsd_interpolated_bin > Nbins) rmsd_interpolated_bin = Nbins
+
+!               rsv1_bin = floor(log10(rsv1/min_rsv1)/&
+!                       rsv1_binwidth) + 1
+!               if (rsv1_bin < 1) rsv1_bin = 1
+!               if (rsv1_bin > Nbins) rsv1_bin = Nbins
+
+!               rsv2_bin = floor(log10(rsv2/min_rsv2)/&
+!                       rsv2_binwidth) + 1
+!               if (rsv2_bin < 1) rsv2_bin = 1
+!               if (rsv2_bin > Nbins) rsv2_bin = Nbins
         
                 if (.true.) then
                         Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) = &
                                 Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) + &
                                 1.0d0/frames_trials(n)
+                        do l = 1, 7
+                                rsv_binning(l,3*(n-1)+1,rsv_bin(l)) =&
+                                        rsv_binning(l,3*(n-1)+1,rsv_bin(l)) +&
+                                        1.0d0/frames_trials(n)
+                        end do
+!                       error_ratio_binning(3*(n-1)+1,error_ratio_bin) = &
+!                               error_ratio_binning(3*(n-1)+1,error_ratio_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       error_best_binning(3*(n-1)+1,error_best_bin) = &
+!                               error_best_binning(3*(n-1)+1,error_best_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       error_interpolated_binning(3*(n-1)+1,error_interpolated_bin) = &
+!                               error_interpolated_binning(3*(n-1)+1,error_interpolated_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rmsd_interpolated_binning(3*(n-1)+1,rmsd_interpolated_bin) = &
+!                               rmsd_interpolated_binning(3*(n-1)+1,rmsd_interpolated_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rsv1_binning(3*(n-1)+1,rsv1_bin) = &
+!                               rsv1_binning(3*(n-1)+1,rsv1_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rsv2_binning(3*(n-1)+1,rsv2_bin) = &
+!                               rsv2_binning(3*(n-1)+1,rsv2_bin) + &
+!                               1.0d0/frames_trials(n)
                 end if
-                if (error_ratio < 1.0d1) then
+!               if (error_ratio < 1.0d1) then
+                if (rsv(7) < 1.0d1) then
                         Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) = &
                                 Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) + &
                                 1.0d0/frames_trials(n)
+                        do l = 1, 7
+                                rsv_binning(l,3*(n-1)+2,rsv_bin(l)) =&
+                                        rsv_binning(l,3*(n-1)+2,rsv_bin(l)) +&
+                                        1.0d0/frames_trials(n)
+                        end do
+!                       error_ratio_binning(3*(n-1)+2,error_ratio_bin) = &
+!                               error_ratio_binning(3*(n-1)+2,error_ratio_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       error_best_binning(3*(n-1)+2,error_best_bin) = &
+!                               error_best_binning(3*(n-1)+2,error_best_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       error_interpolated_binning(3*(n-1)+2,error_interpolated_bin) = &
+!                               error_interpolated_binning(3*(n-1)+2,error_interpolated_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rmsd_interpolated_binning(3*(n-1)+2,rmsd_interpolated_bin) = &
+!                               rmsd_interpolated_binning(3*(n-1)+2,rmsd_interpolated_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rsv1_binning(3*(n-1)+2,rsv1_bin) = &
+!                               rsv1_binning(3*(n-1)+2,rsv1_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rsv2_binning(3*(n-1)+2,rsv2_bin) = &
+!                               rsv2_binning(3*(n-1)+2,rsv2_bin) + &
+!                               1.0d0/frames_trials(n)
                 end if
-                if (error_ratio <= 1.0d0) then
+!               if (error_ratio <= 1.0d0) then
+                if (rsv(7) <= 1.0d0) then
                         Ninterpolation_binning(3*n,Ninterpolation_bin) = &
                                 Ninterpolation_binning(3*n,Ninterpolation_bin) + &
                                 1.0d0/frames_trials(n)
-                end if
-
-                error_ratio_bin = floor(log10(error_ratio/min_error_ratio)/&
-                        error_ratio_binwidth) + 1
-                if (error_ratio_bin < 1) error_ratio_bin = 1
-                if (error_ratio_bin > Nbins) error_ratio_bin = Nbins
-        
-                if (.true.) then
-                        error_ratio_binning(3*(n-1)+1,error_ratio_bin) = &
-                                error_ratio_binning(3*(n-1)+1,error_ratio_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio < 1.0d1) then
-                        error_ratio_binning(3*(n-1)+2,error_ratio_bin) = &
-                                error_ratio_binning(3*(n-1)+2,error_ratio_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio <= 1.0d0) then
-                        error_ratio_binning(3*n,error_ratio_bin) = &
-                                error_ratio_binning(3*n,error_ratio_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-
-                error_best_bin = floor(log10(error_best/min_error_best)/&
-                        error_best_binwidth) + 1
-                if (error_best_bin < 1) error_best_bin = 1
-                if (error_best_bin > Nbins) error_best_bin = Nbins
-
-                if (.true.) then
-                        error_best_binning(3*(n-1)+1,error_best_bin) = &
-                                error_best_binning(3*(n-1)+1,error_best_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio < 1.0d1) then
-                        error_best_binning(3*(n-1)+2,error_best_bin) = &
-                                error_best_binning(3*(n-1)+2,error_best_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio <= 1.0d0) then
-                        error_best_binning(3*n,error_best_bin) = &
-                                error_best_binning(3*n,error_best_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-
-                error_interpolated_bin = floor(log10(error_interpolated/min_error_interpolated)/&
-                        error_interpolated_binwidth) + 1
-                if (error_interpolated_bin < 1) error_interpolated_bin = 1
-                if (error_interpolated_bin > Nbins) error_interpolated_bin = Nbins
-
-                if (.true.) then
-                        error_interpolated_binning(3*(n-1)+1,error_interpolated_bin) = &
-                                error_interpolated_binning(3*(n-1)+1,error_interpolated_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio < 1.0d1) then
-                        error_interpolated_binning(3*(n-1)+2,error_interpolated_bin) = &
-                                error_interpolated_binning(3*(n-1)+2,error_interpolated_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio <= 1.0d0) then
-                        error_interpolated_binning(3*n,error_interpolated_bin) = &
-                                error_interpolated_binning(3*n,error_interpolated_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-
-                rmsd_interpolated_bin = floor(log10(rmsd_interpolated/min_rmsd_interpolated)/&
-                        rmsd_interpolated_binwidth) + 1
-                if (rmsd_interpolated_bin < 1) rmsd_interpolated_bin = 1
-                if (rmsd_interpolated_bin > Nbins) rmsd_interpolated_bin = Nbins
-
-                if (.true.) then
-                        rmsd_interpolated_binning(3*(n-1)+1,rmsd_interpolated_bin) = &
-                                rmsd_interpolated_binning(3*(n-1)+1,rmsd_interpolated_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio < 1.0d1) then
-                        rmsd_interpolated_binning(3*(n-1)+2,rmsd_interpolated_bin) = &
-                                rmsd_interpolated_binning(3*(n-1)+2,rmsd_interpolated_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio <= 1.0d0) then
-                        rmsd_interpolated_binning(3*n,rmsd_interpolated_bin) = &
-                                rmsd_interpolated_binning(3*n,rmsd_interpolated_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-
-                rsv1_bin = floor(log10(rsv1/min_rsv1)/&
-                        rsv1_binwidth) + 1
-                if (rsv1_bin < 1) rsv1_bin = 1
-                if (rsv1_bin > Nbins) rsv1_bin = Nbins
-
-                if (.true.) then
-                        rsv1_binning(3*(n-1)+1,rsv1_bin) = &
-                                rsv1_binning(3*(n-1)+1,rsv1_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio < 1.0d1) then
-                        rsv1_binning(3*(n-1)+2,rsv1_bin) = &
-                                rsv1_binning(3*(n-1)+2,rsv1_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio <= 1.0d0) then
-                        rsv1_binning(3*n,rsv1_bin) = &
-                                rsv1_binning(3*n,rsv1_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-
-                rsv2_bin = floor(log10(rsv2/min_rsv2)/&
-                        rsv2_binwidth) + 1
-                if (rsv2_bin < 1) rsv2_bin = 1
-                if (rsv2_bin > Nbins) rsv2_bin = Nbins
-
-                if (.true.) then
-                        rsv2_binning(3*(n-1)+1,rsv2_bin) = &
-                                rsv2_binning(3*(n-1)+1,rsv2_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio < 1.0d1) then
-                        rsv2_binning(3*(n-1)+2,rsv2_bin) = &
-                                rsv2_binning(3*(n-1)+2,rsv2_bin) + &
-                                1.0d0/frames_trials(n)
-                end if
-                if (error_ratio <= 1.0d0) then
-                        rsv2_binning(3*n,rsv2_bin) = &
-                                rsv2_binning(3*n,rsv2_bin) + &
-                                1.0d0/frames_trials(n)
+                        do l = 1, 7
+                                rsv_binning(l,3*n,rsv_bin(l)) =&
+                                        rsv_binning(l,3*n,rsv_bin(l)) +&
+                                        1.0d0/frames_trials(n)
+                        end do
+!                       error_ratio_binning(3*n,error_ratio_bin) = &
+!                               error_ratio_binning(3*n,error_ratio_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       error_best_binning(3*n,error_best_bin) = &
+!                               error_best_binning(3*n,error_best_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       error_interpolated_binning(3*n,error_interpolated_bin) = &
+!                               error_interpolated_binning(3*n,error_interpolated_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rmsd_interpolated_binning(3*n,rmsd_interpolated_bin) = &
+!                               rmsd_interpolated_binning(3*n,rmsd_interpolated_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rsv1_binning(3*n,rsv1_bin) = &
+!                               rsv1_binning(3*n,rsv1_bin) + &
+!                               1.0d0/frames_trials(n)
+!                       rsv2_binning(3*n,rsv2_bin) = &
+!                               rsv2_binning(3*n,rsv2_bin) + &
+!                               1.0d0/frames_trials(n)
                 end if
         end do
 end do
@@ -2163,61 +2151,89 @@ do n = 1, Nbins
 end do
 close(filechannel1)
 
-!open(filechannel1,file=gridpath5//"error_ratio_binning.dat")
-open(filechannel1,file=gridpath5//"InterpolationRED_binning.dat")
-do n = 1, Nbins
-        write(filechannel1,FMT=*) log10(min_error_ratio) + &
-                error_ratio_binwidth*n,&
-                error_ratio_binning(:,n)
-end do
-close(filechannel1)
+do l = 1, 7
 
-!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
-open(filechannel1,file=gridpath5//"InterpolationAED_binning.dat")
-do n = 1, Nbins
-        write(filechannel1,FMT=*) log10(min_error_best) + &
-                error_best_binwidth*n,&
-                error_best_binning(:,n)
-end do
-close(filechannel1)
+if (l == 1) open(filechannel1,file=gridpath5//&
+        "InterpolationARD_binning.dat")
+if (l == 2) open(filechannel1,file=gridpath5//&
+        "InterpolationIRD_binning.dat")
+if (l == 3) open(filechannel1,file=gridpath5//&
+        "InterpolationRSV1D_binning.dat")
+if (l == 4) open(filechannel1,file=gridpath5//&
+        "InterpolationRSV2D_binning.dat")
+if (l == 5) open(filechannel1,file=gridpath5//&
+        "InterpolationAED_binning.dat")
+if (l == 6) open(filechannel1,file=gridpath5//&
+        "InterpolationIED_binning.dat")
+if (l == 7) open(filechannel1,file=gridpath5//&
+        "InterpolationRED_binning.dat")
 
-open(filechannel1,file=gridpath5//"InterpolationIED_binning.dat")
 do n = 1, Nbins
-        write(filechannel1,FMT=*) log10(min_error_interpolated) + &
-                error_interpolated_binwidth*n,&
-                error_interpolated_binning(:,n)
+        write(filechannel1,FMT=*)&
+                log10(min_rsv(l)) +&
+                rsv_binwidth(l)*n,&
+                rsv_binning(l,:,n)
 end do
-close(filechannel1)
 
-!open(filechannel1,file=gridpath5//trim(adjustl(comparison_SATRVname))//&
-!        "_binning.dat")
-open(filechannel1,file=gridpath5//"InterpolationR1D_binning.dat")
-do n = 1, Nbins
-        write(filechannel1,FMT=*) log10(min_rmsd_interpolated) + &
-                rmsd_interpolated_binwidth*n,&
-                rmsd_interpolated_binning(:,n)
+close(filechannel1)
 end do
-close(filechannel1)
 
-!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
-open(filechannel1,file=gridpath5//"InterpolationRSV1D_binning.dat")
-do n = 1, Nbins
-        write(filechannel1,FMT=*) log10(min_rsv1) + &
-                rsv1_binwidth*n, rsv1_binning(:,n)
-end do
-close(filechannel1)
+!!open(filechannel1,file=gridpath5//"error_ratio_binning.dat")
+!open(filechannel1,file=gridpath5//"InterpolationRED_binning.dat")
+!do n = 1, Nbins
+!        write(filechannel1,FMT=*) log10(min_error_ratio) + &
+!                error_ratio_binwidth*n,&
+!                error_ratio_binning(:,n)
+!end do
+!close(filechannel1)
+!
+!!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
+!open(filechannel1,file=gridpath5//"InterpolationAED_binning.dat")
+!do n = 1, Nbins
+!        write(filechannel1,FMT=*) log10(min_error_best) + &
+!                error_best_binwidth*n,&
+!                error_best_binning(:,n)
+!end do
+!close(filechannel1)
+!
+!open(filechannel1,file=gridpath5//"InterpolationIED_binning.dat")
+!do n = 1, Nbins
+!        write(filechannel1,FMT=*) log10(min_error_interpolated) + &
+!                error_interpolated_binwidth*n,&
+!                error_interpolated_binning(:,n)
+!end do
+!close(filechannel1)
+!
+!!open(filechannel1,file=gridpath5//trim(adjustl(comparison_SATRVname))//&
+!!        "_binning.dat")
+!open(filechannel1,file=gridpath5//"InterpolationR1D_binning.dat")
+!do n = 1, Nbins
+!        write(filechannel1,FMT=*) log10(min_rmsd_interpolated) + &
+!                rmsd_interpolated_binwidth*n,&
+!                rmsd_interpolated_binning(:,n)
+!end do
+!close(filechannel1)
+!
+!!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
+!open(filechannel1,file=gridpath5//"InterpolationRSV1D_binning.dat")
+!do n = 1, Nbins
+!        write(filechannel1,FMT=*) log10(min_rsv1) + &
+!                rsv1_binwidth*n, rsv1_binning(:,n)
+!end do
+!close(filechannel1)
+!
+!!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
+!open(filechannel1,file=gridpath5//"InterpolationRSV2D_binning.dat")
+!do n = 1, Nbins
+!        write(filechannel1,FMT=*) log10(min_rsv2) + &
+!                rsv2_binwidth*n, rsv2_binning(:,n)
+!end do
+!close(filechannel1)
 
-!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
-open(filechannel1,file=gridpath5//"InterpolationRSV2D_binning.dat")
-do n = 1, Nbins
-        write(filechannel1,FMT=*) log10(min_rsv2) + &
-                rsv2_binwidth*n, rsv2_binning(:,n)
-end do
-close(filechannel1)
-
-deallocate(Ninterpolation_binning,error_ratio_binning,&
-        error_best_binning,error_interpolated_binning,&
-        rmsd_interpolated_binning,rsv1_binning,rsv2_binning)
+!deallocate(Ninterpolation_binning,error_ratio_binning,&
+!        error_best_binning,error_interpolated_binning,&
+!        rmsd_interpolated_binning,rsv1_binning,rsv2_binning)
+deallocate(Ninterpolation_binning,rsv_binning)
 
 end subroutine processMultipleInterpolationFiles
 
@@ -2245,7 +2261,7 @@ gridpath5 = gridpath4//intermediatefolder
 
 call processMultipleInterpolationFiles(counters)
 
-if (all(counters == 0)) then
+if (any(counters(:,3) == 0)) then
         return
 end if
 

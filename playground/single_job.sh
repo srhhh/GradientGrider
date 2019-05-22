@@ -112,14 +112,14 @@ Ntrajectories=10
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp069
+exp1name=exp079
 exp2name=exp031
 exp3name=exp029
 exp4name=exp014
 exp5name=exp015
 
 #This flag states whether we are continuing an old experiment
-continue_analysis=.false.
+continue_analysis=.true.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
@@ -181,7 +181,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -219,18 +219,18 @@ if [ "$1" != "" ]; then
         #RelativeEnergyChange (eV)
         #RotationalEnergyChange (eV)
 
-        if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ]
-	then
-		gather_interpolation_flag=.false.
-	elif [ $comparison_flag == "InterpolationTDD" ] || [ $comparison_flag == "InterpolationRED" ] || [ $comparison_flag == "InterpolationAED" ] || [ $comparison_flag == "InterpolationIED" ] || [ $comparison_flag == "InterpolationR1D" ] || [ $comparison_flag == "InterpolationRSV1D" ] || [ $comparison_flag == "InterpolationRSV2D" ]
-        then
-		gather_interpolation_flag=.true.
-	else
-		echo "" 
-		echo "Argument supplied does not have a first-line option that is offered!" 
-		echo "" 
-		exit
-	fi
+#       if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ]
+#then
+#	gather_interpolation_flag=.false.
+#elif [ $comparison_flag == "InterpolationTDD" ] || [ $comparison_flag == "InterpolationRED" ] || [ $comparison_flag == "InterpolationAED" ] || [ $comparison_flag == "InterpolationIED" ] || [ $comparison_flag == "InterpolationR1D" ] || [ $comparison_flag == "InterpolationRSV1D" ] || [ $comparison_flag == "InterpolationRSV2D" ]
+#       then
+#	gather_interpolation_flag=.true.
+#else
+#	echo "" 
+#	echo "Argument supplied does not have a first-line option that is offered!" 
+#	echo "" 
+#	exit
+#fi
 
 	read -r comparison_lowerlimit comparison_upperlimit <<<$(sed -n '2p' "$1")
 	read -r Ntrajectories <<<$(sed -n '3p' "$1")
@@ -286,7 +286,7 @@ if [ "$1" != "" ]; then
 		exit
         fi
 else
-	comparison_flag=nothing
+	comparison_flag=""
 	comparison_lowerlimit="0.0d0"
 	comparison_upperlimit="0.0d0"
 fi
@@ -446,7 +446,10 @@ do
 done
 alllengths_statement=$(IFS=, ; echo "${alllengths[*]}")
 
-if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ] || [ $comparison_flag == "InterpolationTDD" ] || [ $comparison_flag == "InterpolationRED" ] || [ $comparison_flag == "InterpolationAED" ] || [ $comparison_flag == "InterpolationIED" ] || [ $comparison_flag == "InterpolationR1D" ] || [ $comparison_flag == "InterpolationRSV1D" ] || [ $comparison_flag == "InterpolationRSV2D" ]
+#if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ] || [ $comparison_flag == "InterpolationTDD" ] || [ $comparison_flag == "InterpolationRED" ] || [ $comparison_flag == "InterpolationAED" ] || [ $comparison_flag == "InterpolationIED" ] || [ $comparison_flag == "InterpolationR1D" ] || [ $comparison_flag == "InterpolationRSV1D" ] || [ $comparison_flag == "InterpolationRSV2D" ]
+#then
+
+if [ "$comparison_flag" != "" ]
 then
 
 rm -r $gridPATH/comparison/
