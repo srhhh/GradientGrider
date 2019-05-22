@@ -490,6 +490,10 @@ if (testtrajDetailedRMSD_flag) then
 else
         approx_gradient_prime = approx_gradient
 end if
+                       do n = 1, Natoms
+                                gradient(:,BOND_LABELLING_DATA(n)) = &
+                                        approx_gradient(:,n)
+                       end do
 
                        !Update the gradient with either the approximation or by acclerating
                        !This is dependent on the threshold and the rejection method
@@ -510,10 +514,6 @@ end if
 !                      else
                        else if (gather_interpolation_flag) then
                                !And we need to use the approximation after "unlabeling"
-                               do n = 1, Natoms
-                                        gradient(:,BOND_LABELLING_DATA(n)) = &
-                                                approx_gradient(:,n)
-                               end do
                                approx_gradient = gradient
 
 !                              do n = 1, Natoms
@@ -1095,6 +1095,10 @@ if (testtrajDetailedRMSD_flag) then
 
         min_rmsd = min_rmsd_prime
 end if
+                       do n = 1, Natoms
+                                gradient(:,BOND_LABELLING_DATA(n)) = &
+                                        approx_gradient(:,n)
+                       end do
 
                        !Update the gradient with either the approximation or by acclerating
                        !This is dependent on the threshold and the rejection method
@@ -1106,10 +1110,6 @@ end if
                        else if (gather_interpolation_flag) then
 
                                !And we need to use the approximation after "unlabeling"
-                               do n = 1, Natoms
-                                        gradient(:,BOND_LABELLING_DATA(n)) = &
-                                                approx_gradient(:,n)
-                               end do
                                approx_gradient = gradient
 
 !                              if ((interpolation_flag).and.(gather_interpolation_flag)) then

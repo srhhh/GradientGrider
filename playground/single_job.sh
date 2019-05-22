@@ -112,7 +112,7 @@ Ntrajectories=10
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp079
+exp1name=exp069
 exp2name=exp031
 exp3name=exp029
 exp4name=exp014
