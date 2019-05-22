@@ -119,10 +119,10 @@ integer :: buffer1_size
 !It is useful to estimate how many cells we may be
 !looking at at one time
 
-integer,dimension(Norder_max+1) :: subcellsearch_max1 = (/ 0, 3 /)
-integer,dimension(Norder_max+1) :: subcellsearch_max2 = (/ 0, 3 /)
+!integer,dimension(Norder_max+1) :: subcellsearch_max1 = (/ 0, 3 /)
+!integer,dimension(Norder_max+1) :: subcellsearch_max2 = (/ 0, 3 /)
 
-integer,dimension(Norder_max+1) :: subcellsearch_max = (/ 0, 3 /)
+!integer,dimension(Norder_max+1) :: subcellsearch_max = (/ 0, 3 /)
 integer,dimension(Norder_max+1) :: local_frame_count
 
 !Assuming that each subcellsearch_max < 5
@@ -1372,7 +1372,10 @@ allocate(frame_weights(Ninterpolation),&
 
 do i = 1, Ninterpolation
         inputCLS(Ncoords+i,:) = 0.0d0
-        inputCLS(Ncoords+i,i) = maxval(abs(inputCLS(1:Ncoords,i)))**2
+!       inputCLS(Ncoords+i,i) = alpha_ratio*&
+!               maxval(abs(inputCLS(1:Ncoords,i)))**2
+        inputCLS(Ncoords+i,i) = alpha_ratio*&
+                sum(inputCLS(1:Ncoords,i)**2)/Natoms
 end do
 
 restraints = 1.0d0
@@ -1385,6 +1388,16 @@ call CLS2(inputCLS(1:Ncoords+Ninterpolation,&
           restraints,1,restraint_values,&
           outputCLS,frame_weights)
 
+!print *, frame_weights
+if (all(frame_weights == 0.0d0)) then
+        do i = 1, Ninterpolation
+                outputCLS(i) = inputCLS(Ncoords+i,i)
+        end do
+        frame_weights(minloc(outputCLS(1:Ninterpolation))) = 1.0d0
+!       print*, outputCLS(1:Ninterpolation)
+!       print*, minloc(outputCLS(1:Ninterpolation))
+end if
+
 Ninterpolation_true = 0
 weighted_coords = 0.0d0
 weighted_gradient = 0.0d0
@@ -1396,7 +1409,9 @@ minimized_differences2 = matmul(inputCLS(Ncoords+1:&
                          Ncoords+Ninterpolation,1:&
                          Ninterpolation),reshape(&
                          frame_weights,(/Ninterpolation,1/)))
-largest_weighted_rmsd2 = maxval(abs(minimized_differences2))**2
+!largest_weighted_rmsd2 = maxval(abs(minimized_differences2))**2
+largest_weighted_rmsd2 = &
+        sqrt(sum((minimized_differences2)**2)/Natoms)/alpha_ratio
 
 do i = 1, Ninterpolation
 

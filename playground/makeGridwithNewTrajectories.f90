@@ -169,6 +169,8 @@ do n = 1, Nvar
 end do
 end do
 
+call setSubcellSearchMax()
+
 
 
 !Initialize the clock
@@ -269,8 +271,8 @@ exit
 end if
 !!!!!!!!!!!!
 
-!Ngrid_total = 1
-!call errorCheck2(filechannels)
+!       Ngrid_total = 1
+!       call errorCheck2(filechannels)
 
         do n = 1, Ntraj_max
 

@@ -1518,25 +1518,32 @@ end subroutine processInterpolationFile
 
 
 
-subroutine processInterpolationFile2(vals,delta_vals)
+subroutine processInterpolationFile2()
 use PARAMETERS
 use FUNCTIONS
 use ANALYSIS
 implicit none
 
 !COLLECTIVE VARIABLES TO FILTER DATA
-real(dp),dimension(Nvar),intent(in) :: vals, delta_vals
 character(15) :: vals_interpolation_text
 character(12) :: short_prefix_text
 
 !VARIABLES IN THE INTERPOLATION FILE
-integer :: Ninterpolation
-real :: vals1, vals2
+real(dp),dimension(Nvar) :: vals
 real(dp) :: rmsd_best,rmsd_interpolated
-real(dp) :: error_best,error_interpolated
+real(dp) :: min_error_interpolated,max_error_interpolated,error_interpolated
+real(dp) :: min_rsv1,max_rsv1,rsv1
+real(dp) :: min_rsv2,max_rsv2,rsv2
+real(dp) :: min_error_ratio,max_error_ratio,error_ratio
+real(dp) :: min_error_best, max_error_best, error_best
+real(dp) :: min_rmsd_interpolated, max_rmsd_interpolated
+integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
 
 integer :: frames,neginfinity_counter,posinfinity_counter
-character(31) :: firstliner
+!character(79) :: firstliner
+!character(113) :: firstliner
+!character(147) :: firstliner
+character(249) :: firstliner
 
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
@@ -1550,40 +1557,92 @@ integer :: n
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
-!call getPrefixText(short_prefix_text)
+min_rsv1 = 1.0d9
+max_rsv1 = 0.0d9
+
+min_rsv2 = 1.0d9
+max_rsv2 = 0.0d9
+
+min_error_best = 1.0d9
+max_error_best = 0.0d9
+
+min_error_interpolated = 1.0d9
+max_error_interpolated = 0.0d9
+
+min_error_ratio = 1.0d9
+max_error_ratio = 0.0d9
+
+min_rmsd_interpolated = 1.0d9
+max_rmsd_interpolated = 0.0d9
+
+min_Ninterpolation = 1000
+max_Ninterpolation = 0
 
 frames = 0
 neginfinity_counter = 0
 posinfinity_counter = 0
 
-write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
-open(filechannel1,file=gridpath4//interpolationfolder//&
+!write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
+!open(filechannel1,file=gridpath4//interpolationfolder//&
 !       short_prefix_text//interpolationfile)
-        expfolder(1:expfolder_length-1)//&
-        vals_interpolation_text//&
-        interpolationfile)
+!        expfolder(1:expfolder_length-1)//&
+!        vals_interpolation_text//&
+!        interpolationfile)
+open(filechannel1,file=gridpath5//"truncated"//interpolationfile)
 open(filechannel2,file=gridpath5//interpolationfile)
 do 
+!       read(filechannel2,FMT=*,iostat=iostate) &
+!               vals, Ninterpolation, &
+!               rmsd_best, rmsd_interpolated, &
+!               error_best, error_interpolated
         read(filechannel2,FMT=*,iostat=iostate) &
-                vals1, vals2, Ninterpolation, &
+                vals, Ninterpolation, &
+                rsv1, rsv2, &
                 rmsd_best, rmsd_interpolated, &
                 error_best, error_interpolated
                 
         if (iostate /= 0) exit
 
-        if ((delta_vals(1)>0).and.(delta_vals(2)>0)) then
-        if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
-            (abs(vals2-vals(2)) > delta_vals(2))) cycle
+!       if ((delta_vals(1)>0).and.(delta_vals(2)>0)) then
+!       if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
+!           (abs(vals2-vals(2)) > delta_vals(2))) cycle
 
-        else
-        if ((abs(vals1-vals(1)) <= abs(delta_vals(1))).or.&
-            (abs(vals2-vals(2)) <= abs(delta_vals(2)))) cycle
-        end if
+!       else
+!       if ((abs(vals1-vals(1)) <= abs(delta_vals(1))).or.&
+!           (abs(vals2-vals(2)) <= abs(delta_vals(2)))) cycle
+!       end if
 
         if ((error_best == 0.0d0).and.&
                 (error_interpolated==0.0d0)) then
-                write(filechannel1,FMT=*) Ninterpolation, 1.0d0
+                error_ratio = 1.0d0
+                write(filechannel1,FMT=*) &
+                        vals, Ninterpolation, &
+                        error_ratio,error_best,error_interpolated,&
+                        rmsd_interpolated,rsv1,rsv2
 
+                min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
+                max_Ninterpolation = max(max_Ninterpolation, Ninterpolation)
+                
+                min_error_ratio = min(min_error_ratio,error_ratio)
+                max_error_ratio = max(max_error_ratio,error_ratio)
+
+                min_error_best = min(min_error_best,error_best)
+                max_error_best = max(max_error_best,error_best)
+
+                min_error_interpolated = min(min_error_interpolated,error_interpolated)
+                max_error_interpolated = max(max_error_interpolated,error_interpolated)
+
+                min_rmsd_interpolated = min(min_rmsd_interpolated,&
+                        rmsd_interpolated)
+                max_rmsd_interpolated = max(max_rmsd_interpolated,&
+                        rmsd_interpolated)
+
+                min_rsv1 = min(min_rsv1,rsv1)
+                max_rsv1 = max(max_rsv1,rsv1)
+
+                min_rsv2 = min(min_rsv2,rsv2)
+                max_rsv2 = max(max_rsv2,rsv2)
+        
         else if (error_best == 0.0d0) then
                 neginfinity_counter = neginfinity_counter + 1
 
@@ -1591,8 +1650,34 @@ do
                 posinfinity_counter = posinfinity_counter + 1
 
         else
-                write(filechannel1,FMT=*) Ninterpolation, &
-                        error_best/error_interpolated
+                error_ratio = error_best/error_interpolated
+                write(filechannel1,FMT=*) &
+                        vals, Ninterpolation, &
+                        error_ratio,error_best,error_interpolated,&
+                        rmsd_interpolated,rsv1,rsv2
+
+                min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
+                max_Ninterpolation = max(max_Ninterpolation, Ninterpolation)
+        
+                min_error_ratio = min(min_error_ratio,error_ratio)
+                max_error_ratio = max(max_error_ratio,error_ratio)
+
+                min_error_best = min(min_error_best,error_best)
+                max_error_best = max(max_error_best,error_best)
+
+                min_error_interpolated = min(min_error_interpolated,error_interpolated)
+                max_error_interpolated = max(max_error_interpolated,error_interpolated)
+
+                min_rmsd_interpolated = min(min_rmsd_interpolated,&
+                        rmsd_interpolated)
+                max_rmsd_interpolated = max(max_rmsd_interpolated,&
+                        rmsd_interpolated)
+
+                min_rsv1 = min(min_rsv1,rsv1)
+                max_rsv1 = max(max_rsv1,rsv1)
+
+                min_rsv2 = min(min_rsv2,rsv2)
+                max_rsv2 = max(max_rsv2,rsv2)
         end if
 
         frames = frames + 1
@@ -1600,15 +1685,27 @@ end do
 close(filechannel1)
 close(filechannel2)
 
-write(firstliner,FMT="(A1,3(I9,1x))") &
+write(firstliner,FMT="(A1,3(I9,1x),2(I6,1x),"//&
+        "2(E16.6,1x),2(E16.6,1x),2(E16.6,1x),"//&
+        "2(E16.6,1x),2(E16.6,1x),2(E16.6,1x))") &
         "#",posinfinity_counter,&
-        neginfinity_counter, frames
+        neginfinity_counter, frames, &
+        min_Ninterpolation, max_Ninterpolation,&
+        min_error_ratio, max_error_ratio,&
+        min_error_best, max_error_best,&
+        min_error_interpolated, max_error_interpolated,&
+        min_rmsd_interpolated, max_rmsd_interpolated,&
+        min_rsv1, max_rsv1, min_rsv2, max_rsv2
+
+!call system("sed -i '1i\"//firstliner//"' '"//&
+!        gridpath4//interpolationfolder//&
+!!       short_prefix_text//interpolationfile//"'")
+!        expfolder(1:expfolder_length-1)//&
+!        vals_interpolation_text//&
+!        interpolationfile//"'")
 
 call system("sed -i '1i\"//firstliner//"' '"//&
-        gridpath4//interpolationfolder//&
-!       short_prefix_text//interpolationfile//"'")
-        expfolder(1:expfolder_length-1)//&
-        vals_interpolation_text//&
+        gridpath5//"truncated"//&
         interpolationfile//"'")
 
 end subroutine processInterpolationFile2
@@ -1617,16 +1714,14 @@ end subroutine processInterpolationFile2
 
 
 
-subroutine processMultipleInterpolationFiles(vals,delta_vals,&
-                Ntrials,counters,RMSD_trials)
+subroutine processMultipleInterpolationFiles(counters)
 use PARAMETERS
 use FUNCTIONS
 use ANALYSIS
 implicit none
 
 !COLLECTIVE VARIABLES TO FILTER DATA
-real(dp),dimension(Nvar),intent(in) :: vals, delta_vals
-real :: vals1, vals2
+real(dp),dimension(Nvar) :: vals, delta_vals, tmpvals
 character(expfolder_length-1) :: otherexpfolder
 character(70) :: longtext
 
@@ -1634,13 +1729,23 @@ character(70) :: longtext
 character(5) :: variable_length_text
 character(Ngrid_text_length) :: Ngrid_text
 
-integer,intent(in) :: Ntrials
-integer,dimension(Ntrials,3),intent(out) :: counters
-real(dp),dimension(Ntrials) :: RMSD_trials
+integer,dimension(comparison_number,3),intent(out) :: counters
+integer,dimension(comparison_number) :: frames_trials
 
+real(dp) :: lower_rsv1,upper_rsv1
+real(dp) :: min_rsv1,max_rsv1,rsv1
+real(dp) :: lower_rsv2,upper_rsv2
+real(dp) :: min_rsv2,max_rsv2,rsv2
+real(dp) :: lower_error_ratio,upper_error_ratio
 real(dp) :: min_error_ratio,max_error_ratio,error_ratio
+real(dp) :: lower_error_best,upper_error_best
+real(dp) :: min_error_best,max_error_best,error_best
+real(dp) :: lower_error_interpolated,upper_error_interpolated
+real(dp) :: min_error_interpolated,max_error_interpolated,error_interpolated
+real(dp) :: lower_rmsd_interpolated,upper_rmsd_interpolated
+real(dp) :: min_rmsd_interpolated,max_rmsd_interpolated,rmsd_interpolated
+integer :: lower_Ninterpolation,upper_Ninterpolation
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
-integer,allocatable :: frames_trials(:)
 
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
@@ -1649,11 +1754,22 @@ character(gridpath_length+expfolder_length+5) :: gridpath5
 integer :: iostate
 
 !HISTOGRAM VARIABLES
-real(dp) :: Ninterpolation_binwidth, error_ratio_binwidth
+real(dp) :: Ninterpolation_binwidth
+real(dp) :: error_ratio_binwidth,error_best_binwidth
+integer :: rsv1_bin, rsv2_bin
+real(dp) :: rsv1_binwidth,rsv2_binwidth
+real(dp) :: error_interpolated_binwidth,rmsd_interpolated_binwidth
 integer :: Ninterpolation_bin, error_ratio_bin
+integer :: error_best_bin, error_interpolated_bin
+integer :: rmsd_interpolated_bin
 integer :: frames, Nbins
 real(dp),allocatable :: Ninterpolation_binning(:,:)
 real(dp),allocatable :: error_ratio_binning(:,:)
+real(dp),allocatable :: error_best_binning(:,:)
+real(dp),allocatable :: rmsd_interpolated_binning(:,:)
+real(dp),allocatable :: error_interpolated_binning(:,:)
+real(dp),allocatable :: rsv1_binning(:,:),rsv2_binning(:,:)
+integer :: starting_index
 
 !INTEGER INCREMENTALS
 integer :: n,m,l
@@ -1661,77 +1777,123 @@ integer :: n,m,l
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
+frames_trials = 0
 frames = 0
+
+min_rsv1 = 1.0d9
+max_rsv1 = 0.0d9
+
+min_rsv2 = 1.0d9
+max_rsv2 = 0.0d9
 
 min_error_ratio = 1.0d9
 max_error_ratio = 0.0d9
 
+min_error_best = 1.0d9
+max_error_best = 0.0d9
+
+min_error_interpolated = 1.0d9
+max_error_interpolated = 0.0d9
+
+min_rmsd_interpolated = 1.0d9
+max_rmsd_interpolated = 0.0d9
+
 min_Ninterpolation = 1000
 max_Ninterpolation = 0
 
-allocate(frames_trials(Ntrials))
-RMSD_trials = 0.0d0
-frames_trials = 0
-
-open(filechannel1,file=gridpath5//&
-        "interpolations.dat")
+open(filechannel1,file=gridpath0//comparison_file)
 open(filechannel3,file=gridpath5//"tmp"//interpolationfile)
-do n = 1, Ntrials
-!       read(filechannel1,FMT="(F7.3,1x,F7.3,6x,1"//&
-!               FMT6_pos_real0//",A)",iostat=iostate) &
-!               vals1,vals2,RMSD_trials(n),longtext
-        write(variable_length_text,FMT="(I5)") expfolder_length-1
-        read(filechannel1,FMT="(A"//&
-                trim(adjustl(variable_length_text))//&
-                ",F7.3,1x,F7.3,A)",iostat=iostate) &
-                otherexpfolder,vals1,vals2,longtext
 
-        call system("grep 'threshold_rmsd =' "//&
-                gridpath0//otherexpfolder//&
-                "/"//analysisfile//&
-                " > "//gridpath5//trajectories)
-        call system('sed -i "s/[^=]*=//" '//&
-                gridpath5//trajectories)
-
-        open(filechannel2,file=gridpath5//trajectories)
-        read(filechannel2,FMT=*) RMSD_trials(n)
-        close(filechannel2)
-
-        if ((delta_vals(1)>0).and.(delta_vals(2)>0)) then
-        if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
-            (abs(vals2-vals(2)) > delta_vals(2))) cycle
-
-        else
-        if ((abs(vals1-vals(1)) <= abs(delta_vals(1))).or.&
-            (abs(vals2-vals(2)) <= abs(delta_vals(2)))) cycle
+do n = 1, comparison_number
+        read(filechannel1,FMT=*,iostat=iostate) vals, delta_vals
+        if (iostate /= 0) then
+                print *, ""
+                print *, "Bad formatting in interpolation comparison arguments"
+                print *, "   Must be 2*Nvar floats"
+                print *, ""
+                return
         end if
 
-        backspace(filechannel1)
-!       read(filechannel1,FMT="(27A,A)") longtext
-        read(filechannel1,FMT="(A)") longtext
+        if (n == 1) then
+                starting_index = 0
+        else
+                starting_index = sum(alllengths(1:n-1))
+        end if
+        open(filechannel2,file=gridpath0//&
+                allprefixes(starting_index+1:sum(alllengths(1:n)))//&
+                intermediatefolder//"truncated"//interpolationfile)
 
-        open(filechannel2,file=gridpath4//interpolationfolder//&
-                trim(adjustl(longtext)))
+        read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
+                "2(G16.6,1x),2(G16.6,1x),2(G16.6,1x),"//&
+                "2(G16.6,1x),2(G16.6,1x),2(G16.6,1x))",&
+                iostat=iostate) &
+                counters(n,1),counters(n,2),counters(n,3),&
+                lower_Ninterpolation, upper_Ninterpolation,&
+                lower_error_ratio, upper_error_ratio,&
+                lower_error_best, upper_error_best,&
+                lower_error_interpolated, upper_error_interpolated,&
+                lower_rmsd_interpolated, upper_rmsd_interpolated,&
+                lower_rsv1, upper_rsv1,lower_rsv2, upper_rsv2
 
-!       read(filechannel2,FMT="(#,3(I9,1x))",iostat=iostate) &
-!               posinfinity_counter,&
-!               neginfinity_counter, frames
-        read(filechannel2,FMT="(1x,3(I9,1x))",iostat=iostate) &
-                counters(n,1),counters(n,2),counters(n,3)
+        min_Ninterpolation = min(min_Ninterpolation,&
+                lower_Ninterpolation)
+        max_Ninterpolation = max(max_Ninterpolation,&
+                upper_Ninterpolation)
+
+        min_error_ratio = min(min_error_ratio,&
+                lower_error_ratio)
+        max_error_ratio = max(max_error_ratio,&
+                upper_error_ratio)
+
+        min_error_best = min(min_error_best,&
+                lower_error_best)
+        max_error_best = max(max_error_best,&
+                upper_error_best)
+
+        min_error_interpolated = min(min_error_interpolated,&
+                lower_error_interpolated)
+        max_error_interpolated = max(max_error_interpolated,&
+                upper_error_interpolated)
+
+        min_rmsd_interpolated = min(min_rmsd_interpolated,&
+                lower_rmsd_interpolated)
+        max_rmsd_interpolated = max(max_rmsd_interpolated,&
+                upper_rmsd_interpolated)
+
+        min_rsv1 = min(min_rsv1,lower_rsv1)
+        max_rsv1 = max(max_rsv1,upper_rsv1)
+
+        min_rsv2 = min(min_rsv2,lower_rsv2)
+        max_rsv2 = max(max_rsv2,upper_rsv2)
 
         do
                 read(filechannel2,FMT=*,iostat=iostate)&
-                        Ninterpolation, error_ratio
+                        tmpvals, Ninterpolation, &
+                        error_ratio,error_best,error_interpolated,&
+                        rmsd_interpolated,rsv1,rsv2
                 if (iostate /= 0) exit
 
-                min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
-                max_Ninterpolation = max(max_Ninterpolation, Ninterpolation)
-        
-                min_error_ratio = min(min_error_ratio,error_ratio)
-                max_error_ratio = max(max_error_ratio,error_ratio)
-        
+                tmpvals = abs(tmpvals-vals) - abs(delta_vals)
+
+!               if ((delta_vals(1)>0).and.(delta_vals(2)>0)) then
+!               if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
+!                   (abs(vals2-vals(2)) > delta_vals(2))) cycle
+!       
+!               else
+!               if ((abs(vals1-vals(1)) <= abs(delta_vals(1))).or.&
+!                   (abs(vals2-vals(2)) <= abs(delta_vals(2)))) cycle
+!               end if
+
+                if (all(delta_vals>0)) then
+                        if (any(tmpvals > 0)) cycle
+                else
+                        if (all(tmpvals <= 0)) cycle
+                end if
+
                 frames_trials(n) = frames_trials(n) + 1
-                write(filechannel3,FMT=*) Ninterpolation,error_ratio
+                write(filechannel3,FMT=*) Ninterpolation,&
+                        error_ratio,error_best,error_interpolated,&
+                        rmsd_interpolated,rsv1,rsv2
         end do
         close(filechannel2)
 end do
@@ -1772,46 +1934,228 @@ Ninterpolation_binwidth = ceiling((max_Ninterpolation -&
 
 error_ratio_binwidth = log10(max_error_ratio /&
         min_error_ratio) *1.0d0/ Nbins
+error_best_binwidth = log10(max_error_best /&
+        min_error_best) *1.0d0/ Nbins
+error_interpolated_binwidth = log10(max_error_interpolated /&
+        min_error_interpolated) *1.0d0/ Nbins
+rmsd_interpolated_binwidth = log10(max_rmsd_interpolated /&
+        min_rmsd_interpolated) *1.0d0/ Nbins
+rsv1_binwidth = log10(max_rsv1 / min_rsv1) *1.0d0/ Nbins
+rsv2_binwidth = log10(max_rsv2 / min_rsv2) *1.0d0/ Nbins
 
-allocate(Ninterpolation_binning(Ntrials,Nbins),&
-         error_ratio_binning(3*Ntrials,Nbins))
+allocate(Ninterpolation_binning(3*comparison_number,Nbins),&
+         error_best_binning(3*comparison_number,Nbins),&
+         error_ratio_binning(3*comparison_number,Nbins),&
+         rmsd_interpolated_binning(3*comparison_number,Nbins),&
+         error_interpolated_binning(3*comparison_number,Nbins),&
+         rsv1_binning(3*comparison_number,Nbins),&
+         rsv2_binning(3*comparison_number,Nbins))
 Ninterpolation_binning = 0
 error_ratio_binning = 0
+error_best_binning = 0
+rmsd_interpolated_binning = 0
+error_interpolated_binning = 0
+rsv1_binning = 0
+rsv2_binning = 0
 
 open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
-do n = 1, Ntrials
+do n = 1, comparison_number
         do m = 1, frames_trials(n)
-                read(filechannel1,FMT=*) Ninterpolation, error_ratio
+                read(filechannel1,FMT=*) Ninterpolation,&
+                        error_ratio,error_best,error_interpolated,&
+                        rmsd_interpolated,rsv1,rsv2
         
+!               Ninterpolation_bin = floor((Ninterpolation&
+!                       - min_Ninterpolation)&
+!                       / Ninterpolation_binwidth) + 1
+!               if (Ninterpolation_bin < 1) Ninterpolation_bin = 1
+!               if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
+!       
+!               Ninterpolation_binning(n,Ninterpolation_bin) = &
+!                       Ninterpolation_binning(n,Ninterpolation_bin) + &
+!                       1.0d0/frames_trials(n)
+!       
+!               error_ratio_bin = floor(log10(error_ratio/min_error_ratio)/&
+!                       error_ratio_binwidth) + 1
+!               if (error_ratio_bin < 1) error_ratio_bin = 1
+!               if (error_ratio_bin > Nbins) error_ratio_bin = Nbins
+!       
+!               do l = 3*(n-1) + 1, 3*n
+!               if (Ninterpolation > 5*(modulo(l-1,3)) ) then
+!                       error_ratio_binning(l,error_ratio_bin) = &
+!                               error_ratio_binning(l,error_ratio_bin) + &
+!                               1.0d0/frames_trials(n)
+!               end if
+!               end do
+
+!               error_best_bin = floor(log10(error_best/min_error_best)/&
+!                       error_best_binwidth) + 1
+!               if (error_best_bin < 1) error_best_bin = 1
+!               if (error_best_bin > Nbins) error_best_bin = Nbins
+!       
+!               do l = 3*(n-1) + 1, 3*n
+!               if (Ninterpolation > 5*(modulo(l-1,3)) ) then
+!                       error_best_binning(l,error_best_bin) = &
+!                               error_best_binning(l,error_best_bin) + &
+!                               1.0d0/frames_trials(n)
+!               end if
+!               end do
+
                 Ninterpolation_bin = floor((Ninterpolation&
                         - min_Ninterpolation)&
                         / Ninterpolation_binwidth) + 1
                 if (Ninterpolation_bin < 1) Ninterpolation_bin = 1
                 if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
         
-                Ninterpolation_binning(n,Ninterpolation_bin) = &
-                        Ninterpolation_binning(n,Ninterpolation_bin) + &
-                        1.0d0/frames_trials(n)
-        
+                if (.true.) then
+                        Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) = &
+                                Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio < 1.0d1) then
+                        Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) = &
+                                Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio <= 1.0d0) then
+                        Ninterpolation_binning(3*n,Ninterpolation_bin) = &
+                                Ninterpolation_binning(3*n,Ninterpolation_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+
                 error_ratio_bin = floor(log10(error_ratio/min_error_ratio)/&
                         error_ratio_binwidth) + 1
                 if (error_ratio_bin < 1) error_ratio_bin = 1
                 if (error_ratio_bin > Nbins) error_ratio_bin = Nbins
         
-                do l = 3*(n-1) + 1, 3*n
-                if (Ninterpolation > 5*(modulo(l-1,3)) ) then
-                        error_ratio_binning(l,error_ratio_bin) = &
-                                error_ratio_binning(l,error_ratio_bin) + &
+                if (.true.) then
+                        error_ratio_binning(3*(n-1)+1,error_ratio_bin) = &
+                                error_ratio_binning(3*(n-1)+1,error_ratio_bin) + &
                                 1.0d0/frames_trials(n)
                 end if
-                end do
+                if (error_ratio < 1.0d1) then
+                        error_ratio_binning(3*(n-1)+2,error_ratio_bin) = &
+                                error_ratio_binning(3*(n-1)+2,error_ratio_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio <= 1.0d0) then
+                        error_ratio_binning(3*n,error_ratio_bin) = &
+                                error_ratio_binning(3*n,error_ratio_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+
+                error_best_bin = floor(log10(error_best/min_error_best)/&
+                        error_best_binwidth) + 1
+                if (error_best_bin < 1) error_best_bin = 1
+                if (error_best_bin > Nbins) error_best_bin = Nbins
+
+                if (.true.) then
+                        error_best_binning(3*(n-1)+1,error_best_bin) = &
+                                error_best_binning(3*(n-1)+1,error_best_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio < 1.0d1) then
+                        error_best_binning(3*(n-1)+2,error_best_bin) = &
+                                error_best_binning(3*(n-1)+2,error_best_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio <= 1.0d0) then
+                        error_best_binning(3*n,error_best_bin) = &
+                                error_best_binning(3*n,error_best_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+
+                error_interpolated_bin = floor(log10(error_interpolated/min_error_interpolated)/&
+                        error_interpolated_binwidth) + 1
+                if (error_interpolated_bin < 1) error_interpolated_bin = 1
+                if (error_interpolated_bin > Nbins) error_interpolated_bin = Nbins
+
+                if (.true.) then
+                        error_interpolated_binning(3*(n-1)+1,error_interpolated_bin) = &
+                                error_interpolated_binning(3*(n-1)+1,error_interpolated_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio < 1.0d1) then
+                        error_interpolated_binning(3*(n-1)+2,error_interpolated_bin) = &
+                                error_interpolated_binning(3*(n-1)+2,error_interpolated_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio <= 1.0d0) then
+                        error_interpolated_binning(3*n,error_interpolated_bin) = &
+                                error_interpolated_binning(3*n,error_interpolated_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+
+                rmsd_interpolated_bin = floor(log10(rmsd_interpolated/min_rmsd_interpolated)/&
+                        rmsd_interpolated_binwidth) + 1
+                if (rmsd_interpolated_bin < 1) rmsd_interpolated_bin = 1
+                if (rmsd_interpolated_bin > Nbins) rmsd_interpolated_bin = Nbins
+
+                if (.true.) then
+                        rmsd_interpolated_binning(3*(n-1)+1,rmsd_interpolated_bin) = &
+                                rmsd_interpolated_binning(3*(n-1)+1,rmsd_interpolated_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio < 1.0d1) then
+                        rmsd_interpolated_binning(3*(n-1)+2,rmsd_interpolated_bin) = &
+                                rmsd_interpolated_binning(3*(n-1)+2,rmsd_interpolated_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio <= 1.0d0) then
+                        rmsd_interpolated_binning(3*n,rmsd_interpolated_bin) = &
+                                rmsd_interpolated_binning(3*n,rmsd_interpolated_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+
+                rsv1_bin = floor(log10(rsv1/min_rsv1)/&
+                        rsv1_binwidth) + 1
+                if (rsv1_bin < 1) rsv1_bin = 1
+                if (rsv1_bin > Nbins) rsv1_bin = Nbins
+
+                if (.true.) then
+                        rsv1_binning(3*(n-1)+1,rsv1_bin) = &
+                                rsv1_binning(3*(n-1)+1,rsv1_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio < 1.0d1) then
+                        rsv1_binning(3*(n-1)+2,rsv1_bin) = &
+                                rsv1_binning(3*(n-1)+2,rsv1_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio <= 1.0d0) then
+                        rsv1_binning(3*n,rsv1_bin) = &
+                                rsv1_binning(3*n,rsv1_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+
+                rsv2_bin = floor(log10(rsv2/min_rsv2)/&
+                        rsv2_binwidth) + 1
+                if (rsv2_bin < 1) rsv2_bin = 1
+                if (rsv2_bin > Nbins) rsv2_bin = Nbins
+
+                if (.true.) then
+                        rsv2_binning(3*(n-1)+1,rsv2_bin) = &
+                                rsv2_binning(3*(n-1)+1,rsv2_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio < 1.0d1) then
+                        rsv2_binning(3*(n-1)+2,rsv2_bin) = &
+                                rsv2_binning(3*(n-1)+2,rsv2_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
+                if (error_ratio <= 1.0d0) then
+                        rsv2_binning(3*n,rsv2_bin) = &
+                                rsv2_binning(3*n,rsv2_bin) + &
+                                1.0d0/frames_trials(n)
+                end if
         end do
 end do
 close(filechannel1)
 
 
 
-open(filechannel1,file=gridpath5//"Ninterpolation_binning.dat")
+!open(filechannel1,file=gridpath5//"Ninterpolation_binning.dat")
+open(filechannel1,file=gridpath5//"InterpolationTDD_binning.dat")
 do n = 1, Nbins
         write(filechannel1,FMT=*) min_Ninterpolation + &
                 Ninterpolation_binwidth*(n-0.5),&
@@ -1819,7 +2163,8 @@ do n = 1, Nbins
 end do
 close(filechannel1)
 
-open(filechannel1,file=gridpath5//"error_ratio_binning.dat")
+!open(filechannel1,file=gridpath5//"error_ratio_binning.dat")
+open(filechannel1,file=gridpath5//"InterpolationRED_binning.dat")
 do n = 1, Nbins
         write(filechannel1,FMT=*) log10(min_error_ratio) + &
                 error_ratio_binwidth*n,&
@@ -1827,31 +2172,68 @@ do n = 1, Nbins
 end do
 close(filechannel1)
 
+!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
+open(filechannel1,file=gridpath5//"InterpolationAED_binning.dat")
+do n = 1, Nbins
+        write(filechannel1,FMT=*) log10(min_error_best) + &
+                error_best_binwidth*n,&
+                error_best_binning(:,n)
+end do
+close(filechannel1)
 
-deallocate(Ninterpolation_binning,error_ratio_binning)
-deallocate(frames_trials)
+open(filechannel1,file=gridpath5//"InterpolationIED_binning.dat")
+do n = 1, Nbins
+        write(filechannel1,FMT=*) log10(min_error_interpolated) + &
+                error_interpolated_binwidth*n,&
+                error_interpolated_binning(:,n)
+end do
+close(filechannel1)
+
+!open(filechannel1,file=gridpath5//trim(adjustl(comparison_SATRVname))//&
+!        "_binning.dat")
+open(filechannel1,file=gridpath5//"InterpolationR1D_binning.dat")
+do n = 1, Nbins
+        write(filechannel1,FMT=*) log10(min_rmsd_interpolated) + &
+                rmsd_interpolated_binwidth*n,&
+                rmsd_interpolated_binning(:,n)
+end do
+close(filechannel1)
+
+!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
+open(filechannel1,file=gridpath5//"InterpolationRSV1D_binning.dat")
+do n = 1, Nbins
+        write(filechannel1,FMT=*) log10(min_rsv1) + &
+                rsv1_binwidth*n, rsv1_binning(:,n)
+end do
+close(filechannel1)
+
+!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
+open(filechannel1,file=gridpath5//"InterpolationRSV2D_binning.dat")
+do n = 1, Nbins
+        write(filechannel1,FMT=*) log10(min_rsv2) + &
+                rsv2_binwidth*n, rsv2_binning(:,n)
+end do
+close(filechannel1)
+
+deallocate(Ninterpolation_binning,error_ratio_binning,&
+        error_best_binning,error_interpolated_binning,&
+        rmsd_interpolated_binning,rsv1_binning,rsv2_binning)
 
 end subroutine processMultipleInterpolationFiles
 
 
-subroutine getRMSDinterpolation2(vals,delta_vals,PNGfilename)
+subroutine getRMSDinterpolation2(PNGfilename)
 use PARAMETERS
 use FUNCTIONS
 use ANALYSIS
 implicit none
-
-!COLLECTIVE VARIABLES TO FILTER DATA
-real(dp),dimension(Nvar),intent(in) :: vals, delta_vals
-character(15) :: vals_interpolation_text
 
 !FORMAT OF PNG FILES TO BE MADE
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
 character(*), intent(in) :: PNGfilename
 
-integer :: Ntrials
-integer, allocatable :: counters(:,:)
-real(dp),allocatable :: RMSD_trials(:)
+integer, dimension(comparison_number,3) :: counters
 
 integer :: iostate
 
@@ -1861,55 +2243,31 @@ integer :: n
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
-call system("ls "//gridpath4//interpolationfolder//" > "//&
-        gridpath5//"interpolations.dat")
-
-Ntrials = 0
-open(filechannel1,file=gridpath5//&
-        "interpolations.dat")
-do
-        read(filechannel1,FMT="(A)",iostat=iostate)
-        if (iostate /= 0) exit
-        Ntrials = Ntrials + 1
-end do
-close(filechannel1)
-
-if (Ntrials == 0) then
-        print *, ""
-        print *, "NO INTERPOLATIONS TO ANALYZE"
-        print *, ""
-        return
-end if
-
-allocate(counters(Ntrials,3),RMSD_trials(Ntrials))
-
-call processMultipleInterpolationFiles(vals,delta_vals,&
-        Ntrials,counters,RMSD_trials)
+call processMultipleInterpolationFiles(counters)
 
 if (all(counters == 0)) then
         return
 end if
 
-write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
-
-open(gnuplotchannel,file=gridpath5//gnuplotfile)
-write(gnuplotchannel,*) 'set term pngcairo size 2400,3600'
-write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'.png"'
+open(gnuplotchannel,file=gridpath5//PNGfilename//"_"//gnuplotfile)
+write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 2400,',1200*comparison_number
+!write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set tmargin 0'
 write(gnuplotchannel,*) 'set bmargin 0'
 write(gnuplotchannel,*) 'set lmargin 1'
 write(gnuplotchannel,*) 'set rmargin 1'
-write(gnuplotchannel,*) 'set multiplot layout ',Ntrials,&
+write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
                         ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
                         '"Interpolation Error with Varying Threshold" font ",36" offset 0,3'
 !write(gnuplotchannel,*) 'unset key'
 
-write(gnuplotchannel,FMT="(A,F7.3,',',F7.3,A)") &
-        'set label 1 "Vals = (',vals(1),vals(2),')" at screen 0.3,0.950'
-write(gnuplotchannel,FMT="(A,I6,A)") &
-        'set label 2 "Ntraj = ', Ntraj_max, '" at screen 0.3,0.940'
-write(gnuplotchannel,FMT='(A,F9.4,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, &
-        '" at screen 0.3,0.930'
+!write(gnuplotchannel,FMT="(A,F7.3,',',F7.3,A)") &
+!        'set label 1 "Vals = (',vals(1),vals(2),')" at screen 0.3,0.950'
+!write(gnuplotchannel,FMT="(A,I6,A)") &
+!        'set label 2 "Ntraj = ', Ntraj_max, '" at screen 0.3,0.940'
+!write(gnuplotchannel,FMT='(A,F9.4,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, &
+!        '" at screen 0.3,0.930'
 
 !write(gnuplotchannel,*) 'min_x = ', min_rmsd_vals(2)
 !write(gnuplotchannel,*) 'max_x = ', max_rmsd_vals(2)
@@ -1923,20 +2281,38 @@ write(gnuplotchannel,*) 'set grid xtics lw 2'
 write(gnuplotchannel,*) 'unset xlabel'
 write(gnuplotchannel,*) 'set format x ""'
 
-if (Ntrials > 1) then
-write(gnuplotchannel,FMT="(A,I0.2,A,F9.6,A,F9.6,A)") &
-        'plot "'//gridpath5//&
-        'Ninterpolation_binning.dat" u '//'1:',2,' w boxes t "',&
-        RMSD_trials(1),' A" '//&
-        'fs transparent solid ',1.0d0,' noborder'
+if (comparison_number > 1) then
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") &
+!       'plot "'//gridpath5//&
+        'plot ARG1."/'//&
+        'InterpolationTDD_binning.dat" u '//'1:',2,' w boxes t \'
+write(gnuplotchannel,FMT="(A)") &
+        '" "\'
+write(gnuplotchannel,FMT="(A,F9.6,A)") &
+        ' fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
 
-do n = 2, Ntrials-1
+do n = 2, comparison_number-1
 
-write(gnuplotchannel,FMT="(A,I0.2,A,F9.6,A,F9.6,A)") &
-        'plot "'//gridpath5//&
-        'Ninterpolation_binning.dat" u '//'1:',n+1,' w boxes t "',&
-        RMSD_trials(n),' A" '//&
-        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") &
+!       'plot "'//gridpath5//&
+        'plot ARG1."/'//&
+        'InterpolationTDD_binning.dat" u '//'1:',n+1,' w boxes t \'
+write(gnuplotchannel,FMT="(A)") &
+        '" "\'
+write(gnuplotchannel,FMT="(A,F9.6,A)") &
+        ' fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
 
 end do
 end if
@@ -1946,11 +2322,21 @@ write(gnuplotchannel,*) 'set xtics out nomirror'
 write(gnuplotchannel,*) 'set format x'
 
 write(gnuplotchannel,*) 'set xlabel "Number of Points Below Threshold (Ninterpolation)" font ",24"'
-write(gnuplotchannel,FMT="(A,I0.2,A,F9.6,A,F9.6,A)") &
-        'plot "'//gridpath5//&
-        'Ninterpolation_binning.dat" u '//'1:',Ntrials+1,' w boxes t "',&
-        RMSD_trials(Ntrials),' A" '//&
-        'fs transparent solid ',1.0d0,' noborder'
+
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") &
+!       'plot "'//gridpath5//&
+        'plot ARG1."/'//&
+        'InterpolationTDD_binning.dat" u '//'1:',comparison_number+1,' w boxes t \'
+write(gnuplotchannel,FMT="(A)") &
+        '" "\'
+write(gnuplotchannel,FMT="(A,F9.6,A)") &
+        ' fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
 
 write(gnuplotchannel,*) 'unset xlabel'
 write(gnuplotchannel,*) 'set xtics nomirror'
@@ -1982,35 +2368,39 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                            ' ""   log10(10000), '//&
                                    ')'
 
-if (Ntrials > 1) then
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        'plot "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',2,' w boxes t "',&
-        RMSD_trials(1),' A" '//&
+if (comparison_number > 1) then
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       'plot "'//gridpath5//&
+        'plot ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',2,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',3,' w boxes t "" '//&
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       '     "'//gridpath5//&
+        '     ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',3,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',4,' w boxes t "" '//&
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       '     "'//gridpath5//&
+        '     ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',4,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder'
 
-do n = 2, Ntrials-1
+do n = 2, comparison_number-1
 
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        'plot "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "',&
-        RMSD_trials(n),' A" '//&
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       'plot "'//gridpath5//&
+        'plot ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       '     "'//gridpath5//&
+        '     ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       '     "'//gridpath5//&
+        '     ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder'
 
 end do
@@ -2046,25 +2436,724 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                    ')'
 
 write(gnuplotchannel,*) 'set xlabel "Relative Error of Accept Best to Interpolation" font ",24"'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        'plot "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',3*Ntrials-1,' w boxes t "',&
-        RMSD_trials(Ntrials),' A" '//&
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       'plot "'//gridpath5//&
+        'plot ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',3*comparison_number-1,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',3*Ntrials,' w boxes t "" '//&
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       '     "'//gridpath5//&
+        '     ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A,F9.6,A)") &
-        '     "'//gridpath5//&
-        'error_ratio_binning.dat" u '//'1:',3*Ntrials+1,' w boxes t "" '//&
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+!       '     "'//gridpath5//&
+        '     ARG1."/'//&
+        'InterpolationRED_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder'
 
 close(gnuplotchannel)
 
-call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+call system(path_to_gnuplot//"gnuplot -c "//&
+        gridpath5//PNGfilename//"_"//gnuplotfile//" "//&
+        '"'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
 
 end subroutine getRMSDinterpolation2
+
+
+
+
+
+subroutine getTDDplot(PNGfilename)
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+!FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+character(*), intent(in) :: PNGfilename
+
+integer, dimension(comparison_number,3) :: counters
+
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+call processMultipleInterpolationFiles(counters)
+
+if (all(counters == 0)) then
+        return
+end if
+
+!open(gnuplotchannel,file=gridpath5//PNGfilename//"_"//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile//"_InterpolationTDD")
+write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',1200*comparison_number
+write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'PL=strlen(ARG1)'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
+                        ',1 columnsfirst margins 0.05,0.95,.1,.9 spacing 0.1,0 title '//&
+                        '"Threshold Density Distribution" font ",36" offset 0,3'
+write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set grid xtics lw 2'
+write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,*) 'set format x ""'
+
+if (comparison_lowerlimit < comparison_upperlimit) then
+        write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
+                'set xrange [',&
+                comparison_lowerlimit,':',&
+                comparison_upperlimit,']'
+end if
+
+if (comparison_number > 1) then
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+do n = 2, comparison_number-1
+
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*n+1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+end do
+end if
+
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'set xtics out nomirror'
+write(gnuplotchannel,*) 'set format x'
+
+write(gnuplotchannel,*) 'set xlabel "Number of Points Below Threshold (Ninterpolation)" font ",24"'
+
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(comparison_number-1)+2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+close(gnuplotchannel)
+
+!call system(path_to_gnuplot//"gnuplot -c "//&
+!        gridpath5//PNGfilename//"_"//gnuplotfile//" "//&
+!        '"'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
+call system(path_to_gnuplot//"gnuplot -c "//&
+        gridpath5//gnuplotfile//"_InterpolationTDD"//&
+        ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
+
+end subroutine getTDDplot
+
+
+
+
+subroutine getREDplot(PNGfilename)
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+!FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+character(*), intent(in) :: PNGfilename
+
+integer, dimension(comparison_number,3) :: counters
+
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+call processMultipleInterpolationFiles(counters)
+
+if (all(counters == 0)) then
+        return
+end if
+
+!open(gnuplotchannel,file=gridpath5//PNGfilename//"_"//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile//"_InterpolationRED")
+write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',1200*comparison_number
+write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'PL=strlen(ARG1)'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
+                        ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
+                        '"Relative Error Distribution" font ",36" offset 0,3'
+write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set grid xtics lw 2'
+
+write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"" log10(.00000001), '//&
+                                         '"" log10(.00000005), '//&
+                                          '"" log10(.0000001), '//&
+                                          '"" log10(.0000005), '//&
+                                           '"" log10(.000001), '//&
+                                           '"" log10(.000005), '//&
+                                           '""  log10(.00001), '//&
+                                           '""  log10(.00005), '//&
+                                           '""   log10(.0001), '//&
+                                           '""   log10(.0005), '//&
+                                           '""    log10(.001), '//&
+                                           '""    log10(.005), '//&
+                                           '""     log10(.01), '//&
+                                           '""     log10(.05), '//&
+                                           '""      log10(.1), '//&
+                                           '""      log10(.5), '//&
+                                           ' ""       log10(1), '//&
+                                           ' ""       log10(5), '//&
+                                           ' ""      log10(10), '//&
+                                           ' ""      log10(50), '//&
+                                           ' ""     log10(100), '//&
+                                           ' ""     log10(500), '//&
+                                           ' ""    log10(1000), '//&
+                                           ' ""    log10(5000), '//&
+                                           ' ""   log10(10000), '//&
+                                   ')'
+
+if (comparison_lowerlimit < comparison_upperlimit) then
+        write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
+                'set xrange [log10(',&
+                comparison_lowerlimit,'):log10(',&
+                comparison_upperlimit,')]'
+end if
+
+if (comparison_number > 1) then
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+do n = 2, comparison_number-1
+
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+end do
+end if
+
+write(gnuplotchannel,*) 'set xtics out nomirror'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" log10(.00000001), '//&
+                                         '"5e-8" log10(.00000005), '//&
+                                          '"1e-7" log10(.0000001), '//&
+                                          '"5e-7" log10(.0000005), '//&
+                                           '"1e-6" log10(.000001), '//&
+                                           '"5e-6" log10(.000005), '//&
+                                           '"1e-5"  log10(.00001), '//&
+                                           '"5e-5"  log10(.00005), '//&
+                                           '"1e-4"   log10(.0001), '//&
+                                           '"5e-4"   log10(.0005), '//&
+                                           '"1e-3"    log10(.001), '//&
+                                           '"5e-3"    log10(.005), '//&
+                                           '"1e-2"     log10(.01), '//&
+                                           '"5e-2"     log10(.05), '//&
+                                           '"1e-1"      log10(.1), '//&
+                                           '"5e-1"      log10(.5), '//&
+                                           ' "1e0"       log10(1), '//&
+                                           ' "5e0"       log10(5), '//&
+                                           ' "1e1"      log10(10), '//&
+                                           ' "5e1"      log10(50), '//&
+                                           ' "1e2"     log10(100), '//&
+                                           ' "5e2"     log10(500), '//&
+                                           ' "1e3"    log10(1000), '//&
+                                           ' "5e3"    log10(5000), '//&
+                                           ' "1e4"   log10(10000), '//&
+                                   ')'
+
+write(gnuplotchannel,*) 'set xlabel "Relative Error of Accept Best to Interpolation" font ",24"'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number-1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+close(gnuplotchannel)
+
+!call system(path_to_gnuplot//"gnuplot -c "//&
+!        gridpath5//PNGfilename//"_"//gnuplotfile//" "//&
+!        '"'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
+call system(path_to_gnuplot//"gnuplot -c "//&
+        gridpath5//gnuplotfile//"_InterpolationRED"//&
+        ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
+
+end subroutine getREDplot
+
+
+
+
+subroutine getAEDplot(PNGfilename)
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+!FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+character(*), intent(in) :: PNGfilename
+
+integer, dimension(comparison_number,3) :: counters
+
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+call processMultipleInterpolationFiles(counters)
+
+if (all(counters == 0)) then
+        return
+end if
+
+!open(gnuplotchannel,file=gridpath5//PNGfilename//"_"//gnuplotfile)
+open(gnuplotchannel,file=gridpath5//gnuplotfile//"_InterpolationAED")
+write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',1200*comparison_number
+write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'PL=strlen(ARG1)'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
+                        ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
+                        '"Absolute Error Distribution" font ",36" offset 0,3'
+write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set grid xtics lw 2'
+
+write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"" log10(.00000001), '//&
+                                         '"" log10(.00000005), '//&
+                                          '"" log10(.0000001), '//&
+                                          '"" log10(.0000005), '//&
+                                           '"" log10(.000001), '//&
+                                           '"" log10(.000005), '//&
+                                           '""  log10(.00001), '//&
+                                           '""  log10(.00005), '//&
+                                           '""   log10(.0001), '//&
+                                           '""   log10(.0005), '//&
+                                           '""    log10(.001), '//&
+                                           '""    log10(.005), '//&
+                                           '""     log10(.01), '//&
+                                           '""     log10(.05), '//&
+                                           '""      log10(.1), '//&
+                                           '""      log10(.5), '//&
+                                           ' ""       log10(1), '//&
+                                           ' ""       log10(5), '//&
+                                           ' ""      log10(10), '//&
+                                           ' ""      log10(50), '//&
+                                           ' ""     log10(100), '//&
+                                           ' ""     log10(500), '//&
+                                           ' ""    log10(1000), '//&
+                                           ' ""    log10(5000), '//&
+                                           ' ""   log10(10000), '//&
+                                   ')'
+
+if (comparison_lowerlimit < comparison_upperlimit) then
+        write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
+                'set xrange [log10(',&
+                comparison_lowerlimit,'):log10(',&
+                comparison_upperlimit,')]'
+end if
+
+if (comparison_number > 1) then
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+do n = 2, comparison_number-1
+
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+end do
+end if
+
+write(gnuplotchannel,*) 'set xtics out nomirror'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" log10(.00000001), '//&
+                                         '"5e-8" log10(.00000005), '//&
+                                          '"1e-7" log10(.0000001), '//&
+                                          '"5e-7" log10(.0000005), '//&
+                                           '"1e-6" log10(.000001), '//&
+                                           '"5e-6" log10(.000005), '//&
+                                           '"1e-5"  log10(.00001), '//&
+                                           '"5e-5"  log10(.00005), '//&
+                                           '"1e-4"   log10(.0001), '//&
+                                           '"5e-4"   log10(.0005), '//&
+                                           '"1e-3"    log10(.001), '//&
+                                           '"5e-3"    log10(.005), '//&
+                                           '"1e-2"     log10(.01), '//&
+                                           '"5e-2"     log10(.05), '//&
+                                           '"1e-1"      log10(.1), '//&
+                                           '"5e-1"      log10(.5), '//&
+                                           ' "1e0"       log10(1), '//&
+                                           ' "5e0"       log10(5), '//&
+                                           ' "1e1"      log10(10), '//&
+                                           ' "5e1"      log10(50), '//&
+                                           ' "1e2"     log10(100), '//&
+                                           ' "5e2"     log10(500), '//&
+                                           ' "1e3"    log10(1000), '//&
+                                           ' "5e3"    log10(5000), '//&
+                                           ' "1e4"   log10(10000), '//&
+                                   ')'
+
+write(gnuplotchannel,*) 'set xlabel "Absolute Error of Accept Best" font ",24"'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number-1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+close(gnuplotchannel)
+
+!call system(path_to_gnuplot//"gnuplot -c "//&
+!        gridpath5//PNGfilename//"_"//gnuplotfile//" "//&
+!        '"'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
+call system(path_to_gnuplot//"gnuplot -c "//&
+        gridpath5//gnuplotfile//"_InterpolationAED"//&
+        ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
+
+end subroutine getAEDplot
+
+
+subroutine getInterpolationplot(PNGfilename)
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+!FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+character(*), intent(in) :: PNGfilename
+
+integer, dimension(comparison_number,3) :: counters
+
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+call processMultipleInterpolationFiles(counters)
+
+if (all(counters == 0)) then
+        return
+end if
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile//"_"//&
+        trim(adjustl(comparison_SATRVname)))
+write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',1200*comparison_number
+write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'PL=strlen(ARG1)'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
+                        ',1 columnsfirst margins 0.05,0.95,.1,.9 spacing 0.1,0 title '//&
+!                       '"RMSD Variable 1 Distribution" font ",36" offset 0,3'
+                        '"" font ",36" offset 0,3'
+write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set grid xtics lw 2'
+
+write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"" log10(.00000001), '//&
+                                         '"" log10(.00000005), '//&
+                                          '"" log10(.0000001), '//&
+                                          '"" log10(.0000005), '//&
+                                           '"" log10(.000001), '//&
+                                           '"" log10(.000005), '//&
+                                           '""  log10(.00001), '//&
+                                           '""  log10(.00005), '//&
+                                           '""   log10(.0001), '//&
+                                           '""   log10(.0005), '//&
+                                           '""    log10(.001), '//&
+                                           '""    log10(.005), '//&
+                                           '""     log10(.01), '//&
+                                           '""     log10(.05), '//&
+                                           '""      log10(.1), '//&
+                                           '""      log10(.5), '//&
+                                           ' ""       log10(1), '//&
+                                           ' ""       log10(5), '//&
+                                           ' ""      log10(10), '//&
+                                           ' ""      log10(50), '//&
+                                           ' ""     log10(100), '//&
+                                           ' ""     log10(500), '//&
+                                           ' ""    log10(1000), '//&
+                                           ' ""    log10(5000), '//&
+                                           ' ""   log10(10000), '//&
+                                   ')'
+
+if (comparison_lowerlimit < comparison_upperlimit) then
+        write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
+                'set xrange [log10(',&
+                comparison_lowerlimit,'):log10(',&
+                comparison_upperlimit,')]'
+end if
+
+if (comparison_number > 1) then
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+do n = 2, comparison_number-1
+
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+end do
+end if
+
+write(gnuplotchannel,*) 'set xtics out nomirror'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" log10(.00000001), '//&
+                                         '"5e-8" log10(.00000005), '//&
+                                          '"1e-7" log10(.0000001), '//&
+                                          '"5e-7" log10(.0000005), '//&
+                                           '"1e-6" log10(.000001), '//&
+                                           '"5e-6" log10(.000005), '//&
+                                           '"1e-5"  log10(.00001), '//&
+                                           '"5e-5"  log10(.00005), '//&
+                                           '"1e-4"   log10(.0001), '//&
+                                           '"5e-4"   log10(.0005), '//&
+                                           '"1e-3"    log10(.001), '//&
+                                           '"5e-3"    log10(.005), '//&
+                                           '"1e-2"     log10(.01), '//&
+                                           '"5e-2"     log10(.05), '//&
+                                           '"1e-1"      log10(.1), '//&
+                                           '"5e-1"      log10(.5), '//&
+                                           ' "1e0"       log10(1), '//&
+                                           ' "5e0"       log10(5), '//&
+                                           ' "1e1"      log10(10), '//&
+                                           ' "5e1"      log10(50), '//&
+                                           ' "1e2"     log10(100), '//&
+                                           ' "5e2"     log10(500), '//&
+                                           ' "1e3"    log10(1000), '//&
+                                           ' "5e3"    log10(5000), '//&
+                                           ' "1e4"   log10(10000), '//&
+                                   ')'
+
+!write(gnuplotchannel,*) 'set xlabel "RMSD Between Interpolation and Target" font ",24"'
+write(gnuplotchannel,*) 'set xlabel "" font ",24"'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number-1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder,\'
+write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
+        'fs transparent solid ',1.0d0,' noborder'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot -c "//&
+        gridpath5//gnuplotfile//"_"//trim(adjustl(comparison_SATRVname))//&
+        ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
+
+end subroutine getInterpolationplot
+
 
 
 

@@ -70,6 +70,13 @@ logical,parameter :: testtraj_flag = .true.
    !to also check the rmsd of frames in adjacent cells
    logical :: force_Neighbors = .true.
 
+   !The point at which checkState stops checking neighbors
+   !is determined here
+   !The default (if none of these are set) is all zeros
+   integer,parameter :: ssm_length = 2
+   integer,dimension(ssm_length) :: ssm1 = (/ 0, 3 /)
+   integer,dimension(ssm_length) :: ssm2 = (/ 0, 5 /)
+
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD
    logical,parameter :: percentthreshold_flag = .true.
@@ -155,6 +162,7 @@ logical,parameter :: testtraj_flag = .true.
 !Set .true. to ask the program to do a comparison of multiple
 !trajectory sets (mostly for consistency checking)
 logical,parameter :: comparison_flag = .false.
+character(69),parameter :: comparison_file = ""
 character(40),parameter :: comparison_SATRVname = ""
 integer :: comparison_SATRVcolumn
 real,parameter :: comparison_lowerlimit = 0.0d0
@@ -167,8 +175,8 @@ real :: lambda_penalty
 real :: minsd_penalty
 
 integer,parameter :: comparison_number = 1
-character(11),parameter :: allprefixes = "placeholder"
-integer,dimension(comparison_number),parameter :: alllengths = (/ 69 /)
+character(expfolder_length),parameter :: allprefixes = expfolder
+integer,dimension(comparison_number),parameter :: alllengths = (/ expfolder_length /)
 
 character(11),parameter :: analysisfile = "placeholder"
 
@@ -252,6 +260,7 @@ end if
 prefix_text = reject_text//Nthreshold_text
 
 end subroutine getPrefixText
+
 
 end module ANALYSIS
 

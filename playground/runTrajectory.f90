@@ -507,7 +507,8 @@ end if
                                                coords_labelled,&
                                                gradient_labelled)
                                end if
-                       else
+!                      else
+                       else if (gather_interpolation_flag) then
                                !And we need to use the approximation after "unlabeling"
                                do n = 1, Natoms
                                         gradient(:,BOND_LABELLING_DATA(n)) = &
@@ -521,7 +522,7 @@ end if
 !                              end do
 !                              approx_gradient_prime = gradient
 
-                               if ((interpolation_flag).and.(gather_interpolation_flag)) then
+!                              if ((interpolation_flag).and.(gather_interpolation_flag)) then
 
                                         call Acceleration(vals,coords,gradient)
 
@@ -574,9 +575,12 @@ end if
                                                 interpolation_counter = 0
 
                                         end if
-                               end if
+!                              end if
 
+                               if (.not.(reject_flag)) &
                                gradient = approx_gradient
+
+                       else
                        end if
                 end if
 
@@ -992,8 +996,8 @@ subroutine checkMultipleTrajectories(filechannels,&
         do steps = 1, Nsteps
 
                 !Just for bug-testing
-                if (modulo(steps,50) == 1) then
-!               if (.false.) then
+!               if (modulo(steps,50) == 1) then
+                if (.false.) then
                         open(filechannel1,file=gridpath5//trajectoryfile,position="append")
                         write(filechannel1,'(I6)') Natoms
                         write(filechannel1,*) ""
@@ -1096,9 +1100,10 @@ end if
                        !This is dependent on the threshold and the rejection method
                        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
                                call Acceleration(vals,coords,gradient)
-                       else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-                               call Acceleration(vals,coords,gradient)
-                       else
+!                      else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+!                              call Acceleration(vals,coords,gradient)
+!                      else
+                       else if (gather_interpolation_flag) then
 
                                !And we need to use the approximation after "unlabeling"
                                do n = 1, Natoms
@@ -1107,17 +1112,23 @@ end if
                                end do
                                approx_gradient = gradient
 
-                               if ((interpolation_flag).and.(gather_interpolation_flag)) then
+!                              if ((interpolation_flag).and.(gather_interpolation_flag)) then
 
                                         call Acceleration(vals,coords,gradient)
 
+                                        if (Ninterpolation > 0) then
 !                                       write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
 !                                                   largest_rmsd, threshold_rmsd, min_rmsd, &
 !                                                   sqrt(sum((gradient-approx_gradient)**2)/Natoms)
-                                        write(filechannel3,FMT=*) vals(1),vals(2),Ninterpolation,&
-                                                candidate_rmsd,min_rmsd,&
-                                                sqrt(sum((gradient-candidate_gradient)**2)/Natoms),&
-                                                sqrt(sum((gradient-approx_gradient)**2)/Natoms)
+!                                       write(filechannel3,FMT=*) vals(1),vals(2),Ninterpolation,&
+!                                               candidate_rmsd,min_rmsd,&
+!                                               sqrt(sum((gradient-candidate_gradient)**2)/Natoms),&
+!                                               sqrt(sum((gradient-approx_gradient)**2)/Natoms)
+                                        write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
+                                                    largest_weighted_rmsd2, largest_weighted_rmsd,&
+                                                    candidate_rmsd,min_rmsd,&
+                                                    sqrt(sum((gradient-candidate_gradient)**2)/Natoms),&
+                                                    sqrt(sum((gradient-approx_gradient)**2)/Natoms)
 
                                         interpolation_counter = interpolation_counter + 1
 
@@ -1136,9 +1147,15 @@ end if
                                                 interpolation_counter = 0
 
                                         end if
-                               end if
+                                        end if
+!                              end if
 
+                               if (.not.(reject_flag)) &
                                gradient = approx_gradient
+
+                       else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                               call Acceleration(vals,coords,gradient)
+                       else
                        end if
                 end if
 
@@ -1691,6 +1708,22 @@ end subroutine Acceleration
 !
 !
 
+subroutine setSubcellSearchMax()
+use PARAMETERS
+use ANALYSIS
+implicit none
+
+integer :: i
+
+do i = 1, min(Norder_max+1,ssm_length)
+        subcellsearch_max(i) = ssm1(i)
+        subcellsearch_max1(i) = ssm1(i)
+        subcellsearch_max2(i) = ssm2(i)
+end do
+
+end subroutine setSubcellSearchMax
+
+
 
 subroutine errorCheck1(filechannels)
         use PARAMETERS
@@ -2140,8 +2173,8 @@ subroutine errorCheck2(filechannels)
         end do
 
         Nanomaly = 0
-        Ntest = 20
-        Nsamples = 50
+        Ntest = 30
+        Nsamples = 500
         allocate(rmsd_x_interpolated(Ntest,Nsamples),rmsd_fx(Ntest,Nsamples),&
                  rmsd_fx_interpolated(Ntest,Nsamples),rmsd_x(Ntest,Nsamples),&
                  rmsd_weights(Ntest,Ntest,Nsamples),rmsd_x2_interpolated(Ntest,Nsamples))
@@ -2334,7 +2367,8 @@ subroutine errorCheck2(filechannels)
                         sqrt(sum((gradient - approx_gradient)**2)/Natoms)
                 rmsd_fx(steps,Nsample) = sqrt(sum((gradient - gradient_var)**2)/Natoms)
 
-                rmsd_x2_interpolated(steps,Nsample) = error2
+!               rmsd_x2_interpolated(steps,Nsample) = error2
+                rmsd_x2_interpolated(steps,Nsample) = error2 / alpha_ratio
 
                 rmsd_weights(1:steps,steps,Nsample) = frame_weights(1:steps)
 
@@ -2390,7 +2424,7 @@ subroutine errorCheck2(filechannels)
         open(filechannel2,file=gridpath5//"linear"//errorcheckfile)
         do steps = 1, Ntest
                 do Nsample = 1, Nsamples
-                write(filechannel2,FMT="(I3,3(1x,F15.11))") steps, &
+                write(filechannel2,FMT="(I3,3(1x,E16.8))") steps, &
                         rmsd_x_interpolated(steps,Nsample),&
                         rmsd_x2_interpolated(steps,Nsample),&
                         rmsd_fx_interpolated(steps,Nsample)
@@ -2466,10 +2500,10 @@ subroutine errorCheck2(filechannels)
 
         open(filechannel2,file=gridpath5//"heatmapline"//errorcheckfile)
         do steps = 1, Ntest
-                write(filechannel2,FMT="(I3,3(1x,F15.11))") steps, &
-                        rmsd_x_interpolated(steps,min(Nsamples/2,69)),&
-                        rmsd_x2_interpolated(steps,min(Nsamples/2,69)),&
-                        rmsd_fx_interpolated(steps,min(Nsamples/2,69))
+                write(filechannel2,FMT="(I3,3(1x,E16.8))") steps, &
+                        rmsd_x_interpolated(steps,min(1+Nsamples/2,69)),&
+                        rmsd_x2_interpolated(steps,min(1+Nsamples/2,69)),&
+                        rmsd_fx_interpolated(steps,min(1+Nsamples/2,69))
         end do
         close(filechannel2)
 
@@ -2529,26 +2563,49 @@ subroutine errorCheck2(filechannels)
 !       end do
 !       close(filechannel2)
 
+!       do Nsample = 1, Nsamples
+!               rmsd_fx_interpolated(:,Nsample) = rmsd_fx_interpolated(:,Nsample) / rmsd_fx(:,Nsample)
+!               rmsd_fx(:,Nsample) = rmsd_fx(1,Nsample) / rmsd_fx(:,Nsample)
+!       end do
+
         do Nsample = 1, Nsamples
-                rmsd_fx_interpolated(:,Nsample) = rmsd_fx_interpolated(:,Nsample) / rmsd_fx(:,Nsample)
-                rmsd_fx(:,Nsample) = rmsd_fx(1,Nsample) / rmsd_fx(:,Nsample)
+                rmsd_fx_interpolated(:,Nsample) = rmsd_fx_interpolated(:,Nsample) / rmsd_fx(1,Nsample)
+                rmsd_fx(:,Nsample) = rmsd_fx(:,Nsample) / rmsd_fx(1,Nsample)
         end do
 
         open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
         do steps = 1, Ntest
-                selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
-                selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
-                selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
-                selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
+!               selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
+!               selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
+!               selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
+!               selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
 
-                selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
-                                            selected_means(1))**2)/Nsamples)
-                selected_SDs(2) = sqrt(sum((rmsd_x(steps,:)-&
-                                            selected_means(2))**2)/Nsamples)
-                selected_SDs(3) = sqrt(sum((rmsd_fx_interpolated(steps,:)-&
-                                            selected_means(3))**2)/Nsamples)
-                selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
-                                            selected_means(4))**2)/Nsamples)
+                selected_means(1) = (maxval(rmsd_x_interpolated(steps,:)) +&
+                                     minval(rmsd_x_interpolated(steps,:)))/2
+                selected_means(2) = (maxval(rmsd_x(steps,:)) +&
+                                     minval(rmsd_x(steps,:)))/2
+                selected_means(3) = (maxval(rmsd_fx_interpolated(steps,:)) +&
+                                     minval(rmsd_fx_interpolated(steps,:)))/2
+                selected_means(4) = (maxval(rmsd_fx(steps,:)) +&
+                                     minval(rmsd_fx(steps,:)))/2
+
+!               selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
+!                                           selected_means(1))**2)/Nsamples)
+!               selected_SDs(2) = sqrt(sum((rmsd_x(steps,:)-&
+!                                           selected_means(2))**2)/Nsamples)
+!               selected_SDs(3) = sqrt(sum((rmsd_fx_interpolated(steps,:)-&
+!                                           selected_means(3))**2)/Nsamples)
+!               selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
+!                                           selected_means(4))**2)/Nsamples)
+
+                selected_SDs(1) = (maxval(rmsd_x_interpolated(steps,:))-&
+                                   minval(rmsd_x_interpolated(steps,:)))/2
+                selected_SDs(2) = (maxval(rmsd_x(steps,:))-&
+                                   minval(rmsd_x(steps,:)))/2
+                selected_SDs(3) = (maxval(rmsd_fx_interpolated(steps,:))-&
+                                   minval(rmsd_fx_interpolated(steps,:)))/2
+                selected_SDs(4) = (maxval(rmsd_fx(steps,:))-&
+                                   minval(rmsd_fx(steps,:)))/2
 
                 write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
                         selected_means(1), selected_SDs(1),&
@@ -2651,7 +2708,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         write(gnuplotchannel,FMT='(A,F7.2,A,F7.4,A)') &
                 'set label 4 "log(Convergence) = ',convergence_mean,&
                              '     Dropoff = ',dropoff_mean,'" at screen 0.1,0.900'
-        write(gnuplotchannel,FMT='(A,F9.4,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
+        write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
         write(gnuplotchannel,*) 'y0 = ', first_rmsd
         write(gnuplotchannel,*) 'y0_err = ', first_rmsd_sd
         write(gnuplotchannel,*) 'ymax = ', max_rmsd
@@ -2697,8 +2754,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
 
         call system("gnuplot < "//gridpath5//gnuplotfile)
 
-        max_rmsd = 0.0d0
-        min_rmsd = 1.0d9
+!       max_rmsd = 0.0d0
+!       min_rmsd = 1.0d9
+        max_rmsd = 1.0d0
+        min_rmsd = 1.0d0
         Ninterpolation = 0
 
         open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
@@ -2708,8 +2767,10 @@ subroutine plotErrorCheck1(vals,Nsamples,&
                         rmsd_fx_interpolated,dum3,rmsd_fx,dum4
                 if (iostate /= 0) exit
 
-                max_rmsd = max(max_rmsd,rmsd_fx_interpolated+dum3,rmsd_fx+dum4)
-                min_rmsd = min(min_rmsd,rmsd_fx_interpolated,rmsd_fx)
+!               max_rmsd = max(max_rmsd,rmsd_fx_interpolated+dum3,rmsd_fx+dum4)
+!               min_rmsd = min(min_rmsd,rmsd_fx_interpolated,rmsd_fx)
+                max_rmsd = max(max_rmsd,rmsd_fx_interpolated+dum3)
+                min_rmsd = min(min_rmsd,rmsd_fx_interpolated-dum3)
                 Ninterpolation = n
         end do
         close(filechannel2)
@@ -2717,14 +2778,14 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) "set term pngcairo size 1200,1200"
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath5//"relative_", vals, '.png"'
+                'set output "'//gridpath4//"relative_", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Convergence As More Points Interpolate"'
         write(gnuplotchannel,*) 'set xlabel "Ninterpolation"'
         write(gnuplotchannel,*) 'set ylabel "Relative RMSD Between Interpolated and Target Gradient"'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.1,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 4 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.895'
+        write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 4 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.895'
         write(gnuplotchannel,*) 'ymax = ', max_rmsd
         write(gnuplotchannel,*) 'ymin = ', min_rmsd
         write(gnuplotchannel,*) 'ydelta = log10(ymax/ymin)/8'
@@ -2767,7 +2828,8 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         write(gnuplotchannel,*) '     "'//gridpath5//"relative"//errorcheckfile//&
                 '" u 1:6 w lines lc "green" t "Interpolation",\'
         write(gnuplotchannel,*) '     "'//gridpath5//"relative"//errorcheckfile//&
-                '" u 1:(1.0) w lines lc "red" t "Accept Current",\'
+!               '" u 1:(1.0) w lines lc "red" t "Accept Current",\'
+                '" u 1:(1.0) w lines lc "blue" t "Accept Best",\'
         close(gnuplotchannel)
 
         call system("gnuplot < "//gridpath5//gnuplotfile)
@@ -2799,7 +2861,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) "set term pngcairo size 1200,1200"
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath5//"weight1_", vals, '.png"'
+                'set output "'//gridpath4//"weight1_", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Convergence As More Points Interpolate"'
         write(gnuplotchannel,*) 'set multiplot'
         write(gnuplotchannel,*) 'set size 1.0, 1.0'
@@ -2812,7 +2874,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         write(gnuplotchannel,*) 'set cblabel "RMSD Between Gradient of Frame and Target"'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 1 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 2 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
+        write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
         write(gnuplotchannel,*) 'cbmax = ', max_rmsd
         write(gnuplotchannel,*) 'cbmin = ', min_rmsd
         write(gnuplotchannel,*) 'wmax = ', max_weight
@@ -2939,7 +3001,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) "set term pngcairo size 1200,1200"
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath5//"new", vals, '.png"'
+                'set output "'//gridpath4//"new", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Convergence As Frames Get Closer"'
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,*) 'set xlabel "RMSD Between Nearby and Target Frame"'
@@ -3027,7 +3089,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) 'set term pngcairo size 1200,2400'
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath5//"linear", vals, '.png"'
+                'set output "'//gridpath4//"linear", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Comparison of a Frame and Gradient with its Interpolation"'
         write(gnuplotchannel,*) 'set multiplot layout 2,1'
         write(gnuplotchannel,*) 'set pm3d map'
@@ -3338,7 +3400,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath5//"heatmap_linear", vals, '.png"'
+                'set output "'//gridpath4//"heatmap_linear", vals, '.png"'
         write(gnuplotchannel,*) 'set multiplot layout 1,2'
         write(gnuplotchannel,*) 'set title "Interpolation Error Comparison by RMSD Variables 1 and 2"'
         write(gnuplotchannel,*) 'set pm3d map'
@@ -3462,186 +3524,209 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         close(gnuplotchannel)
 
         call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
-!
-!        call system("rm -r "//gridpath5//"png/")
-!        call system("mkdir "//gridpath5//"png")
-!        Ngif = Ninterpolation
-!        do n = 1, Ngif
-!        write(ntext,FMT="(I0.3)") n
-!
-!        open(gnuplotchannel,file=gridpath5//gnuplotfile)
-!        write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
-!        write(gnuplotchannel,FMT="(A)") &
-!                'set output "'//gridpath5//"png/"//ntext//'.png"'
-!        write(gnuplotchannel,*) 'set multiplot'
-!        write(gnuplotchannel,*) 'set size 0.5, 1.0'
-!        write(gnuplotchannel,*) 'set origin 0.0, 0.0'
-!        write(gnuplotchannel,*) 'set title "Interpolation Error Comparison by RMSD Variables 1 and 2"'
-!        write(gnuplotchannel,*) 'set pm3d map'
-!        write(gnuplotchannel,*) 'unset key'
-!        write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.055,0.925'
-!        write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.1,0.925'
-!        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.25,0.925'
-!        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 4 "AlphaRatio = ',alpha_ratio, '" at screen 0.25,0.900'
-!        write(gnuplotchannel,*) 'xmin = ', log10(min_rmsd1)
-!        write(gnuplotchannel,*) 'xmax = ', log10(max_rmsd1)
-!        write(gnuplotchannel,*) 'ymin = ', log10(min_rmsd2)
-!        write(gnuplotchannel,*) 'ymax = ', log10(max_rmsd2)
-!        write(gnuplotchannel,*) 'set xrange [0:',drmsd1*Nbins,']'
-!        write(gnuplotchannel,*) 'set yrange [0:',drmsd2*Nbins,']'
-!        !write(gnuplotchannel,*) 'xmin = ', min_rmsd_z
-!        !write(gnuplotchannel,*) 'xmax = ', max_rmsd_z
-!        !write(gnuplotchannel,*) 'ymin = ', min_rmsd_x
-!        !write(gnuplotchannel,*) 'ymax = ', max_rmsd_x
-!        write(gnuplotchannel,*) 'min_cx = ', log10(min_rmsd3)
-!        write(gnuplotchannel,*) 'max_cx = ', log10(max_rmsd3)
-!        !write(gnuplotchannel,*) 'max_cx = ', max(max_rmsd_fx,1.0e-7)
-!        write(gnuplotchannel,*) 'set cbrange [min_cx:max_cx]'
-!        write(gnuplotchannel,*) 'set palette defined ('//&
-!                                'log10(.0000001) "white", '//&
-!                                'log10(.0000001) "yellow", '//&
-!                                'log10(.0000005) "yellow", '//&
-!                                'log10(.000001) "green", '//&
-!                                'log10(.000005) "cyan", '//&
-!                                'log10(.00001) "blue", '//&
-!                                'log10(.00005) "magenta", '//&
-!                                'log10(.0001) "red"'//&
-!                                ')'
-!!       write(gnuplotchannel,*) 'set palette defined ('//&
-!!                               '.0000001 "white", '//&
-!!                               '.0000005 "yellow", '//&
-!!                               '.000001 "green", '//&
-!!                               '.000005 "cyan", '//&
-!!                               '.00001 "blue", '//&
-!!                               '.00005 "magenta", '//&
-!!                               '.0001 "red"'//&
-!!                               ')'
-!        write(gnuplotchannel,*) 'set xlabel "RMSD Variable 1"'
-!        write(gnuplotchannel,*) 'set ylabel "RMSD Variable 2"'
-!        write(gnuplotchannel,*) 'set cblabel "Maximum Error Encountered Between Interpolated and Target Gradient"'
-!        write(gnuplotchannel,*) 'set xtics ('//&
-!                                                '"1e-9" log10(.000000001)-xmin, '//&
-!!                                               '"5e-9" log10(.000000005)-xmin, '//&
-!                                                 '"1e-8" log10(.00000001)-xmin, '//&
-!!                                                '"5e-8" log10(.00000005)-xmin, '//&
-!                                                  '"1e-7" log10(.0000001)-xmin, '//&
-!!                                                 '"5e-7" log10(.0000005)-xmin, '//&
-!                                                   '"1e-6" log10(.000001)-xmin, '//&
-!!                                                  '"5e-6" log10(.000005)-xmin, '//&
-!                                                   '"1e-5"  log10(.00001)-xmin, '//&
-!!                                                  '"5e-5"  log10(.00005)-xmin, '//&
-!                                                   '"1e-4"   log10(.0001)-xmin, '//&
-!!                                                  '"5e-4"   log10(.0005)-xmin, '//&
-!                                                   '"1e-3"    log10(.001)-xmin, '//&
-!!                                                  '"5e-3"    log10(.005)-xmin, '//&
-!                                                   '"1e-2"     log10(.01)-xmin, '//&
-!!                                                  '"5e-2"     log10(.05)-xmin, '//&
-!                                                   '"1e-1"      log10(.1)-xmin, '//&
-!!                                                  '"5e-1"      log10(.5)-xmin, '//&
-!                                                   ' "1.0"       log10(1)-xmin, '//&
-!                                           ')'
-!        write(gnuplotchannel,*) 'set ytics ('//&
-!                                                '"1e-9" log10(.000000001)-ymin, '//&
-!!                                               '"5e-9" log10(.000000005)-xmin, '//&
-!                                                 '"1e-8" log10(.00000001)-ymin, '//&
-!!                                                '"5e-8" log10(.00000005)-ymin, '//&
-!                                                  '"1e-7" log10(.0000001)-ymin, '//&
-!!                                                 '"5e-7" log10(.0000005)-ymin, '//&
-!                                                   '"1e-6" log10(.000001)-ymin, '//&
-!!                                                  '"5e-6" log10(.000005)-ymin, '//&
-!                                                   '"1e-5"  log10(.00001)-ymin, '//&
-!!                                                  '"5e-5"  log10(.00005)-ymin, '//&
-!                                                   '"1e-4"   log10(.0001)-ymin, '//&
-!!                                                  '"5e-4"   log10(.0005)-ymin, '//&
-!                                                   '"1e-3"    log10(.001)-ymin, '//&
-!!                                                  '"5e-3"    log10(.005)-ymin, '//&
-!                                                   '"1e-2"     log10(.01)-ymin, '//&
-!!                                                  '"5e-2"     log10(.05)-ymin, '//&
-!                                                   '"1e-1"      log10(.1)-ymin, '//&
-!!                                                  '"5e-1"      log10(.5)-ymin, '//&
-!                                                   ' "1.0"       log10(1)-ymin, '//&
-!                                           ')'
-!        write(gnuplotchannel,*) 'set cbtics ('//&
-!                                              '"1e-10" log10(.0000000001), '//&
-!!                                             '"5e-10" log10(.0000000005), '//&
-!                                                '"1e-9" log10(.000000001), '//&
-!!                                               '"5e-9" log10(.000000005), '//&
-!                                                 '"1e-8" log10(.00000001), '//&
-!!                                                '"5e-8" log10(.00000005), '//&
-!                                                  '"1e-7" log10(.0000001), '//&
-!!                                                 '"5e-7" log10(.0000005), '//&
-!                                                   '"1e-6" log10(.000001), '//&
-!!                                                  '"5e-6" log10(.000005), '//&
-!                                                   '"1e-5"  log10(.00001), '//&
-!!                                                  '"5e-5"  log10(.00005), '//&
-!                                                   '"1e-4"   log10(.0001), '//&
-!!                                                  '"5e-4"   log10(.0005), '//&
-!                                                   '"1e-3"    log10(.001), '//&
-!!                                                  '"5e-3"    log10(.005), '//&
-!                                                   '"1e-2"     log10(.01), '//&
-!!                                                  '"5e-2"     log10(.05), '//&
-!                                                   '"1e-1"      log10(.1), '//&
-!!                                                  '"5e-1"      log10(.5), '//&
-!                                                   ' "1.0"       log10(1), '//&
-!                                           ')'
-!
-!        write(gnuplotchannel,*) "set lmargin at screen 0.05"
-!        write(gnuplotchannel,*) "set rmargin at screen 0.45"
-!        write(gnuplotchannel,*) "set bmargin at screen 0.10"
-!        write(gnuplotchannel,*) "set tmargin at screen 0.95"
-!        write(gnuplotchannel,*) 'splot "'//gridpath5//'heatmap_linear'//errorcheckfile//&
-!                '" u 1:2:3 w image palette'
-!
-!        write(gnuplotchannel,*) "unset title"
-!        write(gnuplotchannel,*) "unset xlabel"
-!        write(gnuplotchannel,*) "unset ylabel"
-!        write(gnuplotchannel,*) 'unset xtics'
-!        write(gnuplotchannel,*) 'unset ytics'
-!        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
-!                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
-!                ')" u (log10($2)-xmin):(log10($3)-ymin) w l lw 3 lc "black"'
-!        write(gnuplotchannel,FMT="(A,F15.11,A)") 'f(x) = (ymax-ymin)/2 + x/(', alpha_ratio, '*(10**(xmin/ymin)))'
-!        write(gnuplotchannel,*) 'plot f(x) w l lw 2 lc "black"'
-!
-!        write(gnuplotchannel,*) 'set xrange [1:',Ninterpolation,']'
-!        write(gnuplotchannel,*) 'set logscale y'
-!        write(gnuplotchannel,*) "unset lmargin"
-!        write(gnuplotchannel,*) "unset rmargin"
-!        write(gnuplotchannel,*) "unset bmargin"
-!        write(gnuplotchannel,*) "unset tmargin"
-!        write(gnuplotchannel,*) 'set xtics'
-!        write(gnuplotchannel,*) 'set ytics'
-!        write(gnuplotchannel,*) 'set xlabel "Ninterpolation"'
-!
-!        write(gnuplotchannel,*) 'set size 0.5, 0.5'
-!        write(gnuplotchannel,*) 'set origin 0.5, 0.0'
-!        write(gnuplotchannel,*) 'set title "Title 2"'
-!        write(gnuplotchannel,*) 'set yrange [',min_rmsd1,':',max_rmsd1,']'
-!        write(gnuplotchannel,*) 'set ylabel "RMSD Variable 1"'
-!        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
-!                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
-!                ')" u 1:2 w l lc "black" lw 3'
-!
-!        write(gnuplotchannel,*) 'set size 0.5, 0.5'
-!        write(gnuplotchannel,*) 'set origin 0.5, 0.5'
-!        write(gnuplotchannel,*) 'set title "Title 3"'
-!        write(gnuplotchannel,*) 'set yrange [',min_rmsd2,':',max_rmsd2,']'
-!        write(gnuplotchannel,*) 'set ylabel "RMSD Variable 2"'
-!        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
-!                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
-!                ')" u 1:3 w l lc "black" lw 3'
-!        close(gnuplotchannel)
-!
-!        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
-!        end do
-!
-!        print *, "Started making the gif!"
-!        call system("convert -background white -alpha remove -layers OptimizePlus "//&
-!                "-delay 20 -loop 0 "//gridpath0//"png/*.png "//&
-!                gridpath5//"heatmap_trajectory.gif")
-!        print *, "Finished making the gif!"
-!        call sleep(5)
-!
+
+        if (.true.) then
+        print *, "Started making the gif!"
+
+        call system("rm -r "//gridpath4//"png/")
+        call system("mkdir "//gridpath4//"png")
+        Ngif = Ninterpolation
+        do n = 1, Ngif
+        write(ntext,FMT="(I0.3)") n
+
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
+        write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
+        write(gnuplotchannel,FMT="(A)") &
+                'set output "'//gridpath4//"png/"//ntext//'.png"'
+        write(gnuplotchannel,*) 'set multiplot'
+        write(gnuplotchannel,*) 'set size 0.5, 1.0'
+        write(gnuplotchannel,*) 'set origin 0.0, 0.0'
+        write(gnuplotchannel,*) 'set title "Interpolation Error Comparison by RMSD Variables 1 and 2"'
+        write(gnuplotchannel,*) 'set pm3d map'
+        write(gnuplotchannel,*) 'unset key'
+        write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.055,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.1,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.25,0.925'
+        write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 4 "AlphaRatio = ',alpha_ratio, '" at screen 0.25,0.900'
+        write(gnuplotchannel,*) 'xmin = ', log10(min_rmsd1)
+        write(gnuplotchannel,*) 'xmax = ', log10(max_rmsd1)
+        write(gnuplotchannel,*) 'ymin = ', log10(min_rmsd2)
+        write(gnuplotchannel,*) 'ymax = ', log10(max_rmsd2)
+        write(gnuplotchannel,*) 'set xrange [0:',drmsd1*Nbins,']'
+        write(gnuplotchannel,*) 'set yrange [0:',drmsd2*Nbins,']'
+        !write(gnuplotchannel,*) 'xmin = ', min_rmsd_z
+        !write(gnuplotchannel,*) 'xmax = ', max_rmsd_z
+        !write(gnuplotchannel,*) 'ymin = ', min_rmsd_x
+        !write(gnuplotchannel,*) 'ymax = ', max_rmsd_x
+        write(gnuplotchannel,*) 'min_cx = ', log10(min_rmsd3)
+        write(gnuplotchannel,*) 'max_cx = ', log10(max_rmsd3)
+        !write(gnuplotchannel,*) 'max_cx = ', max(max_rmsd_fx,1.0e-7)
+        write(gnuplotchannel,*) 'set cbrange [min_cx:max_cx]'
+        write(gnuplotchannel,*) 'set palette defined ('//&
+                                'log10(.0000001) "white", '//&
+                                'log10(.0000001) "yellow", '//&
+                                'log10(.0000005) "yellow", '//&
+                                'log10(.000001) "green", '//&
+                                'log10(.000005) "cyan", '//&
+                                'log10(.00001) "blue", '//&
+                                'log10(.00005) "magenta", '//&
+                                'log10(.0001) "red"'//&
+                                ')'
+!       write(gnuplotchannel,*) 'set palette defined ('//&
+!                               '.0000001 "white", '//&
+!                               '.0000005 "yellow", '//&
+!                               '.000001 "green", '//&
+!                               '.000005 "cyan", '//&
+!                               '.00001 "blue", '//&
+!                               '.00005 "magenta", '//&
+!                               '.0001 "red"'//&
+!                               ')'
+        write(gnuplotchannel,*) 'set xlabel "RMSD Variable 1"'
+        write(gnuplotchannel,*) 'set ylabel "RMSD Variable 2"'
+        write(gnuplotchannel,*) 'set cblabel "Maximum Error Encountered Between Interpolated and Target Gradient"'
+        write(gnuplotchannel,*) 'set xtics ('//&
+                                                '"1e-9" log10(.000000001)-xmin, '//&
+!                                               '"5e-9" log10(.000000005)-xmin, '//&
+                                                 '"1e-8" log10(.00000001)-xmin, '//&
+!                                                '"5e-8" log10(.00000005)-xmin, '//&
+                                                  '"1e-7" log10(.0000001)-xmin, '//&
+!                                                 '"5e-7" log10(.0000005)-xmin, '//&
+                                                   '"1e-6" log10(.000001)-xmin, '//&
+!                                                  '"5e-6" log10(.000005)-xmin, '//&
+                                                   '"1e-5"  log10(.00001)-xmin, '//&
+!                                                  '"5e-5"  log10(.00005)-xmin, '//&
+                                                   '"1e-4"   log10(.0001)-xmin, '//&
+!                                                  '"5e-4"   log10(.0005)-xmin, '//&
+                                                   '"1e-3"    log10(.001)-xmin, '//&
+!                                                  '"5e-3"    log10(.005)-xmin, '//&
+                                                   '"1e-2"     log10(.01)-xmin, '//&
+!                                                  '"5e-2"     log10(.05)-xmin, '//&
+                                                   '"1e-1"      log10(.1)-xmin, '//&
+!                                                  '"5e-1"      log10(.5)-xmin, '//&
+                                                   ' "1.0"       log10(1)-xmin, '//&
+                                           ')'
+        write(gnuplotchannel,*) 'set ytics ('//&
+                                                '"1e-9" log10(.000000001)-ymin, '//&
+!                                               '"5e-9" log10(.000000005)-xmin, '//&
+                                                 '"1e-8" log10(.00000001)-ymin, '//&
+!                                                '"5e-8" log10(.00000005)-ymin, '//&
+                                                  '"1e-7" log10(.0000001)-ymin, '//&
+!                                                 '"5e-7" log10(.0000005)-ymin, '//&
+                                                   '"1e-6" log10(.000001)-ymin, '//&
+!                                                  '"5e-6" log10(.000005)-ymin, '//&
+                                                   '"1e-5"  log10(.00001)-ymin, '//&
+!                                                  '"5e-5"  log10(.00005)-ymin, '//&
+                                                   '"1e-4"   log10(.0001)-ymin, '//&
+!                                                  '"5e-4"   log10(.0005)-ymin, '//&
+                                                   '"1e-3"    log10(.001)-ymin, '//&
+!                                                  '"5e-3"    log10(.005)-ymin, '//&
+                                                   '"1e-2"     log10(.01)-ymin, '//&
+!                                                  '"5e-2"     log10(.05)-ymin, '//&
+                                                   '"1e-1"      log10(.1)-ymin, '//&
+!                                                  '"5e-1"      log10(.5)-ymin, '//&
+                                                   ' "1.0"       log10(1)-ymin, '//&
+                                           ')'
+        write(gnuplotchannel,*) 'set cbtics ('//&
+                                              '"1e-10" log10(.0000000001), '//&
+!                                             '"5e-10" log10(.0000000005), '//&
+                                                '"1e-9" log10(.000000001), '//&
+!                                               '"5e-9" log10(.000000005), '//&
+                                                 '"1e-8" log10(.00000001), '//&
+!                                                '"5e-8" log10(.00000005), '//&
+                                                  '"1e-7" log10(.0000001), '//&
+!                                                 '"5e-7" log10(.0000005), '//&
+                                                   '"1e-6" log10(.000001), '//&
+!                                                  '"5e-6" log10(.000005), '//&
+                                                   '"1e-5"  log10(.00001), '//&
+!                                                  '"5e-5"  log10(.00005), '//&
+                                                   '"1e-4"   log10(.0001), '//&
+!                                                  '"5e-4"   log10(.0005), '//&
+                                                   '"1e-3"    log10(.001), '//&
+!                                                  '"5e-3"    log10(.005), '//&
+                                                   '"1e-2"     log10(.01), '//&
+!                                                  '"5e-2"     log10(.05), '//&
+                                                   '"1e-1"      log10(.1), '//&
+!                                                  '"5e-1"      log10(.5), '//&
+                                                   ' "1.0"       log10(1), '//&
+                                           ')'
+
+        write(gnuplotchannel,*) "set lmargin at screen 0.05"
+        write(gnuplotchannel,*) "set rmargin at screen 0.45"
+        write(gnuplotchannel,*) "set bmargin at screen 0.10"
+        write(gnuplotchannel,*) "set tmargin at screen 0.95"
+        write(gnuplotchannel,*) 'splot "'//gridpath5//'heatmap_linear'//errorcheckfile//&
+                '" u 1:2:3 w image palette'
+
+        write(gnuplotchannel,*) "unset title"
+        write(gnuplotchannel,*) "unset xlabel"
+        write(gnuplotchannel,*) "unset ylabel"
+        write(gnuplotchannel,*) 'unset xtics'
+        write(gnuplotchannel,*) 'unset ytics'
+        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
+                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
+                ')" u (log10($2)-xmin):(log10($3)-ymin) w l lw 3 lc "black"'
+        write(gnuplotchannel,*) 'set samples 100000'
+        write(gnuplotchannel,*) 'alpha=',alpha_ratio**2
+        write(gnuplotchannel,*) 'cA = 10**((xmin + (xmax-xmin)*1/5)*2) + '//&
+                                     'alpha*10**((ymin + (ymax-ymin)*1/5)*2)'
+        write(gnuplotchannel,*) 'cB = 10**((xmin + (xmax-xmin)*2/5)*2) + '//&
+                                     'alpha*10**((ymin + (ymax-ymin)*2/5)*2)'
+        write(gnuplotchannel,*) 'cC = 10**((xmin + (xmax-xmin)*3/5)*2) + '//&
+                                     'alpha*10**((ymin + (ymax-ymin)*3/5)*2)'
+        write(gnuplotchannel,*) 'cD = 10**((xmin + (xmax-xmin)*4/5)*2) + '//&
+                                     'alpha*10**((ymin + (ymax-ymin)*4/5)*2)'
+!       write(gnuplotchannel,FMT="(A,F15.11,A)") 'f(x) = (ymax-ymin)/2 + x/(', alpha_ratio, '*(10**(xmin/ymin)))'
+!       write(gnuplotchannel,FMT="(A,F15.11,A)") 'f(x) = 0.5*log10(cA - 10**(2*(x+xmin))) - ymin'
+        write(gnuplotchannel,FMT="(A,F15.11,A)") 'fA(x) = 0.5*log10((cA - 10**(2*(x+xmin)))/alpha) - ymin'
+        write(gnuplotchannel,FMT="(A,F15.11,A)") 'fB(x) = 0.5*log10((cB - 10**(2*(x+xmin)))/alpha) - ymin'
+        write(gnuplotchannel,FMT="(A,F15.11,A)") 'fC(x) = 0.5*log10((cC - 10**(2*(x+xmin)))/alpha) - ymin'
+        write(gnuplotchannel,FMT="(A,F15.11,A)") 'fD(x) = 0.5*log10((cD - 10**(2*(x+xmin)))/alpha) - ymin'
+!       write(gnuplotchannel,*) 'plot f(x) w l lw 2 lc "black"'
+        write(gnuplotchannel,*) 'plot fA(x) w l lw 2 lc "black"'
+        write(gnuplotchannel,*) 'plot fB(x) w l lw 2 lc "black"'
+        write(gnuplotchannel,*) 'plot fC(x) w l lw 2 lc "black"'
+        write(gnuplotchannel,*) 'plot fD(x) w l lw 2 lc "black"'
+
+        write(gnuplotchannel,*) 'set xrange [1:',Ninterpolation,']'
+        write(gnuplotchannel,*) 'set logscale y'
+        write(gnuplotchannel,*) "unset lmargin"
+        write(gnuplotchannel,*) "unset rmargin"
+        write(gnuplotchannel,*) "unset bmargin"
+        write(gnuplotchannel,*) "unset tmargin"
+        write(gnuplotchannel,*) 'set xtics'
+        write(gnuplotchannel,*) 'set ytics'
+        write(gnuplotchannel,*) 'set xlabel "Ninterpolation"'
+
+        write(gnuplotchannel,*) 'set size 0.5, 0.5'
+        write(gnuplotchannel,*) 'set origin 0.5, 0.0'
+        write(gnuplotchannel,*) 'set title "Title 2"'
+        write(gnuplotchannel,*) 'set yrange [',min_rmsd1,':',max_rmsd1,']'
+        write(gnuplotchannel,*) 'set ylabel "RMSD Variable 1"'
+        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
+                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
+                ')" u 1:2 w l lc "black" lw 3'
+
+        write(gnuplotchannel,*) 'set size 0.5, 0.5'
+        write(gnuplotchannel,*) 'set origin 0.5, 0.5'
+        write(gnuplotchannel,*) 'set title "Title 3"'
+        write(gnuplotchannel,*) 'set yrange [',min_rmsd2,':',max_rmsd2,']'
+        write(gnuplotchannel,*) 'set ylabel "RMSD Variable 2"'
+        write(gnuplotchannel,*) 'plot "<(sed -n ''1,'//trim(adjustl(ntext))//&
+                'p'' '//gridpath5//"heatmapline"//errorcheckfile//&
+                ')" u 1:3 w l lc "black" lw 3'
+        close(gnuplotchannel)
+
+        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+        end do
+
+        call system("convert -background white -alpha remove -layers OptimizePlus "//&
+                "-delay 20 -loop 0 "//gridpath4//"png/*.png "//&
+                gridpath4//"heatmap_trajectory.gif")
+
+        print *, "Finished making the gif!"
+        call sleep(5)
+        end if
+
         max_rmsd1 = 0.0d1
         min_rmsd1 = 1.0d9
         max_rmsd2 = 0.0d1
@@ -3714,7 +3799,7 @@ subroutine plotErrorCheck1(vals,Nsamples,&
         open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) 'set term pngcairo size 1200,2400'
         write(gnuplotchannel,FMT="(A,2F7.4,A)") &
-                'set output "'//gridpath5//"ratio", vals, '.png"'
+                'set output "'//gridpath4//"ratio", vals, '.png"'
         write(gnuplotchannel,*) 'set title "Error Comparison of a Frame and Gradient with its Interpolation"'
         write(gnuplotchannel,*) 'set multiplot layout 3,1'
         write(gnuplotchannel,*) 'unset key'
@@ -3825,13 +3910,13 @@ subroutine plotFinalErrorCheck1(Nsamples)
         open(gnuplotchannel,file=gridpath5//gnuplotfile)
         write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
         write(gnuplotchannel,FMT="(A)") &
-                'set output "'//gridpath5//'LocalErrorConvergence.png"'
+                'set output "'//gridpath4//'LocalErrorConvergence.png"'
         write(gnuplotchannel,*) 'set title "Local Error Convergence over a Trajectory"'
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.05,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 2 "Threshhold = ',threshold_rmsd, &
                 ' A" at screen 0.15,0.925'
-        write(gnuplotchannel,FMT='(A,F9.4,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, &
+        write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, &
                 '" at screen 0.35,0.925'
         write(gnuplotchannel,*) 'xmin = ', floor(min_var(1))
         write(gnuplotchannel,*) 'xmax = ', var_maxvar(1)

@@ -1771,7 +1771,7 @@ end do
 close(filechannel1)
 
 binTotal = 0
-open(filechannel1,file=gridpath5//allprefixes(1:alllengths(1))//binnedSATRVfile)
+open(filechannel1,file=gridpath5//allprefixes(1:alllengths(1)-1)//binnedSATRVfile)
 do j = 1, Ntesttraj
         read(filechannel1,FMT=*) SATRVdata
         binTotal(SATRVdata(SATRVcolumn),1) = &
@@ -1780,7 +1780,7 @@ end do
 close(filechannel1)
 
 do i = 1, comparison_number-1
-        open(filechannel1,file=gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
+        open(filechannel1,file=gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
                                binnedSATRVfile)
         do j = 1, Ntesttraj
                 read(filechannel1,FMT=*) SATRVdata
@@ -1840,7 +1840,7 @@ do j = 1, Nbins
                                         max(minsd_penalty,referenceSDs(j)))**lambda_penalty
 end do
 
-!write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1))//'" at graph 0.825, 0.9'
+write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1)-1)//'" at graph 0.825, 0.9'
 write(difference_text,FMT="(F8.4)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
 write(gnuplotchannel,*) 'set label 2" RMSD: '//difference_text//'" at graph 0.85,0.825'
 write(difference_text,FMT="(F8.4)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
@@ -1849,7 +1849,7 @@ write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
 !write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(1:alllengths(1))//&
 !                        SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
 !                        ')):(1.0) smooth frequency w boxes, \'
-write(gnuplotchannel,*) 'plot "'//gridpath5//allprefixes(1:alllengths(1))//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//allprefixes(1:alllengths(1)-1)//&
                         binnedSATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
                         ')):(1.0) smooth frequency w boxes, \'
 write(gnuplotchannel,*) '     "'//gridpath5//'Adjusted'//SATRVname//cumulativefile//&
@@ -1870,8 +1870,8 @@ do i = 1, comparison_number-1
                                                 max(minsd_penalty,referenceSDs(j)))**lambda_penalty
         end do
 
-!        write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
-!                                '" at graph 0.825, 0.9'
+        write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
+                                '" at graph 0.825, 0.9'
         write(difference_text,FMT="(F8.4)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
         write(gnuplotchannel,*) 'set label ',3*i+2,'" RMSD: '//difference_text//'" at graph 0.85,0.825'
         write(difference_text,FMT="(F8.2)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
@@ -1895,7 +1895,7 @@ do i = 1, comparison_number-1
 !        write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
 !                                SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
 !                                ')):(1.0) smooth frequency w boxes, \'
-        write(gnuplotchannel,*) 'plot "'//gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
+        write(gnuplotchannel,*) 'plot "'//gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
                                 binnedSATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
                                 ')):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'Adjusted'//SATRVname//cumulativefile//&

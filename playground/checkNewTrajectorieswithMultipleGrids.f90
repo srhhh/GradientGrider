@@ -94,7 +94,8 @@ character(1) :: answer
 
 real(dp) :: scattering_angle
 real(dp),dimension(3) :: TRVenergies1,TRVenergies2,dTRVenergies
-real(dp),dimension(3,Natoms) :: coords_initial,velocities_initial,coords_final,velocities_final
+real(dp),dimension(3,Natoms) :: coords_initial,velocities_initial
+real(dp),dimension(3,Natoms) :: coords_final,velocities_final
 integer :: seed,n,m,n_testtraj,initial_n_testtraj
 real :: lowerlimit,upperlimit
 
@@ -118,13 +119,13 @@ integer :: trajectory_t0, trajectory_t1
 integer :: i, j, k
 
 
+!Get the number of threads set up
 call OMP_SET_NUM_THREADS(Nthreads)
 
 !Get our timing system ready
 call system_clock(c1,count_rate=cr)
 system_clock_rate = 1.0/real(cr)
 
-!Now here we actually make these new trajectories
 !$OMP PARALLEL DEFAULT(shared)&
 !$OMP& PRIVATE(iostate)&
 !$OMP& PRIVATE(variable_length_text,Ntraj_text,filechannels)&
@@ -176,16 +177,19 @@ do n = 1, Nvar
 end do
 end do
 
+!Because the variables subcellsearchmax is in PARAMETERS,
+!we must initialize it from whatever is given in ANALYSIS
+call setSubcellSearchMax()
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       FORMATTING SETUP
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!Get the format of the cells ready
-!Cells of different orders (ex. parent vs child) have different formats
-!which we obtain by combining together the formats of each variable
-!according to which order it is
+!Cells of different orders (ex. parent vs child) have
+!different formats which we obtain by combining together
+!the formats of each variable according to which order it is
 var_multipleFMT = ""
 do m = 1, Norder_max+1
         var_multipleFMT = trim(adjustl(var_multipleFMT))//"("
@@ -206,35 +210,23 @@ end do
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!       DIRECTORY SETUP
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-gridpath4 = gridpath0//expfolder
-gridpath5 = gridpath4//intermediatefolder
-
-inquire(file=gridpath5//initialfile,exist=file_exists)
-
-if ((.not.(continue_analysis)).and.(file_exists)) then
-        print *, "Cannot go on; will overwrite old experiment"
-        return_flag = .true.
-end if
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       PRE-PROCESSING LIBRARY OVERVIEW
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !All trajectory folders are formatted as I0.3 (3-digit integer)
 !So search for these numbered folders and read them
-call system("ls -p "//gridpath0//" | grep '^[0123456789]*/' > "//gridpath0//trajectories)
+call system("ls -p "//gridpath0//&
+        " | grep '^[0123456789]*/' > "//&
+        gridpath0//trajectories)
 
 !Let's see how many grids are actually in the folder
 Ngrid_max = 0
-open(trajectorieschannel,file=gridpath0//trajectories,action="read")
+open(trajectorieschannel,file=gridpath0//&
+        trajectories,action="read")
 do
-        read(trajectorieschannel,FMT="(A4)",iostat=iostate) folder_text
+        read(trajectorieschannel,FMT="(A4)",&
+                iostat=iostate) folder_text
         if (iostate /= 0) exit
         Ngrid_max = Ngrid_max + 1
 end do
@@ -249,41 +241,55 @@ Ngrid_total = min(Ngrid_cap, Ngrid_max)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!If we want this program to be a "pick up where we left off last time" program
-!we figure out how many new trajectories I already checked for RMSD
+!If we want this program to be a "pick up where we
+!left off last time" program we figure out how much
+!progress has already been done for this experiment
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+inquire(file=gridpath5//initialfile,exist=file_exists)
 
 !By default, we say we will remake all the trajectories
 initial_n_testtraj = 1
 
+!This is a "new experiment" if we are NOT continuing
+!off from our last analysis OR if the experiment in
+!question has NOT been started
 if ((.not.(continue_analysis)).or.(.not.file_exists)) then
-!       call system("mkdir "//gridpath4)
+
+        !For a new experiment, remake all our data
+        call system("rm -r "//gridpath5)
         call system("mkdir "//gridpath5)
-        call system("mkdir "//gridpath4//interpolationfolder)
+
+!Otherwise, we need to figure out where to start
 else
-!       print *, "     Deciding to use old data..."
         print *, "     Deciding to continue previous analysis..."
 
-        !First we check how many trajectory (Ntraj_text format) files we have
+        !First we check how many trajectory files we have
         !This system call puts them all onto one file
-	!We need all grids 1 to Ngrid_total to have the trajectories but we just check the last one
-	!and we assume all previous grids have just as many or more (usually a safe assumption)
-!       write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-!       write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-!       write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-!       call system("ls "//gridpath0//Ngrid_text//"/ | grep -E '^"//Ngrid_text//&
-!                   reject_text//"\"//Nthreshold_text//"_[0123456789]{"//trim(adjustl(variable_length_text))//&
-!                   "}.dat' > "//gridpath0//trajectories)
+	!We need all grids 1 to Ngrid_total to have the
+        !trajectories but we just check the last one
+	!and we assume all previous grids have just as
+        !many or more (usually a safe assumption)
 
-        write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-        write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-        call system("ls "//gridpath5//" | grep -E '^"//Ngrid_text//&
-                    "_[0123456789]{"//trim(adjustl(variable_length_text))//&
-                    "}.dat' > "//gridpath5//trajectories)
+        write(variable_length_text,FMT=FMT5_variable)&
+                Ngrid_text_length
+        write(Ngrid_text,FMT="(I0."//&
+                trim(adjustl(variable_length_text))//")")&
+                Ngrid_total
+        write(variable_length_text,FMT=FMT5_variable)&
+                trajectory_text_length
+        call system("ls "//gridpath5//" | grep -E '^"//&
+                Ngrid_text//"_[0123456789]{"//&
+                trim(adjustl(variable_length_text))//&
+                "}.dat' > "//gridpath5//trajectories)
 
-        !Then we simply have to read the file to see how many we have
-	!This also assumes they were numbered correctly (usually a safe assumption)
-        open(trajectorieschannel,file=gridpath5//trajectories,action="read")
+        !Then we simply have to read the file to see
+        !how many we have. This also assumes they were
+        !numbered correctly (usually a safe assumption)
+        open(trajectorieschannel,file=gridpath5//&
+                trajectories,action="read")
         do
                 read(trajectorieschannel,*,iostat=iostate)
                 if (iostate /= 0) exit
@@ -291,7 +297,7 @@ else
         end do
         close(trajectorieschannel)
 
-        !Second, we check how many lines are on the trajectories file
+        !Second, we check how many lines are on the timeslice file
         Ntraj = 1
         open(trajectorieschannel,file=gridpath5//timeslicefile)
         do
@@ -301,7 +307,8 @@ else
         end do
         close(trajectorieschannel)
 
-        !If these two values are not congruent there has been some sort of file corruption or deletion
+        !If these two values are not congruent there has
+        !been some sort of file corruption or deletion
         if (Ntraj /= initial_n_testtraj) then
                 print *, ""
                 print *, ""
@@ -316,7 +323,8 @@ else
                 print *, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
                 print *, ""
                 
-                if ((Ntraj < Ntesttraj).or.(initial_n_testtraj < Ntesttraj)) then
+                if ((Ntraj < Ntesttraj).or.&
+                    (initial_n_testtraj < Ntesttraj)) then
                 do
                         print *, "    corrupted data interrupts trajectory indexing;"
                         print *, "    overwrite corrupted data? otherwise the program exits    (y/n)"
@@ -324,6 +332,8 @@ else
                         read (*,*) answer
                         if ((answer == "y").or.(answer == "n")) exit
                 end do
+
+                !The user may choose to quit
                 if (answer == "n") then
                         print *, ""
                         call itime(now)
@@ -332,6 +342,9 @@ else
                         print *, ""
 
                         return_flag = .true.
+
+                !Or to just keep appending new
+                !data onto the timeslice file
                 else
                         print *, "    starting off where the timeslice file left off!"
                         print *, ""
@@ -538,6 +551,9 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!$OMP END SINGLE
+!$OMP BARRIER
+
 if (return_flag) then
         initial_n_testtraj = Ntesttraj + 1
 else
@@ -545,10 +561,12 @@ else
         call itime(now)
         write(6,FMT=FMTnow) now
         print *, "Trajectory Creation ... Start"
-end if
+       
+!       !And also reset the interpolation counter and file
+!       interpolation_counter = 0
+!       call system("rm "//gridpath5//interpolationfile)
 
-!$OMP END SINGLE
-!$OMP BARRIER
+end if
 
 !If we are checking traversal, allocate the necessary arrays
 if (traversal_flag) allocate(traversal0(Ngrid_total,(var_bounds(1))**Nvar),&
@@ -557,10 +575,6 @@ if (traversal_flag) allocate(traversal0(Ngrid_total,(var_bounds(1))**Nvar),&
 !BEFORE going inside the parallel do loop, each thread should
 !instantiate its own filechannels
 allocate(filechannels(1+Ngrid_total))
-
-!And also reset the interpolation counter and file
-interpolation_counter = 0
-call system("rm "//gridpath5//interpolationfile)
 
 !$OMP DO
 do n_testtraj = initial_n_testtraj, Ntesttraj
@@ -693,9 +707,9 @@ if (useoldinitialbonddata_flag) close(trajectorieschannel)
 
 !If we gathered interpolation data, we dump it now into a
 !more manageable form
-if (gather_interpolation_flag) then
-        call processInterpolationFile2((/0.0d0,0.0d0/),(/100.0d0,100.0d0/))
-end if
+!if (gather_interpolation_flag) then
+!        call processInterpolationFile2((/0.0d0,0.0d0/),(/100.0d0,100.0d0/))
+!end if
 
 !This closes that big, enclosing if statement on whether to make trajectories
 end if
@@ -715,40 +729,111 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 if (gather_interpolation_flag) then
+
+
 if (.not.comparison_flag) then
         if (interpolation_flag) then
-        call system("rm "//gridpath4//interpolationfolder//"*")
-        call processInterpolationFile2((/0.0d0,0.0d0/),&
-                (/100.0d0,100.0d0/))
-        call getRMSDinterpolation2((/0.0d0,0.0d0/),&
-                (/100.0d0,100.0d0/),"TDDCED_All.png")
-!       call system("rm "//gridpath4//interpolationfolder//"*")
-!       call processInterpolationFile2((/2.990d0,3.780d0/),&
-!               (/0.05d0,0.05d0/))
-!       call getRMSDinterpolation2((/2.990d0,3.780d0/),&
-!               (/0.05d0,0.05d0/),"TDDCED_Collision.png")
-!       call system("rm "//gridpath4//interpolationfolder//"*")
-!       call processInterpolationFile2((/2.990d0,3.780d0/),&
-!               (/-0.05d0,-0.05d0/))
-!       call getRMSDinterpolation2((/2.990d0,3.780d0/),&
-!               (/-0.05d0,-0.05d0/),"TDDCED_NonCollision.png")
+
+        call itime(now)
+        write(6,FMT=FMTnow) now
+        print *, "   Making plot: ", "TDDRED"
+        print *, ""
+
+        call processInterpolationFile2()
+
+        call system("rm "//gridpath0//comparison_file)
+        call system('echo "0.0 0.0 100.0 100.0" >>'//gridpath0//comparison_file)
+        call getRMSDinterpolation2("TDDRED_All")
+
+        call system("rm "//gridpath0//comparison_file)
+        call system('echo "2.990 3.780 0.55 0.55" >>'//gridpath0//comparison_file)
+        call getRMSDinterpolation2("TDDRED_Collision")
+
+        call system("rm "//gridpath0//comparison_file)
+        call system('echo "2.990 3.780 -0.55 -0.55" >>'//gridpath0//comparison_file)
+        call getRMSDinterpolation2("TDDRED_NonCollision")
         end if
 
 !TDDCED comparison currently in disarray
 else
-        call system("cp "//gridpath0//&
-                allprefixes(1:alllengths(1))//&
-                "/"//interpolationfolder//"*.dat "//&
-                gridpath4//interpolationfolder)
-        do i = 1, comparison_number-1
-                call system("cp "//gridpath0//&
-                        allprefixes(1+sum(alllengths(1:i)):sum(alllengths(1:i+1)))//&
-                        "/"//interpolationfolder//"*.dat "//&
-                        gridpath4//interpolationfolder)
-        end do
+!       if (trim(adjustl(comparison_SATRVname)) == "InterpolationTDD") then
 
-        call getRMSDinterpolation2((/0.0d0,0.0d0/),&
-                (/100.0d0,100.0d0/),"TDDCED.png")
+!               call itime(now)
+!               write(6,FMT=FMTnow) now
+!               print *, "   Making plot: ", "TDD"
+!               print *, ""
+
+!               call getTDDplot("TDD")
+
+!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationRED") then
+
+!               call itime(now)
+!               write(6,FMT=FMTnow) now
+!               print *, "   Making plot: ", "RED"
+!               print *, ""
+
+!               call getREDplot("RED")
+
+!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationAED") then
+
+!               call itime(now)
+!               write(6,FMT=FMTnow) now
+!               print *, "   Making plot: ", "AED"
+!               print *, ""
+
+!               call getAEDplot("AED")
+
+!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationIED") then
+
+!               call itime(now)
+!               write(6,FMT=FMTnow) now
+!               print *, "   Making plot: ", "IED"
+!               print *, ""
+
+!               call getInterpolationplot("IED")
+
+!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationR1D") then
+
+!               call itime(now)
+!               write(6,FMT=FMTnow) now
+!               print *, "   Making plot: ", "R1D"
+!               print *, ""
+
+!               call getInterpolationplot("R1D")
+
+!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationRSV1D") then
+
+!               call itime(now)
+!               write(6,FMT=FMTnow) now
+!               print *, "   Making plot: ", "RSV1D"
+!               print *, ""
+
+!               call getInterpolationplot("RSV1D")
+
+!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationRSV2D") then
+
+!               call itime(now)
+!               write(6,FMT=FMTnow) now
+!               print *, "   Making plot: ", "RSV2D"
+!               print *, ""
+
+!               call getInterpolationplot("RSV2D")
+
+!       else
+!       end if
+
+        i = INDEX(comparison_SATRVname,"Interpolation")+13
+
+        call itime(now)
+        write(6,FMT=FMTnow) now
+!       print *, "   Making plot: ", trim(adjustl(comparison_SATRVname))(14:)
+        print *, "   Making plot: ", trim(adjustl(comparison_SATRVname(i:)))
+        print *, ""
+
+!       call getInterpolationplot(trim(adjustl(comparison_SATRVname))(14:))
+        call getInterpolationplot(trim(adjustl(comparison_SATRVname(i:))))
+
+        return
 end if
 end if
 
@@ -791,10 +876,10 @@ if (comparison_flag) then
         !These files are stored in allprefixes and the length of each file
         !is stored in alllengths
         call postProcess(allprefixes(1:alllengths(1))//&
-                "/"//intermediatefolder)
+                intermediatefolder)
         do i = 1, comparison_number-1
                 call postProcess(allprefixes(1+sum(alllengths(1:i)):sum(alllengths(1:i+1)))//&
-                        "/"//intermediatefolder)
+                        intermediatefolder)
         end do
 
 !Otherwise, we do not need to process all the files in the library
@@ -915,24 +1000,24 @@ if (comparison_flag) then
 
         !We now need to bin each set of trajectories we want to compare
         call system("cp "//gridpath0//allprefixes(1:alllengths(1))//&
-                    "/"//intermediatefolder//SATRVfile//&
-                    " "//gridpath5//allprefixes(1:alllengths(1))//SATRVfile)
+                    intermediatefolder//SATRVfile//&
+                    " "//gridpath5//allprefixes(1:alllengths(1)-1)//SATRVfile)
         call getScatteringAngles1(allprefixes(1:alllengths(1)),&
                 allprefixes(1:alllengths(1))//"SATRVdistribution")
         do i = 1, comparison_number-1
         call system("cp "//gridpath0//allprefixes(&
                         1+sum(alllengths(1:i)):&
                         sum(alllengths(1:i+1)))//&
-                    "/"//intermediatefolder//SATRVfile//&
+                    intermediatefolder//SATRVfile//&
                     " "//gridpath5//allprefixes(&
                         1+sum(alllengths(1:i)):&
-                        sum(alllengths(1:i+1)))//SATRVfile)
+                        sum(alllengths(1:i+1))-1)//SATRVfile)
                 call getScatteringAngles1(allprefixes(&
                         1+sum(alllengths(1:i)):&
-                        sum(alllengths(1:i+1))),&
+                        sum(alllengths(1:i+1))-1),&
                                           allprefixes(&
                         1+sum(alllengths(1:i)):&
-                        sum(alllengths(1:i+1)))//&
+                        sum(alllengths(1:i+1))-1)//&
                         "SATRVdistribution")
         end do
 

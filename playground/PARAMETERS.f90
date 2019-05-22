@@ -254,6 +254,17 @@ integer,parameter,dimension(Norder_max+1) :: var_resolution = &
 real,dimension(Nvar,Norder_max+1) :: multiplier
 real,dimension(Nvar,Norder_max+1) :: divisor
 
+!And we have some internal limit to how many cells we will search out
+
+integer,parameter,dimension(4) :: default_subcellsearch_max = &
+        (/ 0, 0, 0, 0 /)
+integer,dimension(Norder_max+1) :: subcellsearch_max =&
+        default_subcellsearch_max(1:Norder_max+1)
+integer,dimension(Norder_max+1) :: subcellsearch_max1 =&
+        default_subcellsearch_max(1:Norder_max+1)
+integer,dimension(Norder_max+1) :: subcellsearch_max2 =&
+        default_subcellsearch_max(1:Norder_max+1)
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                    MEMORY OVERHEAD COST
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

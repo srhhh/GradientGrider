@@ -95,10 +95,12 @@ testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.150000d0
 threshold_rmsd1=.150000d0
-threshold_rmsd2=.100000d0
+threshold_rmsd2=.050000d0
 threshold_rmsd3=.050000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
+interpolation_flag=.true.
+gather_interpolation_flag=.true.
 reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
@@ -106,13 +108,13 @@ grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=700
+Ntrajectories=10
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp004
-exp2name=exp003
-exp3name=exp004
+exp1name=exp069
+exp2name=exp031
+exp3name=exp029
 exp4name=exp014
 exp5name=exp015
 
@@ -121,9 +123,9 @@ continue_analysis=.false.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.false.
+useoldinitialbonddata_flag=.true.
 #initialbondfolder="001reject.10000"
-initialbondfolder=exp001/
+initialbondfolder=exp010/
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -136,12 +138,12 @@ initialbondfolder=exp001/
 
 #If the comparison lower and upper limits are the same, the program will
 #use whatever the minimum and maximum is of the data (bad if outliers exist)
-comparison_flag=ScatteringAngle
-comparison_lowerlimit="0.0d0"
-comparison_upperlimit="0.2500d0"
+#comparison_flag=notScatteringAngle
+#comparison_lowerlimit="0.0d0"
+#comparison_upperlimit="0.2500d0"
 #comparison_upperlimit="0.0180d0"
 
-declare -a prefixes
+#declare -a prefixes
 #prefixes[0]="001accept.15000"
 #prefixes[1]="002accept.15000"
 #prefixes[2]="004accept.15000"
@@ -155,8 +157,8 @@ declare -a prefixes
 #prefixes[2]="001omegaA.25005"
 #prefixes[3]="001omegaA.12505"
 #prefixes[4]="001reject.05000"
-prefixes[0]="exp002"
-prefixes[1]="exp003"
+#prefixes[0]="exp002"
+#prefixes[1]="exp003"
 #prefixes[2]="exp003"
 
 ###############################################################################################################################################
@@ -167,7 +169,7 @@ prefixes[1]="exp003"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Mar44test"
+newGRID="H2H2_Mar57test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -179,7 +181,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -191,6 +193,103 @@ bashout="timing.dat"
 gridPATH=$currentPATH/$newGRID
 newSOURCE=SOURCE
 newPATH=$(pwd)/$newGRID/$newSOURCE
+
+###############################################################################################################################################
+###############################################################################################################################################
+
+#This job accepts may accept one argument.
+#This argument must be the name of:
+# 1) a comparison analysis file
+# 2) an interpolation analysis file
+
+#Temporary file for additonal information about the experiments
+comparisonsfile=comparison.txt
+
+if [ "$1" != "" ]; then
+	#The first line differentiates between 1 and 2
+	comparison_flag=$(head -n 1 "$1")
+
+	#This is the option for interpolation:
+	#InterpolationTDD (natural numbers, starts at 0)
+	#InterpolationCED (real numbers, centered at 1)
+
+        #These are the options for comparison:
+        #ScatteringAngle (rad)
+        #AbsoluteEnergyChange (eV)
+        #RelativeEnergyChange (eV)
+        #RotationalEnergyChange (eV)
+
+        if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ]
+	then
+		gather_interpolation_flag=.false.
+	elif [ $comparison_flag == "InterpolationTDD" ] || [ $comparison_flag == "InterpolationRED" ] || [ $comparison_flag == "InterpolationAED" ] || [ $comparison_flag == "InterpolationIED" ] || [ $comparison_flag == "InterpolationR1D" ] || [ $comparison_flag == "InterpolationRSV1D" ] || [ $comparison_flag == "InterpolationRSV2D" ]
+        then
+		gather_interpolation_flag=.true.
+	else
+		echo "" 
+		echo "Argument supplied does not have a first-line option that is offered!" 
+		echo "" 
+		exit
+	fi
+
+	read -r comparison_lowerlimit comparison_upperlimit <<<$(sed -n '2p' "$1")
+	read -r Ntrajectories <<<$(sed -n '3p' "$1")
+
+	decimal_match="[\$0-9][\$0-9]*\.[\$0-9][\$0-9]*"
+	integer_match="[\$0-9][\$0-9]*"
+
+	if [[ $comparison_lowerlimit =~ $decimal_match ]] ||  [[ $comparison_upperlimit =~ $decimal_match ]]
+	then
+		:
+	else
+		echo "" 
+		echo "Argument supplied does not have a valid second-line option!" 
+		echo "   Must be two positive decimals separated by whitespace" 
+		echo "" 
+		exit
+	fi
+
+	if [[ $Ntrajectories =~ $integer_match ]]
+	then
+		:
+	else
+		echo "" 
+		echo "Argument supplied does not have a valid third-line option!" 
+		echo "   Must be a whole number" 
+		echo "" 
+		exit
+	fi
+
+	comparison_lowerlimit=$comparison_lowerlimit
+	comparison_upperlimit=$comparison_upperlimit
+
+	rm -f $gridPATH/$comparisonsfile
+        declare -a prefixes
+	while read -r aline
+        do
+		read -r expname extra <<<$aline
+		if [ ! -d $gridPATH/$expname ]; then
+        		echo "" 
+        		echo "Argument supplied does not have a valid experiment for comparison!"
+        		echo "   The folder \"$expname\" was not found" 
+        		echo "" 
+        		exit
+		fi
+		prefixes[${#prefixes[@]}]="$expname"/
+		echo "$extra" >>$gridPATH/$comparisonsfile
+	done<<<$(tail -n +4 "$1")
+
+	if [ ${#prefixes[@]} == 0 ]; then
+		echo "" 
+		echo "Argument supplied does not have any experiments for comparison!"
+		echo "" 
+		exit
+        fi
+else
+	comparison_flag=nothing
+	comparison_lowerlimit="0.0d0"
+	comparison_upperlimit="0.0d0"
+fi
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -264,6 +363,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/comparison_flag = .*/comparison_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
+     s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = .true./
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
@@ -345,11 +446,13 @@ do
 done
 alllengths_statement=$(IFS=, ; echo "${alllengths[*]}")
 
-if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ]
+if [ $comparison_flag == "ScatteringAngle" ] || [ $comparison_flag == "AbsoluteEnergyChange" ] || [ $comparison_flag == "RelativeEnergyChange" ] || [ $comparison_flag == "RotationalEnergyChange" ] || [ $comparison_flag == "InterpolationTDD" ] || [ $comparison_flag == "InterpolationRED" ] || [ $comparison_flag == "InterpolationAED" ] || [ $comparison_flag == "InterpolationIED" ] || [ $comparison_flag == "InterpolationR1D" ] || [ $comparison_flag == "InterpolationRSV1D" ] || [ $comparison_flag == "InterpolationRSV2D" ]
 then
 
 rm -r $gridPATH/comparison/
 mkdir $gridPATH/comparison/
+
+cp $1 $gridPATH/comparison/
 
 #Change the comparison analysis as specified in the variables above
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
@@ -365,23 +468,25 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
+     s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
+     s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .true./
+     s|character([^)]*),parameter :: comparison_file = .*|character(${#comparisonsfile}),parameter :: comparison_file = \"$comparisonsfile\"|
      s/comparison_lowerlimit = .*/comparison_lowerlimit = $comparison_lowerlimit/
      s/comparison_upperlimit = .*/comparison_upperlimit = $comparison_upperlimit/
      s/comparison_SATRVname = .*/comparison_SATRVname = \"$comparison_flag\"/
      s/comparison_number = .*/comparison_number = ${#prefixes[@]}/
-     s/character(11),parameter :: allprefixes = .*/character(${#allprefixes}),parameter :: allprefixes = \"$allprefixes\"/
+     s|character([^)]*),parameter :: allprefixes = .*|character(${#allprefixes}),parameter :: allprefixes = \"$allprefixes\"|
      s|alllengths = .*|alllengths = (/$alllengths_statement/)|
      s/testheatmapSA_flag = .*/testheatmapSA_flag = .false./
      s/testtrajSA_flag = .*/testtrajSA_flag = .false./
      s|expfolder_length = .*|expfolder_length = 11|
      s|expfolder = .*|expfolder = \"comparison/\"|
      s|character([0-9]*),parameter :: analysisfile = .*|character($((${#newANALYSIS}+4))),parameter :: analysisfile = \"$newANALYSIS.f90\"|" <$currentPATH/$oldANALYSIS.f90 >$gridPATH/comparison/$newANALYSIS.f90
-
 
 sed "s/$oldPARAMETERS\\.o/$newPARAMETERS\\.o/
      s/$oldPARAMETERS\\.f90/$newPARAMETERS\\.f90/
@@ -399,6 +504,8 @@ echo "" >> $newPATH/$bashout
 echo $(date) >> $newPATH/$bashout
 echo "Comparison" >> $newPATH/$bashout
 /usr/bin/time -a -o $newPATH/$bashout -f "COMPARISON %E  %U  %S  %P  %O" ./a.out
+
+rm $gridPATH/$comparisonsfile
 
 fi
 
@@ -456,8 +563,8 @@ cp $currentPATH/!($oldPARAMETERS|$newPARAMETERS|$oldPHYSICS|$oldVARIABLES|$oldAN
 cp $currentPATH/make_$(echo "*") $newPATH/
 shopt -s extglob
 
-rm -r $gridPATH/$exp1name/
-mkdir $gridPATH/$exp1name/
+#rm -r $gridPATH/$exp1name/
+mkdir -p $gridPATH/$exp1name/
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
@@ -473,11 +580,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
+     s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
+     s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
+     s|character([^)]*),parameter :: comparison_file = .*|character(${#comparisonsfile}),parameter :: comparison_file = \"$comparisonsfile\"|
+     s/comparison_lowerlimit = .*/comparison_lowerlimit = $comparison_lowerlimit/
+     s/comparison_upperlimit = .*/comparison_upperlimit = $comparison_upperlimit/
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
      s|expfolder_length = .*|expfolder_length = $((${#exp1name}+1))|
@@ -516,8 +628,8 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-rm -r $gridPATH/$exp2name/
-mkdir $gridPATH/$exp2name/
+#rm -r $gridPATH/$exp2name/
+mkdir -p $gridPATH/$exp2name/
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
@@ -533,11 +645,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
+     s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
+     s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
+     s|character([^)]*),parameter :: comparison_file = .*|character(${#comparisonsfile}),parameter :: comparison_file = \"$comparisonsfile\"|
+     s/comparison_lowerlimit = .*/comparison_lowerlimit = $comparison_lowerlimit/
+     s/comparison_upperlimit = .*/comparison_upperlimit = $comparison_upperlimit/
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
      s|expfolder_length = .*|expfolder_length = $((${#exp2name}+1))|
@@ -574,8 +691,8 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-rm -r $gridPATH/$exp3name/
-mkdir $gridPATH/$exp3name/
+#rm -r $gridPATH/$exp3name/
+mkdir -p $gridPATH/$exp3name/
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
@@ -591,11 +708,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
+     s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
+     s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
+     s|character([^)]*),parameter :: comparison_file = .*|character(${#comparisonsfile}),parameter :: comparison_file = \"$comparisonsfile\"|
+     s/comparison_lowerlimit = .*/comparison_lowerlimit = $comparison_lowerlimit/
+     s/comparison_upperlimit = .*/comparison_upperlimit = $comparison_upperlimit/
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
      s|expfolder_length = .*|expfolder_length = $((${#exp3name}+1))|
@@ -632,8 +754,8 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-rm -r $gridPATH/$exp4name/
-mkdir $gridPATH/$exp4name/
+#rm -r $gridPATH/$exp4name/
+mkdir -p $gridPATH/$exp4name/
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
@@ -649,11 +771,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
+     s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
+     s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
+     s|character([^)]*),parameter :: comparison_file = .*|character(${#comparisonsfile}),parameter :: comparison_file = \"$comparisonsfile\"|
+     s/comparison_lowerlimit = .*/comparison_lowerlimit = $comparison_lowerlimit/
+     s/comparison_upperlimit = .*/comparison_upperlimit = $comparison_upperlimit/
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
      s|expfolder_length = .*|expfolder_length = $((${#exp4name}+1))|
@@ -690,8 +817,8 @@ fi
 ###############################################################################################################################################
 ###############################################################################################################################################
 
-rm -r $gridPATH/$exp5name/
-mkdir $gridPATH/$exp5name/
+#rm -r $gridPATH/$exp5name/
+mkdir -p $gridPATH/$exp5name/
 
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
@@ -707,11 +834,16 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/
+     s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
+     s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
      s/comparison_flag = .*/comparison_flag = .false./
+     s|character([^)]*),parameter :: comparison_file = .*|character(${#comparisonsfile}),parameter :: comparison_file = \"$comparisonsfile\"|
+     s/comparison_lowerlimit = .*/comparison_lowerlimit = $comparison_lowerlimit/
+     s/comparison_upperlimit = .*/comparison_upperlimit = $comparison_upperlimit/
      s/testheatmapSA_flag = .*/testheatmapSA_flag = $testtrajSAheatmap_flag/
      s/testtrajSA_flag = .*/testtrajSA_flag = $testtrajSA_flag/
      s|expfolder_length = .*|expfolder_length = $((${#exp5name}+1))|
