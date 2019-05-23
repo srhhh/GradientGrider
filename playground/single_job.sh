@@ -101,19 +101,19 @@ threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 interpolation_flag=.true.
 gather_interpolation_flag=.true.
-reject_flag=.true.
+reject_flag=.false.
 accept_first=.false.
 accept_worst=.false.
 grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=10
+Ntrajectories=200
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp069
-exp2name=exp031
+exp1name=exp090
+exp2name=exp091
 exp3name=exp029
 exp4name=exp014
 exp5name=exp015
@@ -181,7 +181,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=0
+Nanalyses=2
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -235,8 +235,10 @@ if [ "$1" != "" ]; then
 	read -r comparison_lowerlimit comparison_upperlimit <<<$(sed -n '2p' "$1")
 	read -r Ntrajectories <<<$(sed -n '3p' "$1")
 
-	decimal_match="[\$0-9][\$0-9]*\.[\$0-9][\$0-9]*"
-	integer_match="[\$0-9][\$0-9]*"
+#decimal_match="^[\$0-9][\$0-9]*\.[\$0-9][\$0-9]*[eEdD]-[\$0-9]*$"
+	decimal_match='^[0-9][0-9]*\.[0-9][0-9]*[eEdD][-+]?[0-9]*$'
+#integer_match="^[\$0-9][\$0-9]*$"
+	integer_match='^[\$0-9][\$0-9]*$'
 
 	if [[ $comparison_lowerlimit =~ $decimal_match ]] ||  [[ $comparison_upperlimit =~ $decimal_match ]]
 	then
@@ -277,7 +279,7 @@ if [ "$1" != "" ]; then
 		fi
 		prefixes[${#prefixes[@]}]="$expname"/
 		echo "$extra" >>$gridPATH/$comparisonsfile
-	done<<<$(tail -n +4 "$1")
+	done<<<"$(tail -n +4 $1)"
 
 	if [ ${#prefixes[@]} == 0 ]; then
 		echo "" 

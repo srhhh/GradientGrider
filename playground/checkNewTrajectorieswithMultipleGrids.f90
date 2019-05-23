@@ -341,6 +341,8 @@ else
                         print *, "    Program exited disgracefully"
                         print *, ""
 
+                        !Instead of immediately quitting, we set
+                        !a flag to signal a quit later
                         return_flag = .true.
 
                 !Or to just keep appending new
@@ -359,8 +361,11 @@ else
                 print *, ""
         end if
 
+        !If all is well, then we might have
+        !save some trajectories (and time!)
         if (.not.return_flag) then
-        print *, "     Total Number of Trajectories Saved: ", initial_n_testtraj - 1, " out of ", Ntesttraj
+        print *, "     Total Number of Trajectories Saved: ",&
+                initial_n_testtraj - 1, " out of ", Ntesttraj
         print *, ""
         end if
 end if
@@ -370,18 +375,22 @@ end if
 
 !$OMP END SINGLE
 
+!Initialize some essential strings
+!and format strings across all threads
+!Unfortunately, I don't know a better
+!way to do this
 write(Nbond_text,FMT="(I0.6)") Nbonds
 write(Natom_text,FMT="(I0.6)") Natoms
-write(FMTinitial,FMT="(A19)") "("//Nbond_text//"(6(F14.10)))"
-write(FMTtimeslice,FMT="(A19)") "("//Natom_text//"(12(F12.7)))"
-write(FMT2,FMT="(A22)") "("//Natom_text//"(6(1x,F14.10)))"
-write(FMT3,FMT="(A22)") "("//Natom_text//"(3(1x,F14.10)))"
+write(FMTinitial,FMT="(A19)")&
+        "("//Nbond_text//"(6(F14.10)))"
+write(FMTtimeslice,FMT="(A19)")&
+        "("//Natom_text//"(12(F12.7)))"
+write(FMT2,FMT="(A22)")&
+        "("//Natom_text//"(6(1x,F14.10)))"
+write(FMT3,FMT="(A22)")&
+        "("//Natom_text//"(3(1x,F14.10)))"
 
-!!$OMP CRITICAL
-!
-!!$OMP END CRITICAL
 !!$OMP BARRIER
-!
 !!$OMP SINGLE
 
 print *, ""
@@ -399,7 +408,11 @@ print *, ""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!This is for top-level heat map generation (for each of the grids)
+!The only pre-creation analysis
+!we have now is for a heatmap
+
+!This is for top-level heat map
+!generation (for each of the grids)
 if (heatmap_flag) then
         call itime(now)
         write(6,FMT=FMTnow) now
@@ -407,17 +420,6 @@ if (heatmap_flag) then
         print *, ""
 !        call analyzeHeatMaps2()                  !not working right now
 end if
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!Some formatting for uniquely identifying this set of trajectories
-!call getPrefixText(short_prefix_text)
-!
-!write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-!write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-!
-!prefix_text = Ngrid_text//short_prefix_text
 
 !!$OMP END SINGLE
 !!$OMP BARRIER
@@ -432,10 +434,13 @@ end if
 !Currently, this is the main use of this program
 if (testtraj_flag) then
 
-!If grid addition > 0, add new frames
+!New trajectories explore the phase space and
+!discover new frames.
+!If grid addition > 0, add these new frames
 !to the specified grid
 if (grid_addition > 0) then
-        write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+        write(variable_length_text,FMT=FMT5_variable)&
+                Ngrid_text_length
         write(Ngrid_text,FMT="(I0."//&
                 trim(adjustl(variable_length_text))//")")&
                 grid_addition
@@ -444,35 +449,19 @@ end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!       PRE-CREATION LIBRARY OVERVIEW
+!       INITIAL CONDITION DETERMINATION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !$OMP SINGLE
 
-!!And then we check if we want to reuse some old ones
-!!if (useolddata_flag) then
-!if (continue_analysis) then
-!!If not...
-!else
-!
-!        !We need to make a new one of these trajectory files altogether
-!        call system("rm "//gridpath5//trajectoriesfile)
-!        call system("rm "//gridpath5//timeslicefile)
-!        call system("rm "//gridpath5//"traversal.dat")
-!        if (prefix_text /= initialbondname) call system("rm "//gridpath5//initialfile)
-!end if
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!       INITIAL CONDITION DETERMINATION
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!If we want to use the same initial conditions as an old set of trajectories
-!open up whatever initial file that sample corresponds to
-if ((useoldinitialbonddata_flag).and.(.not.return_flag)) then
-        open(trajectorieschannel,file=gridpath0//initialbondfolder//intermediatefolder//initialfile)
+!If we want to use the same initial conditions
+!as an old set of trajectories open up whatever
+!initial file that sample corresponds to
+if ((useoldinitialbonddata_flag).and.&
+        (.not.return_flag)) then
+        open(trajectorieschannel,file=gridpath0//&
+                initialbondfolder//intermediatefolder//initialfile)
         print *, ""
         print *, "     Deciding to use old initial conditions..."
         print *, ""
@@ -488,24 +477,30 @@ if ((useoldinitialbonddata_flag).and.(.not.return_flag)) then
                         call itime(now)
                         write(6,FMT=FMTnow) now
                         print *, "Error! Not enough initial conditions in initialfile"
-                        print *, "Total number of initial conditions inside of it: ", n_testtraj-initial_n_testtraj
+                        print *, "Total number of initial conditions inside of it: ",&
+                                n_testtraj-initial_n_testtraj
                         print *, "Exiting analysis"
                         print *, ""
-        
-                        initial_n_testtraj = Ntesttraj+1
+       
+                        !Set the return flag true to
+                        !signal we want to quit
                         return_flag = .true.
                         exit
                 end if
         end do
 
         close(trajectorieschannel)
-        open(trajectorieschannel,file=gridpath0//initialbondfolder//intermediatefolder//initialfile)
+
+        !And after we are done checking, open it up again
+        !so we can read off initial conditions
+        open(trajectorieschannel,file=gridpath0//&
+                initialbondfolder//intermediatefolder//initialfile)
 end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!for bugtesting
+!For bugtesting
 if (makeCheckTrajectory_flag) then
         call InitialSampling3()
 
@@ -554,6 +549,9 @@ end if
 !$OMP END SINGLE
 !$OMP BARRIER
 
+!If we are deciding to exit out, overflow
+!initial_n_testtraj so that we don't make
+!new trajectories
 if (return_flag) then
         initial_n_testtraj = Ntesttraj + 1
 else
@@ -561,11 +559,6 @@ else
         call itime(now)
         write(6,FMT=FMTnow) now
         print *, "Trajectory Creation ... Start"
-       
-!       !And also reset the interpolation counter and file
-!       interpolation_counter = 0
-!       call system("rm "//gridpath5//interpolationfile)
-
 end if
 
 !If we are checking traversal, allocate the necessary arrays
@@ -579,58 +572,78 @@ allocate(filechannels(1+Ngrid_total))
 !$OMP DO
 do n_testtraj = initial_n_testtraj, Ntesttraj
 
-        !If we're reusing old initial conditions, that's easy; we just read off the file
+        !If we're reusing old initial conditions,
+        !that's easy; we just read off the file
         if (useoldinitialbonddata_flag) then
                 !$OMP CRITICAL
-                read(trajectorieschannel,FMT=FMTinitial,iostat=iostate) &
-                            ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
+                read(trajectorieschannel,&
+                        FMT=FMTinitial,iostat=iostate) &
+                        ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
                 !$OMP END CRITICAL
         
-        !Otherwise, we must creat a random initial trajectory from the ensemble
+        !Otherwise, we must create a random
+        !initial trajectory from the ensemble
         !specified in PHYSICS and PARAMETERS
         else
                 call InitialSampling3()
         end if
 
-        !In most case, we will need to record the initial conditions to a (potentially) new file
+        !In most case, we will need to record the
+        !initial conditions to a (potentially) new file
         !$OMP CRITICAL
-        if ((.not.(useoldinitialbonddata_flag)).or.(expfolder /= initialbondfolder)) then
-                open(filechannel1,file=gridpath5//initialfile,&
-                                  position="append")
-                write(filechannel1,FMTinitial) ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
+        if ((.not.(useoldinitialbonddata_flag)).or.&
+            (expfolder /= initialbondfolder)) then
+                open(filechannel1,&
+                        file=gridpath5//initialfile,&
+                        position="append")
+                write(filechannel1,FMTinitial)&
+                        ((INITIAL_BOND_DATA(j,i),j=1,6),i=1,Nbonds)
                 close(filechannel1)
         end if
         !$OMP END CRITICAL
 
-        !Each trajectory will have Ngrid_total outputs; one for however many grids we use
-        !The trajectory number will uniquely identify one trajectory from another
-        write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-        write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") n_testtraj
+        !Each trajectory will have Ngrid_total
+        !outputs; one for however many grids we use
+        !The trajectory number will uniquely
+        !identify one trajectory from another
+        write(variable_length_text,FMT=FMT5_variable)&
+                trajectory_text_length
+        write(Ntraj_text,FMT="(I0."//&
+                trim(adjustl(variable_length_text))//")")&
+                n_testtraj
         
         !The grid number will uniquely identify one trajectory
-        !Open all these files under filechannels
-        write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
+        !Open all these files under each of their filechannels
+        write(variable_length_text,FMT=FMT5_variable)&
+                Ngrid_text_length
         filechannels(1) = 1000 + OMP_GET_THREAD_NUM()
         do Ngrid = 1, Ngrid_total
                 write(Ngrid_text,FMT="(I0."//&
-                        trim(adjustl(variable_length_text))//")") Ngrid
-                filechannels(1+Ngrid) = 1000 + 69 * Ngrid + OMP_GET_THREAD_NUM()
+                        trim(adjustl(variable_length_text))//")")&
+                        Ngrid
+
+                !Our clever way to uniquely make a filechannel
+                filechannels(1+Ngrid) = 1000 + 69 * Ngrid +&
+                        OMP_GET_THREAD_NUM()
                 open(filechannels(1+Ngrid),file=gridpath5//&
                         Ngrid_text//"_"//Ntraj_text//".dat")
         end do
 
-        !Start timing to see how long the trajectory takes to complete
+        !Start timing to see how long each
+        !trajectory takes to complete
         call system_clock(c1)
         call CPU_time(r1)
-        print *, " Working on random new trajectory number: ", Ntraj_text
+        print *, " Working on random new trajectory number: ",&
+                Ntraj_text
 
-        !Then write the outputted RMSDS of each trajectory onto those filechannels
-        !Remark: checkMultipleGrids uses filechannel1 to open files in the grid
+        !Then write the outputted RMSDS of
+        !each trajectory onto those filechannels
+        !Remark: checkMultipleGrids uses
+        !filechannel1 to open files in the grid
         call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
                                    coords_initial,velocities_initial,&
                                    coords_final,velocities_final)
 
-        !Also let's see how long a single trajectory takes
         call system_clock(c2)
         call CPU_time(r2)
         print *, " Trajectory "//Ntraj_text//&
@@ -638,14 +651,16 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         print *, " Trajectory "//Ntraj_text//&
                 "    Wall Time: ", (c2 - c1) * system_clock_rate
 
-        !Finally, close them
+        !Finally, close these files
         do Ngrid = 1, Ngrid_total
                 close(filechannels(1+Ngrid))
         end do
 
         !$OMP CRITICAL
-        !The only data that is recorded is the first and last frame of the trajectory
-        open(filechannel1,file=gridpath5//timeslicefile,position="append")
+        !The only data that is recorded is the
+        !first and last frame of the trajectory
+        open(filechannel1,file=gridpath5//&
+                timeslicefile,position="append")
         write(filechannel1,FMTtimeslice) &
                               ((coords_initial(i,j),i=1,3),j=1,Natoms),&
                               ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
@@ -653,11 +668,15 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                               ((velocities_final(i,j),i=1,3),j=1,Natoms)
         close(filechannel1)
 
-        !For traversal, we can see how many cells the trajectory traversed
-        !merely by figuring out how many nonzero values exist (since 0s represent no traversal)
+        !For traversal, we can see how many cells
+        !the trajectory traversed merely by figuring
+        !out how many nonzero values exist
+        !(since 0s represent no traversal)
         if (traversal_flag) then
-                open(filechannel1,file=gridpath5//"traversal.dat",position="append")
-                write(filechannel1,FMT=*) steps, ((sum(traversal1(i,:))),i=1,Ngrid_total)
+                open(filechannel1,file=gridpath5//&
+                        "traversal.dat",position="append")
+                write(filechannel1,FMT=*) steps,&
+                        ((sum(traversal1(i,:))),i=1,Ngrid_total)
                 close(filechannel1)
         end if
 
@@ -667,7 +686,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        !If this flag is on, we are also checking the RMSD of a trajectory per timestpe
+        !If this flag is on, we are also checking the RMSD of a trajectory per timestep
         !This is very expensive so please don't turn this on
         !(and you have to manually turn it on in checkMultipleTrajectories anyway)
         if (testtrajRMSD_flag) then
@@ -700,23 +719,20 @@ print *, ""
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!If we did use old initial conditions, close that file up
+!Close the initial conditions file if
+!we are reusing old ones
 !$OMP SINGLE
 if (useoldinitialbonddata_flag) close(trajectorieschannel)
 !$OMP END SINGLE
 
-!If we gathered interpolation data, we dump it now into a
-!more manageable form
-!if (gather_interpolation_flag) then
-!        call processInterpolationFile2((/0.0d0,0.0d0/),(/100.0d0,100.0d0/))
-!end if
-
-!This closes that big, enclosing if statement on whether to make trajectories
+!This closes that big, enclosing if
+!statement on whether to make trajectories
 end if
 
 !$OMP END PARALLEL
 
-!If there was some error along the way, then this flag safely returns us out
+!Now that we are out of the parallel section
+!we can exit out if there was a problem
 if (return_flag) then
         return
 end if
@@ -728,8 +744,14 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!If this is not a comparison analysis then
+!most likely we just made some new trajectories
+!that we want to check
 if (.not.comparison_flag) then
 
+!But, note that we only have interpolations
+!to check if we actually interpolated AND
+!gathered data
 if ((gather_interpolation_flag).and.&
         (interpolation_flag)) then
 
@@ -738,90 +760,43 @@ if ((gather_interpolation_flag).and.&
         print *, "   Making plot: ", "TDDRED"
         print *, ""
 
+        !First process the raw data
         call processInterpolationFile2()
 
+        !For each interpolation analysis we need a
+        !temporary comparison file that specifies
+        !what we are analyzing
+
+        !First is analysis of all of the data
         call system("rm "//gridpath0//comparison_file)
         call system('echo "0.0 0.0 100.0 100.0" >>'//gridpath0//comparison_file)
         call getRMSDinterpolation2("TDDRED_All")
 
+        !Then, a region that is localised to what
+        !I call "collision" or around the 3.0,
+        !3.5 region for a var1,var2 system
         call system("rm "//gridpath0//comparison_file)
         call system('echo "2.990 3.780 0.55 0.55" >>'//gridpath0//comparison_file)
         call getRMSDinterpolation2("TDDRED_Collision")
 
+        !And we also take a look at all data
+        !that is outside of this region
         call system("rm "//gridpath0//comparison_file)
         call system('echo "2.990 3.780 -0.55 -0.55" >>'//gridpath0//comparison_file)
         call getRMSDinterpolation2("TDDRED_NonCollision")
 end if
 
-!TDDCED comparison currently in disarray
+!All other interpolation analysis is done as
+!a comparison (if wanted, you can choose to
+!compare only a single experiment)
 else
-!       if (trim(adjustl(comparison_SATRVname)) == "InterpolationTDD") then
 
-!               call itime(now)
-!               write(6,FMT=FMTnow) now
-!               print *, "   Making plot: ", "TDD"
-!               print *, ""
-
-!               call getTDDplot("TDD")
-
-!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationRED") then
-
-!               call itime(now)
-!               write(6,FMT=FMTnow) now
-!               print *, "   Making plot: ", "RED"
-!               print *, ""
-
-!               call getREDplot("RED")
-
-!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationAED") then
-
-!               call itime(now)
-!               write(6,FMT=FMTnow) now
-!               print *, "   Making plot: ", "AED"
-!               print *, ""
-
-!               call getAEDplot("AED")
-
-!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationIED") then
-
-!               call itime(now)
-!               write(6,FMT=FMTnow) now
-!               print *, "   Making plot: ", "IED"
-!               print *, ""
-
-!               call getInterpolationplot("IED")
-
-!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationR1D") then
-
-!               call itime(now)
-!               write(6,FMT=FMTnow) now
-!               print *, "   Making plot: ", "R1D"
-!               print *, ""
-
-!               call getInterpolationplot("R1D")
-
-!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationRSV1D") then
-
-!               call itime(now)
-!               write(6,FMT=FMTnow) now
-!               print *, "   Making plot: ", "RSV1D"
-!               print *, ""
-
-!               call getInterpolationplot("RSV1D")
-
-!       else if (trim(adjustl(comparison_SATRVname)) == "InterpolationRSV2D") then
-
-!               call itime(now)
-!               write(6,FMT=FMTnow) now
-!               print *, "   Making plot: ", "RSV2D"
-!               print *, ""
-
-!               call getInterpolationplot("RSV2D")
-
-!       else
-!       end if
-
+!If this truly is an interpolation analysis then
+!the word "interpolation" should be in the input
 i = INDEX(comparison_SATRVname,"Interpolation")+13
+
+!Currently, seven different kinds of analysis
+!can be done
 if ((i > 13).and.(&
         (trim(adjustl(comparison_SATRVname(i:)))=="ARD").or.&
         (trim(adjustl(comparison_SATRVname(i:)))=="IRD").or.&
@@ -837,6 +812,9 @@ if ((i > 13).and.(&
         print *, "   Making plot: ", trim(adjustl(comparison_SATRVname(i:)))
         print *, ""
 
+        !This assumes the interpolation
+        !processing was done already (at
+        !the end of the experiment)
         call getInterpolationplot(trim(adjustl(comparison_SATRVname(i:))))
 
         print *, ""
@@ -845,6 +823,8 @@ if ((i > 13).and.(&
         print *, "Successfully exited analysis"
         print *, ""
 
+        !Comparisons were designed not
+        !to do any other analysis
         return
 end if
 end if
@@ -857,8 +837,8 @@ end if
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !Specify how many trajectories we will be analyzing
-!We communicate to analyzeScatteringAngles and others through the
-!shared variable Ntraj
+!We communicate to analyzeScatteringAngles and others
+!through the shared variable Ntraj
 Ntraj = Ntesttraj
 
 !Initialize each maximum and minimum value
@@ -871,9 +851,13 @@ min_relenergychange = 1.0e9
 max_rotenergychange = 0.0
 min_rotenergychange = 1.0e9
 
-!If we have a list of files we need to compare, then we need to comb through those
+!If we have a list of files we need to compare,
+!then we need to comb through those
 if (comparison_flag) then
 
+        !For non-interpolation analyses, single
+        !comparison cannot be done
+        !(This may be deprecated)
         if (comparison_number < 1) then
                 print *, ""
                 call itime(now)
@@ -885,8 +869,13 @@ if (comparison_flag) then
                 return
         end if
 
-        !These files are stored in allprefixes and the length of each file
-        !is stored in alllengths
+        !The files with the desired data are
+        !stored in allprefixes and the length
+        !of each file is stored in alllengths
+
+        !They must each individually be
+        !processed to figure out what the
+        !upper and lower bounds are
         call postProcess(allprefixes(1:alllengths(1))//&
                 intermediatefolder)
         do i = 1, comparison_number-1
@@ -894,11 +883,12 @@ if (comparison_flag) then
                         intermediatefolder)
         end do
 
-!Otherwise, we do not need to process all the files in the library
+!Otherwise, we do not need to process
+!all the files in the library
 else
-        !We only need to look at the files if we are actually analyzing something
+        !We only need to look at the files
+        !if we are actually analyzing something
         if (percentthreshold_flag .or. testtrajSA_flag .or. testheatmapSA_flag) then
-!            call postProcess(prefix_text)
              call postProcess(expfolder//intermediatefolder)
 
         !Otherwise, we can just exit early
@@ -913,9 +903,13 @@ else
         end if
 end if
 
-!We need to redo the postProcess (and convergence) of each grid as well
-!in case the maximum and minimum of the trajectories just processed are different
-if (comparison_flag .or. trueSA_flag .or. testtrajSA_flag .or. testheatmapSA_flag) then
+!We need to redo the postProcess (and
+!convergence) of each grid as well in
+!case the maximum and minimum of the
+!trajectories just processed are different
+if (comparison_flag .or. trueSA_flag .or.&
+        testtrajSA_flag .or. testheatmapSA_flag) then
+
         call itime(now)
         write(6,FMT=FMTnow) now
         print *, "   Making plots: ", "Initial_SATRVDistribution"
@@ -924,61 +918,92 @@ if (comparison_flag .or. trueSA_flag .or. testtrajSA_flag .or. testheatmapSA_fla
 
         old_filename = ""
         do Ngrid = 1, Ngrid_max
-                !Prepare the name of the file; here we are uniquely identifying the
-                !file by how many trajectories we've accumulated and put in it
+                !Prepare the name of the file; here we are
+                !uniquely identifying the file by how many
+                !trajectories we've accumulated and put in it
                 Ntraj = Ngrid*Ntraj_max
-                write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-                write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
-                write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-                write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
+                write(variable_length_text,FMT=FMT5_variable)&
+                        Ngrid_text_length
+                write(Ngrid_text,FMT="(I0."//&
+                        trim(adjustl(variable_length_text))//")")&
+                        Ngrid
+                write(variable_length_text,FMT=FMT5_variable)&
+                        trajectory_text_length
+                write(Ntraj_text,FMT="(I0."//&
+                        trim(adjustl(variable_length_text))//")")&
+                        Ntraj
 
-                !Post process the file; here we are telling the subroutine that
-                !there are Ntraj_max trajectories in the file
+                !Post process the file; here we are telling
+                !the subroutine that there are Ntraj_max
+                !trajectories in the file
                 Ntraj = Ntraj_max
                 call postProcess(Ngrid_text//"/")
 
-                !We create this unique file that has all trajectories up until that grid
-                !so beforehand we need to concatenate all the old trajectories with the new file
+                !We create this unique file that has all
+                !trajectories up until that grid so beforehand
+                !we need to concatenate all the old
+                !trajectories with the new file
                 if (trim(adjustl(old_filename)) /= "") then
                         new_filename = gridpath5//Ntraj_text//SATRVfile
                         call system("cat "//trim(adjustl(old_filename))//" "//&
                                     gridpath0//Ngrid_text//"/"//SATRVfile//" > "//new_filename)
                         old_filename = new_filename
 
-                !If this is the first grid, then we just copy the new file to this unique file
+                !If this is the first grid, then we
+                !just copy the new file to this unique file
                 else
                         old_filename = gridpath5//Ntraj_text//SATRVfile
                         call system("cp "//gridpath0//Ngrid_text//"/"//SATRVfile//" "//trim(adjustl(old_filename)))
                 end if
 
-                !Then bin it
+                !Then bin the data
                 Ntraj = Ngrid*Ntraj_max
-                call getScatteringAngles1(Ntraj_text,"SATRVDistribution")
+                call getScatteringAngles1(&
+                        Ntraj_text,"SATRVDistribution")
         end do
 
-        !Finally, we look at the scattering angle and energy change distributions of the grid
+        !Finally, we look at the scattering angle
+        !and energy change distributions of the grid
         !with the maximums and minimums gathered from above
-        !and see whether they converge; these plots will be used for reference
+        !and see whether they converge;
+        !these plots will be used for reference
         Ntraj = Ntesttraj
-        write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-        write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_total
-        write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-        write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
+        write(variable_length_text,FMT=FMT5_variable)&
+                Ngrid_text_length
+        write(Ngrid_text,FMT="(I0."//&
+                trim(adjustl(variable_length_text))//")")&
+                Ngrid_total
+        write(variable_length_text,FMT=FMT5_variable)&
+                trajectory_text_length
+        write(Ntraj_text,FMT="(I0."//&
+                trim(adjustl(variable_length_text))//")")&
+                Ntraj
         
-        call getConvergenceImage(0.0,real(pi), 1, "ScatteringAngle")
-        call getConvergenceImage(min_absenergychange,max_absenergychange, 3, "AbsoluteEnergyChange")
-        call getConvergenceImage(min_relenergychange,max_relenergychange, 4, "RelativeEnergyChange")
-        call getConvergenceImage(min_rotenergychange,max_rotenergychange, 5, "RotationalEnergyChange")
+        !And finally, make the convergence plots
+        !with these lower and upper bounds and
+        !binned data
+        call getConvergenceImage(0.0,real(pi),&
+                1, "ScatteringAngle")
+        call getConvergenceImage(&
+                min_absenergychange,max_absenergychange,&
+                3, "AbsoluteEnergyChange")
+        call getConvergenceImage(&
+                min_relenergychange,max_relenergychange,&
+                4, "RelativeEnergyChange")
+        call getConvergenceImage(&
+                min_rotenergychange,max_rotenergychange,&
+                5, "RotationalEnergyChange")
 
 end if
 
-!In a comparison run, we don't look at any of the other flags
+!In a comparison run, we are interested
+!in a specific type of data like the
+!scattering angle or whatsoever
 if (comparison_flag) then
 
         !The name the user gives us tells us
         !  1) which column of the SATRV file to look in
         !  2) how to name our output file
-        !The user may also give user-defined bounds to the distribution
         if (trim(adjustl(comparison_SATRVname)) == "ScatteringAngle") then
                 comparison_SATRVcolumn = 1
                 lowerlimit = 0.0
@@ -998,7 +1023,8 @@ if (comparison_flag) then
         else
         end if
 
-        !If need be, use the upper and lower limit dictated by the user
+        !If need be, use the upper and lower
+        !bounds dictated by the user
         if (comparison_upperlimit /= comparison_lowerlimit) then
                 call getConvergenceImage(comparison_lowerlimit,comparison_upperlimit,&
                         comparison_SATRVcolumn,trim(adjustl(comparison_SATRVname)))
@@ -1006,16 +1032,17 @@ if (comparison_flag) then
 
         call itime(now)
         write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", "Comparison_"//&
+        print *, "   Making plot: ", "Comparison_"//&
                 trim(adjustl(Ntraj_text))//trim(adjustl(comparison_SATRVname))
-	print *, ""
+        print *, ""
 
-        !We now need to bin each set of trajectories we want to compare
+        !We now need to bin each set of trajectories we
+        !want to compare (done in getScatteringAngles1)
         call system("cp "//gridpath0//allprefixes(1:alllengths(1))//&
                     intermediatefolder//SATRVfile//&
                     " "//gridpath5//allprefixes(1:alllengths(1)-1)//SATRVfile)
         call getScatteringAngles1(allprefixes(1:alllengths(1)),&
-                allprefixes(1:alllengths(1))//"SATRVdistribution")
+                allprefixes(1:alllengths(1)-1)//"SATRVdistribution")
         do i = 1, comparison_number-1
         call system("cp "//gridpath0//allprefixes(&
                         1+sum(alllengths(1:i)):&
@@ -1033,8 +1060,9 @@ if (comparison_flag) then
                         "SATRVdistribution")
         end do
 
-        !If the upper and lower limit are equal, that is an internal sign that means
-        !that the user wants to use the natural bounds of the distribution
+        !If the upper and lower limit are equal, that is
+        !an internal sign that means that the user wants
+        !to use the natural bounds of the distribution
         if (comparison_upperlimit /= comparison_lowerlimit) then
                 call getComparedScatteringAngles(&
                          comparison_lowerlimit,comparison_upperlimit,&
@@ -1061,46 +1089,46 @@ end if
 
 
 
-!In a run without comparison, usually we do some analysis on the trajectories afterwards
-!The following calls do some data manipulation and make some figures
+!In a run without comparison, usually we do
+!some analysis on the trajectories afterwards
+!The following calls do some data
+!manipulation and make some figures
 
 if (percentthreshold_flag) then
-	call itime(now)
-	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", expfolder//"PercentRMSDThreshold"
-	print *, ""
+        call itime(now)
+        write(6,FMT=FMTnow) now
+        print *, "   Making plot: ", expfolder//"PercentRMSDThreshold"
+        print *, ""
 
+        !This subroutine takes an additional argument
+        !that specifies (out of all the grids) which
+        !ones to actually plot
         if (percentthreshold_key < 1) then
-!	        call getRMSDThresholds1(prefix_text,expfolder//"PercentRMSDThreshold")
-	        call getRMSDThresholds1(expfolder//intermediatefolder,&
+                call getRMSDThresholds1(expfolder//intermediatefolder,&
                         "PercentRMSDThreshold")
         else
-!	        call getRMSDThresholds1(prefix_text,expfolder//"PercentRMSDThreshold",&
-!                                        percentthreshold_key)
-	        call getRMSDThresholds1(expfolder//intermediatefolder,&
+                call getRMSDThresholds1(expfolder//intermediatefolder,&
                         "PercentRMSDThreshold",percentthreshold_key)
         end if
 end if
 
 if (testheatmapSA_flag) then
-	call itime(now)
-	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", expfolder//"SATRVDistribution"
-	print *, "   Making plot: ", expfolder//"HeatMap_SATRVDistribution"
-	print *, ""
+        call itime(now)
+        write(6,FMT=FMTnow) now
+        print *, "   Making plot: ", expfolder//"SATRVDistribution"
+        print *, "   Making plot: ", expfolder//"HeatMap_SATRVDistribution"
+        print *, ""
 
-!	call getScatteringAngles1(prefix_text, "SATRVDistribution")
-	call getScatteringAngles1("","SATRVDistribution")
+        call getScatteringAngles1("","SATRVDistribution")
 end if
 
 if (testtrajSA_flag) then
-	call itime(now)
-	write(6,FMT=FMTnow) now
-	print *, "   Making plot: ", expfolder//"Final_SATRVDistribution"
-	print *, ""
-	
-!	call getScatteringAngles2(prefix_text,expfolder//"Final_SATRVDistribution")
-	call getScatteringAngles2(expfolder//intermediatefolder,&
+        call itime(now)
+        write(6,FMT=FMTnow) now
+        print *, "   Making plot: ", expfolder//"Final_SATRVDistribution"
+        print *, ""
+        
+        call getScatteringAngles2(expfolder//intermediatefolder,&
                 "Final_SATRVDistribution")
 end if
 
@@ -1252,14 +1280,7 @@ write(gnuplotchannel,*) 'set rmargin 1'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set multiplot layout 6,1 margins 0.10,0.95,.1,.95 spacing 0,0 title '//&
         '"Test of Trajectory '//trim(adjustl(checkstateTrajectory))//' Against the Grid" font ",18" offset 0,3'
-!write(angle1descriptor,FMT=FMT6_neg_real1) initial_bond_angle1
-!write(angle2descriptor,FMT=FMT6_pos_real1) initial_bond_angle2
-!write(bond1descriptor,FMT=FMT6_pos_real1) initial_bond_distance
- write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
-!write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//&
-!                                                ' radians" at screen 0.6, 0.955'
-!write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//&
-!                                                ' A" at screen 0.6, 0.94'
+write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
 write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
                                                  ' s" at screen 0.6, 0.940'
 
@@ -1291,8 +1312,6 @@ write(gnuplotchannel,*) 'set ytics min_var1, delta_var1, max_var2'
 write(gnuplotchannel,*) 'plot "'//gridpath0//intermediatefolder//checkstatefile//&
                         '" u (($4)/steps_scaling):7 w lines'
 
-!write(gnuplotchannel,*) 'unset label 1'
-!write(gnuplotchannel,*) 'unset label 2'
 write(gnuplotchannel,*) 'unset label 3'
 
 write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
@@ -1300,12 +1319,6 @@ write(gnuplotchannel,*) 'set yrange [min_var2-delta_var2*.25 : max_var2+delta_va
 write(gnuplotchannel,*) 'set ytics min_var2, delta_var2, max_var2'
 write(gnuplotchannel,*) 'plot "'//gridpath0//intermediatefolder//checkstatefile//&
                         '" u (($4)/steps_scaling):8 w lines'
-
-!write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
-!write(gnuplotchannel,*) 'set yrange [0:0.02]'
-!write(gnuplotchannel,*) 'set ytics 0.005'
-!write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-!                        '" u (($4)/steps_scaling):($9+$10) w lines'
 
 write(gnuplotchannel,*) 'set ylabel "Number of\nFrames Checked"'
 write(gnuplotchannel,*) 'set yrange [-max_frames*.10:max_frames+max_frames*.10]'
@@ -1332,7 +1345,6 @@ write(gnuplotchannel,*) 'set xlabel "Timesteps (Thousands)"'
 write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_rmsd,']'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set ylabel "Timestep\nRMSD (A)"'
-!write(gnuplotchannel,*) 'set ytics (".1" .1, ".05" .05, ".01" .01, ".001" .001, ".0001" .0001)'
 write(gnuplotchannel,*) 'set ytics ("5e-1" .5, "5e-2" .05, "5e-3" .005,'//&
                                    '"5e-4" .0005, "5e-5" .00005)'
 write(gnuplotchannel,*) 'plot "'//gridpath0//intermediatefolder//checkstatefile//&
@@ -1411,14 +1423,7 @@ write(gnuplotchannel,*) 'set rmargin 1'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set multiplot layout 6,1 margins 0.10,0.95,.1,.95 spacing 0,0 title '//&
         '"Test of Trajectory '//trim(adjustl(checkstateTrajectory))//' Against the Grid" font ",18" offset 0,3'
-!write(angle1descriptor,FMT=FMT6_neg_real1) initial_bond_angle1
-!write(angle2descriptor,FMT=FMT6_pos_real1) initial_bond_angle2
-!write(bond1descriptor,FMT=FMT6_pos_real1) initial_bond_distance
- write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
-!write(gnuplotchannel,*) 'set label 1 "H2 Orientation: '//angle1descriptor//', '//angle2descriptor//&
-!                                                ' radians" at screen 0.6, 0.955'
-!write(gnuplotchannel,*) 'set label 2 "H2 Bond Length: '//bond1descriptor//&
-!                                                ' A" at screen 0.6, 0.94'
+write(checktrajectory_wall_time_text,FMT="(F10.2)") checktrajectory_wall_time
 write(gnuplotchannel,*) 'set label 3 "Total Wall Time: '//checktrajectory_wall_time_text//&
                                                  ' s" at screen 0.6, 0.940'
 
@@ -1450,8 +1455,6 @@ write(gnuplotchannel,*) 'set ytics min_var1, delta_var1, max_var2'
 write(gnuplotchannel,*) 'plot "'//gridpath0//intermediatefolder//checkstatefile//&
                         '" u (($4)/steps_scaling):7 w lines'
 
-!write(gnuplotchannel,*) 'unset label 1'
-!write(gnuplotchannel,*) 'unset label 2'
 write(gnuplotchannel,*) 'unset label 3'
 
 write(gnuplotchannel,*) 'set ylabel "Var2 (A)"'
@@ -1459,12 +1462,6 @@ write(gnuplotchannel,*) 'set yrange [min_var2-delta_var2*.25 : max_var2+delta_va
 write(gnuplotchannel,*) 'set ytics min_var2, delta_var2, max_var2'
 write(gnuplotchannel,*) 'plot "'//gridpath0//intermediatefolder//checkstatefile//&
                         '" u (($4)/steps_scaling):8 w lines'
-
-!write(gnuplotchannel,*) 'set ylabel "Total Energy (eV)"'
-!write(gnuplotchannel,*) 'set yrange [0:0.02]'
-!write(gnuplotchannel,*) 'set ytics 0.005'
-!write(gnuplotchannel,*) 'plot "'//gridpath1//checkstatefile//&
-!                        '" u (($4)/steps_scaling):($9+$10) w lines'
 
 write(gnuplotchannel,*) 'set ylabel "Number of\nFrames Checked"'
 write(gnuplotchannel,*) 'set yrange [-max_frames*.10:max_frames+max_frames*.10]'
@@ -1491,7 +1488,6 @@ write(gnuplotchannel,*) 'set xlabel "Timesteps (Thousands)"'
 write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_rmsd,']'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set ylabel "Timestep\nRMSD (A)"'
-!write(gnuplotchannel,*) 'set ytics (".1" .1, ".05" .05, ".01" .01, ".001" .001, ".0001" .0001)'
 write(gnuplotchannel,*) 'set ytics ("5e-1" .5, "5e-2" .05, "5e-3" .005,'//&
                                    '"5e-4" .0005, "5e-5" .00005)'
 write(gnuplotchannel,*) 'plot "'//gridpath0//intermediatefolder//checkstatefile//&

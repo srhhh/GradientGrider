@@ -2178,61 +2178,6 @@ end do
 close(filechannel1)
 end do
 
-!!open(filechannel1,file=gridpath5//"error_ratio_binning.dat")
-!open(filechannel1,file=gridpath5//"InterpolationRED_binning.dat")
-!do n = 1, Nbins
-!        write(filechannel1,FMT=*) log10(min_error_ratio) + &
-!                error_ratio_binwidth*n,&
-!                error_ratio_binning(:,n)
-!end do
-!close(filechannel1)
-!
-!!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
-!open(filechannel1,file=gridpath5//"InterpolationAED_binning.dat")
-!do n = 1, Nbins
-!        write(filechannel1,FMT=*) log10(min_error_best) + &
-!                error_best_binwidth*n,&
-!                error_best_binning(:,n)
-!end do
-!close(filechannel1)
-!
-!open(filechannel1,file=gridpath5//"InterpolationIED_binning.dat")
-!do n = 1, Nbins
-!        write(filechannel1,FMT=*) log10(min_error_interpolated) + &
-!                error_interpolated_binwidth*n,&
-!                error_interpolated_binning(:,n)
-!end do
-!close(filechannel1)
-!
-!!open(filechannel1,file=gridpath5//trim(adjustl(comparison_SATRVname))//&
-!!        "_binning.dat")
-!open(filechannel1,file=gridpath5//"InterpolationR1D_binning.dat")
-!do n = 1, Nbins
-!        write(filechannel1,FMT=*) log10(min_rmsd_interpolated) + &
-!                rmsd_interpolated_binwidth*n,&
-!                rmsd_interpolated_binning(:,n)
-!end do
-!close(filechannel1)
-!
-!!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
-!open(filechannel1,file=gridpath5//"InterpolationRSV1D_binning.dat")
-!do n = 1, Nbins
-!        write(filechannel1,FMT=*) log10(min_rsv1) + &
-!                rsv1_binwidth*n, rsv1_binning(:,n)
-!end do
-!close(filechannel1)
-!
-!!open(filechannel1,file=gridpath5//"absolute_error_binning.dat")
-!open(filechannel1,file=gridpath5//"InterpolationRSV2D_binning.dat")
-!do n = 1, Nbins
-!        write(filechannel1,FMT=*) log10(min_rsv2) + &
-!                rsv2_binwidth*n, rsv2_binning(:,n)
-!end do
-!close(filechannel1)
-
-!deallocate(Ninterpolation_binning,error_ratio_binning,&
-!        error_best_binning,error_interpolated_binning,&
-!        rmsd_interpolated_binning,rsv1_binning,rsv2_binning)
 deallocate(Ninterpolation_binning,rsv_binning)
 
 end subroutine processMultipleInterpolationFiles
