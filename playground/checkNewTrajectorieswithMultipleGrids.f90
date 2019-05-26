@@ -960,6 +960,9 @@ if (comparison_flag .or. trueSA_flag .or.&
                 Ntraj = Ngrid*Ntraj_max
                 call getScatteringAngles1(&
                         Ntraj_text,"SATRVDistribution")
+!               call getScatteringAngles1(&
+!                       expfolder//intermediatefolder//Ntraj_text,&
+!                       "SATRVDistribution")
         end do
 
         !Finally, we look at the scattering angle
@@ -1041,8 +1044,8 @@ if (comparison_flag) then
         call system("cp "//gridpath0//allprefixes(1:alllengths(1))//&
                     intermediatefolder//SATRVfile//&
                     " "//gridpath5//allprefixes(1:alllengths(1)-1)//SATRVfile)
-        call getScatteringAngles1(allprefixes(1:alllengths(1)),&
-                allprefixes(1:alllengths(1)-1)//"SATRVdistribution")
+        call getScatteringAngles1(allprefixes(1:alllengths(1)-1),&
+                allprefixes(1:alllengths(1))//"SATRVdistribution")
         do i = 1, comparison_number-1
         call system("cp "//gridpath0//allprefixes(&
                         1+sum(alllengths(1:i)):&

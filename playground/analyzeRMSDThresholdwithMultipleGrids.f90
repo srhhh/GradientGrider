@@ -66,6 +66,9 @@ contains
 !
 !               prefix_filename                 CHARACTER(*)                    The prefix defining a set of trajectories
 !               JPGfilename                     CHARACTER(*)                    The suffix we use for the output JPG
+!               selection                       INTEGER                         An integer describing which grids to plot
+!                                                                               by representing "plot" as a 1 and "no
+!                                                                               plot" as a 0 in binary
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -79,26 +82,28 @@ contains
 !                                                                               set of trajectories
 !               Ngrid_total                     INTEGER                         The number of grids used in this
 !                                                                               set of trajectories
+!               Ngrid_plotting                  INTEGER                         The number of grids to be plotted
+!               grid_selection                  INTEGER,DIM(Ngrid_max)          An array with indexes of grids to plot
 !               RMSD_Nbins                      INTEGER                         The number of bins for this distribution
 !
 !               threshold_rmsd                  REAL                            The RMSD threshold
 !               frames                          INTEGER                         The number of frames read so far
-!               total_threshold_rmsd            INTEGER                         The number of frames whose accepted frame has
-!                                                                               an RMSD under the threshold so far
+!               total_threshold_rmsd            INTEGER                         The number of frames whose accepted frame
+!                                                                               has an RMSD under the threshold so far
 !               percent_threshold_rmsd          REAL                            The percentage of frames in a set of
-!                                                                               trajectories whose accepted frame has an RMD
-!                                                                               under the threshold
+!                                                                               trajectories whose accepted frame has an
+!                                                                               RMSD under the threshold
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       FILES                             FILETYPE                      DESCRIPTION
 !
-!               gridpath1//prefix_filename//    DAT                     Stores the RMSD of the frame accepted at
-!                       _#traj                                          each timestep of some trajectory coresponding
+!               gridpath0//prefix_filename//    DAT                     Stores the RMSD of the frame accepted at
+!                       Ngrid_#traj                                     each timestep of some trajectory corresponding
 !                                                                       to some prefix
-!		gridpath0//percent_rmsd//	DAT			Temporary buffer to accumulate a minimum rmsd
+!		gridpath5//percent_rmsd//	DAT			Temporary buffer to accumulate a minimum rmsd
 !			Ngrid						across multiple grids
-!               gridpath0//JPGfilename          JPG                     Generic format for image names
+!               gridpath4//JPGfilename          PNG                     Generic format for image names
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -151,69 +156,95 @@ integer :: n
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
-!If we only want to plot a select number of grids, then that can be passed in by the user
+!If we only want to plot a select number of grids,
+!then that can be passed in by the user as the
+!variable "selection"
 if (present(selection)) then
-        Ngrid_plotting = 0
-        selection_current = selection
-        do Ngrid = 1, Ngrid_max
-                selection_current = selection_current - 2 ** (Ngrid - 1)
+    Ngrid_plotting = 0
+    selection_current = selection
+    do Ngrid = 1, Ngrid_max
+        selection_current = selection_current&
+                - 2 ** (Ngrid - 1)
 
-                if (selection_current < 0) exit
+        if (selection_current < 0) exit
 
-                !If the binary representation of the selection has a 1 in that digits place
-                !then that is a signal by the user that that grid should be plotted
-                if (modulo(selection_current,2**Ngrid) == 0) then
-                        Ngrid_plotting = Ngrid_plotting + 1
-                        grid_selection(Ngrid_plotting) = Ngrid
-                else
-                        selection_current = selection_current + 2 ** (Ngrid - 1)
-                end if
-        end do
+        !If the binary representation of the
+        !selection has a 1 in that digits place
+        !then that is a signal by the user that
+        !the grid should be plotted
+        if (modulo(selection_current,2**Ngrid) == 0) then
+            Ngrid_plotting = Ngrid_plotting + 1
+            grid_selection(Ngrid_plotting) = Ngrid
+        else
+            selection_current = selection_current&
+                    + 2 ** (Ngrid - 1)
+        end if
+    end do
 
-!If not supplied, then we will just plot all grids up until Ngrid_total
+!If not supplied, then we will just plot all
+!grids up until Ngrid_total
 else
-        Ngrid_plotting = Ngrid_total
-        do Ngrid = 1, Ngrid_plotting
-                grid_selection(Ngrid) = Ngrid
-        end do
+    Ngrid_plotting = Ngrid_total
+    do Ngrid = 1, Ngrid_plotting
+        grid_selection(Ngrid) = Ngrid
+    end do
 end if
 
 
 !Now we need to open up each grid's set of trajectories
 do Ngrid = 1, Ngrid_plotting
-write(variable_length_text,"(I5)") Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") &
-                     grid_selection(Ngrid)
+write(variable_length_text,"(I5)")&
+        Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//&
+        trim(adjustl(variable_length_text))//")")&
+        grid_selection(Ngrid)
 
 !We will bin data by GRID, not by trajectory
-!So we uniquely name each output .dat and graph by the grid number
-open(filechannel1,file=gridpath5//"percent_rmsd"//Ngrid_text//".dat")
+!So we uniquely name each output .dat and graph by the
+!grid number
+open(filechannel1,file=gridpath5//&
+        "percent_rmsd"//Ngrid_text//".dat")
 do n_testtraj = 1, Ntesttraj
-        write(variable_length_text,"(I5)") trajectory_text_length
-        write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") n_testtraj
+    write(variable_length_text,"(I5)")&
+            trajectory_text_length
+    write(Ntraj_text,FMT="(I0."//&
+            trim(adjustl(variable_length_text))//")")&
+            n_testtraj
 
-        !Read the trajectory (which has the rmsd) across all grids line-by-line
-        frames = 0
-        total_threshold_rmsd = 0
-        open(filechannel2,file=gridpath0//prefix_filename//Ngrid_text//&
-                               "_"//Ntraj_text//".dat")
+    !Read the trajectory (which has the rmsd) across
+    !all grids line-by-line
+    frames = 0
+    total_threshold_rmsd = 0
+    open(filechannel2,file=gridpath0//&
+            prefix_filename//Ngrid_text//&
+            "_"//Ntraj_text//".dat")
 
-        do
-                !Tally how many frames we have in the trajectory
-                read(filechannel2,FMT=*,iostat=iostate) min_rmsd
-                if (iostate /= 0) exit
-                frames = frames + 1
+    do
+        !Tally how many frames we have in the trajectory
+        read(filechannel2,FMT=*,iostat=iostate) min_rmsd
+        if (iostate /= 0) exit
+        frames = frames + 1
 
-                !And if the RMSD is below the threshhold we tally that separately
-                if (.not.(accept_worst) .and. (min_rmsd < threshold_RMSD)) total_threshold_rmsd = total_threshold_rmsd + 1
-                if ((accept_worst) .and. (min_rmsd > 0.0d0)) total_threshold_rmsd = total_threshold_rmsd + 1
-        end do
-        close(filechannel2)
+        !And if the RMSD is below the threshhold we
+        !tally that separately
+        if (.not.(accept_worst) .and. &
+                 (min_rmsd < threshold_RMSD))&
+                 total_threshold_rmsd = &
+                 total_threshold_rmsd + 1
+        if ((accept_worst) .and. &
+                (min_rmsd > 0.0d0))&
+                 total_threshold_rmsd = &
+                 total_threshold_rmsd + 1
+    end do
+    close(filechannel2)
 
-        !We want the percentage of frames that has an RMSD below the threshhold
-        !So we keep track of the number of frames and divide by that
-        percent_threshold_rmsd = total_threshold_rmsd * 100.0 / frames
-        write(filechannel1,FMT="(I6,1x,F7.3,1x,I8)") n_testtraj, percent_threshold_rmsd, frames
+    !We want the percentage of frames that has an
+    !RMSD below the threshhold so we keep track of
+    !the number of frames and divide by that
+    percent_threshold_rmsd = &
+            total_threshold_rmsd * 100.0 / frames
+    write(filechannel1,FMT="(I6,1x,F7.3,1x,I8)")&
+            n_testtraj, percent_threshold_rmsd, frames
 end do
 close(filechannel1)
 
@@ -252,9 +283,9 @@ write(gnuplotchannel,*) 'unset ylabel'
 
 do Ngrid = 1, Ngrid_plotting
 if (Ngrid == Ngrid_plotting) then
-        write(gnuplotchannel,*) 'set label 1 "Occurence" at screen 0.01,0.45 rotate by 90'
-	write(gnuplotchannel,*) 'set xtics'
-	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below Threshold"'
+    write(gnuplotchannel,*) 'set label 1 "Occurence" at screen 0.01,0.45 rotate by 90'
+    write(gnuplotchannel,*) 'set xtics'
+    write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below Threshold"'
 end if
 
 write(variable_length_text,"(I5)") Ngrid_text_length
@@ -275,9 +306,9 @@ write(gnuplotchannel,*) 'unset ylabel'
 write(variable_length_text,"(I5)") Ngrid_text_length
 do Ngrid = 1, Ngrid_plotting
 if (Ngrid == Ngrid_plotting) then
-        write(gnuplotchannel,*) 'set label 2 "Length of Trajectory (Thousands of Frames)" at screen 0.51,0.40 rotate by 90'
-	write(gnuplotchannel,*) 'set xtics'
-	write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below Threshold"'
+    write(gnuplotchannel,*) 'set label 2 "Length of Trajectory (Thousands of Frames)" at screen 0.51,0.40 rotate by 90'
+    write(gnuplotchannel,*) 'set xtics'
+    write(gnuplotchannel,*) 'set xlabel "Percentage of Frames with RMSD Below Threshold"'
 end if
 
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") grid_selection(Ngrid)
@@ -500,6 +531,51 @@ end do
 end subroutine getRMSDThresholds1
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               getRMSDDifferences1
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine looks at the RMSD acceptance rates between two trials, particularly
+!               for different subcell neighbor checks (subcellsearch_max)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               JPGfilename                     CHARACTER(*)                    The suffix we use for the output JPG
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               Nbins                           INTEGER                         The number of bins for this distribution
+!               threshold_rmsd                  REAL                            The RMSD threshold
+!               frames                          INTEGER                         The number of frames read so far
+!               number_of_frames_accepted       INTEGER                         The number of frames whose accepted frame has
+!                                                                               an RMSD under the threshold so far
+!               min_rmsd                        REAL                            The RMSD of the accepted frame (trial 1)
+!               min_rmsd_prime                  REAL                            The RMSD of the accepted frame (trial 2)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!               gridpath5//checkstatefile       DAT                     Stores the RMSD of the accepted frames of
+!                                                                       each trial (and other data)
+!		gridpath5//percent_rmsd//	DAT			Temporary buffer to accumulate a minimum rmsd
+!			Ngrid						across multiple grids
+!               gridpath4//JPGfilename          PNG                     Generic format for image names
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine getRMSDDifferences1(JPGfilename)
 use PARAMETERS
 use ANALYSIS
@@ -544,47 +620,61 @@ number_of_frames_accepted = 0
 min_min_rmsd = default_rmsd
 
 open(filechannel2,file=gridpath5//checkstatefile)
-!read(filechannel1) number_of_frames,order,neighbor_check,steps,&
-!                   min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
+!read(filechannel1) number_of_frames,order,i&
+!                   neighbor_check,steps,&
+!                   min_rmsd,min_rmsd_prime,&
+!                   vals(1),vals(2),U,KE
 do 
-        read(filechannel2,FMT=*,iostat=iostate) i1, i2, i3, i4,&
-                           min_rmsd,min_rmsd_prime,r1,r2,r3,r4
-        if (iostate /= 0) exit
+    read(filechannel2,FMT=*,iostat=iostate)&
+            i1, i2, i3, i4,&
+            min_rmsd,min_rmsd_prime,&
+            r1,r2,r3,r4
+    if (iostate /= 0) exit
 
-        min_min_rmsd = min(min_min_rmsd,min_rmsd,min_rmsd_prime)
-        if (min_rmsd_prime < threshold_rmsd) &
-            number_of_frames_accepted = number_of_frames_accepted + 1
-        frames = frames + 1
+    min_min_rmsd = min(min_min_rmsd,&
+            min_rmsd,min_rmsd_prime)
+    if (min_rmsd_prime < threshold_rmsd) &
+        number_of_frames_accepted =&
+        number_of_frames_accepted + 1
+    frames = frames + 1
 end do
 close(filechannel2)
 
 
 Nbins = 50
-bin_width = 2 * log10(default_rmsd/min_min_rmsd) / Nbins
+bin_width = 2 * log10(default_rmsd/&
+        min_min_rmsd) / Nbins
 
-write(variable_length_text,"(I5)") Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") 4
-open(filechannel1,file=gridpath5//"percent_rmsd"//Ngrid_text//".dat")
+write(variable_length_text,"(I5)")&
+        Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//&
+        trim(adjustl(variable_length_text))//")")&
+        4
+open(filechannel1,file=gridpath5//&
+        "percent_rmsd"//Ngrid_text//".dat")
 
 open(filechannel2,file=gridpath5//checkstatefile)
-!read(filechannel1) number_of_frames,order,neighbor_check,steps,&
-!                   min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
+!read(filechannel1) number_of_frames,order,&
+!                   neighbor_check,steps,&
+!                   min_rmsd,min_rmsd_prime,&
+!                   vals(1),vals(2),U,KE
 do 
-        read(filechannel2,FMT=*,iostat=iostate) i1, i2, i3, i4,&
-                           min_rmsd,min_rmsd_prime,r1,r2,r3,r4
-        if (iostate /= 0) exit
+    read(filechannel2,FMT=*,iostat=iostate)&
+            i1, i2, i3, i4,&
+            min_rmsd,min_rmsd_prime,&
+            r1,r2,r3,r4
+    if (iostate /= 0) exit
 
-        write(filechannel1,FMT="(I6,1x,F9.6,1x,F9.6,1x,I8,1x,I8,1x,I8)") &
-                           i4, min_rmsd, min_rmsd_prime, i2, &
-                           nint(log10((min_rmsd_prime)/(min_min_rmsd/default_rmsd)) / (0.5*bin_width)),&
-                           nint(log10((min_rmsd/min_rmsd_prime)/(min_min_rmsd/default_rmsd)) / bin_width)
+    write(filechannel1,FMT="(I6,1x,F9.6,1x,"//&
+            "F9.6,1x,I8,1x,I8,1x,I8)") &
+            i4, min_rmsd, min_rmsd_prime, i2, &
+            nint(log10((min_rmsd_prime)/&
+            (min_min_rmsd/default_rmsd)) / (0.5*bin_width)),&
+            nint(log10((min_rmsd/min_rmsd_prime)/&
+            (min_min_rmsd/default_rmsd)) / bin_width)
 end do
 close(filechannel2)
-
 close(filechannel1)
-
-
-
 
 
 
@@ -713,10 +803,11 @@ implicit none
 
 !COLLECTIVE VARIABLES TO FILTER DATA
 real(dp),dimension(Nvar),intent(in) :: vals, delta_vals
-character(15) :: vals_interpolation_text
+character(5) :: vals_interpolation_text
 
 !NUMBER OF FRAMES IN THE DATA
 real(dp),dimension(7) :: min_rmsd_vals, max_rmsd_vals
+!real(dp),dimension(7) :: min_rsv, max_rsv, rsv
 
 !RMSD
 real(dp) :: rmsd_x, rmsd_y, rmsd_z, rmsd_fx
@@ -738,6 +829,7 @@ character(Ngrid_text_length) :: Ngrid_text
 integer :: Ninterpolation
 integer :: min_Ninterpolation, max_Ninterpolation
 real :: vals1, vals2
+!real(dp),dimension(2) :: temp_vals
 real(dp),dimension(3) :: RMSDheatmap_coeff
 
 !I/O HANDLING
@@ -1258,10 +1350,72 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 end subroutine getRMSDinterpolation
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               processInterpolationFile
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine looks at the processed interpolation file (truncated file)
+!               and creates data files for plotting, excising anything outside of the
+!               region of the phase space of interest
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!               vals                            REAL,DIM(Nvar)                  The region of the phase space we are
+!                                                                               interested in plotting
+!               delta_vals                      REAL,DIM(Nvar)                  The size of the region of the phase
+!                                                                               space of interest
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               RMSDheatmap_coeff               REAL,DIM(3)                     The coefficients of the linear fit
+!                                                                               produced by this data
+!               min_rsv                         REAL,DIM(7)                     Minimums of the RMSD special variables
+!               max_rsv                         REAL,DIM(7)                     Maximums of the RMSD special variables
+!               min_Ninterpolation              INTEGER                         Minimum of the Ninterpolation
+!               max_Ninterpolation              INTEGER                         Maximum of the Ninterpolation
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               Nbins                           INTEGER                         The number of bins for the binned data
+!               rsv_binwidth                    REAL,DIM(7)                     Width of the binning for each RSV
+!               rsv_bin                         INTEGER,DIM(7)                  Temporary buffer for each RSV bin data
+!               ERheatmap2D                     REAL(Nbins,Nins)                Heatmap that describes the occurence
+!                                                                               of two RSV
+!               ERheatmap1D                     REAL(Nbins/5)                   Heatmap that describes the occurence
+!                                                                               of one RSV
+!               IEheatmap2D                     REAL(Nbins,Nins)                Heatmap that describes the maximum RSV
+!                                                                               (usually IE) observed given two RSV
+!               Nheatmap                        INTEGER                         The number of unique nonzero entries
+!                                                                               in IEheatmap2D
+!               A                               REAL(Nheatmap,3)                The "independent variable matrix" for
+!                                                                               IEheatmap2D used for linear fitting
+!               b                               REAL(Nheatmap)                  The "dependent variable matrix" for
+!                                                                               IEheatmap2D used for linear fitting
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!		gridpath5//truncated//          DAT			Holds processed interpolation data
+!		       interpolationfile
+!               gridpath4//JPGfilename          PNG                     Generic format for image names
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine processInterpolationFile(vals,delta_vals,&
+subroutine processInterpolationFile(&
+                vals,delta_vals,&
                 RMSDheatmap_coeff,&
-                min_rmsd_vals,max_rmsd_vals,&
+                min_rsv,max_rsv,&
                 min_Ninterpolation,max_Ninterpolation)
 use PARAMETERS
 use FUNCTIONS
@@ -1270,47 +1424,31 @@ implicit none
 
 !COLLECTIVE VARIABLES TO FILTER DATA
 real(dp),dimension(Nvar),intent(in) :: vals, delta_vals
-character(15) :: vals_interpolation_text
 
 !NUMBER OF FRAMES IN THE DATA
-integer :: frames
-integer :: tally1, tally2
-real(dp),dimension(7),intent(out) :: min_rmsd_vals,max_rmsd_vals
+real(dp),dimension(7),intent(out) :: min_rsv,max_rsv
 real(dp),dimension(3),intent(out) :: RMSDheatmap_coeff
-real(dp),dimension(6) :: rmsd_vals
-real(dp) :: rmsd_fx_ratio
-
-!RMSD
-real(dp) :: rmsd_x, rmsd_y, rmsd_z, rmsd_fx
-real(dp) :: rmsd_x_prime,rmsd_fx_prime
-real(dp) :: min_rmsd_x, max_rmsd_x
-real(dp) :: min_rmsd_x_prime, max_rmsd_x_prime
-real(dp) :: min_rmsd_y, max_rmsd_y
-real(dp) :: min_rmsd_z, max_rmsd_z
-real(dp) :: min_rmsd_fx, max_rmsd_fx
-real(dp) :: min_rmsd_fx_prime, max_rmsd_fx_prime
+real(dp),dimension(7) :: rsv, rsv_binwidth
+integer,dimension(7) :: rsv_bin
 
 !FORMATTING OF PNG FILES
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
-character(5) :: variable_length_text
-character(Ngrid_text_length) :: Ngrid_text
 
 !VARIABLES IN THE INTERPOLATION FILE
 integer :: Ninterpolation
-integer,intent(out) :: min_Ninterpolation, max_Ninterpolation
-real :: vals1, vals2
+integer,intent(out) :: min_Ninterpolation
+integer,intent(out) :: max_Ninterpolation
+real(dp),dimension(Nvar) :: current_vals
 
 !I/O HANDLING
 integer :: iostate
 
 !HISTOGRAM VARIABLES
 integer :: Nbins
-real(dp) :: bin_width, bin_width1, bin_width2
-integer :: Nbin, min_Nbin, max_Nbin
-integer :: Nrmsd1,Nrmsd2,Nheatmap,Nratio
-real(dp),allocatable :: RMSDheatmap(:,:)
-integer,allocatable :: RMSDheatmap_freq(:,:),RMSDratio_freq(:)
+integer :: i,j,k,l,Nheatmap
+real(dp),allocatable :: IEheatmap2D(:,:)
+integer,allocatable :: ERheatmap2D(:,:),ERheatmap1D(:)
 real(dp),allocatable :: A(:,:), b(:)
 
 !INTEGER INCREMENTALS
@@ -1319,167 +1457,74 @@ integer :: n
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
-frames = 0
+open(filechannel2,file=gridpath5//&
+        "truncated"//interpolationfile)
 
-!min_rmsd_x = default_rmsd
-!min_rmsd_y = default_rmsd
-!min_rmsd_z = default_rmsd
-!min_rmsd_fx = 1.0d9
-!max_rmsd_x = 0.0d0
-!max_rmsd_y = 0.0d0
-!max_rmsd_z = 0.0d0
-!max_rmsd_fx = 0.0d0
-min_rmsd_vals = default_rmsd
-max_rmsd_vals = 0.0d0
-min_Ninterpolation = 1000
-max_Ninterpolation = 0
-
-write(vals_interpolation_text,FMT="(F7.3,'_',F7.3)") vals(1),vals(2)
-open(filechannel1,file=gridpath5//vals_interpolation_text//interpolationfile)
-open(filechannel2,file=gridpath5//interpolationfile)
-do 
-        read(filechannel2,FMT=*,iostat=iostate) &
-                vals1, vals2, Ninterpolation, rmsd_vals
-                
-!                                       rmsd_y, rmsd_z, &
-!                                       rmsd_x_prime, rmsd_fx_prime, &
-!                                       rmsd_x, rmsd_fx
-        if (iostate /= 0) exit
-
-        if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
-            (abs(vals2-vals(2)) > delta_vals(2))) cycle
-
-        rmsd_fx_ratio = rmsd_vals(6) / rmsd_vals(4)
-
-        min_rmsd_vals(1:6) = min(min_rmsd_vals(1:6),rmsd_vals)
-        max_rmsd_vals(1:6) = max(max_rmsd_vals(1:6),rmsd_vals)
-        min_rmsd_vals(7) = min(min_rmsd_vals(7),rmsd_fx_ratio)
-        max_rmsd_vals(7) = max(max_rmsd_vals(7),rmsd_fx_ratio)
-!       min_rmsd_x = min(min_rmsd_x, rmsd_x)
-!       max_rmsd_x = max(max_rmsd_x, rmsd_x)
-!       min_rmsd_y = min(min_rmsd_y, rmsd_y)
-!       max_rmsd_y = max(max_rmsd_y, rmsd_y)
-!       min_rmsd_z = min(min_rmsd_z, rmsd_z)
-!       max_rmsd_z = max(max_rmsd_z, rmsd_z)
-!       min_rmsd_fx = min(min_rmsd_fx, rmsd_fx)
-!       max_rmsd_fx = max(max_rmsd_fx, rmsd_fx)
-!       min_rmsd_x_prime = min(min_rmsd_x_prime, rmsd_x_prime)
-!       max_rmsd_x_prime = max(max_rmsd_x_prime, rmsd_x_prime)
-!       min_rmsd_fx_prime = min(min_rmsd_fx_prime, rmsd_fx_prime)
-!       max_rmsd_fx_prime = max(max_rmsd_fx_prime, rmsd_fx_prime)
-        min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
-        max_Ninterpolation = max(max_Ninterpolation, Ninterpolation)
-
-        frames = frames + 1
-
-        write(filechannel1,FMT=*) vals1, vals2, Ninterpolation,&
-!              rmsd_y,rmsd_z,rmsd_x,rmsd_fx
-               rmsd_vals(1),rmsd_vals(2),rmsd_vals(5),rmsd_vals(6)
-end do
-close(filechannel1)
-close(filechannel2)
-
-if (frames == 0) return
+read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
+        "2(7(G16.6,1x)))",iostat=iostate) &
+        i,j,k,&
+        min_Ninterpolation, max_Ninterpolation,&
+        min_rsv, max_rsv
 
 Nbins = 100
+rsv_binwidth = log10(max_rsv/min_rsv)*1.0d0/Nbins
+allocate(ERheatmap2D(Nbins,Nbins),&
+         ERheatmap1D(Nbins/5),&
+         IEheatmap2D(Nbins,Nbins))
+ERheatmap2D = 0
+ERheatmap1D = 0
+IEheatmap2D = 1.0d-7
 
-min_rmsd_fx = min(min_rmsd_vals(4),min_rmsd_vals(6))
-min_rmsd_fx_prime = min_rmsd_fx
-max_rmsd_fx = max(max_rmsd_vals(4),max_rmsd_vals(6))
-max_rmsd_fx_prime = max_rmsd_fx
-
-bin_width1 = log10( (max_rmsd_fx_prime) / &
-                    (min_rmsd_fx_prime)   ) / Nbins
-bin_width2 = log10( (max_rmsd_fx) / &
-                    (min_rmsd_fx)   ) / Nbins
-bin_width = log10( (max_rmsd_vals(7)) / &
-                   (min_rmsd_vals(7))   ) / (Nbins/5)
-
-allocate(RMSDheatmap_freq(Nbins,Nbins),RMSDratio_freq(Nbins/5))
-RMSDheatmap_freq = 0
-RMSDratio_freq = 0
-
-open(filechannel2,file=gridpath5//interpolationfile)
 do 
-        read(filechannel2,FMT=*,iostat=iostate) vals1, vals2, Ninterpolation, &
-                                       rmsd_z, rmsd_y, &
-                                       rmsd_x_prime, rmsd_fx_prime, &
-                                       rmsd_x, rmsd_fx
+        read(filechannel2,FMT=*,iostat=iostate) &
+                current_vals, Ninterpolation, rsv
         if (iostate /= 0) exit
 
-        if (Ninterpolation == 1) cycle
-        if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
-            (abs(vals2-vals(2)) > delta_vals(2))) cycle
+!       if (Ninterpolation == 1) cycle
+        if (any(abs(current_vals-vals) > &
+                delta_vals)) cycle
 
-        Nrmsd1 = nint(log10(rmsd_fx_prime/min_rmsd_fx_prime)/bin_width1)
-        if (Nrmsd1 < 1) Nrmsd1 = 1
-        Nrmsd2 = nint(log10(rmsd_fx/min_rmsd_fx)/bin_width2)
-        if (Nrmsd2 < 1) Nrmsd2 = 1
+        rsv_bin = floor(log10(rsv/min_rsv)/rsv_binwidth) + 1
+        do l = 1, 7
+                if (rsv_bin(l) < 1) rsv_bin(l) = 1
+                if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
+        end do
 
-        rmsd_fx_ratio = rmsd_fx / rmsd_fx_prime
-        Nratio = nint(log10(rmsd_fx_ratio/min_rmsd_vals(7))/bin_width)
-        if (Nratio < 1) Nratio = 1
-
-        RMSDheatmap_freq(Nrmsd1,Nrmsd2) = &
-                RMSDheatmap_freq(Nrmsd1,Nrmsd2) + 1
-        RMSDratio_freq(Nratio) = &
-                RMSDratio_freq(Nratio) + 1
+        ERheatmap2D(rsv_bin(5),rsv_bin(6)) =&
+                ERheatmap2D(rsv_bin(5),rsv_bin(6)) + 1
+        ERheatmap1D(rsv_bin(7)/5) =&
+                ERheatmap1D(rsv_bin(7)/5) + 1
+        IEheatmap2D(rsv_bin(3),rsv_bin(4)) = max(&
+                IEheatmap2D(rsv_bin(3),rsv_bin(4)),rsv(6))
 end do
 close(filechannel2)
 
-open(filechannel2,file=gridpath5//"heatmap_freq1_rmsd.dat")
-do Nrmsd1 = 1, Nbins
-        do Nrmsd2 = 1, Nbins
-                write(filechannel2,FMT=*) (Nrmsd1-0.5)*bin_width1,&
-                        (Nrmsd2-0.5)*bin_width2,RMSDheatmap_freq(Nrmsd1,Nrmsd2)
+
+
+open(filechannel2,file=gridpath5//"ERheatmap2D.dat")
+do i = 1, Nbins
+        do j = 1, Nbins
+                write(filechannel2,FMT=*)&
+                        (i-0.5)*rsv_binwidth(5),&
+                        (j-0.5)*rsv_binwidth(6),&
+                        ERheatmap2D(i,j)
         end do
         write(filechannel2,*) ""
 end do
 close(filechannel2)
 
-open(filechannel2,file=gridpath5//"heatmap_freq2_rmsd.dat")
-do Nratio = 1, Nbins/5
-        write(filechannel2,FMT=*) (Nratio-0.5)*bin_width,&
-                RMSDratio_freq(Nratio)
-end do
-close(filechannel2)
-
-min_rmsd_z = min_rmsd_vals(1)
-max_rmsd_z = max_rmsd_vals(1)
-min_rmsd_x = min_rmsd_vals(5)
-max_rmsd_x = max_rmsd_vals(5)
-
-bin_width1 = log10(max_rmsd_z / min_rmsd_z) / Nbins
-bin_width2 = log10(max_rmsd_x / min_rmsd_x) / Nbins
-
-allocate(RMSDheatmap(Nbins,Nbins))
-RMSDheatmap = 1.0d-7
-
-open(filechannel2,file=gridpath5//interpolationfile)
-do 
-        read(filechannel2,FMT=*,iostat=iostate) vals1, vals2, Ninterpolation, &
-                                       rmsd_z, rmsd_y, &
-                                       rmsd_x_prime, rmsd_fx_prime, &
-                                       rmsd_x, rmsd_fx
-        if (iostate /= 0) exit
-
-        if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
-            (abs(vals2-vals(2)) > delta_vals(2))) cycle
-
-        Nrmsd1 = nint(log10(rmsd_z/min_rmsd_z)/bin_width1)
-        if (Nrmsd1 < 1) Nrmsd1 = 1
-        Nrmsd2 = nint(log10(rmsd_x/min_rmsd_x)/bin_width2)
-        if (Nrmsd2 < 1) Nrmsd2 = 1
-
-        RMSDheatmap(Nrmsd1,Nrmsd2) = max(&
-                RMSDheatmap(Nrmsd1,Nrmsd2),rmsd_fx)
+open(filechannel2,file=gridpath5//"ERheatmap1D.dat")
+do i = 1, Nbins/5
+        write(filechannel2,FMT=*)&
+                (i-0.5)*rsv_binwidth(7),&
+                ERheatmap1D(i)
 end do
 close(filechannel2)
 
 Nheatmap = 0
-do Nrmsd1 = 1, Nbins
-        do Nrmsd2 = 1, Nbins
-                if (RMSDheatmap(Nrmsd1,Nrmsd2) > 1.0d-7) then
+do i = 1, Nbins
+        do j = 1, Nbins
+                if (IEheatmap2D(i,j) > 1.0d-7) then
                          Nheatmap = Nheatmap + 1
                 end if
         end do
@@ -1487,26 +1532,30 @@ end do
 
 allocate(A(Nheatmap,3),b(Nheatmap))
 Nheatmap = 0
-do Nrmsd1 = 1, Nbins
-        do Nrmsd2 = 1, Nbins
-                if (RMSDheatmap(Nrmsd1,Nrmsd2) > 1.0d-7) then
+do i = 1, Nbins
+        do j = 1, Nbins
+                if (IEheatmap2D(i,j) > 1.0d-7) then
                          Nheatmap = Nheatmap + 1
-                         A(Nheatmap,:) = (/ (Nrmsd1-0.5)*bin_width1,&
-                                 (Nrmsd2-0.5)*bin_width2,1.0d0/)
-                         b(Nheatmap) = log10(RMSDheatmap(Nrmsd1,Nrmsd2))
+                         A(Nheatmap,:) = (/&
+                                 (i-0.5)*rsv_binwidth(3),&
+                                 (j-0.5)*rsv_binwidth(4),&
+                                 1.0d0/)
+                         b(Nheatmap) = log10(IEheatmap2D(i,j))
                 end if
         end do
 end do
 
 call LS(A,Nheatmap,3,b,RMSDheatmap_coeff)
 
-open(filechannel2,file=gridpath5//"heatmap_rmsd.dat")
-do Nrmsd1 = 1, Nbins
-        do Nrmsd2 = 1, Nbins
-                write(filechannel2,FMT=*) (Nrmsd1-0.5)*bin_width1,&
-                        (Nrmsd2-0.5)*bin_width2,RMSDheatmap(Nrmsd1,Nrmsd2),&
-                        10.0d0**(max((Nrmsd1-0.5)*bin_width1*RMSDheatmap_coeff(1)+&
-                                     (Nrmsd2-0.5)*bin_width2*RMSDheatmap_coeff(2)+&
+open(filechannel2,file=gridpath5//"IEheatmap2D.dat")
+do i = 1, Nbins
+        do j = 1, Nbins
+                write(filechannel2,FMT=*)&
+                        (i-0.5)*rsv_binwidth(3),&
+                        (j-0.5)*rsv_binwidth(4),&
+                        IEheatmap2D(i,j),&
+                        10.0d0**(max((i-0.5)*rsv_binwidth(3)*RMSDheatmap_coeff(1)+&
+                                     (j-0.5)*rsv_binwidth(4)*RMSDheatmap_coeff(2)+&
                                                     RMSDheatmap_coeff(3),-7.0d0))
         end do
         write(filechannel2,*) ""
@@ -1517,6 +1566,63 @@ end subroutine processInterpolationFile
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               processInterpolationFile2
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine looks at the interpolation file, gets minimums and
+!               maximums, generates secondary variables, and writes the data down in
+!               a separate truncated file
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               vals                            REAL,DIM(Nvar)                  The region of the phase space
+!                                                                               (described by collective variables)
+!               rsv                             REAL,DIM(7)                     The variables in order are:
+!                                                                               1.RMSD of accept best frame
+!                                                                               2.RMSD of interpolated frame
+!                                                                               3.Special Variable 1
+!                                                                               4.Special Variable 2
+!                                                                               5.Error of accept best gradient
+!                                                                               6.Error of interpolated gradient
+!                                                                               7.Error of accept best / interpolated
+!               min_rsv                         REAL,DIM(7)                     Minimums of the RMSD special variables
+!               max_rsv                         REAL,DIM(7)                     Maximums of the RMSD special variables
+!               Ninterpolation                  INTEGER                         Number of frames used in the
+!                                                                               interpolation
+!               min_Ninterpolation              INTEGER                         Minimum of the Ninterpolation
+!               max_Ninterpolation              INTEGER                         Maximum of the Ninterpolation
+!               frames                          INTEGER                         Number of frames in the interpolation
+!                                                                               file
+!               neginfinity_counter             INTEGER                         Number of frames where RSV5 = 0
+!               posinfinity_counter             INTEGER                         Number of frames where RSV6 = 0
+!               firstliner                      CHARACTER()                     A string with minimums and maximums
+!                                                                               of the RSV and other data appended as
+!                                                                               the first line of the truncated file
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!		gridpath5//interpolationfile    DAT			Holds the raw interpolation data
+!		gridpath5//truncated//          DAT			Holds processed interpolation data
+!		       interpolationfile
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine processInterpolationFile2()
 use PARAMETERS
@@ -1530,21 +1636,10 @@ character(12) :: short_prefix_text
 
 !VARIABLES IN THE INTERPOLATION FILE
 real(dp),dimension(Nvar) :: vals
-!real(dp) :: rmsd_best,rmsd_interpolated
-!real(dp) :: min_error_interpolated,max_error_interpolated,error_interpolated
-!real(dp) :: min_rsv1,max_rsv1,rsv1
-!real(dp) :: min_rsv2,max_rsv2,rsv2
-!real(dp) :: min_error_ratio,max_error_ratio,error_ratio
-!real(dp) :: min_error_best, max_error_best, error_best
-!real(dp) :: min_rmsd_interpolated, max_rmsd_interpolated
 real(dp),dimension(7) :: rsv, min_rsv, max_rsv
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
 
 integer :: frames,neginfinity_counter,posinfinity_counter
-!character(79) :: firstliner
-!character(113) :: firstliner
-!character(147) :: firstliner
-!character(249) :: firstliner
 character(1+3*10+2*7+2*7*17) :: firstliner
 
 character(gridpath_length+expfolder_length) :: gridpath4
@@ -1558,24 +1653,6 @@ integer :: n
 
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
-
-!min_rsv1 = 1.0d9
-!max_rsv1 = 0.0d9
-!
-!min_rsv2 = 1.0d9
-!max_rsv2 = 0.0d9
-!
-!min_error_best = 1.0d9
-!max_error_best = 0.0d9
-!
-!min_error_interpolated = 1.0d9
-!max_error_interpolated = 0.0d9
-!
-!min_error_ratio = 1.0d9
-!max_error_ratio = 0.0d9
-!
-!min_rmsd_interpolated = 1.0d9
-!max_rmsd_interpolated = 0.0d9
 
 min_Ninterpolation = 1000
 max_Ninterpolation = 0
@@ -1601,13 +1678,6 @@ do
                 
         if (iostate /= 0) exit
 
-!       if ((error_best == 0.0d0).and.&
-!               (error_interpolated==0.0d0)) then
-!               error_ratio = 1.0d0
-!               write(filechannel1,FMT=*) &
-!                       vals, Ninterpolation, &
-!                       error_ratio,error_best,error_interpolated,&
-!                       rmsd_interpolated,rsv1,rsv2
         if ((rsv(5) == 0.0d0).and.(rsv(6)==0.0d0)) then
                 rsv(7) = 1.0d0
                 write(filechannel1,FMT=*) &
@@ -1623,41 +1693,15 @@ do
                         max_rsv(n) = max(max_rsv(n),rsv(n))
                 end do
                 
-!               min_error_ratio = min(min_error_ratio,error_ratio)
-!               max_error_ratio = max(max_error_ratio,error_ratio)
-
-!               min_error_best = min(min_error_best,error_best)
-!               max_error_best = max(max_error_best,error_best)
-
-!               min_error_interpolated = min(min_error_interpolated,error_interpolated)
-!               max_error_interpolated = max(max_error_interpolated,error_interpolated)
-
-!               min_rmsd_interpolated = min(min_rmsd_interpolated,&
-!                       rmsd_interpolated)
-!               max_rmsd_interpolated = max(max_rmsd_interpolated,&
-!                       rmsd_interpolated)
-
-!               min_rsv1 = min(min_rsv1,rsv1)
-!               max_rsv1 = max(max_rsv1,rsv1)
-
-!               min_rsv2 = min(min_rsv2,rsv2)
-!               max_rsv2 = max(max_rsv2,rsv2)
-        
-!       else if (error_best == 0.0d0) then
         else if (rsv(5) == 0.0d0) then
                 neginfinity_counter = neginfinity_counter + 1
 
-!       else if (error_interpolated == 0.0d0) then
         else if (rsv(6) == 0.0d0) then
                 posinfinity_counter = posinfinity_counter + 1
 
         else
-!               error_ratio = error_best/error_interpolated
                 rsv(7) = rsv(5)/rsv(6)
                 write(filechannel1,FMT=*) &
-!                       vals, Ninterpolation, &
-!                       error_ratio,error_best,error_interpolated,&
-!                       error_ratio,error_best,error_interpolated,&
                         vals, Ninterpolation, rsv
 
                 min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
@@ -1668,25 +1712,6 @@ do
                         max_rsv(n) = max(max_rsv(n),rsv(n))
                 end do
         
-!               min_error_ratio = min(min_error_ratio,error_ratio)
-!               max_error_ratio = max(max_error_ratio,error_ratio)
-
-!               min_error_best = min(min_error_best,error_best)
-!               max_error_best = max(max_error_best,error_best)
-
-!               min_error_interpolated = min(min_error_interpolated,error_interpolated)
-!               max_error_interpolated = max(max_error_interpolated,error_interpolated)
-
-!               min_rmsd_interpolated = min(min_rmsd_interpolated,&
-!                       rmsd_interpolated)
-!               max_rmsd_interpolated = max(max_rmsd_interpolated,&
-!                       rmsd_interpolated)
-
-!               min_rsv1 = min(min_rsv1,rsv1)
-!               max_rsv1 = max(max_rsv1,rsv1)
-
-!               min_rsv2 = min(min_rsv2,rsv2)
-!               max_rsv2 = max(max_rsv2,rsv2)
         end if
 
         frames = frames + 1
@@ -1694,27 +1719,12 @@ end do
 close(filechannel1)
 close(filechannel2)
 
-!write(firstliner,FMT="(A1,3(I9,1x),2(I6,1x),"//&
-!        "2(E16.6,1x),2(E16.6,1x),2(E16.6,1x),"//&
-!        "2(E16.6,1x),2(E16.6,1x),2(E16.6,1x))") &
 write(firstliner,FMT="(A1,3(I9,1x),2(I6,1x),"//&
         "2(7(E16.6,1x)))") &
         "#",posinfinity_counter,&
         neginfinity_counter, frames, &
         min_Ninterpolation, max_Ninterpolation,&
-!       min_error_ratio, max_error_ratio,&
-!       min_error_best, max_error_best,&
-!       min_error_interpolated, max_error_interpolated,&
-!       min_rmsd_interpolated, max_rmsd_interpolated,&
-!       min_rsv1, max_rsv1, min_rsv2, max_rsv2
         min_rsv, max_rsv
-
-!call system("sed -i '1i\"//firstliner//"' '"//&
-!        gridpath4//interpolationfolder//&
-!!       short_prefix_text//interpolationfile//"'")
-!        expfolder(1:expfolder_length-1)//&
-!        vals_interpolation_text//&
-!        interpolationfile//"'")
 
 call system("sed -i '1i\"//firstliner//"' '"//&
         gridpath5//"truncated"//&
@@ -1725,6 +1735,75 @@ end subroutine processInterpolationFile2
 
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       SUBROUTINE
+!               processMultipleInterpolationFiles
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       PURPOSE
+!               This subroutine looks at multiple processed interpolation files (truncated
+!               files), calculates lower and upper bounds, bins the data, and writes down the
+!               data in separate files for later plotting
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       INPUT                           KIND                            DESCRIPTION
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       OUTPUT                          KIND                            DESCRIPTION
+!
+!               counters                        INTEGER                         Number of frames and other counters
+!                  (comparison_number,3)                                        in each interpolation file for
+!                                                                               comparison
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
+!
+!               comparison_number               INTEGER                         The number of experiments to be
+!                                                                               compared (not necessarily unique)
+!               vals                            REAL,DIM(Nvar)                  The region of the phase space
+!                                                                               (described by collective variables)
+!               delta_vals                      REAL,DIM(Nvar)                  The size of the region of the phase
+!                                                                               space of interest
+!               rsv                             REAL,DIM(7)                     The variables in order are:
+!                                                                               1.RMSD of accept best frame
+!                                                                               2.RMSD of interpolated frame
+!                                                                               3.Special Variable 1
+!                                                                               4.Special Variable 2
+!                                                                               5.Error of accept best gradient
+!                                                                               6.Error of interpolated gradient
+!                                                                               7.Error of accept best / interpolated
+!               min_rsv                         REAL,DIM(7)                     Minimums of the RMSD special variables
+!               max_rsv                         REAL,DIM(7)                     Maximums of the RMSD special variables
+!               Ninterpolation                  INTEGER                         Number of frames used in the
+!                                                                               interpolation
+!               min_Ninterpolation              INTEGER                         Minimum of the Ninterpolation
+!               max_Ninterpolation              INTEGER                         Maximum of the Ninterpolation
+!               frames                          INTEGER                         Number of frames in the interpolation
+!                                                                               file
+!               frames_trials                   INTEGER                         Number of frames in each of the
+!                  (comparison_number)                                          interpolation file for comparison
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!       FILES                             FILETYPE                      DESCRIPTION
+!
+!		gridpath0//comparison_file      DAT			Holds the parameters that describe
+!                                                                       what regions of the phase space to
+!                                                                       excise data from
+!		gridpath0//allprefixes()//      DAT			Holds processed interpolation data
+!		       intermediatefolder//
+!		       interpolationfile
+!		gridpath5//tmp//                DAT			Holds slightly more processed
+!		       interpolationfile                                interpolation data
+!		gridpath5//SATRVname//          DAT			Holds binned interpolation data
+!		       _binning                                         for later binning
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine processMultipleInterpolationFiles(counters)
 use PARAMETERS
@@ -1744,18 +1823,6 @@ character(Ngrid_text_length) :: Ngrid_text
 integer,dimension(comparison_number,3),intent(out) :: counters
 integer,dimension(comparison_number) :: frames_trials
 
-!real(dp) :: lower_rsv1,upper_rsv1
-!real(dp) :: min_rsv1,max_rsv1,rsv1
-!real(dp) :: lower_rsv2,upper_rsv2
-!real(dp) :: min_rsv2,max_rsv2,rsv2
-!real(dp) :: lower_error_ratio,upper_error_ratio
-!real(dp) :: min_error_ratio,max_error_ratio,error_ratio
-!real(dp) :: lower_error_best,upper_error_best
-!real(dp) :: min_error_best,max_error_best,error_best
-!real(dp) :: lower_error_interpolated,upper_error_interpolated
-!real(dp) :: min_error_interpolated,max_error_interpolated,error_interpolated
-!real(dp) :: lower_rmsd_interpolated,upper_rmsd_interpolated
-!real(dp) :: min_rmsd_interpolated,max_rmsd_interpolated,rmsd_interpolated
 real(dp),dimension(7) :: rsv, min_rsv, max_rsv
 real(dp),dimension(7) :: lower_rsv, upper_rsv
 integer :: lower_Ninterpolation,upper_Ninterpolation
@@ -1772,20 +1839,8 @@ real(dp) :: Ninterpolation_binwidth
 integer :: Ninterpolation_bin
 real(dp), dimension(7) :: rsv_binwidth
 integer, dimension(7) :: rsv_bin
-!real(dp) :: error_ratio_binwidth,error_best_binwidth
-!integer :: rsv1_bin, rsv2_bin
-!real(dp) :: rsv1_binwidth,rsv2_binwidth
-!real(dp) :: error_interpolated_binwidth,rmsd_interpolated_binwidth
-!integer :: error_ratio_bin
-!integer :: error_best_bin, error_interpolated_bin
-!integer :: rmsd_interpolated_bin
 integer :: frames, Nbins
 real(dp),allocatable :: Ninterpolation_binning(:,:)
-!real(dp),allocatable :: error_ratio_binning(:,:)
-!real(dp),allocatable :: error_best_binning(:,:)
-!real(dp),allocatable :: rmsd_interpolated_binning(:,:)
-!real(dp),allocatable :: error_interpolated_binning(:,:)
-!real(dp),allocatable :: rsv1_binning(:,:),rsv2_binning(:,:)
 real(dp),allocatable :: rsv_binning(:,:,:)
 integer :: starting_index
 
@@ -1798,24 +1853,6 @@ gridpath5 = gridpath4//intermediatefolder
 counters = 0
 frames_trials = 0
 frames = 0
-
-!min_rsv1 = 1.0d9
-!max_rsv1 = 0.0d9
-!
-!min_rsv2 = 1.0d9
-!max_rsv2 = 0.0d9
-!
-!min_error_ratio = 1.0d9
-!max_error_ratio = 0.0d9
-!
-!min_error_best = 1.0d9
-!max_error_best = 0.0d9
-!
-!min_error_interpolated = 1.0d9
-!max_error_interpolated = 0.0d9
-!
-!min_rmsd_interpolated = 1.0d9
-!max_rmsd_interpolated = 0.0d9
 
 min_Ninterpolation = 1000
 max_Ninterpolation = 0
@@ -1845,17 +1882,6 @@ do n = 1, comparison_number
                 allprefixes(starting_index+1:sum(alllengths(1:n)))//&
                 intermediatefolder//"truncated"//interpolationfile)
 
-!       read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
-!               "2(G16.6,1x),2(G16.6,1x),2(G16.6,1x),"//&
-!               "2(G16.6,1x),2(G16.6,1x),2(G16.6,1x))",&
-!               iostat=iostate) &
-!               counters(n,1),counters(n,2),counters(n,3),&
-!               lower_Ninterpolation, upper_Ninterpolation,&
-!               lower_error_ratio, upper_error_ratio,&
-!               lower_error_best, upper_error_best,&
-!               lower_error_interpolated, upper_error_interpolated,&
-!               lower_rmsd_interpolated, upper_rmsd_interpolated,&
-!               lower_rsv1, upper_rsv1,lower_rsv2, upper_rsv2
         read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
                 "2(7(G16.6,1x)))",iostat=iostate) &
                 counters(n,1),counters(n,2),counters(n,3),&
@@ -1872,51 +1898,12 @@ do n = 1, comparison_number
                 max_rsv(m) = max(max_rsv(m),upper_rsv(m))
         end do
 
-!       min_error_ratio = min(min_error_ratio,&
-!               lower_error_ratio)
-!       max_error_ratio = max(max_error_ratio,&
-!               upper_error_ratio)
-
-!       min_error_best = min(min_error_best,&
-!               lower_error_best)
-!       max_error_best = max(max_error_best,&
-!               upper_error_best)
-
-!       min_error_interpolated = min(min_error_interpolated,&
-!               lower_error_interpolated)
-!       max_error_interpolated = max(max_error_interpolated,&
-!               upper_error_interpolated)
-
-!       min_rmsd_interpolated = min(min_rmsd_interpolated,&
-!               lower_rmsd_interpolated)
-!       max_rmsd_interpolated = max(max_rmsd_interpolated,&
-!               upper_rmsd_interpolated)
-
-!       min_rsv1 = min(min_rsv1,lower_rsv1)
-!       max_rsv1 = max(max_rsv1,upper_rsv1)
-
-!       min_rsv2 = min(min_rsv2,lower_rsv2)
-!       max_rsv2 = max(max_rsv2,upper_rsv2)
-
         do
-!               read(filechannel2,FMT=*,iostat=iostate)&
-!                       tmpvals, Ninterpolation, &
-!                       error_ratio,error_best,error_interpolated,&
-!                       rmsd_interpolated,rsv1,rsv2
                 read(filechannel2,FMT=*,iostat=iostate)&
                         tmpvals, Ninterpolation, rsv
                 if (iostate /= 0) exit
 
                 tmpvals = abs(tmpvals-vals) - abs(delta_vals)
-
-!               if ((delta_vals(1)>0).and.(delta_vals(2)>0)) then
-!               if ((abs(vals1-vals(1)) > delta_vals(1)).or.&
-!                   (abs(vals2-vals(2)) > delta_vals(2))) cycle
-!       
-!               else
-!               if ((abs(vals1-vals(1)) <= abs(delta_vals(1))).or.&
-!                   (abs(vals2-vals(2)) <= abs(delta_vals(2)))) cycle
-!               end if
 
                 if (all(delta_vals>0)) then
                         if (any(tmpvals > 0)) cycle
@@ -1925,9 +1912,6 @@ do n = 1, comparison_number
                 end if
 
                 frames_trials(n) = frames_trials(n) + 1
-!               write(filechannel3,FMT=*) Ninterpolation,&
-!                       error_ratio,error_best,error_interpolated,&
-!                       rmsd_interpolated,rsv1,rsv2
                 write(filechannel3,FMT=*) Ninterpolation,rsv
         end do
         close(filechannel2)
@@ -1967,33 +1951,7 @@ Ninterpolation_binwidth = ceiling((max_Ninterpolation -&
 
 !if (Nbins > 100) Nbins = 100
 
-!error_ratio_binwidth = log10(max_error_ratio /&
-!        min_error_ratio) *1.0d0/ Nbins
-!error_best_binwidth = log10(max_error_best /&
-!        min_error_best) *1.0d0/ Nbins
-!error_interpolated_binwidth = log10(max_error_interpolated /&
-!        min_error_interpolated) *1.0d0/ Nbins
-!rmsd_interpolated_binwidth = log10(max_rmsd_interpolated /&
-!        min_rmsd_interpolated) *1.0d0/ Nbins
-!rsv1_binwidth = log10(max_rsv1 / min_rsv1) *1.0d0/ Nbins
-!rsv2_binwidth = log10(max_rsv2 / min_rsv2) *1.0d0/ Nbins
-
 rsv_binwidth = log10(max_rsv/min_rsv)*1.0d0/Nbins
-
-!allocate(Ninterpolation_binning(3*comparison_number,Nbins),&
-!         error_best_binning(3*comparison_number,Nbins),&
-!         error_ratio_binning(3*comparison_number,Nbins),&
-!         rmsd_interpolated_binning(3*comparison_number,Nbins),&
-!         error_interpolated_binning(3*comparison_number,Nbins),&
-!         rsv1_binning(3*comparison_number,Nbins),&
-!         rsv2_binning(3*comparison_number,Nbins))
-!Ninterpolation_binning = 0
-!error_ratio_binning = 0
-!error_best_binning = 0
-!rmsd_interpolated_binning = 0
-!error_interpolated_binning = 0
-!rsv1_binning = 0
-!rsv2_binning = 0
 
 allocate(Ninterpolation_binning(3*comparison_number,Nbins),&
          rsv_binning(7,3*comparison_number,Nbins))
@@ -2003,9 +1961,6 @@ rsv_binning = 0.0d0
 open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
 do n = 1, comparison_number
         do m = 1, frames_trials(n)
-!               read(filechannel1,FMT=*) Ninterpolation,&
-!                       error_ratio,error_best,error_interpolated,&
-!                       rmsd_interpolated,rsv1,rsv2
                 read(filechannel1,FMT=*) Ninterpolation,rsv
         
                 Ninterpolation_bin = floor((Ninterpolation&
@@ -2020,36 +1975,6 @@ do n = 1, comparison_number
                         if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
                 end do
 
-!               error_ratio_bin = floor(log10(error_ratio/min_error_ratio)/&
-!                       error_ratio_binwidth) + 1
-!               if (error_ratio_bin < 1) error_ratio_bin = 1
-!               if (error_ratio_bin > Nbins) error_ratio_bin = Nbins
-
-!               error_best_bin = floor(log10(error_best/min_error_best)/&
-!                       error_best_binwidth) + 1
-!               if (error_best_bin < 1) error_best_bin = 1
-!               if (error_best_bin > Nbins) error_best_bin = Nbins
-
-!               error_interpolated_bin = floor(log10(error_interpolated/min_error_interpolated)/&
-!                       error_interpolated_binwidth) + 1
-!               if (error_interpolated_bin < 1) error_interpolated_bin = 1
-!               if (error_interpolated_bin > Nbins) error_interpolated_bin = Nbins
-
-!               rmsd_interpolated_bin = floor(log10(rmsd_interpolated/min_rmsd_interpolated)/&
-!                       rmsd_interpolated_binwidth) + 1
-!               if (rmsd_interpolated_bin < 1) rmsd_interpolated_bin = 1
-!               if (rmsd_interpolated_bin > Nbins) rmsd_interpolated_bin = Nbins
-
-!               rsv1_bin = floor(log10(rsv1/min_rsv1)/&
-!                       rsv1_binwidth) + 1
-!               if (rsv1_bin < 1) rsv1_bin = 1
-!               if (rsv1_bin > Nbins) rsv1_bin = Nbins
-
-!               rsv2_bin = floor(log10(rsv2/min_rsv2)/&
-!                       rsv2_binwidth) + 1
-!               if (rsv2_bin < 1) rsv2_bin = 1
-!               if (rsv2_bin > Nbins) rsv2_bin = Nbins
-        
                 if (.true.) then
                         Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) = &
                                 Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) + &
@@ -2059,26 +1984,7 @@ do n = 1, comparison_number
                                         rsv_binning(l,3*(n-1)+1,rsv_bin(l)) +&
                                         1.0d0/frames_trials(n)
                         end do
-!                       error_ratio_binning(3*(n-1)+1,error_ratio_bin) = &
-!                               error_ratio_binning(3*(n-1)+1,error_ratio_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       error_best_binning(3*(n-1)+1,error_best_bin) = &
-!                               error_best_binning(3*(n-1)+1,error_best_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       error_interpolated_binning(3*(n-1)+1,error_interpolated_bin) = &
-!                               error_interpolated_binning(3*(n-1)+1,error_interpolated_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rmsd_interpolated_binning(3*(n-1)+1,rmsd_interpolated_bin) = &
-!                               rmsd_interpolated_binning(3*(n-1)+1,rmsd_interpolated_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rsv1_binning(3*(n-1)+1,rsv1_bin) = &
-!                               rsv1_binning(3*(n-1)+1,rsv1_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rsv2_binning(3*(n-1)+1,rsv2_bin) = &
-!                               rsv2_binning(3*(n-1)+1,rsv2_bin) + &
-!                               1.0d0/frames_trials(n)
                 end if
-!               if (error_ratio < 1.0d1) then
                 if (rsv(7) < 1.0d1) then
                         Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) = &
                                 Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) + &
@@ -2088,26 +1994,7 @@ do n = 1, comparison_number
                                         rsv_binning(l,3*(n-1)+2,rsv_bin(l)) +&
                                         1.0d0/frames_trials(n)
                         end do
-!                       error_ratio_binning(3*(n-1)+2,error_ratio_bin) = &
-!                               error_ratio_binning(3*(n-1)+2,error_ratio_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       error_best_binning(3*(n-1)+2,error_best_bin) = &
-!                               error_best_binning(3*(n-1)+2,error_best_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       error_interpolated_binning(3*(n-1)+2,error_interpolated_bin) = &
-!                               error_interpolated_binning(3*(n-1)+2,error_interpolated_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rmsd_interpolated_binning(3*(n-1)+2,rmsd_interpolated_bin) = &
-!                               rmsd_interpolated_binning(3*(n-1)+2,rmsd_interpolated_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rsv1_binning(3*(n-1)+2,rsv1_bin) = &
-!                               rsv1_binning(3*(n-1)+2,rsv1_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rsv2_binning(3*(n-1)+2,rsv2_bin) = &
-!                               rsv2_binning(3*(n-1)+2,rsv2_bin) + &
-!                               1.0d0/frames_trials(n)
                 end if
-!               if (error_ratio <= 1.0d0) then
                 if (rsv(7) <= 1.0d0) then
                         Ninterpolation_binning(3*n,Ninterpolation_bin) = &
                                 Ninterpolation_binning(3*n,Ninterpolation_bin) + &
@@ -2117,24 +2004,6 @@ do n = 1, comparison_number
                                         rsv_binning(l,3*n,rsv_bin(l)) +&
                                         1.0d0/frames_trials(n)
                         end do
-!                       error_ratio_binning(3*n,error_ratio_bin) = &
-!                               error_ratio_binning(3*n,error_ratio_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       error_best_binning(3*n,error_best_bin) = &
-!                               error_best_binning(3*n,error_best_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       error_interpolated_binning(3*n,error_interpolated_bin) = &
-!                               error_interpolated_binning(3*n,error_interpolated_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rmsd_interpolated_binning(3*n,rmsd_interpolated_bin) = &
-!                               rmsd_interpolated_binning(3*n,rmsd_interpolated_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rsv1_binning(3*n,rsv1_bin) = &
-!                               rsv1_binning(3*n,rsv1_bin) + &
-!                               1.0d0/frames_trials(n)
-!                       rsv2_binning(3*n,rsv2_bin) = &
-!                               rsv2_binning(3*n,rsv2_bin) + &
-!                               1.0d0/frames_trials(n)
                 end if
         end do
 end do
@@ -2142,7 +2011,6 @@ close(filechannel1)
 
 
 
-!open(filechannel1,file=gridpath5//"Ninterpolation_binning.dat")
 open(filechannel1,file=gridpath5//"InterpolationTDD_binning.dat")
 do n = 1, Nbins
         write(filechannel1,FMT=*) min_Ninterpolation + &
@@ -2424,514 +2292,6 @@ end subroutine getRMSDinterpolation2
 
 
 
-
-subroutine getTDDplot(PNGfilename)
-use PARAMETERS
-use FUNCTIONS
-use ANALYSIS
-implicit none
-
-!FORMAT OF PNG FILES TO BE MADE
-character(gridpath_length+expfolder_length) :: gridpath4
-character(gridpath_length+expfolder_length+5) :: gridpath5
-character(*), intent(in) :: PNGfilename
-
-integer, dimension(comparison_number,3) :: counters
-
-integer :: iostate
-
-!INTEGER INCREMENTALS
-integer :: n
-
-gridpath4 = gridpath0//expfolder
-gridpath5 = gridpath4//intermediatefolder
-
-call processMultipleInterpolationFiles(counters)
-
-if (all(counters == 0)) then
-        return
-end if
-
-!open(gnuplotchannel,file=gridpath5//PNGfilename//"_"//gnuplotfile)
-open(gnuplotchannel,file=gridpath5//gnuplotfile//"_InterpolationTDD")
-write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',1200*comparison_number
-write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
-write(gnuplotchannel,*) 'PL=strlen(ARG1)'
-write(gnuplotchannel,*) 'set tmargin 0'
-write(gnuplotchannel,*) 'set bmargin 0'
-write(gnuplotchannel,*) 'set lmargin 1'
-write(gnuplotchannel,*) 'set rmargin 1'
-write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
-                        ',1 columnsfirst margins 0.05,0.95,.1,.9 spacing 0.1,0 title '//&
-                        '"Threshold Density Distribution" font ",36" offset 0,3'
-write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
-write(gnuplotchannel,*) 'set xtics nomirror'
-write(gnuplotchannel,*) 'set grid xtics lw 2'
-write(gnuplotchannel,*) 'unset xlabel'
-write(gnuplotchannel,*) 'set format x ""'
-
-if (comparison_lowerlimit < comparison_upperlimit) then
-        write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
-                'set xrange [',&
-                comparison_lowerlimit,':',&
-                comparison_upperlimit,']'
-end if
-
-if (comparison_number > 1) then
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',2,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',4,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-do n = 2, comparison_number-1
-
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*n+1,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-end do
-end if
-
-write(gnuplotchannel,*) 'unset xtics'
-write(gnuplotchannel,*) 'set xtics out nomirror'
-write(gnuplotchannel,*) 'set format x'
-
-write(gnuplotchannel,*) 'set xlabel "Number of Points Below Threshold (Ninterpolation)" font ",24"'
-
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(comparison_number-1)+2,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-close(gnuplotchannel)
-
-!call system(path_to_gnuplot//"gnuplot -c "//&
-!        gridpath5//PNGfilename//"_"//gnuplotfile//" "//&
-!        '"'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
-call system(path_to_gnuplot//"gnuplot -c "//&
-        gridpath5//gnuplotfile//"_InterpolationTDD"//&
-        ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
-
-end subroutine getTDDplot
-
-
-
-
-subroutine getREDplot(PNGfilename)
-use PARAMETERS
-use FUNCTIONS
-use ANALYSIS
-implicit none
-
-!FORMAT OF PNG FILES TO BE MADE
-character(gridpath_length+expfolder_length) :: gridpath4
-character(gridpath_length+expfolder_length+5) :: gridpath5
-character(*), intent(in) :: PNGfilename
-
-integer, dimension(comparison_number,3) :: counters
-
-integer :: iostate
-
-!INTEGER INCREMENTALS
-integer :: n
-
-gridpath4 = gridpath0//expfolder
-gridpath5 = gridpath4//intermediatefolder
-
-call processMultipleInterpolationFiles(counters)
-
-if (all(counters == 0)) then
-        return
-end if
-
-!open(gnuplotchannel,file=gridpath5//PNGfilename//"_"//gnuplotfile)
-open(gnuplotchannel,file=gridpath5//gnuplotfile//"_InterpolationRED")
-write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',1200*comparison_number
-write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
-write(gnuplotchannel,*) 'PL=strlen(ARG1)'
-write(gnuplotchannel,*) 'set tmargin 0'
-write(gnuplotchannel,*) 'set bmargin 0'
-write(gnuplotchannel,*) 'set lmargin 1'
-write(gnuplotchannel,*) 'set rmargin 1'
-write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
-                        ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
-                        '"Relative Error Distribution" font ",36" offset 0,3'
-write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
-write(gnuplotchannel,*) 'set xtics nomirror'
-write(gnuplotchannel,*) 'set grid xtics lw 2'
-
-write(gnuplotchannel,*) 'unset xlabel'
-write(gnuplotchannel,*) 'set xtics nomirror'
-write(gnuplotchannel,*) 'set xtics ('//&
-                                         '"" log10(.00000001), '//&
-                                         '"" log10(.00000005), '//&
-                                          '"" log10(.0000001), '//&
-                                          '"" log10(.0000005), '//&
-                                           '"" log10(.000001), '//&
-                                           '"" log10(.000005), '//&
-                                           '""  log10(.00001), '//&
-                                           '""  log10(.00005), '//&
-                                           '""   log10(.0001), '//&
-                                           '""   log10(.0005), '//&
-                                           '""    log10(.001), '//&
-                                           '""    log10(.005), '//&
-                                           '""     log10(.01), '//&
-                                           '""     log10(.05), '//&
-                                           '""      log10(.1), '//&
-                                           '""      log10(.5), '//&
-                                           ' ""       log10(1), '//&
-                                           ' ""       log10(5), '//&
-                                           ' ""      log10(10), '//&
-                                           ' ""      log10(50), '//&
-                                           ' ""     log10(100), '//&
-                                           ' ""     log10(500), '//&
-                                           ' ""    log10(1000), '//&
-                                           ' ""    log10(5000), '//&
-                                           ' ""   log10(10000), '//&
-                                   ')'
-
-if (comparison_lowerlimit < comparison_upperlimit) then
-        write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
-                'set xrange [log10(',&
-                comparison_lowerlimit,'):log10(',&
-                comparison_upperlimit,')]'
-end if
-
-if (comparison_number > 1) then
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',2,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',4,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-do n = 2, comparison_number-1
-
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-end do
-end if
-
-write(gnuplotchannel,*) 'set xtics out nomirror'
-write(gnuplotchannel,*) 'set xtics ('//&
-                                         '"1e-8" log10(.00000001), '//&
-                                         '"5e-8" log10(.00000005), '//&
-                                          '"1e-7" log10(.0000001), '//&
-                                          '"5e-7" log10(.0000005), '//&
-                                           '"1e-6" log10(.000001), '//&
-                                           '"5e-6" log10(.000005), '//&
-                                           '"1e-5"  log10(.00001), '//&
-                                           '"5e-5"  log10(.00005), '//&
-                                           '"1e-4"   log10(.0001), '//&
-                                           '"5e-4"   log10(.0005), '//&
-                                           '"1e-3"    log10(.001), '//&
-                                           '"5e-3"    log10(.005), '//&
-                                           '"1e-2"     log10(.01), '//&
-                                           '"5e-2"     log10(.05), '//&
-                                           '"1e-1"      log10(.1), '//&
-                                           '"5e-1"      log10(.5), '//&
-                                           ' "1e0"       log10(1), '//&
-                                           ' "5e0"       log10(5), '//&
-                                           ' "1e1"      log10(10), '//&
-                                           ' "5e1"      log10(50), '//&
-                                           ' "1e2"     log10(100), '//&
-                                           ' "5e2"     log10(500), '//&
-                                           ' "1e3"    log10(1000), '//&
-                                           ' "5e3"    log10(5000), '//&
-                                           ' "1e4"   log10(10000), '//&
-                                   ')'
-
-write(gnuplotchannel,*) 'set xlabel "Relative Error of Accept Best to Interpolation" font ",24"'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number-1,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-close(gnuplotchannel)
-
-!call system(path_to_gnuplot//"gnuplot -c "//&
-!        gridpath5//PNGfilename//"_"//gnuplotfile//" "//&
-!        '"'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
-call system(path_to_gnuplot//"gnuplot -c "//&
-        gridpath5//gnuplotfile//"_InterpolationRED"//&
-        ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
-
-end subroutine getREDplot
-
-
-
-
-subroutine getAEDplot(PNGfilename)
-use PARAMETERS
-use FUNCTIONS
-use ANALYSIS
-implicit none
-
-!FORMAT OF PNG FILES TO BE MADE
-character(gridpath_length+expfolder_length) :: gridpath4
-character(gridpath_length+expfolder_length+5) :: gridpath5
-character(*), intent(in) :: PNGfilename
-
-integer, dimension(comparison_number,3) :: counters
-
-integer :: iostate
-
-!INTEGER INCREMENTALS
-integer :: n
-
-gridpath4 = gridpath0//expfolder
-gridpath5 = gridpath4//intermediatefolder
-
-call processMultipleInterpolationFiles(counters)
-
-if (all(counters == 0)) then
-        return
-end if
-
-!open(gnuplotchannel,file=gridpath5//PNGfilename//"_"//gnuplotfile)
-open(gnuplotchannel,file=gridpath5//gnuplotfile//"_InterpolationAED")
-write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',1200*comparison_number
-write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
-write(gnuplotchannel,*) 'PL=strlen(ARG1)'
-write(gnuplotchannel,*) 'set tmargin 0'
-write(gnuplotchannel,*) 'set bmargin 0'
-write(gnuplotchannel,*) 'set lmargin 1'
-write(gnuplotchannel,*) 'set rmargin 1'
-write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
-                        ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
-                        '"Absolute Error Distribution" font ",36" offset 0,3'
-write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
-write(gnuplotchannel,*) 'set xtics nomirror'
-write(gnuplotchannel,*) 'set grid xtics lw 2'
-
-write(gnuplotchannel,*) 'unset xlabel'
-write(gnuplotchannel,*) 'set xtics nomirror'
-write(gnuplotchannel,*) 'set xtics ('//&
-                                         '"" log10(.00000001), '//&
-                                         '"" log10(.00000005), '//&
-                                          '"" log10(.0000001), '//&
-                                          '"" log10(.0000005), '//&
-                                           '"" log10(.000001), '//&
-                                           '"" log10(.000005), '//&
-                                           '""  log10(.00001), '//&
-                                           '""  log10(.00005), '//&
-                                           '""   log10(.0001), '//&
-                                           '""   log10(.0005), '//&
-                                           '""    log10(.001), '//&
-                                           '""    log10(.005), '//&
-                                           '""     log10(.01), '//&
-                                           '""     log10(.05), '//&
-                                           '""      log10(.1), '//&
-                                           '""      log10(.5), '//&
-                                           ' ""       log10(1), '//&
-                                           ' ""       log10(5), '//&
-                                           ' ""      log10(10), '//&
-                                           ' ""      log10(50), '//&
-                                           ' ""     log10(100), '//&
-                                           ' ""     log10(500), '//&
-                                           ' ""    log10(1000), '//&
-                                           ' ""    log10(5000), '//&
-                                           ' ""   log10(10000), '//&
-                                   ')'
-
-if (comparison_lowerlimit < comparison_upperlimit) then
-        write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
-                'set xrange [log10(',&
-                comparison_lowerlimit,'):log10(',&
-                comparison_upperlimit,')]'
-end if
-
-if (comparison_number > 1) then
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',2,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',4,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-do n = 2, comparison_number-1
-
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-end do
-end if
-
-write(gnuplotchannel,*) 'set xtics out nomirror'
-write(gnuplotchannel,*) 'set xtics ('//&
-                                         '"1e-8" log10(.00000001), '//&
-                                         '"5e-8" log10(.00000005), '//&
-                                          '"1e-7" log10(.0000001), '//&
-                                          '"5e-7" log10(.0000005), '//&
-                                           '"1e-6" log10(.000001), '//&
-                                           '"5e-6" log10(.000005), '//&
-                                           '"1e-5"  log10(.00001), '//&
-                                           '"5e-5"  log10(.00005), '//&
-                                           '"1e-4"   log10(.0001), '//&
-                                           '"5e-4"   log10(.0005), '//&
-                                           '"1e-3"    log10(.001), '//&
-                                           '"5e-3"    log10(.005), '//&
-                                           '"1e-2"     log10(.01), '//&
-                                           '"5e-2"     log10(.05), '//&
-                                           '"1e-1"      log10(.1), '//&
-                                           '"5e-1"      log10(.5), '//&
-                                           ' "1e0"       log10(1), '//&
-                                           ' "5e0"       log10(5), '//&
-                                           ' "1e1"      log10(10), '//&
-                                           ' "5e1"      log10(50), '//&
-                                           ' "1e2"     log10(100), '//&
-                                           ' "5e2"     log10(500), '//&
-                                           ' "1e3"    log10(1000), '//&
-                                           ' "5e3"    log10(5000), '//&
-                                           ' "1e4"   log10(10000), '//&
-                                   ')'
-
-write(gnuplotchannel,*) 'set xlabel "Absolute Error of Accept Best" font ",24"'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        'plot ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number-1,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder,\'
-write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-        '     ARG1."/".'//&
-        'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
-        'fs transparent solid ',1.0d0,' noborder'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-write(gnuplotchannel,FMT="(A)") '#'
-
-close(gnuplotchannel)
-
-!call system(path_to_gnuplot//"gnuplot -c "//&
-!        gridpath5//PNGfilename//"_"//gnuplotfile//" "//&
-!        '"'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
-call system(path_to_gnuplot//"gnuplot -c "//&
-        gridpath5//gnuplotfile//"_InterpolationAED"//&
-        ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
-
-end subroutine getAEDplot
-
-
 subroutine getInterpolationplot(PNGfilename)
 use PARAMETERS
 use FUNCTIONS
@@ -2961,7 +2321,8 @@ end if
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile//"_"//&
         trim(adjustl(comparison_SATRVname)))
-write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',1200*comparison_number
+write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 1200,',400*comparison_number
+write(gnuplotchannel,*) 'set encoding utf8'
 write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'PL=strlen(ARG1)'
 write(gnuplotchannel,*) 'set tmargin 0'
@@ -2969,15 +2330,18 @@ write(gnuplotchannel,*) 'set bmargin 0'
 write(gnuplotchannel,*) 'set lmargin 1'
 write(gnuplotchannel,*) 'set rmargin 1'
 write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
-                        ',1 columnsfirst margins 0.05,0.95,.1,.9 spacing 0.1,0 title '//&
-!                       '"RMSD Variable 1 Distribution" font ",36" offset 0,3'
-                        '"" font ",36" offset 0,3'
-write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
+                        ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
+                        '"" font ",32" offset 0,-3'
+write(gnuplotchannel,*) 'set style histogram clustered gap 1'
+write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",24"'
+!write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'set format y ""'
 write(gnuplotchannel,*) 'set xtics nomirror'
 write(gnuplotchannel,*) 'set grid xtics lw 2'
 
 write(gnuplotchannel,*) 'unset xlabel'
-write(gnuplotchannel,*) 'set xtics nomirror'
+write(gnuplotchannel,*) 'set xtics nomirror font ",16"'
 write(gnuplotchannel,*) 'set xtics ('//&
                                          '"" log10(.00000001), '//&
                                          '"" log10(.00000005), '//&
@@ -3057,7 +2421,7 @@ write(gnuplotchannel,FMT="(A)") '#'
 end do
 end if
 
-write(gnuplotchannel,*) 'set xtics out nomirror'
+write(gnuplotchannel,*) 'set xtics out nomirror font ",16"'
 write(gnuplotchannel,*) 'set xtics ('//&
                                          '"1e-8" log10(.00000001), '//&
                                          '"5e-8" log10(.00000005), '//&

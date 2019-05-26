@@ -260,6 +260,8 @@ end if
 !(which has the observables after binning)
 open(filechannel1,file=gridpath5//prefix_filename//SATRVfile)
 open(filechannel2,file=gridpath5//prefix_filename//binnedSATRVfile)
+!open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
+!open(filechannel2,file=gridpath5//binnedSATRVfile)
 do i = 1, Ntraj
 
         !First, we read the line
@@ -334,6 +336,7 @@ write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'plot "'//gridpath5//prefix_filename//binnedSATRVfile//&
+!write(gnuplotchannel,*) 'plot "'//gridpath5//binnedSATRVfile//&
                         '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
 
 write(gnuplotchannel,*) 'scaling = 1000'
@@ -348,6 +351,7 @@ write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) "set format x '%.3f'"
 write(gnuplotchannel,*) 'plot "'//gridpath5//prefix_filename//binnedSATRVfile//&
+!write(gnuplotchannel,*) 'plot "'//gridpath5//binnedSATRVfile//&
                         '" u (box_width*($3-0.5)+min_E):(1.0) smooth frequency w boxes'
 
 write(gnuplotchannel,*) 'set xlabel "Relative Translational Energy Change (meV)"'
@@ -359,6 +363,7 @@ write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'plot "'//gridpath5//prefix_filename//binnedSATRVfile//&
+!write(gnuplotchannel,*) 'plot "'//gridpath5//binnedSATRVfile//&
                         '" u (box_width*($4-0.5)+min_E):(1.0) smooth frequency w boxes'
 
 write(gnuplotchannel,*) 'set xlabel "Rotational Energy Change (meV)"'
@@ -371,6 +376,7 @@ write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'plot "'//gridpath5//prefix_filename//binnedSATRVfile//&
+!write(gnuplotchannel,*) 'plot "'//gridpath5//binnedSATRVfile//&
                         '" u (box_width*($5-0.5)+min_E):(1.0) smooth frequency w boxes'
 close(gnuplotchannel)
 
@@ -666,6 +672,7 @@ write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_max
 write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
 write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_max
 open(filechannel1,file=gridpath5//Ntraj_text//binnedSATRVfile,action="read")
+!open(filechannel1,file=gridpath5//binnedSATRVfile,action="read")
 do Nsamples = 1, Nsamples_max
         do i = 1, Ntesttraj
                 read(filechannel1,FMT=*) SATRVdata

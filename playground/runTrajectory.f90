@@ -511,71 +511,22 @@ end if
                                                coords_labelled,&
                                                gradient_labelled)
                                end if
-!                      else
                        else if (gather_interpolation_flag) then
-                               !And we need to use the approximation after "unlabeling"
                                approx_gradient = gradient
 
-!                              do n = 1, Natoms
-!                                       gradient(:,BOND_LABELLING_DATA(n)) = &
-!                                               approx_gradient_prime(:,n)
-!                              end do
-!                              approx_gradient_prime = gradient
+                                call Acceleration(vals,coords,gradient)
 
-!                              if ((interpolation_flag).and.(gather_interpolation_flag)) then
+                                if (Ninterpolation > 0) then
+                                write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
+                                            largest_weighted_rmsd2, largest_weighted_rmsd,&
+                                            min_rmsd,&
+                                            sqrt(sum((gradient-approx_gradient)**2)/Natoms),&
+                                            min_rmsd_prime,&
+                                            sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)
 
-                                        call Acceleration(vals,coords,gradient)
+                                interpolation_counter = interpolation_counter + 1
 
-                                        if (Ninterpolation > 0) then
-                                        write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
-                                                    largest_weighted_rmsd2, largest_weighted_rmsd,&
-                                                    min_rmsd,&
-                                                    sqrt(sum((gradient-approx_gradient)**2)/Natoms),&
-                                                    min_rmsd_prime,&
-                                                    sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)
-
-                                        interpolation_counter = interpolation_counter + 1
-
-!                                       if ((sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)&
-!                                               > .0001).and.(min_rmsd_prime < .005)) then
-!                                       if ((sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)&
-!                                               > .000001)) then
-!                                              write(6,FMT=*) ""
-!                                              write(6,FMT="(A,I7)") "Step: ", steps
-!                                              write(6,FMT="(A,F9.6,1x,F9.6)") &
-!                                                      "(mu1,E): ", min_rmsd_prime,&
-!                                              sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)
-!                                              write(6,FMT="(A,F9.6)") "rmsd:", largest_rmsd
-!                                              write(6,FMT="(A,F7.3,1x,F7.3)") "vals: ", vals
-!                                              write(6,FMT="(A,I5)") "Ninter: ", Ninterpolation
-!                                       end if
-
-                                        end if
-
-!                                       if ((interpolation_counter > interpolation_check)&
-!                                           .and.(min_rmsd < 5.0e-5)) then
-!                                       if (interpolation_counter == interpolation_check) then
-                                        if (.false.) then
-!                                       if (min_rmsd < 5.0e-5) then
-
-                                                close(filechannel3)
-
-!                                               write(vals_interpolation_text,&
-!                                                     FMT="(F4.1,'_',F4.1)") vals
-                                                if (interpolation_check_visual) call &
-                                                        getRMSDinterpolation(0.1d0*anint(vals*10),&
-!                                                       (/0.1d0,0.1d0/),&
-!                                                       vals_interpolation_text//"InterpolationCheck")
-                                                        (/0.1d3,0.1d3/),&
-                                                        "InterpolationCheck")
-
-                                                open(filechannel3,file=gridpath5//interpolationfile,&
-                                                        position="append")
-
-                                                interpolation_counter = 0
-
-                                        end if
-!                              end if
+                                end if
 
                                if (.not.(reject_flag)) &
                                gradient = approx_gradient
@@ -1104,51 +1055,27 @@ end if
                        !This is dependent on the threshold and the rejection method
                        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
                                call Acceleration(vals,coords,gradient)
-!                      else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-!                              call Acceleration(vals,coords,gradient)
-!                      else
                        else if (gather_interpolation_flag) then
 
-                               !And we need to use the approximation after "unlabeling"
                                approx_gradient = gradient
 
-!                              if ((interpolation_flag).and.(gather_interpolation_flag)) then
+                               call Acceleration(vals,coords,gradient)
 
-                                        call Acceleration(vals,coords,gradient)
+                               if (Ninterpolation > 0) then
+!                              write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
+!                                          largest_rmsd, threshold_rmsd, min_rmsd, &
+!                                          sqrt(sum((gradient-approx_gradient)**2)/Natoms)
+!                              write(filechannel3,FMT=*) vals(1),vals(2),Ninterpolation,&
+!                                      candidate_rmsd,min_rmsd,&
+!                                      sqrt(sum((gradient-candidate_gradient)**2)/Natoms),&
+!                                      sqrt(sum((gradient-approx_gradient)**2)/Natoms)
+                               write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
+                                           largest_weighted_rmsd2, largest_weighted_rmsd,&
+                                           candidate_rmsd,min_rmsd,&
+                                           sqrt(sum((gradient-candidate_gradient)**2)/Natoms),&
+                                           sqrt(sum((gradient-approx_gradient)**2)/Natoms)
 
-                                        if (Ninterpolation > 0) then
-!                                       write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
-!                                                   largest_rmsd, threshold_rmsd, min_rmsd, &
-!                                                   sqrt(sum((gradient-approx_gradient)**2)/Natoms)
-!                                       write(filechannel3,FMT=*) vals(1),vals(2),Ninterpolation,&
-!                                               candidate_rmsd,min_rmsd,&
-!                                               sqrt(sum((gradient-candidate_gradient)**2)/Natoms),&
-!                                               sqrt(sum((gradient-approx_gradient)**2)/Natoms)
-                                        write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
-                                                    largest_weighted_rmsd2, largest_weighted_rmsd,&
-                                                    candidate_rmsd,min_rmsd,&
-                                                    sqrt(sum((gradient-candidate_gradient)**2)/Natoms),&
-                                                    sqrt(sum((gradient-approx_gradient)**2)/Natoms)
-
-                                        interpolation_counter = interpolation_counter + 1
-
-                                        if (.false.) then
-!                                       if (interpolation_counter == interpolation_check) then
-
-                                                close(filechannel3)
-
-                                                if (interpolation_check_visual) call &
-                                                        getRMSDinterpolation((/5.0d0,5.5d0/),&
-                                                        (/0.1d0,0.1d0/),"InterpolationCheck")
-
-                                                open(filechannel3,file=gridpath5//interpolationfile,&
-                                                        position="append")
-
-                                                interpolation_counter = 0
-
-                                        end if
-                                        end if
-!                              end if
+                               end if
 
                                if (.not.(reject_flag)) &
                                gradient = approx_gradient
