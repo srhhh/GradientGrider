@@ -490,15 +490,49 @@ if (testtrajDetailedRMSD_flag) then
 else
         approx_gradient_prime = approx_gradient
 end if
-                       do n = 1, Natoms
-                                gradient(:,BOND_LABELLING_DATA(n)) = &
-                                        approx_gradient(:,n)
-                       end do
-
                        !Update the gradient with either the approximation or by acclerating
                        !This is dependent on the threshold and the rejection method
-                       if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)&
-                            .or.((accept_worst).and.(min_rmsd == 0.0d0))) then
+                       if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
+                               call Acceleration(vals,coords,gradient)
+                       else if (gather_interpolation_flag) then
+                               do n = 1, Natoms
+                                        gradient(:,BOND_LABELLING_DATA(n)) = &
+                                                approx_gradient(:,n)
+                               end do
+                               approx_gradient = gradient
+
+                               call Acceleration(vals,coords,gradient)
+
+                               if (Ninterpolation > 0) then
+                               write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
+                                           largest_weighted_rmsd2, largest_weighted_rmsd,&
+                                           min_rmsd,&
+                                           sqrt(sum((gradient-approx_gradient)**2)/Natoms),&
+                                           min_rmsd_prime,&
+                                           sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)
+
+                               interpolation_counter = interpolation_counter + 1
+
+                               end if
+
+                               if (grid_addition > 0) then
+                                       do n = 1, Natoms
+                                                gradient_labelled(:,n) = &
+                                                        gradient(:,BOND_LABELLING_DATA(n))
+                                                coords_labelled(:,n) = &
+                                                        coords(:,BOND_LABELLING_DATA(n))
+                                       end do
+                                       call addState_new(vals,&
+                                               coords_labelled,&
+                                               gradient_labelled)
+                               end if
+
+                               if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                               else
+                                       gradient = approx_gradient
+                               end if
+
+                       else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                call Acceleration(vals,coords,gradient)
                                if (grid_addition > 0) then
                                        do n = 1, Natoms
@@ -511,27 +545,11 @@ end if
                                                coords_labelled,&
                                                gradient_labelled)
                                end if
-                       else if (gather_interpolation_flag) then
-                               approx_gradient = gradient
-
-                                call Acceleration(vals,coords,gradient)
-
-                                if (Ninterpolation > 0) then
-                                write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
-                                            largest_weighted_rmsd2, largest_weighted_rmsd,&
-                                            min_rmsd,&
-                                            sqrt(sum((gradient-approx_gradient)**2)/Natoms),&
-                                            min_rmsd_prime,&
-                                            sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)
-
-                                interpolation_counter = interpolation_counter + 1
-
-                                end if
-
-                               if (.not.(reject_flag)) &
-                               gradient = approx_gradient
-
                        else
+                               do n = 1, Natoms
+                                        gradient(:,BOND_LABELLING_DATA(n)) = &
+                                                approx_gradient(:,n)
+                               end do
                        end if
                 end if
 
@@ -1046,16 +1064,17 @@ if (testtrajDetailedRMSD_flag) then
 
         min_rmsd = min_rmsd_prime
 end if
-                       do n = 1, Natoms
-                                gradient(:,BOND_LABELLING_DATA(n)) = &
-                                        approx_gradient(:,n)
-                       end do
 
                        !Update the gradient with either the approximation or by acclerating
                        !This is dependent on the threshold and the rejection method
                        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
                                call Acceleration(vals,coords,gradient)
                        else if (gather_interpolation_flag) then
+
+                               do n = 1, Natoms
+                                        gradient(:,BOND_LABELLING_DATA(n)) = &
+                                                approx_gradient(:,n)
+                               end do
 
                                approx_gradient = gradient
 
@@ -1077,12 +1096,18 @@ end if
 
                                end if
 
-                               if (.not.(reject_flag)) &
-                               gradient = approx_gradient
+                               if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
+                               else
+                                       gradient = approx_gradient
+                               end if
 
                        else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
                                call Acceleration(vals,coords,gradient)
                        else
+                               do n = 1, Natoms
+                                        gradient(:,BOND_LABELLING_DATA(n)) = &
+                                                approx_gradient(:,n)
+                               end do
                        end if
                 end if
 

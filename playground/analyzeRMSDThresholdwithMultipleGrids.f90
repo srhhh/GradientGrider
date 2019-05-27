@@ -1870,6 +1870,10 @@ do n = 1, comparison_number
                 print *, "Bad formatting in interpolation comparison arguments"
                 print *, "   Must be 2*Nvar floats"
                 print *, ""
+
+                close(filechannel1)
+                close(filechannel3)
+
                 return
         end if
 

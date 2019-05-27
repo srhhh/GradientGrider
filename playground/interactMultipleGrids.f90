@@ -1187,6 +1187,7 @@ if (chosen_index > 0) then
 !       if (interpolation_flag) call getWeightedGradient(new_coords,gradient)
 !       if (interpolation_flag) &
         if ((interpolation_flag).and.(Ninterpolation > 1)) then
+!       if (.false.) then
                 call getInterpolatedGradient(new_coords,gradient)
 
 !       if ((interpolation_flag).and.(Ninterpolation > 0)) then
@@ -1250,7 +1251,9 @@ if (chosen_index > 0) then
         end if
 
         candidate_rmsd = RMSDbuffer1(chosen_index)
-        candidate_gradient = gradientbuffer1(:,:,chosen_index)
+!       candidate_gradient = gradientbuffer1(:,:,chosen_index)
+        candidate_gradient = matmul(Ubuffer1(:,:,chosen_index),&
+                gradientbuffer1(:,:,chosen_index))
 else
         min_rmsd = default_rmsd
 end if
