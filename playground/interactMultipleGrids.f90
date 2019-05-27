@@ -1646,7 +1646,9 @@ do
                         if (current_rmsd < candidate_rmsd) then
                 
                         !And if the RMSD if lower than the threshold, designate this frame as the "worst"
-                        else if (current_rmsd < threshold_rmsd) then
+!                       else if (current_rmsd < threshold_rmsd) then
+                        else if ((current_rmsd < threshold_rmsd).and.&
+                                 (current_rmsd >= inner_threshold)) then
                 
                                 approximation_index(number_of_cells) = k
                                 candidate_rmsd = current_rmsd
@@ -1689,7 +1691,9 @@ do
                         end if
 
                         !If the RMSD is low enough, designate this frame as the "best"
-                        if (current_rmsd < candidate_rmsd) then
+!                       if (current_rmsd < candidate_rmsd) then
+                        if ((current_rmsd < candidate_rmsd).and.&
+                            (current_rmsd >= inner_threshold)) then
                         
                                 approximation_index(number_of_cells) = k
                                 candidate_rmsd = current_rmsd

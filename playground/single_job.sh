@@ -99,6 +99,18 @@ threshold_rmsd2=.050000d0
 threshold_rmsd3=.050000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
+inner_threshold="0.00000d0"
+inner_threshold1="0.00000d0"
+inner_threshold2="0.00000d0"
+inner_threshold3="0.00000d0"
+inner_threshold4="0.00000d0"
+inner_threshold5="0.00000d0"
+alpha_ratio="1.0d2"
+alpha_ratio1="1.0d2"
+alpha_ratio2="1.0d2"
+alpha_ratio3="1.0d2"
+alpha_ratio4="1.0d2"
+alpha_ratio5="1.0d2"
 interpolation_flag=.true.
 gather_interpolation_flag=.true.
 reject_flag=.false.
@@ -108,12 +120,12 @@ grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=005
+Ntrajectories=200
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp180
-exp2name=exp181
+exp1name=exp200
+exp2name=exp201
 exp3name=exp029
 exp4name=exp014
 exp5name=exp015
@@ -365,6 +377,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/comparison_flag = .*/comparison_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/inner_threshold = .*/inner_threshold = $inner_threshold/
+     s/alpha_ratio = .*/alpha_ratio = $alpha_ratio/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = .true./
@@ -472,7 +486,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/Ntesttraj = [0-9]*/Ntesttraj = $Ntrajectories/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
+     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
+     s/inner_threshold = .*/inner_threshold = $inner_threshold/
+     s/alpha_ratio = .*/alpha_ratio = $alpha_ratio/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -585,6 +601,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
+     s/inner_threshold = .*/inner_threshold = $inner_threshold1/
+     s/alpha_ratio = .*/alpha_ratio = $alpha_ratio1/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -650,6 +668,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
+     s/inner_threshold = .*/inner_threshold = $inner_threshold2/
+     s/alpha_ratio = .*/alpha_ratio = $alpha_ratio2/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -713,6 +733,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
+     s/inner_threshold = .*/inner_threshold = $inner_threshold3/
+     s/alpha_ratio = .*/alpha_ratio = $alpha_ratio3/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -776,6 +798,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
+     s/inner_threshold = .*/inner_threshold = $inner_threshold4/
+     s/alpha_ratio = .*/alpha_ratio = $alpha_ratio4/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -839,6 +863,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/
+     s/inner_threshold = .*/inner_threshold = $inner_threshold5/
+     s/alpha_ratio = .*/alpha_ratio = $alpha_ratio5/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/

@@ -94,6 +94,8 @@ logical,parameter :: testtraj_flag = .true.
       real(dp),parameter :: threshold_rmsd = .00100d0
       real(dp),parameter :: default_rmsd = 1.000100d0
 
+      real(dp),parameter :: inner_threshold = 0.0d0
+
       !Set .true. to generate trajectories using md-calculated gradients
       !Otherwise, the program will use the above threshold as a rejection
       !method
@@ -145,7 +147,7 @@ logical,parameter :: testtraj_flag = .true.
             integer :: interpolation_counter
             logical :: interpolation_check_visual = .false.
 
-            real(dp) :: alpha_ratio = 1.0d2
+            real(dp) :: alpha_ratio = 1.0d8
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

@@ -1457,15 +1457,23 @@ integer :: n
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
+!The truncated interpolation file is more
+!manageable
 open(filechannel2,file=gridpath5//&
         "truncated"//interpolationfile)
 
+!In particular, the first line describes the
+!bounds of the data
 read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
         "2(7(G16.6,1x)))",iostat=iostate) &
         i,j,k,&
         min_Ninterpolation, max_Ninterpolation,&
         min_rsv, max_rsv
 
+!The binning is done logarithmically and the
+!number of bins is temporarily hardcoded
+!The 2D heatmap looks better with higher
+!resolution (compared to the 1D heatmap)
 Nbins = 100
 rsv_binwidth = log10(max_rsv/min_rsv)*1.0d0/Nbins
 allocate(ERheatmap2D(Nbins,Nbins),&
@@ -1476,89 +1484,127 @@ ERheatmap1D = 0
 IEheatmap2D = 1.0d-7
 
 do 
-        read(filechannel2,FMT=*,iostat=iostate) &
-                current_vals, Ninterpolation, rsv
-        if (iostate /= 0) exit
+    read(filechannel2,FMT=*,iostat=iostate) &
+            current_vals, Ninterpolation, rsv
+    if (iostate /= 0) exit
 
-!       if (Ninterpolation == 1) cycle
-        if (any(abs(current_vals-vals) > &
-                delta_vals)) cycle
+    !If the frame is not in the region of the phase
+    !space of interest, then skip it
+    if (any(abs(current_vals-vals) > &
+            delta_vals)) cycle
 
-        rsv_bin = floor(log10(rsv/min_rsv)/rsv_binwidth) + 1
-        do l = 1, 7
-                if (rsv_bin(l) < 1) rsv_bin(l) = 1
-                if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
-        end do
+    !Logarithms involve division by the minimum to
+    !get a correct binning
+    !The if statement is to make sure the edge cases
+    !are counted in the distribution correctly
+    rsv_bin = floor(log10(rsv/min_rsv)/rsv_binwidth) + 1
+    do l = 1, 7
+        if (rsv_bin(l) < 1) rsv_bin(l) = 1
+        if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
+    end do
 
-        ERheatmap2D(rsv_bin(5),rsv_bin(6)) =&
-                ERheatmap2D(rsv_bin(5),rsv_bin(6)) + 1
-        ERheatmap1D(rsv_bin(7)/5) =&
-                ERheatmap1D(rsv_bin(7)/5) + 1
-        IEheatmap2D(rsv_bin(3),rsv_bin(4)) = max(&
-                IEheatmap2D(rsv_bin(3),rsv_bin(4)),rsv(6))
+    !The variables chosen for the distributions are
+    !not arbitrarily picked (but may be if wanted)
+    ERheatmap2D(rsv_bin(5),rsv_bin(6)) =&
+            ERheatmap2D(rsv_bin(5),rsv_bin(6)) + 1
+    ERheatmap1D(rsv_bin(7)/5) =&
+            ERheatmap1D(rsv_bin(7)/5) + 1
+
+    !This last heatmap records the maximum of some
+    !third value, not the total occurence (ideally
+    !for maxmimum error checking)
+    IEheatmap2D(rsv_bin(3),rsv_bin(4)) = max(&
+            IEheatmap2D(rsv_bin(3),rsv_bin(4)),rsv(6))
 end do
 close(filechannel2)
 
 
+!Then just bin the data normally
 
 open(filechannel2,file=gridpath5//"ERheatmap2D.dat")
 do i = 1, Nbins
-        do j = 1, Nbins
-                write(filechannel2,FMT=*)&
-                        (i-0.5)*rsv_binwidth(5),&
-                        (j-0.5)*rsv_binwidth(6),&
-                        ERheatmap2D(i,j)
-        end do
-        write(filechannel2,*) ""
+    do j = 1, Nbins
+        write(filechannel2,FMT=*)&
+                (i-0.5)*rsv_binwidth(5),&
+                (j-0.5)*rsv_binwidth(6),&
+                ERheatmap2D(i,j)
+    end do
+    write(filechannel2,*) ""
 end do
 close(filechannel2)
 
 open(filechannel2,file=gridpath5//"ERheatmap1D.dat")
 do i = 1, Nbins/5
-        write(filechannel2,FMT=*)&
-                (i-0.5)*rsv_binwidth(7),&
-                ERheatmap1D(i)
+    write(filechannel2,FMT=*)&
+            (i-0.5)*rsv_binwidth(7),&
+            ERheatmap1D(i)
 end do
 close(filechannel2)
 
+!For the third heatmap we are also interested in
+!finding a fit for it, so we need to figure out
+!how many nonzero entries are in it that we
+!need to fit to
+
 Nheatmap = 0
 do i = 1, Nbins
-        do j = 1, Nbins
-                if (IEheatmap2D(i,j) > 1.0d-7) then
-                         Nheatmap = Nheatmap + 1
-                end if
-        end do
+    do j = 1, Nbins
+        !We can see whether an entry is
+        !nonzero by checking whether it is
+        !greater than its initial value
+        if (IEheatmap2D(i,j) > 1.0d-7) then
+             Nheatmap = Nheatmap + 1
+        end if
+    end do
 end do
 
+!We store this data is matrices A and b
+!A is the "independent data"
+!b is the "dependent data"
+!and we are trying to find a set of
+!coefficients in matrix RMSDheatmap_coeff
+!that, multiplied with A, produces a
+!matrix close to b
 allocate(A(Nheatmap,3),b(Nheatmap))
 Nheatmap = 0
 do i = 1, Nbins
-        do j = 1, Nbins
-                if (IEheatmap2D(i,j) > 1.0d-7) then
-                         Nheatmap = Nheatmap + 1
-                         A(Nheatmap,:) = (/&
-                                 (i-0.5)*rsv_binwidth(3),&
-                                 (j-0.5)*rsv_binwidth(4),&
-                                 1.0d0/)
-                         b(Nheatmap) = log10(IEheatmap2D(i,j))
-                end if
-        end do
+    do j = 1, Nbins
+        if (IEheatmap2D(i,j) > 1.0d-7) then
+             Nheatmap = Nheatmap + 1
+
+             !In this case, our fit is
+             ! c2 * log10(rsv3) +
+             !   c1 * log10(rsv4) +
+             !                   c0 = log10(b)
+             A(Nheatmap,:) = (/&
+                     (i-0.5)*rsv_binwidth(3),&
+                     (j-0.5)*rsv_binwidth(4),&
+                     1.0d0/)
+             b(Nheatmap) = log10(IEheatmap2D(i,j))
+        end if
+    end do
 end do
 
+!This fit is linear so can be obtained by doing
+!a least squares regression on the above matrices
 call LS(A,Nheatmap,3,b,RMSDheatmap_coeff)
+
+
+!And then just plot the two sets of data (the
+!interpolation and the fit) side by side
 
 open(filechannel2,file=gridpath5//"IEheatmap2D.dat")
 do i = 1, Nbins
-        do j = 1, Nbins
-                write(filechannel2,FMT=*)&
-                        (i-0.5)*rsv_binwidth(3),&
-                        (j-0.5)*rsv_binwidth(4),&
-                        IEheatmap2D(i,j),&
-                        10.0d0**(max((i-0.5)*rsv_binwidth(3)*RMSDheatmap_coeff(1)+&
-                                     (j-0.5)*rsv_binwidth(4)*RMSDheatmap_coeff(2)+&
-                                                    RMSDheatmap_coeff(3),-7.0d0))
-        end do
-        write(filechannel2,*) ""
+    do j = 1, Nbins
+        write(filechannel2,FMT=*)&
+                (i-0.5)*rsv_binwidth(3),&
+                (j-0.5)*rsv_binwidth(4),&
+                IEheatmap2D(i,j),&
+                10.0d0**(max((i-0.5)*rsv_binwidth(3)*RMSDheatmap_coeff(1)+&
+                             (j-0.5)*rsv_binwidth(4)*RMSDheatmap_coeff(2)+&
+                                            RMSDheatmap_coeff(3),-7.0d0))
+    end do
+    write(filechannel2,*) ""
 end do
 close(filechannel2)
 
@@ -1664,61 +1710,86 @@ frames = 0
 neginfinity_counter = 0
 posinfinity_counter = 0
 
+!The data we read from the interpolation file, we do some
+!minor processing and then record to the truncated interpolation
+!file
 open(filechannel1,file=gridpath5//"truncated"//interpolationfile)
 open(filechannel2,file=gridpath5//interpolationfile)
 do 
-        read(filechannel2,FMT=*,iostat=iostate) &
-                vals, Ninterpolation, &
-!               rsv1, rsv2, &
-!               rmsd_best, rmsd_interpolated, &
-!               error_best, error_interpolated
-                rsv(3), rsv(4), &
-                rsv(1), rsv(2), &
-                rsv(5), rsv(6)
-                
-        if (iostate /= 0) exit
+    !For each frame in the file, the data read is:
+    !1.Its collective variables
+    !2.Number of frames used for its interpolation
+    !3.The RMSD special variables that results from it
+    read(filechannel2,FMT=*,iostat=iostate) &
+            vals, Ninterpolation, &
+!           rsv1, rsv2, &
+!           rmsd_best, rmsd_interpolated, &
+!           error_best, error_interpolated
+            rsv(3), rsv(4), &
+            rsv(1), rsv(2), &
+            rsv(5), rsv(6)
+            
+    if (iostate /= 0) exit
 
-        if ((rsv(5) == 0.0d0).and.(rsv(6)==0.0d0)) then
-                rsv(7) = 1.0d0
-                write(filechannel1,FMT=*) &
-                        vals, Ninterpolation, rsv
+    !One of the processed variables that this
+    !subroutine makes is the ratio between
+    !RSV(5) and RSV(6) which means a few
+    !conditionals need to be made to treat them
 
-                min_Ninterpolation = min(min_Ninterpolation,&
-                        Ninterpolation)
-                max_Ninterpolation = max(max_Ninterpolation,&
-                        Ninterpolation)
+    !This may bias the data so these occurences
+    !are recorded as negative and positive
+    !infinity (since we will later take a
+    !logarithm
 
-                do n = 1, 7
-                        min_rsv(n) = min(min_rsv(n),rsv(n))
-                        max_rsv(n) = max(max_rsv(n),rsv(n))
-                end do
-                
-        else if (rsv(5) == 0.0d0) then
-                neginfinity_counter = neginfinity_counter + 1
+    if ((rsv(5) == 0.0d0).and.(rsv(6)==0.0d0)) then
+        rsv(7) = 1.0d0
+        write(filechannel1,FMT=*) &
+                vals, Ninterpolation, rsv
 
-        else if (rsv(6) == 0.0d0) then
-                posinfinity_counter = posinfinity_counter + 1
+        min_Ninterpolation = min(min_Ninterpolation,&
+                Ninterpolation)
+        max_Ninterpolation = max(max_Ninterpolation,&
+                Ninterpolation)
 
-        else
-                rsv(7) = rsv(5)/rsv(6)
-                write(filechannel1,FMT=*) &
-                        vals, Ninterpolation, rsv
-
-                min_Ninterpolation = min(min_Ninterpolation, Ninterpolation)
-                max_Ninterpolation = max(max_Ninterpolation, Ninterpolation)
-
-                do n = 1, 7
-                        min_rsv(n) = min(min_rsv(n),rsv(n))
-                        max_rsv(n) = max(max_rsv(n),rsv(n))
-                end do
+        do n = 1, 7
+            min_rsv(n) = min(min_rsv(n),rsv(n))
+            max_rsv(n) = max(max_rsv(n),rsv(n))
+        end do
         
-        end if
+    else if (rsv(5) == 0.0d0) then
+        neginfinity_counter = neginfinity_counter + 1
 
-        frames = frames + 1
+    else if (rsv(6) == 0.0d0) then
+        posinfinity_counter = posinfinity_counter + 1
+
+    else
+        rsv(7) = rsv(5)/rsv(6)
+        write(filechannel1,FMT=*) &
+                vals, Ninterpolation, rsv
+
+        min_Ninterpolation = min(min_Ninterpolation,&
+                Ninterpolation)
+        max_Ninterpolation = max(max_Ninterpolation,&
+                Ninterpolation)
+
+        do n = 1, 7
+            min_rsv(n) = min(min_rsv(n),rsv(n))
+            max_rsv(n) = max(max_rsv(n),rsv(n))
+        end do
+    
+    end if
+
+    !This subroutine also counts the total number of
+    !frames in the file
+    frames = frames + 1
 end do
 close(filechannel1)
 close(filechannel2)
 
+!All of this metadata on the bounds of the data,
+!the positive/negative infinity bias, and the
+!total number of frames is recorded in the first
+!line of the file
 write(firstliner,FMT="(A1,3(I9,1x),2(I6,1x),"//&
         "2(7(E16.6,1x)))") &
         "#",posinfinity_counter,&
@@ -1726,6 +1797,8 @@ write(firstliner,FMT="(A1,3(I9,1x),2(I6,1x),"//&
         min_Ninterpolation, max_Ninterpolation,&
         min_rsv, max_rsv
 
+!Sed is used to deposit the first line onto the
+!file
 call system("sed -i '1i\"//firstliner//"' '"//&
         gridpath5//"truncated"//&
         interpolationfile//"'")
@@ -1779,14 +1852,26 @@ end subroutine processInterpolationFile2
 !                                                                               7.Error of accept best / interpolated
 !               min_rsv                         REAL,DIM(7)                     Minimums of the RMSD special variables
 !               max_rsv                         REAL,DIM(7)                     Maximums of the RMSD special variables
+!               rsv_binwidth                    REAL,DIM(7)                     Width of the binning for each RSV
+!               rsv_bin                         INTEGER,DIM(7)                  Temporary buffer for each RSV bin data
 !               Ninterpolation                  INTEGER                         Number of frames used in the
 !                                                                               interpolation
 !               min_Ninterpolation              INTEGER                         Minimum of the Ninterpolation
 !               max_Ninterpolation              INTEGER                         Maximum of the Ninterpolation
+!               Ninterpolation_binwidth         REAL                            Width of the binning for
+!                                                                               Ninterpolation
+!               Ninterpolation_bin              INTEGER                         Temporary buffer for Ninterpolation
+!                                                                               bin data
 !               frames                          INTEGER                         Number of frames in the interpolation
 !                                                                               file
 !               frames_trials                   INTEGER                         Number of frames in each of the
 !                  (comparison_number)                                          interpolation file for comparison
+!               rsv_binning                     REAL,DIM(7,                     The RSV data binned (scaled so
+!                                                 3*comparison_number,          to integrate to 1)
+!                                                 Nbins)
+!               Ninterpolation_binning          REAL,DIM(                       The Ninterpolation data binned
+!                                                 3*comparison_number,          (scaled so to integrate to 1)
+!                                                 Nbins)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -1863,188 +1948,251 @@ max_rsv = 0.0d9
 open(filechannel1,file=gridpath0//comparison_file)
 open(filechannel3,file=gridpath5//"tmp"//interpolationfile)
 
+!We open a file once per comparison number (even if
+!it's a duplicate)
 do n = 1, comparison_number
-        read(filechannel1,FMT=*,iostat=iostate) vals, delta_vals
-        if (iostate /= 0) then
-                print *, ""
-                print *, "Bad formatting in interpolation comparison arguments"
-                print *, "   Must be 2*Nvar floats"
-                print *, ""
 
-                close(filechannel1)
-                close(filechannel3)
+    !The comparison file has information regarding
+    !what region of the phase space we want to plot
+    read(filechannel1,FMT=*,iostat=iostate) vals, delta_vals
+    if (iostate /= 0) then
+        !If the amount of data on the comparison file does]
+        !not match the comparison number than something
+        !went wrong
+        print *, ""
+        print *, "Bad formatting in interpolation comparison arguments"
+        print *, "   Must be 2*Nvar floats"
+        print *, ""
 
-                return
-        end if
+        close(filechannel1)
+        close(filechannel3)
 
-        if (n == 1) then
-                starting_index = 0
+        return
+    end if
+
+    !The string allprefixes has information regarding
+    !what experiment we want to plot and the array
+    !alllengths has information regarding how long
+    !each string in it is
+    if (n == 1) then
+        starting_index = 0
+    else
+        starting_index = sum(alllengths(1:n-1))
+    end if
+    open(filechannel2,file=gridpath0//&
+            allprefixes(starting_index+1:sum(alllengths(1:n)))//&
+            intermediatefolder//"truncated"//interpolationfile)
+
+    !The first line in the truncated interpolation file
+    !has the bounds to the data
+    read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
+            "2(7(G16.6,1x)))",iostat=iostate) &
+            counters(n,1),counters(n,2),counters(n,3),&
+            lower_Ninterpolation, upper_Ninterpolation,&
+            lower_rsv, upper_rsv
+
+    !We have to get the bounds to ALL the data
+    !across all experiments
+
+    min_Ninterpolation = min(min_Ninterpolation,&
+            lower_Ninterpolation)
+    max_Ninterpolation = max(max_Ninterpolation,&
+            upper_Ninterpolation)
+
+    do m = 1, 7
+        min_rsv(m) = min(min_rsv(m),lower_rsv(m))
+        max_rsv(m) = max(max_rsv(m),upper_rsv(m))
+    end do
+
+    !We also excise any data that is not in the region
+    !of the phase space of interest
+    !All data is stored in the temporary interpolation
+    !file; yes, there will be duplicates if the same
+    !data is encountered across two trials
+    do
+        read(filechannel2,FMT=*,iostat=iostate)&
+                tmpvals, Ninterpolation, rsv
+        if (iostate /= 0) exit
+
+        tmpvals = abs(tmpvals-vals) - abs(delta_vals)
+
+        if (all(delta_vals>0)) then
+            if (any(tmpvals > 0)) cycle
         else
-                starting_index = sum(alllengths(1:n-1))
+            if (all(tmpvals <= 0)) cycle
         end if
-        open(filechannel2,file=gridpath0//&
-                allprefixes(starting_index+1:sum(alllengths(1:n)))//&
-                intermediatefolder//"truncated"//interpolationfile)
 
-        read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
-                "2(7(G16.6,1x)))",iostat=iostate) &
-                counters(n,1),counters(n,2),counters(n,3),&
-                lower_Ninterpolation, upper_Ninterpolation,&
-                lower_rsv, upper_rsv
-
-        min_Ninterpolation = min(min_Ninterpolation,&
-                lower_Ninterpolation)
-        max_Ninterpolation = max(max_Ninterpolation,&
-                upper_Ninterpolation)
-
-        do m = 1, 7
-                min_rsv(m) = min(min_rsv(m),lower_rsv(m))
-                max_rsv(m) = max(max_rsv(m),upper_rsv(m))
-        end do
-
-        do
-                read(filechannel2,FMT=*,iostat=iostate)&
-                        tmpvals, Ninterpolation, rsv
-                if (iostate /= 0) exit
-
-                tmpvals = abs(tmpvals-vals) - abs(delta_vals)
-
-                if (all(delta_vals>0)) then
-                        if (any(tmpvals > 0)) cycle
-                else
-                        if (all(tmpvals <= 0)) cycle
-                end if
-
-                frames_trials(n) = frames_trials(n) + 1
-                write(filechannel3,FMT=*) Ninterpolation,rsv
-        end do
-        close(filechannel2)
+        !Recording the number of frames in each
+        !trial lets us know where each trial begins
+        !and ends on this one big file
+        frames_trials(n) = frames_trials(n) + 1
+        write(filechannel3,FMT=*) Ninterpolation,rsv
+    end do
+    close(filechannel2)
 end do
 
 close(filechannel1)
 close(filechannel3)
 
+!If any of the trials has no frames, there will
+!probably be trouble plotting it
 if (any(frames_trials == 0)) then
-        print *, "MAJOR ERROR IN TRIALS SELECTED FOR "//&
-                 "INTERPOLATION ANALYSIS"
-        frames_trials = 0
-        return
+    print *, "MAJOR ERROR IN TRIALS SELECTED FOR "//&
+             "INTERPOLATION ANALYSIS"
+    frames_trials = 0
+    return
 end if
 
+!The number of bins is dynamically chosen so that
+!every bin (even at the beginning and end) has an
+!integer number of Ninterpolation
+!This means there is some fiddling with how the
+!range of the data is factored
 Nbins = max_Ninterpolation - min_Ninterpolation
 do
-        if (Nbins < 61) then
-                exit
-        else if (modulo(Nbins,2) == 0) then
-                Nbins = Nbins / 2
-        else if (modulo(Nbins,3) == 0) then
-                Nbins = Nbins / 3
-        else if (modulo(Nbins,5) == 0) then
-                Nbins = Nbins / 5
-        else
-                exit
-        end if
+    if (Nbins < 61) then
+        exit
+    else if (modulo(Nbins,2) == 0) then
+        Nbins = Nbins / 2
+    else if (modulo(Nbins,3) == 0) then
+        Nbins = Nbins / 3
+    else if (modulo(Nbins,5) == 0) then
+        Nbins = Nbins / 5
+    else
+        exit
+    end if
 end do
 
+!These fallbacks exist so that this dynamic binning
+!doesn't get out of hand (but then each bin may not
+!have an integer number of Ninterpolation)
 if (Nbins == 0) Nbins = 50
-!if (Nbins < 30) Nbins = Nbins * 2
 if (Nbins > 100) Nbins = 100
 
+!The binwidths are determined from the bounds of
+!the data and the number of bins designated to it
 Ninterpolation_binwidth = ceiling((max_Ninterpolation -&
         min_Ninterpolation) *1.0d0/ Nbins)
-
-!if (Nbins > 100) Nbins = 100
-
 rsv_binwidth = log10(max_rsv/min_rsv)*1.0d0/Nbins
 
+!There is a multiplication by three because three
+!subsets of each distribution are differentiated
 allocate(Ninterpolation_binning(3*comparison_number,Nbins),&
          rsv_binning(7,3*comparison_number,Nbins))
 Ninterpolation_binning = 0.0d0
 rsv_binning = 0.0d0
 
+!The data for ALL trials is stored in the temporary
+!interpolation file
 open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
 do n = 1, comparison_number
-        do m = 1, frames_trials(n)
-                read(filechannel1,FMT=*) Ninterpolation,rsv
-        
-                Ninterpolation_bin = floor((Ninterpolation&
-                        - min_Ninterpolation)&
-                        / Ninterpolation_binwidth) + 1
-                if (Ninterpolation_bin < 1) Ninterpolation_bin = 1
-                if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
 
-                rsv_bin = floor(log10(rsv/min_rsv)/rsv_binwidth) + 1
-                do l = 1, 7
-                        if (rsv_bin(l) < 1) rsv_bin(l) = 1
-                        if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
-                end do
+    !Each trial's data set is not separated so the
+    !number of lines of data read must be counted
+    do m = 1, frames_trials(n)
+        read(filechannel1,FMT=*) Ninterpolation,rsv
 
-                if (.true.) then
-                        Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) = &
-                                Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) + &
-                                1.0d0/frames_trials(n)
-                        do l = 1, 7
-                                rsv_binning(l,3*(n-1)+1,rsv_bin(l)) =&
-                                        rsv_binning(l,3*(n-1)+1,rsv_bin(l)) +&
-                                        1.0d0/frames_trials(n)
-                        end do
-                end if
-                if (rsv(7) < 1.0d1) then
-                        Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) = &
-                                Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) + &
-                                1.0d0/frames_trials(n)
-                        do l = 1, 7
-                                rsv_binning(l,3*(n-1)+2,rsv_bin(l)) =&
-                                        rsv_binning(l,3*(n-1)+2,rsv_bin(l)) +&
-                                        1.0d0/frames_trials(n)
-                        end do
-                end if
-                if (rsv(7) <= 1.0d0) then
-                        Ninterpolation_binning(3*n,Ninterpolation_bin) = &
-                                Ninterpolation_binning(3*n,Ninterpolation_bin) + &
-                                1.0d0/frames_trials(n)
-                        do l = 1, 7
-                                rsv_binning(l,3*n,rsv_bin(l)) =&
-                                        rsv_binning(l,3*n,rsv_bin(l)) +&
-                                        1.0d0/frames_trials(n)
-                        end do
-                end if
+        !Read each line and bin them accordingly
+    
+        Ninterpolation_bin = floor((Ninterpolation&
+                - min_Ninterpolation)&
+                / Ninterpolation_binwidth) + 1
+        if (Ninterpolation_bin < 1) Ninterpolation_bin = 1
+        if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
+
+        rsv_bin = floor(log10(rsv/min_rsv)/rsv_binwidth) + 1
+        do l = 1, 7
+            if (rsv_bin(l) < 1) rsv_bin(l) = 1
+            if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
         end do
+
+        !The first portion of the data is ALL of
+        !the data; this will be in the back of
+        !all other data
+        if (.true.) then
+            Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) = &
+                    Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) + &
+                    1.0d0/frames_trials(n)
+            do l = 1, 7
+                rsv_binning(l,3*(n-1)+1,rsv_bin(l)) =&
+                        rsv_binning(l,3*(n-1)+1,rsv_bin(l)) +&
+                        1.0d0/frames_trials(n)
+            end do
+        end if
+
+        !The second portion of the data is that
+        !which has this quality (can be
+        !arbitrarily picked)
+        if (rsv(7) < 1.0d1) then
+            Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) = &
+                    Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) + &
+                    1.0d0/frames_trials(n)
+            do l = 1, 7
+                rsv_binning(l,3*(n-1)+2,rsv_bin(l)) =&
+                        rsv_binning(l,3*(n-1)+2,rsv_bin(l)) +&
+                        1.0d0/frames_trials(n)
+            end do
+        end if
+
+        !The third portion of the data is that
+        !which has this quality (can be
+        !arbitrarily picked); this will be in
+        !the front of all other data
+        if (rsv(7) <= 1.0d0) then
+            Ninterpolation_binning(3*n,Ninterpolation_bin) = &
+                    Ninterpolation_binning(3*n,Ninterpolation_bin) + &
+                    1.0d0/frames_trials(n)
+            do l = 1, 7
+                rsv_binning(l,3*n,rsv_bin(l)) =&
+                        rsv_binning(l,3*n,rsv_bin(l)) +&
+                        1.0d0/frames_trials(n)
+            end do
+        end if
+    end do
 end do
 close(filechannel1)
 
 
+!Finally, record the data for
+!later plotting
 
 open(filechannel1,file=gridpath5//"InterpolationTDD_binning.dat")
 do n = 1, Nbins
-        write(filechannel1,FMT=*) min_Ninterpolation + &
-                Ninterpolation_binwidth*(n-0.5),&
-                Ninterpolation_binning(:,n)
+    write(filechannel1,FMT=*) min_Ninterpolation + &
+            Ninterpolation_binwidth*(n-0.5),&
+            Ninterpolation_binning(:,n)
 end do
 close(filechannel1)
 
 do l = 1, 7
 
+!Accept Best RMSD Distribution
 if (l == 1) open(filechannel1,file=gridpath5//&
         "InterpolationARD_binning.dat")
+!Interpolation RMSD Distribution
 if (l == 2) open(filechannel1,file=gridpath5//&
         "InterpolationIRD_binning.dat")
+!RMSD Special Variable 1 Distribution
 if (l == 3) open(filechannel1,file=gridpath5//&
         "InterpolationRSV1D_binning.dat")
+!RMSD Special Variable 2 Distribution
 if (l == 4) open(filechannel1,file=gridpath5//&
         "InterpolationRSV2D_binning.dat")
+!Accept Best Error Distribution
 if (l == 5) open(filechannel1,file=gridpath5//&
         "InterpolationAED_binning.dat")
+!Interpolation Error Distribution
 if (l == 6) open(filechannel1,file=gridpath5//&
         "InterpolationIED_binning.dat")
+!Relative Error Distribution
 if (l == 7) open(filechannel1,file=gridpath5//&
         "InterpolationRED_binning.dat")
 
 do n = 1, Nbins
-        write(filechannel1,FMT=*)&
-                log10(min_rsv(l)) +&
-                rsv_binwidth(l)*n,&
-                rsv_binning(l,:,n)
+    write(filechannel1,FMT=*)&
+            log10(min_rsv(l)) +&
+            rsv_binwidth(l)*n,&
+            rsv_binning(l,:,n)
 end do
 
 close(filechannel1)
@@ -2079,12 +2227,11 @@ gridpath5 = gridpath4//intermediatefolder
 call processMultipleInterpolationFiles(counters)
 
 if (any(counters(:,3) == 0)) then
-        return
+    return
 end if
 
 open(gnuplotchannel,file=gridpath5//PNGfilename//"_"//gnuplotfile)
 write(gnuplotchannel,FMT="(A,I6)") 'set term pngcairo size 2400,',1200*comparison_number
-!write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set output ARG1."/../'//PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set tmargin 0'
 write(gnuplotchannel,*) 'set bmargin 0'
@@ -2093,21 +2240,12 @@ write(gnuplotchannel,*) 'set rmargin 1'
 write(gnuplotchannel,FMT="(A,I0.2,A)") 'set multiplot layout ',comparison_number,&
                         ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
                         '"Interpolation Error with Varying Threshold" font ",36" offset 0,3'
-!write(gnuplotchannel,*) 'unset key'
-
 !write(gnuplotchannel,FMT="(A,F7.3,',',F7.3,A)") &
 !        'set label 1 "Vals = (',vals(1),vals(2),')" at screen 0.3,0.950'
 !write(gnuplotchannel,FMT="(A,I6,A)") &
 !        'set label 2 "Ntraj = ', Ntraj_max, '" at screen 0.3,0.940'
 !write(gnuplotchannel,FMT='(A,F9.4,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, &
 !        '" at screen 0.3,0.930'
-
-!write(gnuplotchannel,*) 'min_x = ', min_rmsd_vals(2)
-!write(gnuplotchannel,*) 'max_x = ', max_rmsd_vals(2)
-!write(gnuplotchannel,*) 'min_y = ', min_rmsd_vals(6)
-!write(gnuplotchannel,*) 'max_y = ', max_rmsd_vals(6)
-!write(gnuplotchannel,*) 'set xrange [min_x:max_x]'
-!write(gnuplotchannel,*) 'set yrange [min_y:max_y]'
 write(gnuplotchannel,*) 'set ylabel "Frequency" font ",18"'
 write(gnuplotchannel,*) 'set xtics nomirror'
 write(gnuplotchannel,*) 'set grid xtics lw 2'
@@ -2119,7 +2257,6 @@ write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
 write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A,I0.2,A)") &
-!       'plot "'//gridpath5//&
         'plot ARG1."/'//&
         'InterpolationTDD_binning.dat" u '//'1:',2,' w boxes t \'
 write(gnuplotchannel,FMT="(A)") &
@@ -2136,7 +2273,6 @@ write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
 write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A,I0.2,A)") &
-!       'plot "'//gridpath5//&
         'plot ARG1."/'//&
         'InterpolationTDD_binning.dat" u '//'1:',n+1,' w boxes t \'
 write(gnuplotchannel,FMT="(A)") &
@@ -2153,14 +2289,12 @@ end if
 write(gnuplotchannel,*) 'unset xtics'
 write(gnuplotchannel,*) 'set xtics out nomirror'
 write(gnuplotchannel,*) 'set format x'
-
 write(gnuplotchannel,*) 'set xlabel "Number of Points Below Threshold (Ninterpolation)" font ",24"'
 
 write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
 write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A,I0.2,A)") &
-!       'plot "'//gridpath5//&
         'plot ARG1."/'//&
         'InterpolationTDD_binning.dat" u '//'1:',comparison_number+1,' w boxes t \'
 write(gnuplotchannel,FMT="(A)") &
@@ -2203,17 +2337,14 @@ write(gnuplotchannel,*) 'set xtics ('//&
 
 if (comparison_number > 1) then
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       'plot "'//gridpath5//&
         'plot ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',2,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       '     "'//gridpath5//&
         '     ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',3,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       '     "'//gridpath5//&
         '     ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',4,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder'
@@ -2221,17 +2352,14 @@ write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
 do n = 2, comparison_number-1
 
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       'plot "'//gridpath5//&
         'plot ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       '     "'//gridpath5//&
         '     ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',3*(n-1)+3,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       '     "'//gridpath5//&
         '     ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',3*(n-1)+4,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder'
@@ -2270,17 +2398,14 @@ write(gnuplotchannel,*) 'set xtics ('//&
 
 write(gnuplotchannel,*) 'set xlabel "Relative Error of Accept Best to Interpolation" font ",24"'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       'plot "'//gridpath5//&
         'plot ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',3*comparison_number-1,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       '     "'//gridpath5//&
         '     ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',3*comparison_number,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder,\'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
-!       '     "'//gridpath5//&
         '     ARG1."/'//&
         'InterpolationRED_binning.dat" u '//'1:',3*comparison_number+1,' w boxes t "" '//&
         'fs transparent solid ',1.0d0,' noborder'
@@ -2320,7 +2445,7 @@ gridpath5 = gridpath4//intermediatefolder
 call processMultipleInterpolationFiles(counters)
 
 if (all(counters == 0)) then
-        return
+    return
 end if
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile//"_"//&
@@ -2375,10 +2500,10 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                    ')'
 
 if (comparison_lowerlimit < comparison_upperlimit) then
-        write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
-                'set xrange [log10(',&
-                comparison_lowerlimit,'):log10(',&
-                comparison_upperlimit,')]'
+    write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
+            'set xrange [log10(',&
+            comparison_lowerlimit,'):log10(',&
+            comparison_upperlimit,')]'
 end if
 
 if (comparison_number > 1) then
@@ -2454,7 +2579,6 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                            ' "1e4"   log10(10000), '//&
                                    ')'
 
-!write(gnuplotchannel,*) 'set xlabel "RMSD Between Interpolation and Target" font ",24"'
 write(gnuplotchannel,*) 'set xlabel "" font ",24"'
 write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
