@@ -535,6 +535,14 @@ end if
                end do
                approx_gradient = gradient
 
+               !Save the approx_gradient_prime
+               !with the correct labelling
+               do n = 1, Natoms
+                    gradient(:,BOND_LABELLING_DATA(n)) = &
+                            approx_gradient_prime(:,n)
+               end do
+               approx_gradient_prime = gradient
+
                !Always calculate the true gradient
                call Acceleration(vals,coords,gradient)
 
@@ -1142,6 +1150,14 @@ end if
                end do
                approx_gradient = gradient
 
+               !Save the candidate_gradient with the
+               !correct labelling
+               do n = 1, Natoms
+                    gradient(:,BOND_LABELLING_DATA(n)) = &
+                            candidate_gradient(:,n)
+               end do
+               candidate_gradient = gradient
+
                !Calculate the true gradient
                call Acceleration(vals,coords,gradient)
 
@@ -1244,180 +1260,180 @@ end subroutine checkMultipleTrajectories
 
 
 subroutine Acceleration_generic(vals,coords,gradient)
-	use PARAMETERS
-        use PHYSICS
-        implicit none
+    use PARAMETERS
+    use PHYSICS
+    implicit none
 
-	!Frame information
-        real(dp), dimension(Nvar), intent(in) :: vals
-        real(dp), dimension(3,Natoms), intent(in) :: coords
-        real(dp), dimension(3,Natoms), intent(out) :: gradient
+    !Frame information
+    real(dp), dimension(Nvar), intent(in) :: vals
+    real(dp), dimension(3,Natoms), intent(in) :: coords
+    real(dp), dimension(3,Natoms), intent(out) :: gradient
 
-	!Indexing of the atoms of the frame
-        integer :: start_index1, start_index2
-        integer :: index1, index2, bond_index1, bond_index2
+    !Indexing of the atoms of the frame
+    integer :: start_index1, start_index2
+    integer :: index1, index2, bond_index1, bond_index2
 
-	!Incremental integer
-	integer :: i
+    !Incremental integer
+    integer :: i
 
-	!Set the gradient to zero (we add on per pair of interactions)
-        gradient = 0.0d0
+    !Set the gradient to zero (we add on per pair of interactions)
+    gradient = 0.0d0
 
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !                 NON-BONDED INTERACTIONS
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !                 NON-BONDED INTERACTIONS
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-	!BONDING_DATA is arranged by ascending order of the first index
-	!and the second index is always larger than the first index
-	!So the first pair would naturally be (1,2)
-        start_index1 = 1
-        start_index2 = 2
+    !BONDING_DATA is arranged by ascending order of the first index
+    !and the second index is always larger than the first index
+    !So the first pair would naturally be (1,2)
+    start_index1 = 1
+    start_index2 = 2
 
-	!We do a loop through every pair of atoms BETWEEN the bonds
-        do i = 1, Nbonds
+    !We do a loop through every pair of atoms BETWEEN the bonds
+    do i = 1, Nbonds
 
-		!Figure out where the next pair of atoms forms a bond
-		!And iterate over pairs of atoms until you reach that bond
-                bond_index1 = BONDING_DATA(i,1)
-                do index1 = start_index1, bond_index1
+        !Figure out where the next pair of atoms forms a bond
+        !And iterate over pairs of atoms until you reach that bond
+        bond_index1 = BONDING_DATA(i,1)
+        do index1 = start_index1, bond_index1
 
-			!If we are almost there, then we only do pairs up until the bond index
-                        if (index1 == bond_index1) then
-                                bond_index2 = BONDING_DATA(i,2) - 1
+            !If we are almost there, then we only do pairs up until the bond index
+            if (index1 == bond_index1) then
+                bond_index2 = BONDING_DATA(i,2) - 1
 
-			!Otherwise, we must consider all pairs of atoms
-                        else
-                                bond_index2 = Natoms
-                        end if
+            !Otherwise, we must consider all pairs of atoms
+            else
+                bond_index2 = Natoms
+            end if
 
-                        do index2 = start_index2, bond_index2
-                                !Remark: the optional 5th argument is the distance between
-                                !        coord1 and coord2 (so it doesn't have to recalculate)
-				!Right now, this is also not generic
-                                call NonBondedForce(coords(:,index1),coords(:,index2),&
-                                                gradient(:,index1),gradient(:,index2),vals(index2-1))
-                        end do
+            do index2 = start_index2, bond_index2
+                !Remark: the optional 5th argument is the distance between
+                !        coord1 and coord2 (so it doesn't have to recalculate)
+                !Right now, this is also not generic
+                call NonBondedForce(coords(:,index1),coords(:,index2),&
+                                gradient(:,index1),gradient(:,index2),vals(index2-1))
+            end do
 
-			!Start off the next iteration from the index1 + 1
-			!because index2 is always greater than index1
-                        start_index2 = index1 + 2
-                end do
-
-		!Start off the next iteration over pairs of atoms
-		!while skipping the pair of atoms that are bonded
-                start_index1 = bond_index1
-                start_index2 = bond_index2 + 2
+            !Start off the next iteration from the index1 + 1
+            !because index2 is always greater than index1
+            start_index2 = index1 + 2
         end do
 
-	!Repeat the inner loop of the above; this loop takes into account the
-	!pairs of atoms that have indexes larger than the last pair of atoms that are bonded
-	do index1 = start_index1,Natoms
-		do index2 = start_index2,Natoms
-                        call NonBondedForce(coords(:,index1),coords(:,index2),&
-                                        gradient(:,index1),gradient(:,index2),vals(i))
-		end do
-		start_index2 = index1 + 2
-	end do
+        !Start off the next iteration over pairs of atoms
+        !while skipping the pair of atoms that are bonded
+        start_index1 = bond_index1
+        start_index2 = bond_index2 + 2
+    end do
 
-
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !                 BONDED INTERACTIONS
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-	!Finally, just calculate the forces between the bonded atoms
-        do i = 1, Nbonds
-                index1 = BONDING_DATA(i,1)
-                index2 = BONDING_DATA(i,2)
-                call BondedForce(coords(:,index1),coords(:,index2),&
-                             gradient(:,index1),gradient(:,index2))
+    !Repeat the inner loop of the above; this loop takes into account the
+    !pairs of atoms that have indexes larger than the last pair of atoms that are bonded
+    do index1 = start_index1,Natoms
+        do index2 = start_index2,Natoms
+            call NonBondedForce(coords(:,index1),coords(:,index2),&
+                            gradient(:,index1),gradient(:,index2),vals(i))
         end do
+        start_index2 = index1 + 2
+    end do
 
-	return
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !                 BONDED INTERACTIONS
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    !Finally, just calculate the forces between the bonded atoms
+    do i = 1, Nbonds
+        index1 = BONDING_DATA(i,1)
+        index2 = BONDING_DATA(i,2)
+        call BondedForce(coords(:,index1),coords(:,index2),&
+                     gradient(:,index1),gradient(:,index2))
+    end do
+
+    return
 
 end subroutine Acceleration_generic
 
 
 subroutine Acceleration(vals,coords,gradient)
-	use PARAMETERS
-        use PHYSICS
-        implicit none
+    use PARAMETERS
+    use PHYSICS
+    implicit none
 
-	!Frame information
-        real(dp), dimension(Nvar), intent(in) :: vals
-        real(dp), dimension(3,Natoms), intent(in) :: coords
-        real(dp), dimension(3,Natoms), intent(out) :: gradient
+    !Frame information
+    real(dp), dimension(Nvar), intent(in) :: vals
+    real(dp), dimension(3,Natoms), intent(in) :: coords
+    real(dp), dimension(3,Natoms), intent(out) :: gradient
 
-	!Indexing of the atoms of the frame
-        integer :: index1, index2
-        integer :: bond_index, bond_index1, bond_index2
-        integer :: value_index, value_index1, value_index2
-	logical :: bond_flag, value_flag
+    !Indexing of the atoms of the frame
+    integer :: index1, index2
+    integer :: bond_index, bond_index1, bond_index2
+    integer :: value_index, value_index1, value_index2
+    logical :: bond_flag, value_flag
 
-	!Set the gradient to zero (we add on per pair of interactions)
-        gradient = 0.0d0
+    !Set the gradient to zero (we add on per pair of interactions)
+    gradient = 0.0d0
 
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !                 NON-BONDED INTERACTIONS
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !                 NON-BONDED INTERACTIONS
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-	bond_index = 1
-	bond_flag = .true.
-	bond_index1 = BONDING_DATA(1,1)
-	bond_index2 = BONDING_DATA(1,2)
+    bond_index = 1
+    bond_flag = .true.
+    bond_index1 = BONDING_DATA(1,1)
+    bond_index2 = BONDING_DATA(1,2)
 
-	value_index = 1
-	if (Nvar_eff > 0) then
-		value_flag = .true.
-		value_index1 = BONDING_VALUE_DATA(1,1)
-		value_index2 = BONDING_VALUE_DATA(1,2)
-	else
-		value_flag = .false.
-	end if
+    value_index = 1
+    if (Nvar_eff > 0) then
+        value_flag = .true.
+        value_index1 = BONDING_VALUE_DATA(1,1)
+        value_index2 = BONDING_VALUE_DATA(1,2)
+    else
+        value_flag = .false.
+    end if
 
-	do index1 = 1, Natoms
-		do index2 = index1+1, Natoms
+    do index1 = 1, Natoms
+        do index2 = index1+1, Natoms
 
-			if ((bond_flag).and.(index1 == bond_index1).and.(index2 == bond_index2)) then
-                                !Remark: the optional 5th argument is the distance between
-                                !        coord1 and coord2 (so it doesn't have to recalculate)
-				!Right now, this is also not generic
-		                call BondedForce(coords(:,index1),coords(:,index2),&
-		                             gradient(:,index1),gradient(:,index2))
+            if ((bond_flag).and.(index1 == bond_index1).and.(index2 == bond_index2)) then
+                !Remark: the optional 5th argument is the distance between
+                !        coord1 and coord2 (so it doesn't have to recalculate)
+                !Right now, this is also not generic
+                call BondedForce(coords(:,index1),coords(:,index2),&
+                             gradient(:,index1),gradient(:,index2))
 
-				bond_index = bond_index + 1
-				if (bond_index > Nbonds) then
-					bond_flag = .false.
-					cycle
-				end if
-				bond_index1 = BONDING_DATA(bond_index,1)
-				bond_index2 = BONDING_DATA(bond_index,2)
+                bond_index = bond_index + 1
+                if (bond_index > Nbonds) then
+                    bond_flag = .false.
+                    cycle
+                end if
+                bond_index1 = BONDING_DATA(bond_index,1)
+                bond_index2 = BONDING_DATA(bond_index,2)
 
-			else
-				if ((value_flag).and.(index1==value_index1).and.(index2==value_index2)) then
-                                !Remark: the optional 5th argument is the distance between
-                                !        coord1 and coord2 (so it doesn't have to recalculate)
-				!Right now, this is also not generic
-                                call NonBondedForce(coords(:,index1),coords(:,index2),&
-                                                gradient(:,index1),gradient(:,index2),&
-                                                vals(BONDING_VALUE_DATA(value_index,3)))
+            else
+                if ((value_flag).and.(index1==value_index1).and.(index2==value_index2)) then
+                !Remark: the optional 5th argument is the distance between
+                !        coord1 and coord2 (so it doesn't have to recalculate)
+                !Right now, this is also not generic
+                call NonBondedForce(coords(:,index1),coords(:,index2),&
+                                gradient(:,index1),gradient(:,index2),&
+                                vals(BONDING_VALUE_DATA(value_index,3)))
 
-				value_index = value_index + 1
-				if (value_index > Nvar_eff) then
-					value_flag = .false.
-					cycle
-				end if
-				value_index1 = BONDING_VALUE_DATA(value_index,1)
-				value_index2 = BONDING_VALUE_DATA(value_index,2)
+                value_index = value_index + 1
+                if (value_index > Nvar_eff) then
+                    value_flag = .false.
+                    cycle
+                end if
+                value_index1 = BONDING_VALUE_DATA(value_index,1)
+                value_index2 = BONDING_VALUE_DATA(value_index,2)
 
-				else
-                                call NonBondedForce(coords(:,index1),coords(:,index2),&
-                                                gradient(:,index1),gradient(:,index2))
-				end if
-			end if
-		end do
-	end do
-	
-	return
+                else
+                call NonBondedForce(coords(:,index1),coords(:,index2),&
+                                gradient(:,index1),gradient(:,index2))
+                end if
+            end if
+        end do
+    end do
+    
+    return
 
 end subroutine Acceleration
 
@@ -1740,9 +1756,9 @@ implicit none
 integer :: i
 
 do i = 1, min(Norder_max+1,ssm_length)
-        subcellsearch_max(i) = ssm1(i)
-        subcellsearch_max1(i) = ssm1(i)
-        subcellsearch_max2(i) = ssm2(i)
+    subcellsearch_max(i) = ssm1(i)
+    subcellsearch_max1(i) = ssm1(i)
+    subcellsearch_max2(i) = ssm2(i)
 end do
 
 end subroutine setSubcellSearchMax
@@ -1750,825 +1766,828 @@ end subroutine setSubcellSearchMax
 
 
 subroutine errorCheck1(filechannels)
-        use PARAMETERS
-        use PHYSICS
-        use VARIABLES
-        use ANALYSIS
-        use ls_rmsd_original
-        use interactMultipleGrids
-        use analyzeRMSDThresholdwithMultipleGrids
-        implicit none
+    use PARAMETERS
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    use ls_rmsd_original
+    use interactMultipleGrids
+    use analyzeRMSDThresholdwithMultipleGrids
+    implicit none
 
-        !Coordinates, Velocities, and Variables
-        real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities, delta_coords
-        real(dp), dimension(3,Natoms) :: gradient,gradient_var,gradient_labelled,gradient_var_labelled
-        real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
-        real(dp), dimension(Nvar) :: vals
-	real(dp), dimension(3,Natoms) :: coords_initial, velocities_initial 
-	real(dp), dimension(3,Natoms) :: coords_final, velocities_final 
-        integer :: bond_index1, bond_index2
+    !Coordinates, Velocities, and Variables
+    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities, delta_coords
+    real(dp), dimension(3,Natoms) :: gradient,gradient_var
+    real(dp), dimension(3,Natoms) :: gradient_labelled,gradient_var_labelled
+    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
+    real(dp), dimension(Nvar) :: vals
+    real(dp), dimension(3,Natoms) :: coords_initial, velocities_initial 
+    real(dp), dimension(3,Natoms) :: coords_final, velocities_final 
+    integer :: bond_index1, bond_index2
 
-        real(dp) :: handicap_rmsd
-        real(dp), allocatable :: rmsd_x(:,:),rmsd_x_interpolated(:,:)
-        real(dp), allocatable :: rmsd_fx(:,:),rmsd_fx_interpolated(:,:)
-        real(dp),dimension(4) :: selected_means,selected_SDs
-        real(dp) :: delta_length
-        integer :: Ntest,Nsamples,Nsample
-        integer :: Nanomaly
-        character(3) :: Nanomaly_text
-        real(dp), allocatable :: rmsd_weights(:,:,:), rmsd_fx_weights(:,:,:)
-        real(dp), allocatable :: mean_weights(:), mean_rmsd_fx(:)
+    real(dp) :: handicap_rmsd
+    real(dp), allocatable :: rmsd_x(:,:),rmsd_x_interpolated(:,:)
+    real(dp), allocatable :: rmsd_fx(:,:),rmsd_fx_interpolated(:,:)
+    real(dp),dimension(4) :: selected_means,selected_SDs
+    real(dp) :: delta_length
+    integer :: Ntest,Nsamples,Nsample
+    integer :: Nanomaly
+    character(3) :: Nanomaly_text
+    real(dp), allocatable :: rmsd_weights(:,:,:), rmsd_fx_weights(:,:,:)
+    real(dp), allocatable :: mean_weights(:), mean_rmsd_fx(:)
 
-        !Various other variables
-        real(dp) :: min_rmsd,min_rmsd_prime
-        integer :: number_of_frames,order,neighbor_check
-        character(9) :: vals_interpolation_text
+    !Various other variables
+    real(dp) :: min_rmsd,min_rmsd_prime
+    integer :: number_of_frames,order,neighbor_check
+    character(9) :: vals_interpolation_text
 
-        integer,dimension(1+Ngrid_total),intent(in) :: filechannels
-        real(dp), dimension(3) :: x_center, y_center
-        real(dp), allocatable :: g(:,:)
-        real(dp),dimension(3,3) :: U
-        real(dp),dimension(3,3) :: candidate_U
+    integer,dimension(1+Ngrid_total),intent(in) :: filechannels
+    real(dp), dimension(3) :: x_center, y_center
+    real(dp), allocatable :: g(:,:)
+    real(dp),dimension(3,3) :: U
+    real(dp),dimension(3,3) :: candidate_U
 
-        !Incremental Integer
-        integer :: i,n
+    !Incremental Integer
+    integer :: i,n
 
-        !Initialize the scene
-        call InitialSetup3(coords,velocities)
+    !Initialize the scene
+    call InitialSetup3(coords,velocities)
 
-        coords_initial = coords
-        velocities_initial = velocities
+    coords_initial = coords
+    velocities_initial = velocities
 
-        !Always calculate the variables before accelerating
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+    !Always calculate the variables before accelerating
+    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
-        !Accelerate the velcocities for a half step (verlet)
-        call Acceleration(vals,coords,gradient)
+    !Accelerate the velcocities for a half step (verlet)
+    call Acceleration(vals,coords,gradient)
 
-        !Update the velocities
-        velocities = velocities + 0.5d0 * gradient
+    !Update the velocities
+    velocities = velocities + 0.5d0 * gradient
 
-        !To randomize the periods of the bond, I let the scene go on
-        !for a small period of time (need to standardize this later)
-        do n = 1, Nbonds
-                do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-                        coords = coords + dt * velocities
-                        call Acceleration(vals,coords,gradient)
-                        velocities = velocities + gradient
-                end do
-
-                !And then reset the bond
-                coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-                coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-                velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-                velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
+    !To randomize the periods of the bond, I let the scene go on
+    !for a small period of time (need to standardize this later)
+    do n = 1, Nbonds
+        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
+            coords = coords + dt * velocities
+            call Acceleration(vals,coords,gradient)
+            velocities = velocities + gradient
         end do
 
-        !We keep this file open for the whole trajectory (instead of
-        !continually opening and closing) to keep data of each frame
-if (gather_interpolation_flag) open(filechannel3,file=gridpath5//interpolationfile,position="append")
+        !And then reset the bond
+        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
+        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
+        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
+    end do
 
-        buffer1_size = 1 + var_overcrowd(1)
-        allocate(valsbuffer1(Nvar,buffer1_size),&
-                 coordsbuffer1(3,Natoms,buffer1_size),&
-                 gradientbuffer1(3,Natoms,buffer1_size),&
-                 Ubuffer1(3,3,buffer1_size),&
-                 RMSDbuffer1(buffer1_size),&
-                 approximation_index(buffer1_size))
+    !We keep this file open for the whole trajectory (instead of
+    !continually opening and closing) to keep data of each frame
+    if (gather_interpolation_flag)&
+            open(filechannel3,file=gridpath5//&
+            interpolationfile,position="append")
 
-        if (interpolation_flag) then
-                allocate(acceptable_frame_mask(buffer1_size),&
-                         inputCLS(Ncoords+buffer1_size,buffer1_size))
-                interpolation_counter = 0
-        end if
+    buffer1_size = 1 + var_overcrowd(1)
+    allocate(valsbuffer1(Nvar,buffer1_size),&
+             coordsbuffer1(3,Natoms,buffer1_size),&
+             gradientbuffer1(3,Natoms,buffer1_size),&
+             Ubuffer1(3,3,buffer1_size),&
+             RMSDbuffer1(buffer1_size),&
+             approximation_index(buffer1_size))
 
-        Nanomaly = 0
-        Ntest = 10
-        Nsamples = 10
-        allocate(rmsd_x_interpolated(Ntest,Nsamples),rmsd_fx(Ntest,Nsamples),&
-                 rmsd_fx_interpolated(Ntest,Nsamples),rmsd_x(Ntest,Nsamples),&
-                 rmsd_weights(Ntest,Ntest,Nsamples),rmsd_fx_weights(Ntest,Ntest,Nsamples))
-        allocate(temp_frame_weights(Ntest),temp_rmsd_weights(Ntest))
-        rmsd_weights = 0.0d0
+    if (interpolation_flag) then
+            allocate(acceptable_frame_mask(buffer1_size),&
+                     inputCLS(Ncoords+buffer1_size,buffer1_size))
+            interpolation_counter = 0
+    end if
 
-        do
+    Nanomaly = 0
+    Ntest = 10
+    Nsamples = 10
+    allocate(rmsd_x_interpolated(Ntest,Nsamples),rmsd_fx(Ntest,Nsamples),&
+             rmsd_fx_interpolated(Ntest,Nsamples),rmsd_x(Ntest,Nsamples),&
+             rmsd_weights(Ntest,Ntest,Nsamples),rmsd_fx_weights(Ntest,Ntest,Nsamples))
+    allocate(temp_frame_weights(Ntest),temp_rmsd_weights(Ntest))
+    rmsd_weights = 0.0d0
 
-        do steps = 1, 10000
-                !Upate the coordinates with the velocities
-                coords = coords + dt * velocities
+    do
 
-                !Always calculate the variables before checking a frame or accelerating
-                call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+    do steps = 1, 10000
+            !Upate the coordinates with the velocities
+            coords = coords + dt * velocities
 
-                call Acceleration(vals,coords,gradient)
+            !Always calculate the variables before checking a frame or accelerating
+            call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
-                !Update the velocities
-                velocities = velocities + gradient
-        end do
+            call Acceleration(vals,coords,gradient)
 
-        if (any(vals > var_maxvar)) exit
+            !Update the velocities
+            velocities = velocities + gradient
+    end do
 
-        coords_final = coords
-        velocities_final = velocities
+    if (any(vals > var_maxvar)) exit
 
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-        call Acceleration(vals,coords,gradient)
+    coords_final = coords
+    velocities_final = velocities
 
-        do n = 1, Natoms
-                coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-                gradient_labelled(:,n) = gradient(:,BOND_LABELLING_DATA(n))
-        end do
-        print *, "vals:", vals
-        print *, ""
+    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+    call Acceleration(vals,coords,gradient)
 
-        open(filechannel2,file=gridpath5//"new"//errorcheckfile)
+    do n = 1, Natoms
+            coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
+            gradient_labelled(:,n) = gradient(:,BOND_LABELLING_DATA(n))
+    end do
+    print *, "vals:", vals
+    print *, ""
 
-        do Nsample = 1, Nsamples
+    open(filechannel2,file=gridpath5//"new"//errorcheckfile)
 
-        print *, "Starting sampling:", Nsample
-        call system("rm "//gridpath2//"*.dat")
-        handicap_rmsd = threshold_rmsd* 0.1d0
+    do Nsample = 1, Nsamples
 
-        !Let's find one good point
-        do
-                do n = 1, Natoms
-                do i = 1, 3
-                        delta_coords(i,n) = rand() - 0.5d0
-                end do
-                end do
+    print *, "Starting sampling:", Nsample
+    call system("rm "//gridpath2//"*.dat")
+    handicap_rmsd = threshold_rmsd* 0.1d0
 
-                delta_length = sqrt(sum(delta_coords**2))
+    !Let's find one good point
+    do
+            do n = 1, Natoms
+            do i = 1, 3
+                    delta_coords(i,n) = rand() - 0.5d0
+            end do
+            end do
 
-                if (delta_length == 0.0d0) cycle
+            delta_length = sqrt(sum(delta_coords**2))
 
-                coords = coords_final + delta_coords * (handicap_rmsd + &
-                        (threshold_rmsd - handicap_rmsd)*rand()) / delta_length
+            if (delta_length == 0.0d0) cycle
 
-                call rmsd_dp(Natoms,coords_final,coords,1,candidate_U,x_center,y_center,min_rmsd)
+            coords = coords_final + delta_coords * (handicap_rmsd + &
+                    (threshold_rmsd - handicap_rmsd)*rand()) / delta_length
 
-                if (min_rmsd > handicap_rmsd) cycle
-                
-                handicap_rmsd = min_rmsd
+            call rmsd_dp(Natoms,coords_final,coords,1,candidate_U,x_center,y_center,min_rmsd)
 
-                call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-                call Acceleration(vals,coords,gradient_var)
+            if (min_rmsd > handicap_rmsd) cycle
+            
+            handicap_rmsd = min_rmsd
 
-                gridpath3 = gridpath2
-                local_frame_count = 0
-                call addState_new(vals,coords,gradient_var)
+            call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+            call Acceleration(vals,coords,gradient_var)
 
-                gradient_var = matmul(candidate_U,gradient_var)
+            gridpath3 = gridpath2
+            local_frame_count = 0
+            call addState_new(vals,coords,gradient_var)
+
+            gradient_var = matmul(candidate_U,gradient_var)
 
 !               write(filechannel2,FMT="(I3,3(1x,F13.9))") 1,min_rmsd, &
 !                       sqrt(sum((gradient_labelled - gradient_var_labelled)**2)/Natoms),&
 !                       sqrt(sum((gradient_labelled - gradient_var_labelled)**2)/Natoms)
-                rmsd_x(1,Nsample) = min_rmsd
-                rmsd_x_interpolated(1,Nsample) = min_rmsd
-                rmsd_fx_interpolated(1,Nsample) = &
-                        sqrt(sum((gradient - gradient_var)**2)/Natoms)
-                rmsd_fx(1,Nsample) = rmsd_fx_interpolated(1,Nsample)
-                rmsd_weights(1,1,Nsample) = 1.0d0
+            rmsd_x(1,Nsample) = min_rmsd
+            rmsd_x_interpolated(1,Nsample) = min_rmsd
+            rmsd_fx_interpolated(1,Nsample) = &
+                    sqrt(sum((gradient - gradient_var)**2)/Natoms)
+            rmsd_fx(1,Nsample) = rmsd_fx_interpolated(1,Nsample)
+            rmsd_weights(1,1,Nsample) = 1.0d0
 
-                write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,rmsd_fx(1,Nsample)
-                exit
+            write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,rmsd_fx(1,Nsample)
+            exit
+    end do
+
+    !Now lets add lots of bad points (but still in threshold)
+    subcellsearch_max = (/ 9, 9 /)
+    interpolation_flag = .true.
+
+    do steps = 2, Ntest
+        do
+            do n = 1, Natoms
+            do i = 1, 3
+                delta_coords(i,n) = rand() - 0.5d0
+            end do
+            end do
+    
+            delta_length = sqrt(sum(delta_coords**2))
+    
+            if (delta_length >= 1.0d0) cycle
+            if (delta_length == 0.0d0) cycle
+
+            coords = coords_final + delta_coords * &
+                    (min_rmsd + (threshold_rmsd - min_rmsd)*rand())
+
+            call rmsd_dp(Natoms,coords_final,coords,1,&
+                         candidate_U,x_center,y_center,min_rmsd)
+
+            if (min_rmsd >= threshold_rmsd) cycle
+
+            call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+            call Acceleration(vals,coords,gradient_var)
+
+            gradient_var = matmul(candidate_U,gradient_var)
+
+            write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,&
+                    sqrt(sum((gradient - gradient_var)**2)/Natoms)
+
+            if (min_rmsd <= handicap_rmsd) cycle
+            exit
         end do
 
-        !Now lets add lots of bad points (but still in threshold)
-        subcellsearch_max = (/ 9, 9 /)
+        rmsd_x(steps,Nsample) = min_rmsd
+
         interpolation_flag = .true.
+        call checkState_new(vals,coords,approx_gradient,min_rmsd,&
+                        filechannels,number_of_frames,order,neighbor_check)
+        call addState_new(vals,coords,gradient_var)
 
-        do steps = 2, Ntest
-                do
-                        do n = 1, Natoms
-                        do i = 1, 3
-                                delta_coords(i,n) = rand() - 0.5d0
-                        end do
-                        end do
-        
-                        delta_length = sqrt(sum(delta_coords**2))
-        
-                        if (delta_length >= 1.0d0) cycle
-                        if (delta_length == 0.0d0) cycle
-
-                        coords = coords_final + delta_coords * &
-                                (min_rmsd + (threshold_rmsd - min_rmsd)*rand())
-
-                        call rmsd_dp(Natoms,coords_final,coords,1,&
-                                     candidate_U,x_center,y_center,min_rmsd)
-
-                        if (min_rmsd >= threshold_rmsd) cycle
-
-                        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-                        call Acceleration(vals,coords,gradient_var)
-
-                        gradient_var = matmul(candidate_U,gradient_var)
-
-                        write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,&
-                                sqrt(sum((gradient - gradient_var)**2)/Natoms)
-
-                        if (min_rmsd <= handicap_rmsd) cycle
-                        exit
-                end do
-
-                rmsd_x(steps,Nsample) = min_rmsd
-
-                interpolation_flag = .true.
-                call checkState_new(vals,coords,approx_gradient,min_rmsd,&
-                                filechannels,number_of_frames,order,neighbor_check)
-                call addState_new(vals,coords,gradient_var)
-
-                interpolation_flag = .true.
-                min_rmsd = default_rmsd
-                temp_frame_weights = 0.0d0
-                temp_rmsd_weights = 0.0d0
-                call checkState_new(vals,coords_final,approx_gradient,min_rmsd,&
-                                filechannels,number_of_frames,order,neighbor_check)
+        interpolation_flag = .true.
+        min_rmsd = default_rmsd
+        temp_frame_weights = 0.0d0
+        temp_rmsd_weights = 0.0d0
+        call checkState_new(vals,coords_final,approx_gradient,min_rmsd,&
+                        filechannels,number_of_frames,order,neighbor_check)
 
 !               write(filechannel2,FMT="(I3,3(1x,F13.9))") Ninterpolation, min_rmsd, &
 !                       sqrt(sum((gradient_labelled - approx_gradient)**2)/Natoms),&
 !                       sqrt(sum((gradient_labelled - gradient_var_labelled)**2)/Natoms)
 
-                rmsd_x_interpolated(steps,Nsample) = min_rmsd
-                rmsd_fx_interpolated(steps,Nsample) = &
-                        sqrt(sum((gradient - approx_gradient)**2)/Natoms)
-                rmsd_fx(steps,Nsample) = sqrt(sum((gradient - gradient_var)**2)/Natoms)
-                rmsd_weights(1:steps,steps,Nsample) = temp_frame_weights
-                rmsd_fx_weights(1:steps,steps,Nsample) = temp_rmsd_weights
+        rmsd_x_interpolated(steps,Nsample) = min_rmsd
+        rmsd_fx_interpolated(steps,Nsample) = &
+                sqrt(sum((gradient - approx_gradient)**2)/Natoms)
+        rmsd_fx(steps,Nsample) = sqrt(sum((gradient - gradient_var)**2)/Natoms)
+        rmsd_weights(1:steps,steps,Nsample) = temp_frame_weights
+        rmsd_fx_weights(1:steps,steps,Nsample) = temp_rmsd_weights
 
-                if (maxval(rmsd_fx(1:steps,Nsample),dim=1) < rmsd_fx_interpolated(steps,Nsample)) then
-                        Nanomaly = Nanomaly + 1
-                        write(Nanomaly_text,FMT="(I3)") Nanomaly
-                        open(filechannel3,file=gridpath5//"anomaly"//&
-                                trim(adjustl(Nanomaly_text))//".xyz")
-                        write(filechannel3,FMT="(I4)") Natoms*2
-                        write(filechannel3,FMT="(A)") "Fixed Frame then Offset Frame"
-                        do n = 1, Natoms
-                                write(filechannel3,FMT="(A,3(1x,F9.5))") "H", coords_final(:,n)
-                        end do
-                        do n = 1, Natoms
-                                write(filechannel3,FMT="(A,3(1x,F9.5))") "H", coords(:,n)
-                        end do
-                        close(filechannel3)
-                end if
+        if (maxval(rmsd_fx(1:steps,Nsample),dim=1) < rmsd_fx_interpolated(steps,Nsample)) then
+            Nanomaly = Nanomaly + 1
+            write(Nanomaly_text,FMT="(I3)") Nanomaly
+            open(filechannel3,file=gridpath5//"anomaly"//&
+                    trim(adjustl(Nanomaly_text))//".xyz")
+            write(filechannel3,FMT="(I4)") Natoms*2
+            write(filechannel3,FMT="(A)") "Fixed Frame then Offset Frame"
+            do n = 1, Natoms
+                write(filechannel3,FMT="(A,3(1x,F9.5))") "H", coords_final(:,n)
+            end do
+            do n = 1, Natoms
+                write(filechannel3,FMT="(A,3(1x,F9.5))") "H", coords(:,n)
+            end do
+            close(filechannel3)
+        end if
+    end do
+
+    end do
+
+    close(filechannel2)
+
+    open(filechannel2,file=gridpath5//errorcheckfile)
+    do steps = 1, Ntest
+        selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
+        selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
+        selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
+        selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
+
+        selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
+                                    selected_means(1))**2)/Nsamples)
+        selected_SDs(2) = sqrt(sum((rmsd_x(steps,:)-&
+                                    selected_means(2))**2)/Nsamples)
+        selected_SDs(3) = sqrt(sum((rmsd_fx_interpolated(steps,:)-&
+                                    selected_means(3))**2)/Nsamples)
+        selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
+                                    selected_means(4))**2)/Nsamples)
+
+        write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
+                selected_means(1), selected_SDs(1),&
+                selected_means(2), selected_SDs(2),&
+                selected_means(3), selected_SDs(3),&
+                selected_means(4), selected_SDs(4)
+
+    end do
+    close(filechannel2)
+
+    open(filechannel2,file=gridpath5//"weight"//errorcheckfile)
+    do steps = 1, Ntest
+        selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
+        selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
+        selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
+        selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
+
+        do n = 1, Ntest
+            mean_weights(n) = sum(rmsd_weights(n,steps,:))/Nsamples
+            mean_rmsd_fx(n) = sum(rmsd_fx_weights(n,steps,:))/Nsamples
         end do
 
-        end do
+        write(filechannel2,FMT=*) steps, &
+                selected_means(3), mean_weights, mean_rmsd_fx
 
-        close(filechannel2)
+    end do
+    close(filechannel2)
 
-        open(filechannel2,file=gridpath5//errorcheckfile)
-        do steps = 1, Ntest
-                selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
-                selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
-                selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
-                selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
+    do Nsample = 1, Nsamples
+        rmsd_fx_interpolated(:,Nsample) = rmsd_fx_interpolated(:,Nsample) / rmsd_fx(:,Nsample)
+        rmsd_fx(:,Nsample) = rmsd_fx(1,Nsample) / rmsd_fx(:,Nsample)
+    end do
 
-                selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
-                                            selected_means(1))**2)/Nsamples)
-                selected_SDs(2) = sqrt(sum((rmsd_x(steps,:)-&
-                                            selected_means(2))**2)/Nsamples)
-                selected_SDs(3) = sqrt(sum((rmsd_fx_interpolated(steps,:)-&
-                                            selected_means(3))**2)/Nsamples)
-                selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
-                                            selected_means(4))**2)/Nsamples)
+    open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
+    do steps = 1, Ntest
+        selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
+        selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
+        selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
+        selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
 
-                write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
-                        selected_means(1), selected_SDs(1),&
-                        selected_means(2), selected_SDs(2),&
-                        selected_means(3), selected_SDs(3),&
-                        selected_means(4), selected_SDs(4)
+        selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
+                                    selected_means(1))**2)/Nsamples)
+        selected_SDs(2) = sqrt(sum((rmsd_x(steps,:)-&
+                                    selected_means(2))**2)/Nsamples)
+        selected_SDs(3) = sqrt(sum((rmsd_fx_interpolated(steps,:)-&
+                                    selected_means(3))**2)/Nsamples)
+        selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
+                                    selected_means(4))**2)/Nsamples)
 
-        end do
-        close(filechannel2)
+        write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
+                selected_means(1), selected_SDs(1),&
+                selected_means(2), selected_SDs(2),&
+                selected_means(3), selected_SDs(3),&
+                selected_means(4), selected_SDs(4)
 
-        open(filechannel2,file=gridpath5//"weight"//errorcheckfile)
-        do steps = 1, Ntest
-                selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
-                selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
-                selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
-                selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
+    end do
+    close(filechannel2)
 
-                do n = 1, Ntest
-                        mean_weights(n) = sum(rmsd_weights(n,steps,:))/Nsamples
-                        mean_rmsd_fx(n) = sum(rmsd_fx_weights(n,steps,:))/Nsamples
-                end do
-
-                write(filechannel2,FMT=*) steps, &
-                        selected_means(3), mean_weights, mean_rmsd_fx
-
-        end do
-        close(filechannel2)
-
-        do Nsample = 1, Nsamples
-                rmsd_fx_interpolated(:,Nsample) = rmsd_fx_interpolated(:,Nsample) / rmsd_fx(:,Nsample)
-                rmsd_fx(:,Nsample) = rmsd_fx(1,Nsample) / rmsd_fx(:,Nsample)
-        end do
-
-        open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
-        do steps = 1, Ntest
-                selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
-                selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
-                selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
-                selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
-
-                selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
-                                            selected_means(1))**2)/Nsamples)
-                selected_SDs(2) = sqrt(sum((rmsd_x(steps,:)-&
-                                            selected_means(2))**2)/Nsamples)
-                selected_SDs(3) = sqrt(sum((rmsd_fx_interpolated(steps,:)-&
-                                            selected_means(3))**2)/Nsamples)
-                selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
-                                            selected_means(4))**2)/Nsamples)
-
-                write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
-                        selected_means(1), selected_SDs(1),&
-                        selected_means(2), selected_SDs(2),&
-                        selected_means(3), selected_SDs(3),&
-                        selected_means(4), selected_SDs(4)
-
-        end do
-        close(filechannel2)
-
-        if (gather_interpolation_flag) close(filechannel3)
+    if (gather_interpolation_flag) close(filechannel3)
 
 !       call plotErrorCheck1(vals,Nsamples)
 
-        coords = coords_final
-        velocities = velocities_final
+    coords = coords_final
+    velocities = velocities_final
 
-        end do
+    end do
 
-        deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
-                   approximation_index)
-        if (interpolation_flag)&
-                deallocate(acceptable_frame_mask,inputCLS)
+    deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
+               approximation_index)
+    if (interpolation_flag)&
+            deallocate(acceptable_frame_mask,inputCLS)
 
-        deallocate(rmsd_x_interpolated,rmsd_fx,&
-                   rmsd_fx_interpolated,rmsd_x,&
-                   rmsd_weights,rmsd_fx_weights)
-        deallocate(temp_frame_weights,temp_rmsd_weights)
+    deallocate(rmsd_x_interpolated,rmsd_fx,&
+               rmsd_fx_interpolated,rmsd_x,&
+               rmsd_weights,rmsd_fx_weights)
+    deallocate(temp_frame_weights,temp_rmsd_weights)
 
 end subroutine errorCheck1
 
 subroutine errorCheck2(filechannels)
-        use FUNCTIONS
-        use PARAMETERS
-        use PHYSICS
-        use VARIABLES
-        use ANALYSIS
-        use ls_rmsd_original
-        implicit none
+    use FUNCTIONS
+    use PARAMETERS
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    use ls_rmsd_original
+    implicit none
 
-        !Coordinates, Velocities, and Variables
-        real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities, delta_coords
-        real(dp), dimension(3,Natoms) :: gradient,gradient_var,gradient_labelled,gradient_var_labelled
-        real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
-        real(dp), dimension(Nvar) :: vals
-	real(dp), dimension(3,Natoms) :: coords_initial, velocities_initial 
-	real(dp), dimension(3,Natoms) :: coords_final, velocities_final 
-        integer :: bond_index1, bond_index2
+    !Coordinates, Velocities, and Variables
+    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities, delta_coords
+    real(dp), dimension(3,Natoms) :: gradient,gradient_var,gradient_labelled,gradient_var_labelled
+    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
+    real(dp), dimension(Nvar) :: vals
+    real(dp), dimension(3,Natoms) :: coords_initial, velocities_initial 
+    real(dp), dimension(3,Natoms) :: coords_final, velocities_final 
+    integer :: bond_index1, bond_index2
 
-        real(dp) :: handicap_rmsd
-        real(dp), allocatable :: rmsd_x(:,:),rmsd_x_interpolated(:,:)
-        real(dp), allocatable :: rmsd_fx(:,:),rmsd_fx_interpolated(:,:)
-        real(dp), allocatable :: rmsd_weights(:,:,:)
-        real(dp),dimension(4) :: selected_means,selected_SDs
-        real(dp) :: delta_length
-        integer :: Ntest,Nsamples,Nsample
-        integer :: Nanomaly,Nanomaly_index
-        character(3) :: Nanomaly_text
-        real(dp), allocatable :: mean_weights(:),mean_rmsd_fxs(:)
-        real(dp), allocatable :: inputCLS(:,:),outputCLS(:)
-        real(dp), allocatable :: gradient_steps(:,:,:)
-        real(dp), allocatable :: frame_weights(:)
-        real(dp), allocatable :: restraints(:,:),restraint_values(:)
-        real(dp), allocatable :: minimized_differences2(:,:)
-        real(dp) :: error1,error2
-        real(dp), allocatable :: rmsd_x2_interpolated(:,:)
-        real(dp) :: LSn,LSx,LSy,LSx2,LSxy,LSdet
-        real(dp), allocatable :: LSa1(:),LSa2(:),LSerror(:),convergence(:)
-        integer, allocatable :: dropoff(:)
-        real(dp) :: dropoff_cutoff,dropoff_mean,dropoff_SD
-        real(dp) :: convergence_mean,convergence_SD
+    real(dp) :: handicap_rmsd
+    real(dp), allocatable :: rmsd_x(:,:),rmsd_x_interpolated(:,:)
+    real(dp), allocatable :: rmsd_fx(:,:),rmsd_fx_interpolated(:,:)
+    real(dp), allocatable :: rmsd_weights(:,:,:)
+    real(dp),dimension(4) :: selected_means,selected_SDs
+    real(dp) :: delta_length
+    integer :: Ntest,Nsamples,Nsample
+    integer :: Nanomaly,Nanomaly_index
+    character(3) :: Nanomaly_text
+    real(dp), allocatable :: mean_weights(:),mean_rmsd_fxs(:)
+    real(dp), allocatable :: inputCLS(:,:),outputCLS(:)
+    real(dp), allocatable :: gradient_steps(:,:,:)
+    real(dp), allocatable :: frame_weights(:)
+    real(dp), allocatable :: restraints(:,:),restraint_values(:)
+    real(dp), allocatable :: minimized_differences2(:,:)
+    real(dp) :: error1,error2
+    real(dp), allocatable :: rmsd_x2_interpolated(:,:)
+    real(dp) :: LSn,LSx,LSy,LSx2,LSxy,LSdet
+    real(dp), allocatable :: LSa1(:),LSa2(:),LSerror(:),convergence(:)
+    integer, allocatable :: dropoff(:)
+    real(dp) :: dropoff_cutoff,dropoff_mean,dropoff_SD
+    real(dp) :: convergence_mean,convergence_SD
 
-        !Various other variables
-        real(dp) :: min_rmsd,min_rmsd_prime
-        integer :: number_of_frames,order,neighbor_check
-        character(9) :: vals_interpolation_text
+    !Various other variables
+    real(dp) :: min_rmsd,min_rmsd_prime
+    integer :: number_of_frames,order,neighbor_check
+    character(9) :: vals_interpolation_text
 
-        integer,dimension(1+Ngrid_total),intent(in) :: filechannels
-        real(dp), dimension(3) :: x_center, y_center
-        real(dp), allocatable :: g(:,:)
-        real(dp),dimension(3,3) :: U
-        real(dp),dimension(3,3) :: candidate_U
+    integer,dimension(1+Ngrid_total),intent(in) :: filechannels
+    real(dp), dimension(3) :: x_center, y_center
+    real(dp), allocatable :: g(:,:)
+    real(dp),dimension(3,3) :: U
+    real(dp),dimension(3,3) :: candidate_U
 
-        !Incremental Integer
-        integer :: i,n
+    !Incremental Integer
+    integer :: i,n
 
-        !Initialize the scene
-        call InitialSetup3(coords,velocities)
+    !Initialize the scene
+    call InitialSetup3(coords,velocities)
 
-        coords_initial = coords
-        velocities_initial = velocities
+    coords_initial = coords
+    velocities_initial = velocities
 
-        !Always calculate the variables before accelerating
+    !Always calculate the variables before accelerating
+    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+    !Accelerate the velcocities for a half step (verlet)
+    call Acceleration(vals,coords,gradient)
+
+    !Update the velocities
+    velocities = velocities + 0.5d0 * gradient
+
+    !To randomize the periods of the bond, I let the scene go on
+    !for a small period of time (need to standardize this later)
+    do n = 1, Nbonds
+        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
+            coords = coords + dt * velocities
+            call Acceleration(vals,coords,gradient)
+            velocities = velocities + gradient
+        end do
+
+        !And then reset the bond
+        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
+        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
+        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
+    end do
+
+    Nanomaly = 0
+    Ntest = 30
+    Nsamples = 500
+    allocate(rmsd_x_interpolated(Ntest,Nsamples),rmsd_fx(Ntest,Nsamples),&
+             rmsd_fx_interpolated(Ntest,Nsamples),rmsd_x(Ntest,Nsamples),&
+             rmsd_weights(Ntest,Ntest,Nsamples),rmsd_x2_interpolated(Ntest,Nsamples))
+    allocate(mean_weights(Ntest),mean_rmsd_fxs(Ntest))
+    allocate(inputCLS(Ncoords+Ntest,Ntest),gradient_steps(3,Natoms,Ntest))
+    rmsd_weights = 0.0d0
+
+    open(filechannel3,file=gridpath5//"convergence"//errorcheckfile)
+
+    do
+
+    Nanomaly_index = 0
+    call system("rm "//gridpath5//"weight1"//errorcheckfile)
+
+    do steps = 1, 1000
+        !Upate the coordinates with the velocities
+        coords = coords + dt * velocities
+
+        !Always calculate the variables before checking a frame or accelerating
         call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
-        !Accelerate the velcocities for a half step (verlet)
         call Acceleration(vals,coords,gradient)
 
         !Update the velocities
-        velocities = velocities + 0.5d0 * gradient
+        velocities = velocities + gradient
+    end do
 
-        !To randomize the periods of the bond, I let the scene go on
-        !for a small period of time (need to standardize this later)
-        do n = 1, Nbonds
-                do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-                        coords = coords + dt * velocities
-                        call Acceleration(vals,coords,gradient)
-                        velocities = velocities + gradient
-                end do
+    if (any(vals > var_maxvar)) exit
 
-                !And then reset the bond
-                coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-                coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-                velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-                velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
+    coords_final = coords
+    velocities_final = velocities
+
+    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+    call Acceleration(vals,coords,gradient)
+
+    do n = 1, Natoms
+        coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
+        gradient_labelled(:,n) = gradient(:,BOND_LABELLING_DATA(n))
+    end do
+    print *, "vals:", vals
+
+    open(filechannel2,file=gridpath5//"new"//errorcheckfile)
+
+    do Nsample = 1, Nsamples
+
+    handicap_rmsd = threshold_rmsd* 0.1d0
+
+    !Let's find one good point
+    do
+        do n = 1, Natoms
+        do i = 1, 3
+            delta_coords(i,n) = rand() - 0.5d0
+        end do
         end do
 
-        Nanomaly = 0
-        Ntest = 30
-        Nsamples = 500
-        allocate(rmsd_x_interpolated(Ntest,Nsamples),rmsd_fx(Ntest,Nsamples),&
-                 rmsd_fx_interpolated(Ntest,Nsamples),rmsd_x(Ntest,Nsamples),&
-                 rmsd_weights(Ntest,Ntest,Nsamples),rmsd_x2_interpolated(Ntest,Nsamples))
-        allocate(mean_weights(Ntest),mean_rmsd_fxs(Ntest))
-        allocate(inputCLS(Ncoords+Ntest,Ntest),gradient_steps(3,Natoms,Ntest))
-        rmsd_weights = 0.0d0
+        delta_length = sqrt(sum(delta_coords**2))
 
-        open(filechannel3,file=gridpath5//"convergence"//errorcheckfile)
+        if (delta_length == 0.0d0) cycle
 
-        do
+        coords = coords_final + delta_coords * (handicap_rmsd + &
+                (threshold_rmsd - handicap_rmsd)*rand()) / delta_length
 
-        Nanomaly_index = 0
-        call system("rm "//gridpath5//"weight1"//errorcheckfile)
+        call rmsd_dp(Natoms,coords,coords_final,1,candidate_U,x_center,y_center,min_rmsd)
 
-        do steps = 1, 1000
-                !Upate the coordinates with the velocities
-                coords = coords + dt * velocities
-
-                !Always calculate the variables before checking a frame or accelerating
-                call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-                call Acceleration(vals,coords,gradient)
-
-                !Update the velocities
-                velocities = velocities + gradient
-        end do
-
-        if (any(vals > var_maxvar)) exit
-
-        coords_final = coords
-        velocities_final = velocities
+        if (min_rmsd > handicap_rmsd) cycle
+        
+        handicap_rmsd = min_rmsd
 
         call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-        call Acceleration(vals,coords,gradient)
+        call Acceleration(vals,coords,gradient_var)
 
-        do n = 1, Natoms
-                coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-                gradient_labelled(:,n) = gradient(:,BOND_LABELLING_DATA(n))
+        gradient_var = matmul(candidate_U,gradient_var)
+
+        do i = 1, 3
+            coords(i,:) = &
+            coords(i,:) - x_center(i)
         end do
-        print *, "vals:", vals
 
-        open(filechannel2,file=gridpath5//"new"//errorcheckfile)
+        coords = matmul(candidate_U,coords)
 
-        do Nsample = 1, Nsamples
+        do i = 1, 3
+            coords(i,:) = &
+            coords(i,:) + y_center(i)
+        end do
 
-        handicap_rmsd = threshold_rmsd* 0.1d0
+        inputCLS(1:Ncoords,1) = reshape(coords - coords_final,(/Ncoords/))
+        gradient_steps(:,:,1) = gradient_var
 
-        !Let's find one good point
+        inputCLS(Ncoords+1,:) = 0.0d0
+        inputCLS(Ncoords+1,1) = alpha_ratio*maxval(abs(inputCLS(1:Ncoords,1)))**2
+
+        rmsd_x(1,Nsample) = min_rmsd
+        rmsd_x_interpolated(1,Nsample) = min_rmsd
+        rmsd_fx_interpolated(1,Nsample) = &
+                sqrt(sum((gradient - gradient_var)**2)/Natoms)
+        rmsd_fx(1,Nsample) = rmsd_fx_interpolated(1,Nsample)
+
+        rmsd_x2_interpolated(1,Nsample) = inputCLS(Ncoords+1,1)/alpha_ratio
+
+        rmsd_weights(1,1,Nsample) = 1.0d0
+
+        write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,rmsd_fx(1,Nsample)
+        exit
+    end do
+
+    !Now lets add lots of bad points (but still in threshold)
+    do steps = 2, Ntest
         do
-                do n = 1, Natoms
-                do i = 1, 3
-                        delta_coords(i,n) = rand() - 0.5d0
-                end do
-                end do
+            do n = 1, Natoms
+            do i = 1, 3
+                delta_coords(i,n) = rand() - 0.5d0
+            end do
+            end do
+    
+            delta_length = sqrt(sum(delta_coords**2))
+    
+            if (delta_length >= 1.0d0) cycle
+            if (delta_length == 0.0d0) cycle
 
-                delta_length = sqrt(sum(delta_coords**2))
+            coords = coords_final + delta_coords * &
+                    (min_rmsd + (threshold_rmsd - min_rmsd)*rand())
 
-                if (delta_length == 0.0d0) cycle
+            call rmsd_dp(Natoms,coords,coords_final,1,&
+                         candidate_U,x_center,y_center,min_rmsd)
 
-                coords = coords_final + delta_coords * (handicap_rmsd + &
-                        (threshold_rmsd - handicap_rmsd)*rand()) / delta_length
+            if (min_rmsd >= threshold_rmsd) cycle
 
-                call rmsd_dp(Natoms,coords,coords_final,1,candidate_U,x_center,y_center,min_rmsd)
+            call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+            call Acceleration(vals,coords,gradient_var)
 
-                if (min_rmsd > handicap_rmsd) cycle
-                
-                handicap_rmsd = min_rmsd
+            gradient_var = matmul(candidate_U,gradient_var)
 
-                call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-                call Acceleration(vals,coords,gradient_var)
+            write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,&
+                    sqrt(sum((gradient - gradient_var)**2)/Natoms)
 
-                gradient_var = matmul(candidate_U,gradient_var)
-
-                do i = 1, 3
-                        coords(i,:) = &
-                        coords(i,:) - x_center(i)
-                end do
-
-                coords = matmul(candidate_U,coords)
-
-                do i = 1, 3
-                        coords(i,:) = &
-                        coords(i,:) + y_center(i)
-                end do
-
-                inputCLS(1:Ncoords,1) = reshape(coords - coords_final,(/Ncoords/))
-                gradient_steps(:,:,1) = gradient_var
-
-                inputCLS(Ncoords+1,:) = 0.0d0
-                inputCLS(Ncoords+1,1) = alpha_ratio*maxval(abs(inputCLS(1:Ncoords,1)))**2
-
-                rmsd_x(1,Nsample) = min_rmsd
-                rmsd_x_interpolated(1,Nsample) = min_rmsd
-                rmsd_fx_interpolated(1,Nsample) = &
-                        sqrt(sum((gradient - gradient_var)**2)/Natoms)
-                rmsd_fx(1,Nsample) = rmsd_fx_interpolated(1,Nsample)
-
-                rmsd_x2_interpolated(1,Nsample) = inputCLS(Ncoords+1,1)/alpha_ratio
-
-                rmsd_weights(1,1,Nsample) = 1.0d0
-
-                write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,rmsd_fx(1,Nsample)
-                exit
+            if (min_rmsd <= handicap_rmsd) cycle
+            exit
         end do
 
-        !Now lets add lots of bad points (but still in threshold)
-        do steps = 2, Ntest
-                do
-                        do n = 1, Natoms
-                        do i = 1, 3
-                                delta_coords(i,n) = rand() - 0.5d0
-                        end do
-                        end do
+        do i = 1, 3
+            coords(i,:) = &
+            coords(i,:) - x_center(i)
+        end do
+
+        coords = matmul(candidate_U,coords)
+
+        do i = 1, 3
+            coords(i,:) = &
+            coords(i,:) + y_center(i)
+        end do
+
+        inputCLS(1:Ncoords,steps) = reshape(coords - coords_final,(/Ncoords/))
+        gradient_steps(:,:,steps) = gradient_var
+
+        allocate(frame_weights(steps),&
+                 outputCLS(Ncoords+steps),&
+                 restraints(1,steps),&
+                 restraint_values(1),&
+                 minimized_differences2(steps,1))
         
-                        delta_length = sqrt(sum(delta_coords**2))
+        inputCLS(Ncoords+steps,:) = 0.0d0
+        inputCLS(Ncoords+steps,steps) = alpha_ratio * maxval(abs(inputCLS(1:Ncoords,steps)))**2
         
-                        if (delta_length >= 1.0d0) cycle
-                        if (delta_length == 0.0d0) cycle
+        restraints = 1.0d0
+        restraint_values = 1.0d0
+        outputCLS(1:Ncoords) = 0.0d0
+        outputCLS(Ncoords+1:Ncoords+steps) = 0.0d0
+        
+        call CLS2(inputCLS(1:Ncoords+steps,&
+                  1:steps),Ncoords+steps,steps,&
+                  restraints,1,restraint_values,&
+                  outputCLS,frame_weights(1:steps))
 
-                        coords = coords_final + delta_coords * &
-                                (min_rmsd + (threshold_rmsd - min_rmsd)*rand())
+        approx_gradient = 0.0d0
+        coords = 0.0d0
+        error2 = 0.0d0
+        do n = 1, steps
+            approx_gradient = approx_gradient + frame_weights(n) *&
+                    gradient_steps(:,:,n)
+            coords = coords + reshape((frame_weights(n)*inputCLS(1:Ncoords,n)),&
+                    (/3,Natoms/))
+            error2 = error2 + (frame_weights(n)*inputCLS(Ncoords+n,n))**2
+        end do
+        error1 = sqrt(sum(coords**2)/Natoms)
+        error2 = sqrt(error2)
 
-                        call rmsd_dp(Natoms,coords,coords_final,1,&
-                                     candidate_U,x_center,y_center,min_rmsd)
-
-                        if (min_rmsd >= threshold_rmsd) cycle
-
-                        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-                        call Acceleration(vals,coords,gradient_var)
-
-                        gradient_var = matmul(candidate_U,gradient_var)
-
-                        write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,&
-                                sqrt(sum((gradient - gradient_var)**2)/Natoms)
-
-                        if (min_rmsd <= handicap_rmsd) cycle
-                        exit
-                end do
-
-                do i = 1, 3
-                        coords(i,:) = &
-                        coords(i,:) - x_center(i)
-                end do
-
-                coords = matmul(candidate_U,coords)
-
-                do i = 1, 3
-                        coords(i,:) = &
-                        coords(i,:) + y_center(i)
-                end do
-
-                inputCLS(1:Ncoords,steps) = reshape(coords - coords_final,(/Ncoords/))
-                gradient_steps(:,:,steps) = gradient_var
-
-                allocate(frame_weights(steps),&
-                         outputCLS(Ncoords+steps),&
-                         restraints(1,steps),&
-                         restraint_values(1),&
-                         minimized_differences2(steps,1))
-                
-                inputCLS(Ncoords+steps,:) = 0.0d0
-                inputCLS(Ncoords+steps,steps) = alpha_ratio * maxval(abs(inputCLS(1:Ncoords,steps)))**2
-                
-                restraints = 1.0d0
-                restraint_values = 1.0d0
-                outputCLS(1:Ncoords) = 0.0d0
-                outputCLS(Ncoords+1:Ncoords+steps) = 0.0d0
-                
-                call CLS2(inputCLS(1:Ncoords+steps,&
-                          1:steps),Ncoords+steps,steps,&
-                          restraints,1,restraint_values,&
-                          outputCLS,frame_weights(1:steps))
-
-                approx_gradient = 0.0d0
-                coords = 0.0d0
-                error2 = 0.0d0
-                do n = 1, steps
-                        approx_gradient = approx_gradient + frame_weights(n) *&
-                                gradient_steps(:,:,n)
-                        coords = coords + reshape((frame_weights(n)*inputCLS(1:Ncoords,n)),&
-                                (/3,Natoms/))
-                        error2 = error2 + (frame_weights(n)*inputCLS(Ncoords+n,n))**2
-                end do
-                error1 = sqrt(sum(coords**2)/Natoms)
-                error2 = sqrt(error2)
-
-                rmsd_x(steps,Nsample) = min_rmsd
-                rmsd_x_interpolated(steps,Nsample) = error1
-                rmsd_fx_interpolated(steps,Nsample) = &
-                        sqrt(sum((gradient - approx_gradient)**2)/Natoms)
-                rmsd_fx(steps,Nsample) = sqrt(sum((gradient - gradient_var)**2)/Natoms)
+        rmsd_x(steps,Nsample) = min_rmsd
+        rmsd_x_interpolated(steps,Nsample) = error1
+        rmsd_fx_interpolated(steps,Nsample) = &
+                sqrt(sum((gradient - approx_gradient)**2)/Natoms)
+        rmsd_fx(steps,Nsample) = sqrt(sum((gradient - gradient_var)**2)/Natoms)
 
 !               rmsd_x2_interpolated(steps,Nsample) = error2
-                rmsd_x2_interpolated(steps,Nsample) = error2 / alpha_ratio
+        rmsd_x2_interpolated(steps,Nsample) = error2 / alpha_ratio
 
-                rmsd_weights(1:steps,steps,Nsample) = frame_weights(1:steps)
+        rmsd_weights(1:steps,steps,Nsample) = frame_weights(1:steps)
 
-                deallocate(frame_weights,outputCLS,restraints,restraint_values,minimized_differences2)
+        deallocate(frame_weights,outputCLS,restraints,restraint_values,minimized_differences2)
 
-                if (maxval(rmsd_fx(1:steps,Nsample),dim=1) < rmsd_fx_interpolated(steps,Nsample)) then
-                        Nanomaly_index = Nsample
-                        Nanomaly = Nanomaly + 1
-                        write(Nanomaly_text,FMT="(I3)") Nanomaly
-                        open(filechannel4,file=gridpath5//"anomaly"//&
-                                trim(adjustl(Nanomaly_text))//".xyz")
-                        write(filechannel4,FMT="(I4)") Natoms*2
-                        write(filechannel4,FMT="(A)") "Fixed Frame then Offset Frame"
-                        do n = 1, Natoms
-                                write(filechannel4,FMT="(A,3(1x,F9.5))") "H", coords_final(:,n)
-                        end do
-                        do n = 1, Natoms
-                                write(filechannel4,FMT="(A,3(1x,F9.5))") "H", coords(:,n)
-                        end do
-                        close(filechannel4)
-                end if
-        end do
+        if (maxval(rmsd_fx(1:steps,Nsample),dim=1) < rmsd_fx_interpolated(steps,Nsample)) then
+            Nanomaly_index = Nsample
+            Nanomaly = Nanomaly + 1
+            write(Nanomaly_text,FMT="(I3)") Nanomaly
+            open(filechannel4,file=gridpath5//"anomaly"//&
+                    trim(adjustl(Nanomaly_text))//".xyz")
+            write(filechannel4,FMT="(I4)") Natoms*2
+            write(filechannel4,FMT="(A)") "Fixed Frame then Offset Frame"
+            do n = 1, Natoms
+                write(filechannel4,FMT="(A,3(1x,F9.5))") "H", coords_final(:,n)
+            end do
+            do n = 1, Natoms
+                write(filechannel4,FMT="(A,3(1x,F9.5))") "H", coords(:,n)
+            end do
+            close(filechannel4)
+        end if
+    end do
 
-        end do
+    end do
 
-        close(filechannel2)
+    close(filechannel2)
 
-        open(filechannel2,file=gridpath5//errorcheckfile)
-        do steps = 1, Ntest
-                selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
-                selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
-                selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
-                selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
+    open(filechannel2,file=gridpath5//errorcheckfile)
+    do steps = 1, Ntest
+        selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
+        selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
+        selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
+        selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
 
-                selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
-                                            selected_means(1))**2)/Nsamples)
-                selected_SDs(2) = sqrt(sum((rmsd_x(steps,:)-&
-                                            selected_means(2))**2)/Nsamples)
-                selected_SDs(3) = sqrt(sum((rmsd_fx_interpolated(steps,:)-&
-                                            selected_means(3))**2)/Nsamples)
-                selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
-                                            selected_means(4))**2)/Nsamples)
+        selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
+                                    selected_means(1))**2)/Nsamples)
+        selected_SDs(2) = sqrt(sum((rmsd_x(steps,:)-&
+                                    selected_means(2))**2)/Nsamples)
+        selected_SDs(3) = sqrt(sum((rmsd_fx_interpolated(steps,:)-&
+                                    selected_means(3))**2)/Nsamples)
+        selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
+                                    selected_means(4))**2)/Nsamples)
 
-                write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
-                        selected_means(1), selected_SDs(1),&
-                        selected_means(2), selected_SDs(2),&
-                        selected_means(3), selected_SDs(3),&
-                        selected_means(4), selected_SDs(4)
+        write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
+                selected_means(1), selected_SDs(1),&
+                selected_means(2), selected_SDs(2),&
+                selected_means(3), selected_SDs(3),&
+                selected_means(4), selected_SDs(4)
 
-        end do
-        close(filechannel2)
+    end do
+    close(filechannel2)
 
-        open(filechannel2,file=gridpath5//"linear"//errorcheckfile)
-        do steps = 1, Ntest
-                do Nsample = 1, Nsamples
-                write(filechannel2,FMT="(I3,3(1x,E16.8))") steps, &
-                        rmsd_x_interpolated(steps,Nsample),&
-                        rmsd_x2_interpolated(steps,Nsample),&
-                        rmsd_fx_interpolated(steps,Nsample)
-                end do
-        end do
-        close(filechannel2)
-
-        allocate(LSa1(Ntest),LSa2(Ntest),LSerror(Ntest))
-        allocate(convergence(Nsample),dropoff(Nsample))
-
-        open(filechannel2,file=gridpath5//"dropoff"//errorcheckfile)
+    open(filechannel2,file=gridpath5//"linear"//errorcheckfile)
+    do steps = 1, Ntest
         do Nsample = 1, Nsamples
+        write(filechannel2,FMT="(I3,3(1x,E16.8))") steps, &
+                rmsd_x_interpolated(steps,Nsample),&
+                rmsd_x2_interpolated(steps,Nsample),&
+                rmsd_fx_interpolated(steps,Nsample)
+        end do
+    end do
+    close(filechannel2)
 
-        convergence(Nsample) = 0.0d0
-        do steps = 1, Ntest/2
-                LSn = Ntest - steps + 1
-                LSx = 0.0d0
-                LSx2 = 0.0d0
-                LSy = 0.0d0
-                LSxy = 0.0d0
-                do i = steps, Ntest
-                        LSx  =  LSx + exp(-dble(i))
-                        LSy  =  LSy + log10(rmsd_fx_interpolated(i,Nsample))
-                        LSxy = LSxy + log10(rmsd_fx_interpolated(i,Nsample))*exp(-dble(i))
-                        LSx2 = LSx2 + exp(-dble(i))**2
-                end do
-                LSdet = 1.0d0 / (LSx2*LSn - LSx**2)
-                LSa1(steps) = (LSx2*LSy - LSx*LSxy)*LSdet
-                LSa2(steps) = (LSn*LSxy - LSx*LSy)*LSdet
-                LSerror(steps) = 0.0d0
-                do i = steps, Ntest
-                       LSerror(steps) = LSerror(steps) + &
-                               (LSa1(steps) + LSa2(steps)*exp(-dble(i)) - &
-                               log10(rmsd_fx_interpolated(i,Nsample)))**2
-                end do
-                LSerror(steps) = LSerror(steps) / LSn
-                if (LSerror(steps) == 0) then
-                        convergence(Nsample) = LSa1(steps)
-                        exit
-                end if
+    allocate(LSa1(Ntest),LSa2(Ntest),LSerror(Ntest))
+    allocate(convergence(Nsample),dropoff(Nsample))
+
+    open(filechannel2,file=gridpath5//"dropoff"//errorcheckfile)
+    do Nsample = 1, Nsamples
+
+    convergence(Nsample) = 0.0d0
+    do steps = 1, Ntest/2
+        LSn = Ntest - steps + 1
+        LSx = 0.0d0
+        LSx2 = 0.0d0
+        LSy = 0.0d0
+        LSxy = 0.0d0
+        do i = steps, Ntest
+            LSx  =  LSx + exp(-dble(i))
+            LSy  =  LSy + log10(rmsd_fx_interpolated(i,Nsample))
+            LSxy = LSxy + log10(rmsd_fx_interpolated(i,Nsample))*exp(-dble(i))
+            LSx2 = LSx2 + exp(-dble(i))**2
+        end do
+        LSdet = 1.0d0 / (LSx2*LSn - LSx**2)
+        LSa1(steps) = (LSx2*LSy - LSx*LSxy)*LSdet
+        LSa2(steps) = (LSn*LSxy - LSx*LSy)*LSdet
+        LSerror(steps) = 0.0d0
+        do i = steps, Ntest
+           LSerror(steps) = LSerror(steps) + &
+                   (LSa1(steps) + LSa2(steps)*exp(-dble(i)) - &
+                   log10(rmsd_fx_interpolated(i,Nsample)))**2
+        end do
+        LSerror(steps) = LSerror(steps) / LSn
+        if (LSerror(steps) == 0) then
+            convergence(Nsample) = LSa1(steps)
+            exit
+        end if
 
 !               print *, "   step:", steps
 !               print *, "log(fx):", log10(rmsd_fx_interpolated(steps,Nsample))
 !               print *, "   LSa1:", LSa1(steps)
 !               print *, "   LSa2:", LSa2(steps)
 !               print *, "LSerror:", LSerror(steps)
-                convergence(Nsample) = convergence(Nsample) + &
-                        LSa1(steps) / LSerror(steps)
+        convergence(Nsample) = convergence(Nsample) + &
+                LSa1(steps) / LSerror(steps)
+    end do
+
+    if (minval(LSerror(1:Ntest/2)) == 0) then
+    else
+        convergence(Nsample) = convergence(Nsample) /&
+                sum(LSerror(1:Ntest/2)**(-1))
+    end if
+    dropoff_cutoff = sqrt(rmsd_fx_interpolated(1,Nsample)*&
+                            10.0d0**(convergence(Nsample)))
+    dropoff(Nsample) = minloc(rmsd_fx_interpolated(1:Ntest,Nsample),1,&
+            rmsd_fx_interpolated(1:Ntest,Nsample)>dropoff_cutoff) + 1
+
+    write(filechannel2,FMT="(I3,1x,F15.11,1x,I3)") Nsample, &
+            convergence(Nsample), dropoff(Nsample)
+    end do
+    close(filechannel2)
+
+    dropoff_mean = sum(dropoff)*1.0d0/Nsamples
+    convergence_mean = sum(convergence)/Nsamples
+
+    dropoff_SD = sqrt(sum((dropoff-dropoff_mean)**2)/Nsamples)
+    convergence_SD = sqrt(sum((convergence-convergence_mean)**2)/Nsamples)
+
+    deallocate(LSa1,LSa2,LSerror,convergence,dropoff)
+
+    open(filechannel2,file=gridpath5//"heatmapline"//errorcheckfile)
+    do steps = 1, Ntest
+        write(filechannel2,FMT="(I3,3(1x,E16.8))") steps, &
+                rmsd_x_interpolated(steps,min(1+Nsamples/2,69)),&
+                rmsd_x2_interpolated(steps,min(1+Nsamples/2,69)),&
+                rmsd_fx_interpolated(steps,min(1+Nsamples/2,69))
+    end do
+    close(filechannel2)
+
+    open(filechannel2,file=gridpath5//"ratio"//errorcheckfile)
+    do steps = 1, Ntest
+        do Nsample = 1, Nsamples
+        write(filechannel2,FMT="(I3,3(1x,F15.11))") steps, &
+                rmsd_fx_interpolated(steps,Nsample)/&
+                rmsd_fx(1,Nsample),&
+                rmsd_fx_interpolated(steps,Nsample)/&
+                rmsd_fx(steps,Nsample),&
+                rmsd_fx_interpolated(steps,Nsample)/&
+                maxval(rmsd_fx(1:steps,Nsample),dim=1)
         end do
+    end do
+    close(filechannel2)
 
-        if (minval(LSerror(1:Ntest/2)) == 0) then
-        else
-                convergence(Nsample) = convergence(Nsample) /&
-                        sum(LSerror(1:Ntest/2)**(-1))
-        end if
-        dropoff_cutoff = sqrt(rmsd_fx_interpolated(1,Nsample)*&
-                                10.0d0**(convergence(Nsample)))
-        dropoff(Nsample) = minloc(rmsd_fx_interpolated(1:Ntest,Nsample),1,&
-                rmsd_fx_interpolated(1:Ntest,Nsample)>dropoff_cutoff) + 1
+    if (Nanomaly_index > 0) then
+    open(filechannel2,file=gridpath5//"weight1"//errorcheckfile)
+    do steps = 1, Ntest
+        selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
+        selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
+        selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
+        selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
 
-        write(filechannel2,FMT="(I3,1x,F15.11,1x,I3)") Nsample, &
-                convergence(Nsample), dropoff(Nsample)
-        end do
-        close(filechannel2)
-
-        dropoff_mean = sum(dropoff)*1.0d0/Nsamples
-        convergence_mean = sum(convergence)/Nsamples
-
-        dropoff_SD = sqrt(sum((dropoff-dropoff_mean)**2)/Nsamples)
-        convergence_SD = sqrt(sum((convergence-convergence_mean)**2)/Nsamples)
-
-        deallocate(LSa1,LSa2,LSerror,convergence,dropoff)
-
-        open(filechannel2,file=gridpath5//"heatmapline"//errorcheckfile)
-        do steps = 1, Ntest
-                write(filechannel2,FMT="(I3,3(1x,E16.8))") steps, &
-                        rmsd_x_interpolated(steps,min(1+Nsamples/2,69)),&
-                        rmsd_x2_interpolated(steps,min(1+Nsamples/2,69)),&
-                        rmsd_fx_interpolated(steps,min(1+Nsamples/2,69))
-        end do
-        close(filechannel2)
-
-        open(filechannel2,file=gridpath5//"ratio"//errorcheckfile)
-        do steps = 1, Ntest
-                do Nsample = 1, Nsamples
-                write(filechannel2,FMT="(I3,3(1x,F15.11))") steps, &
-                        rmsd_fx_interpolated(steps,Nsample)/&
-                        rmsd_fx(1,Nsample),&
-                        rmsd_fx_interpolated(steps,Nsample)/&
-                        rmsd_fx(steps,Nsample),&
-                        rmsd_fx_interpolated(steps,Nsample)/&
-                        maxval(rmsd_fx(1:steps,Nsample),dim=1)
-                end do
-        end do
-        close(filechannel2)
-
-        if (Nanomaly_index > 0) then
-        open(filechannel2,file=gridpath5//"weight1"//errorcheckfile)
-        do steps = 1, Ntest
-                selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
-                selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
-                selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
-                selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
-
-                do n = 1, Ntest
+        do n = 1, Ntest
 !                       mean_weights(n) = sum(abs(rmsd_weights(n,steps,:)))/Nsamples
 !                       mean_rmsd_fxs(n) = sum(rmsd_fx(n,:))/Nsamples
-                        mean_weights(n) = abs(rmsd_weights(n,steps,Nanomaly_index))
-                        mean_rmsd_fxs(n) = rmsd_fx(n,Nanomaly_index)
-                end do
+            mean_weights(n) = abs(rmsd_weights(n,steps,Nanomaly_index))
+            mean_rmsd_fxs(n) = rmsd_fx(n,Nanomaly_index)
+        end do
 
 !               write(filechannel2,FMT=*) steps, &
 !                       selected_means(3), mean_weights, mean_rmsd_fxs
-                write(filechannel2,FMT=*) steps,&
-                        rmsd_fx_interpolated(steps,Nanomaly_index),&
-                        mean_weights, mean_rmsd_fxs
+        write(filechannel2,FMT=*) steps,&
+                rmsd_fx_interpolated(steps,Nanomaly_index),&
+                mean_weights, mean_rmsd_fxs
 
-        end do
-        close(filechannel2)
-        end if
+    end do
+    close(filechannel2)
+    end if
 
 !       open(filechannel2,file=gridpath0//"weight2"//errorcheckfile)
 !       do steps = 1, Ntest
@@ -2592,26 +2611,26 @@ subroutine errorCheck2(filechannels)
 !               rmsd_fx(:,Nsample) = rmsd_fx(1,Nsample) / rmsd_fx(:,Nsample)
 !       end do
 
-        do Nsample = 1, Nsamples
-                rmsd_fx_interpolated(:,Nsample) = rmsd_fx_interpolated(:,Nsample) / rmsd_fx(1,Nsample)
-                rmsd_fx(:,Nsample) = rmsd_fx(:,Nsample) / rmsd_fx(1,Nsample)
-        end do
+    do Nsample = 1, Nsamples
+        rmsd_fx_interpolated(:,Nsample) = rmsd_fx_interpolated(:,Nsample) / rmsd_fx(1,Nsample)
+        rmsd_fx(:,Nsample) = rmsd_fx(:,Nsample) / rmsd_fx(1,Nsample)
+    end do
 
-        open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
-        do steps = 1, Ntest
+    open(filechannel2,file=gridpath5//"relative"//errorcheckfile)
+    do steps = 1, Ntest
 !               selected_means(1) = sum(rmsd_x_interpolated(steps,:))/Nsamples
 !               selected_means(2) = sum(rmsd_x(steps,:))/Nsamples
 !               selected_means(3) = sum(rmsd_fx_interpolated(steps,:))/Nsamples
 !               selected_means(4) = sum(rmsd_fx(steps,:))/Nsamples
 
-                selected_means(1) = (maxval(rmsd_x_interpolated(steps,:)) +&
-                                     minval(rmsd_x_interpolated(steps,:)))/2
-                selected_means(2) = (maxval(rmsd_x(steps,:)) +&
-                                     minval(rmsd_x(steps,:)))/2
-                selected_means(3) = (maxval(rmsd_fx_interpolated(steps,:)) +&
-                                     minval(rmsd_fx_interpolated(steps,:)))/2
-                selected_means(4) = (maxval(rmsd_fx(steps,:)) +&
-                                     minval(rmsd_fx(steps,:)))/2
+        selected_means(1) = (maxval(rmsd_x_interpolated(steps,:)) +&
+                             minval(rmsd_x_interpolated(steps,:)))/2
+        selected_means(2) = (maxval(rmsd_x(steps,:)) +&
+                             minval(rmsd_x(steps,:)))/2
+        selected_means(3) = (maxval(rmsd_fx_interpolated(steps,:)) +&
+                             minval(rmsd_fx_interpolated(steps,:)))/2
+        selected_means(4) = (maxval(rmsd_fx(steps,:)) +&
+                             minval(rmsd_fx(steps,:)))/2
 
 !               selected_SDs(1) = sqrt(sum((rmsd_x_interpolated(steps,:)-&
 !                                           selected_means(1))**2)/Nsamples)
@@ -2622,43 +2641,43 @@ subroutine errorCheck2(filechannels)
 !               selected_SDs(4) = sqrt(sum((rmsd_fx(steps,:)-&
 !                                           selected_means(4))**2)/Nsamples)
 
-                selected_SDs(1) = (maxval(rmsd_x_interpolated(steps,:))-&
-                                   minval(rmsd_x_interpolated(steps,:)))/2
-                selected_SDs(2) = (maxval(rmsd_x(steps,:))-&
-                                   minval(rmsd_x(steps,:)))/2
-                selected_SDs(3) = (maxval(rmsd_fx_interpolated(steps,:))-&
-                                   minval(rmsd_fx_interpolated(steps,:)))/2
-                selected_SDs(4) = (maxval(rmsd_fx(steps,:))-&
-                                   minval(rmsd_fx(steps,:)))/2
+        selected_SDs(1) = (maxval(rmsd_x_interpolated(steps,:))-&
+                           minval(rmsd_x_interpolated(steps,:)))/2
+        selected_SDs(2) = (maxval(rmsd_x(steps,:))-&
+                           minval(rmsd_x(steps,:)))/2
+        selected_SDs(3) = (maxval(rmsd_fx_interpolated(steps,:))-&
+                           minval(rmsd_fx_interpolated(steps,:)))/2
+        selected_SDs(4) = (maxval(rmsd_fx(steps,:))-&
+                           minval(rmsd_fx(steps,:)))/2
 
-                write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
-                        selected_means(1), selected_SDs(1),&
-                        selected_means(2), selected_SDs(2),&
-                        selected_means(3), selected_SDs(3),&
-                        selected_means(4), selected_SDs(4)
+        write(filechannel2,FMT="(I3,8(1x,F15.11))") steps, &
+                selected_means(1), selected_SDs(1),&
+                selected_means(2), selected_SDs(2),&
+                selected_means(3), selected_SDs(3),&
+                selected_means(4), selected_SDs(4)
 
-        end do
-        close(filechannel2)
+    end do
+    close(filechannel2)
 
-        write(filechannel3,FMT=*) vals,dropoff_mean,dropoff_SD,&
-                convergence_mean,convergence_SD
+    write(filechannel3,FMT=*) vals,dropoff_mean,dropoff_SD,&
+            convergence_mean,convergence_SD
 
-        call plotErrorCheck1(vals,Nsamples,&
-                dropoff_mean,dropoff_SD,convergence_mean,convergence_SD)
+    call plotErrorCheck1(vals,Nsamples,&
+            dropoff_mean,dropoff_SD,convergence_mean,convergence_SD)
 
-        coords = coords_final
-        velocities = velocities_final
+    coords = coords_final
+    velocities = velocities_final
 
-        end do
+    end do
 
-        close(filechannel3)
+    close(filechannel3)
 
-        deallocate(rmsd_x_interpolated,rmsd_fx,&
-                   rmsd_fx_interpolated,rmsd_x,&
-                   rmsd_weights)
-        deallocate(inputCLS,gradient_steps)
+    deallocate(rmsd_x_interpolated,rmsd_fx,&
+               rmsd_fx_interpolated,rmsd_x,&
+               rmsd_weights)
+    deallocate(inputCLS,gradient_steps)
 
-        call plotFinalErrorCheck1(Nsamples)
+    call plotFinalErrorCheck1(Nsamples)
 
 end subroutine errorCheck2
 

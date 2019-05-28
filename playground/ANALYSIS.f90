@@ -147,7 +147,7 @@ logical,parameter :: testtraj_flag = .true.
             integer :: interpolation_counter
             logical :: interpolation_check_visual = .false.
 
-            real(dp) :: alpha_ratio = 1.0d8
+            real(dp) :: alpha_ratio = 1.0d2
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

@@ -1761,9 +1761,9 @@ gridpath5 = gridpath4//intermediatefolder
 
 !Initialization
 if (SATRVname == "ScatteringAngle") then
-        Nbins = scatteringangleBins
+    Nbins = scatteringangleBins
 else
-        Nbins = energychangeBins
+    Nbins = energychangeBins
 end if
 
 allocate(referenceBins(Nbins),&
@@ -1773,28 +1773,28 @@ allocate(binTotal(Nbins,comparison_number))
 
 open(filechannel1,file=gridpath5//"Adjusted"//SATRVname//cumulativefile//".dat")
 do j = 1, Nbins
-        read(filechannel1,FMT=*) referenceBins(j), referenceMeans(j), referenceSDs(j)
+    read(filechannel1,FMT=*) referenceBins(j), referenceMeans(j), referenceSDs(j)
 end do
 close(filechannel1)
 
 binTotal = 0
 open(filechannel1,file=gridpath5//allprefixes(1:alllengths(1)-1)//binnedSATRVfile)
 do j = 1, Ntesttraj
-        read(filechannel1,FMT=*) SATRVdata
-        binTotal(SATRVdata(SATRVcolumn),1) = &
-                 binTotal(SATRVdata(SATRVcolumn),1) + 1
+    read(filechannel1,FMT=*) SATRVdata
+    binTotal(SATRVdata(SATRVcolumn),1) = &
+             binTotal(SATRVdata(SATRVcolumn),1) + 1
 end do
 close(filechannel1)
 
 do i = 1, comparison_number-1
-        open(filechannel1,file=gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
-                               binnedSATRVfile)
-        do j = 1, Ntesttraj
-                read(filechannel1,FMT=*) SATRVdata
-                binTotal(SATRVdata(SATRVcolumn),i+1) = &
-                         binTotal(SATRVdata(SATRVcolumn),i+1) + 1
-        end do
-        close(filechannel1)
+    open(filechannel1,file=gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
+                           binnedSATRVfile)
+    do j = 1, Ntesttraj
+        read(filechannel1,FMT=*) SATRVdata
+        binTotal(SATRVdata(SATRVcolumn),i+1) = &
+                 binTotal(SATRVdata(SATRVcolumn),i+1) + 1
+    end do
+    close(filechannel1)
 end do
 
 !This is the gnuplot code to make the plots
@@ -1821,10 +1821,10 @@ write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set ytics font ",16"'
 
 if (SATRVname == "ScatteringAngle") then
-        write(gnuplotchannel,*) 'scaling = 1'
-        write(gnuplotchannel,*) 'pi = 3.14159265'
+    write(gnuplotchannel,*) 'scaling = 1'
+    write(gnuplotchannel,*) 'pi = 3.14159265'
 else
-        write(gnuplotchannel,*) 'scaling = 1000'
+    write(gnuplotchannel,*) 'scaling = 1000'
 end if
 
 write(gnuplotchannel,*) 'lowerlimit = scaling * ', lowerlimit
@@ -1840,11 +1840,11 @@ comparisonKS = 0
 comparisonCDF = 0
 comparisonKRP = 0
 do j = 1, Nbins
-        comparisonCDF = comparisonCDF + 1.0*binTotal(j,1) - referenceMeans(j)
-        comparisonKS = max(comparisonKS, abs(comparisonCDF))
-        comparisonRMSD = comparisonRMSD + (1.0*bintotal(j,1) - referenceMeans(j))**2
-        comparisonKRP = comparisonKRP + (abs(1.0*bintotal(j,1) - referenceMeans(j)) / &
-                                        max(minsd_penalty,referenceSDs(j)))**lambda_penalty
+    comparisonCDF = comparisonCDF + 1.0*binTotal(j,1) - referenceMeans(j)
+    comparisonKS = max(comparisonKS, abs(comparisonCDF))
+    comparisonRMSD = comparisonRMSD + (1.0*bintotal(j,1) - referenceMeans(j))**2
+    comparisonKRP = comparisonKRP + (abs(1.0*bintotal(j,1) - referenceMeans(j)) / &
+                                    max(minsd_penalty,referenceSDs(j)))**lambda_penalty
 end do
 
 write(gnuplotchannel,*) 'set label 1 "'//allprefixes(1:alllengths(1)-1)//'" at graph 0.825, 0.9'
@@ -1853,9 +1853,6 @@ write(gnuplotchannel,*) 'set label 2" RMSD: '//difference_text//'" at graph 0.85
 write(difference_text,FMT="(F8.4)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
 write(gnuplotchannel,*) 'set label 3" KRP: '//difference_text//'" at graph 0.85,0.750'
 write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
-!write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(1:alllengths(1))//&
-!                        SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
-!                        ')):(1.0) smooth frequency w boxes, \'
 write(gnuplotchannel,*) 'plot "'//gridpath5//allprefixes(1:alllengths(1)-1)//&
                         binnedSATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
                         ')):(1.0) smooth frequency w boxes, \'
@@ -1865,51 +1862,48 @@ write(gnuplotchannel,*) '     "'//gridpath5//'Adjusted'//SATRVname//cumulativefi
 write(gnuplotchannel,*) '     "'//gridpath5//'Adjusted'//SATRVname//cumulativefile//&
                         '.dat" u (scaling*($1)):2:3 w yerrorbars'
 do i = 1, comparison_number-1
-        comparisonRMSD = 0
-        comparisonKS = 0
-        comparisonCDF = 0
-        comparisonKRP = 0
-        do j = 1, Nbins
-                comparisonCDF = comparisonCDF + 1.0*binTotal(j,i+1) - referenceMeans(j)
-                comparisonKS = max(comparisonKS, abs(comparisonCDF))
-                comparisonRMSD = comparisonRMSD + (1.0*binTotal(j,i+1) - referenceMeans(j))**2
-                comparisonKRP = comparisonKRP + (abs(1.0*bintotal(j,i+1) - referenceMeans(j)) / &
-                                                max(minsd_penalty,referenceSDs(j)))**lambda_penalty
-        end do
+    comparisonRMSD = 0
+    comparisonKS = 0
+    comparisonCDF = 0
+    comparisonKRP = 0
+    do j = 1, Nbins
+        comparisonCDF = comparisonCDF + 1.0*binTotal(j,i+1) - referenceMeans(j)
+        comparisonKS = max(comparisonKS, abs(comparisonCDF))
+        comparisonRMSD = comparisonRMSD + (1.0*binTotal(j,i+1) - referenceMeans(j))**2
+        comparisonKRP = comparisonKRP + (abs(1.0*bintotal(j,i+1) - referenceMeans(j)) / &
+                                        max(minsd_penalty,referenceSDs(j)))**lambda_penalty
+    end do
 
-        write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
-                                '" at graph 0.825, 0.9'
-        write(difference_text,FMT="(F8.4)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
-        write(gnuplotchannel,*) 'set label ',3*i+2,'" RMSD: '//difference_text//'" at graph 0.85,0.825'
-        write(difference_text,FMT="(F8.2)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
-        write(gnuplotchannel,*) 'set label ',3*i+3,'" KRP: '//difference_text//'" at graph 0.85,0.750'
-        write(gnuplotchannel,*) 'unset label ', 3*i-2
-        write(gnuplotchannel,*) 'unset label ', 3*i-1
-        write(gnuplotchannel,*) 'unset label ', 3*i
-        if (i == comparison_number-1) then
-                if (SATRVname == "ScatteringAngle") then
-                        write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)" font ",24"'
-                        write(gnuplotchannel,*) 'set xtics lowerlimit, 10*(upperlimit-lowerlimit)/',&
-                                                Nbins,', upperlimit font ",16"'
-                        write(gnuplotchannel,*) "set format x '%.3P π'"
-                else
-                        write(gnuplotchannel,*) 'set xlabel "Energy Change (meV)" font ",24"'
-                        write(gnuplotchannel,*) 'set xtics lowerlimit, 10*box_width, upperlimit font ",16"'
-                        write(gnuplotchannel,*) "set format x '%.3f'"
-                end if
+    write(gnuplotchannel,*) 'set label ', 3*i+1, '"'//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
+                            '" at graph 0.825, 0.9'
+    write(difference_text,FMT="(F8.4)") sqrt(comparisonRMSD * 1.0 / (Nbins - 1.0))
+    write(gnuplotchannel,*) 'set label ',3*i+2,'" RMSD: '//difference_text//'" at graph 0.85,0.825'
+    write(difference_text,FMT="(F8.2)") (comparisonKRP * 1.0 / (Nbins - 1.0))**(1.0/lambda_penalty)
+    write(gnuplotchannel,*) 'set label ',3*i+3,'" KRP: '//difference_text//'" at graph 0.85,0.750'
+    write(gnuplotchannel,*) 'unset label ', 3*i-2
+    write(gnuplotchannel,*) 'unset label ', 3*i-1
+    write(gnuplotchannel,*) 'unset label ', 3*i
+    if (i == comparison_number-1) then
+        if (SATRVname == "ScatteringAngle") then
+            write(gnuplotchannel,*) 'set xlabel "Scattering Angle (rad)" font ",24"'
+            write(gnuplotchannel,*) 'set xtics lowerlimit, 10*(upperlimit-lowerlimit)/',&
+                                    Nbins,', upperlimit font ",16"'
+            write(gnuplotchannel,*) "set format x '%.3P π'"
+        else
+            write(gnuplotchannel,*) 'set xlabel "Energy Change (meV)" font ",24"'
+            write(gnuplotchannel,*) 'set xtics lowerlimit, 10*box_width, upperlimit font ",16"'
+            write(gnuplotchannel,*) "set format x '%.3f'"
         end if
-        write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
-!        write(gnuplotchannel,*) 'plot "'//gridpath0//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1)))//&
-!                                SATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
-!                                ')):(1.0) smooth frequency w boxes, \'
-        write(gnuplotchannel,*) 'plot "'//gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
-                                binnedSATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
-                                ')):(1.0) smooth frequency w boxes, \'
-        write(gnuplotchannel,*) '     "'//gridpath5//'Adjusted'//SATRVname//cumulativefile//&
-                                '.dat" u (scaling*($1)):2 w boxes'//&
-                                ' fs transparent solid 0.5 noborder, \'
-        write(gnuplotchannel,*) '     "'//gridpath5//'Adjusted'//SATRVname//cumulativefile//&
-                                '.dat" u (scaling*($1)):2:3 w yerrorbars'
+    end if
+    write(variable_length_text,FMT=FMT5_variable) SATRVcolumn
+    write(gnuplotchannel,*) 'plot "'//gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
+                            binnedSATRVfile//'" u (rounded($'//trim(adjustl(variable_length_text))//&
+                            ')):(1.0) smooth frequency w boxes, \'
+    write(gnuplotchannel,*) '     "'//gridpath5//'Adjusted'//SATRVname//cumulativefile//&
+                            '.dat" u (scaling*($1)):2 w boxes'//&
+                            ' fs transparent solid 0.5 noborder, \'
+    write(gnuplotchannel,*) '     "'//gridpath5//'Adjusted'//SATRVname//cumulativefile//&
+                            '.dat" u (scaling*($1)):2:3 w yerrorbars'
 end do
 close(gnuplotchannel)
 
@@ -1985,8 +1979,6 @@ end subroutine getComparedScatteringAngles
 !               gridpath0//prefix_filename//    DAT                             Stores the initial and final frames of a
 !                 timeslicefile                                                 set of trajectories corresponding to the
 !                                                                               specified prefix
-!               gridpath0//prefix_filename//    DAT                             Unused at the moment for this subroutine
-!                 intialfile                                            
 !               gridpath0//prefix_filename//    DAT                             Stores the scattering angle and energy change
 !                 SATRVfile                                                     decomposition for a set of trajectories
 !                                                                               corresponding to the specified prefix
@@ -2029,116 +2021,112 @@ integer :: atom1, atom2
 !INCREMENTAL INTEGERS
 integer :: i, j, k
 
-	open(filechannel1,file=gridpath0//prefix_filename//timeslicefile)
-	open(filechannel2,file=gridpath0//prefix_filename//initialfile)
-	open(filechannel3,file=gridpath0//prefix_filename//SATRVfile)
-	do k = 1, Ntraj
-		read(filechannel1,FMTtimeslice) &
-                        ((coords_initial(i,j),i=1,3),j=1,Natoms),&
-                        ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
-                        ((coords_final(i,j),i=1,3),j=1,Natoms),&
-                        ((velocities_final(i,j),i=1,3),j=1,Natoms)
-!		read(filechannel2,FMTinitial) ((initial_bonding_data(i,j),j=1,6),i=1,Nbonds)
-!		read(filechannel2,FMT=*) ((initial_bonding_data(j,i),j=1,6),i=1,Nbonds)
+    open(filechannel1,file=gridpath0//prefix_filename//timeslicefile)
+    open(filechannel2,file=gridpath0//prefix_filename//SATRVfile)
+    do k = 1, Ntraj
+        read(filechannel1,FMTtimeslice) &
+                ((coords_initial(i,j),i=1,3),j=1,Natoms),&
+                ((velocities_initial(i,j),i=1,3),j=1,Natoms),&
+                ((coords_final(i,j),i=1,3),j=1,Natoms),&
+                ((velocities_final(i,j),i=1,3),j=1,Natoms)
 
-		relTranslationalEnergy1 = 0.0d0
-		relTranslationalEnergy2 = 0.0d0
-		absTranslationalEnergy1 = 0.0d0
-		absTranslationalEnergy2 = 0.0d0
-		RotationalEnergy1 = 0.0d0
-		RotationalEnergy2 = 0.0d0
-		TotalEnergy1 = 0.0d0
-		TotalEnergy2 = 0.0d0
+        relTranslationalEnergy1 = 0.0d0
+        relTranslationalEnergy2 = 0.0d0
+        absTranslationalEnergy1 = 0.0d0
+        absTranslationalEnergy2 = 0.0d0
+        RotationalEnergy1 = 0.0d0
+        RotationalEnergy2 = 0.0d0
+        TotalEnergy1 = 0.0d0
+        TotalEnergy2 = 0.0d0
 
-		velocity1_CM = 0.0d0
-		velocity2_CM = 0.0d0
-		do i = 1, Natoms
-			velocity1_CM = velocity1_CM + velocities_initial(:,i)
-			velocity2_CM = velocity2_CM + velocities_final(:,i)
-			TotalEnergy1 = TotalEnergy1 + KineticEnergy(velocities_initial(:,i))
-			TotalEnergy2 = TotalEnergy2 + KineticEnergy(velocities_final(:,i))
-		end do
-		velocity1_CM = velocity1_CM / Natoms
-		velocity2_CM = velocity2_CM / Natoms
+        velocity1_CM = 0.0d0
+        velocity2_CM = 0.0d0
+        do i = 1, Natoms
+            velocity1_CM = velocity1_CM + velocities_initial(:,i)
+            velocity2_CM = velocity2_CM + velocities_final(:,i)
+            TotalEnergy1 = TotalEnergy1 + KineticEnergy(velocities_initial(:,i))
+            TotalEnergy2 = TotalEnergy2 + KineticEnergy(velocities_final(:,i))
+        end do
+        velocity1_CM = velocity1_CM / Natoms
+        velocity2_CM = velocity2_CM / Natoms
 
-		do i = 1, Nbonds
-			atom1 = BONDING_DATA(i,1)
-			atom2 = BONDING_DATA(i,2)
+        do i = 1, Nbonds
+            atom1 = BONDING_DATA(i,1)
+            atom2 = BONDING_DATA(i,2)
 
-			velocity1 = (velocities_initial(:,atom1) + velocities_initial(:,atom2)) / 2
-			velocity2 = (velocities_final(:,atom1) + velocities_final(:,atom2)) / 2
+            velocity1 = (velocities_initial(:,atom1) + velocities_initial(:,atom2)) / 2
+            velocity2 = (velocities_final(:,atom1) + velocities_final(:,atom2)) / 2
 
-			absTranslationalEnergy1 = absTranslationalEnergy1 + 2*KineticEnergy(velocity1)
-			absTranslationalEnergy2 = absTranslationalEnergy2 + 2*KineticEnergy(velocity2)
-			relTranslationalEnergy1 = relTranslationalEnergy1 + &
-                                                  2*KineticEnergy(velocity1-velocity1_CM)
-			relTranslationalEnergy2 = relTranslationalEnergy2 + &
-                                                  2*KineticEnergy(velocity2-velocity2_CM)
+            absTranslationalEnergy1 = absTranslationalEnergy1 + 2*KineticEnergy(velocity1)
+            absTranslationalEnergy2 = absTranslationalEnergy2 + 2*KineticEnergy(velocity2)
+            relTranslationalEnergy1 = relTranslationalEnergy1 + &
+                                      2*KineticEnergy(velocity1-velocity1_CM)
+            relTranslationalEnergy2 = relTranslationalEnergy2 + &
+                                      2*KineticEnergy(velocity2-velocity2_CM)
 
-			coords1 = coords_initial(:,atom1)
-			coords2 = coords_initial(:,atom2)
-			TotalEnergy1 = TotalEnergy1 + HOPotential(coords1,coords2)
-			RotationalEnergy1 = RotationalEnergy1 + RotationalEnergy(coords1,coords2,&
-                                                                velocities_initial(:,atom1),velocities_initial(:,atom2))
-                                           
-			coords1 = coords_final(:,atom1)
-			coords2 = coords_final(:,atom2)
-			TotalEnergy2 = TotalEnergy2 + HOPotential(coords1,coords2)
-			RotationalEnergy2 = RotationalEnergy2 + RotationalEnergy(coords1,coords2,&
-                                                                velocities_final(:,atom1),velocities_final(:,atom2))
-		end do
+            coords1 = coords_initial(:,atom1)
+            coords2 = coords_initial(:,atom2)
+            TotalEnergy1 = TotalEnergy1 + HOPotential(coords1,coords2)
+            RotationalEnergy1 = RotationalEnergy1 + RotationalEnergy(coords1,coords2,&
+                                                    velocities_initial(:,atom1),velocities_initial(:,atom2))
+                               
+            coords1 = coords_final(:,atom1)
+            coords2 = coords_final(:,atom2)
+            TotalEnergy2 = TotalEnergy2 + HOPotential(coords1,coords2)
+            RotationalEnergy2 = RotationalEnergy2 + RotationalEnergy(coords1,coords2,&
+                                                    velocities_final(:,atom1),velocities_final(:,atom2))
+        end do
 
-		velocity_in = 0.0d0
-		velocity_out = 0.0d0
-		do i = 1, Natoms
-			if (all(BONDING_DATA /= i)) then
-			velocity1 = velocities_initial(:,i)
-			velocity2 = velocities_final(:,i)
+        velocity_in = 0.0d0
+        velocity_out = 0.0d0
+        do i = 1, Natoms
+            if (all(BONDING_DATA /= i)) then
+            velocity1 = velocities_initial(:,i)
+            velocity2 = velocities_final(:,i)
 
-			absTranslationalEnergy1 = absTranslationalEnergy1 + KineticEnergy(velocity1)
-			absTranslationalEnergy2 = absTranslationalEnergy2 + KineticEnergy(velocity2)
-			relTranslationalEnergy1 = relTranslationalEnergy1 + &
-                                                  KineticEnergy(velocity1-velocity1_CM)
-			relTranslationalEnergy2 = relTranslationalEnergy2 + &
-                                                  KineticEnergy(velocity2-velocity2_CM)
-			end if
+            absTranslationalEnergy1 = absTranslationalEnergy1 + KineticEnergy(velocity1)
+            absTranslationalEnergy2 = absTranslationalEnergy2 + KineticEnergy(velocity2)
+            relTranslationalEnergy1 = relTranslationalEnergy1 + &
+                                      KineticEnergy(velocity1-velocity1_CM)
+            relTranslationalEnergy2 = relTranslationalEnergy2 + &
+                                      KineticEnergy(velocity2-velocity2_CM)
+            end if
 
-			if (COLLISION_DATA(i) == 1) then
-				velocity_in = velocity_in + velocities_initial(:,i)
-			else
-				velocity_out = velocity_out + velocities_final(:,i)
-			end if
-		end do
-		velocity_in = velocity_in / (sum(COLLISION_DATA))
-		velocity_out = velocity_out / (Natoms - sum(COLLISION_DATA))
+            if (COLLISION_DATA(i) == 1) then
+                velocity_in = velocity_in + velocities_initial(:,i)
+            else
+                velocity_out = velocity_out + velocities_final(:,i)
+            end if
+        end do
+        velocity_in = velocity_in / (sum(COLLISION_DATA))
+        velocity_out = velocity_out / (Natoms - sum(COLLISION_DATA))
 
-		speed_out = sqrt(sum((velocity_out)**2))
-		speed_in = sqrt(sum((velocity_in)**2))
+        speed_out = sqrt(sum((velocity_out)**2))
+        speed_in = sqrt(sum((velocity_in)**2))
 
-		scatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
-                                  (speed_in * speed_out))
+        scatteringAngle = acos(dot_product(velocity_in,velocity_out) / &
+                          (speed_in * speed_out))
 
-		abs_energychange = abs(absTranslationalEnergy2 - absTranslationalEnergy1)
-		rel_energychange = abs(relTranslationalEnergy2 - relTranslationalEnergy1)
-		rot_energychange = abs(RotationalEnergy2 - RotationalEnergy1)
+        abs_energychange = abs(absTranslationalEnergy2 - absTranslationalEnergy1)
+        rel_energychange = abs(relTranslationalEnergy2 - relTranslationalEnergy1)
+        rot_energychange = abs(RotationalEnergy2 - RotationalEnergy1)
 
-		write(filechannel3,FMTdata) scatteringAngle, speed_out, &
-					  abs_energychange, &
-					  rel_energychange, &
-					  rot_energychange
+        write(filechannel2,FMTdata) scatteringAngle, speed_out, &
+                                  abs_energychange, &
+                                  rel_energychange, &
+                                  rot_energychange
 
-		max_TranslationalEnergy = max(speed_out,max_TranslationalEnergy)
+        max_TranslationalEnergy = max(speed_out,max_TranslationalEnergy)
 
-		max_absenergychange = max(abs_energychange,max_absenergychange)
-		min_absenergychange = min(abs_energychange,min_absenergychange)
-		max_relenergychange = max(rel_energychange,max_relenergychange)
-		min_relenergychange = min(rel_energychange,min_relenergychange)
-		max_rotenergychange = max(rot_energychange,max_rotenergychange)
-		min_rotenergychange = min(rot_energychange,min_rotenergychange)
-	end do
-	close(filechannel3)
-	close(filechannel2)
-	close(filechannel1)
+        max_absenergychange = max(abs_energychange,max_absenergychange)
+        min_absenergychange = min(abs_energychange,min_absenergychange)
+        max_relenergychange = max(rel_energychange,max_relenergychange)
+        min_relenergychange = min(rel_energychange,min_relenergychange)
+        max_rotenergychange = max(rot_energychange,max_rotenergychange)
+        min_rotenergychange = min(rot_energychange,min_rotenergychange)
+    end do
+    close(filechannel2)
+    close(filechannel1)
 
 end subroutine postProcess
 

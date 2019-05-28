@@ -124,8 +124,8 @@ Ntrajectories=200
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp200
-exp2name=exp201
+exp1name=exp310
+exp2name=exp311
 exp3name=exp029
 exp4name=exp014
 exp5name=exp015
@@ -193,7 +193,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=2
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
