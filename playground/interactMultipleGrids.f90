@@ -108,6 +108,8 @@ real(dp),allocatable :: gradientbuffer1(:,:,:)
 real(dp),allocatable :: Ubuffer1(:,:,:)
 real(dp),allocatable :: RMSDbuffer1(:)
 
+integer,allocatable :: Ntrajbuffer1(:)
+
 logical, allocatable :: acceptable_frame_mask(:)
 real(dp),allocatable :: inputCLS(:,:)
 
@@ -1055,96 +1057,106 @@ candidate_rmsd = min_rmsd
 !                 SUBCELL TARGETING
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!Retrive the index of each variable with respect to the grid
-!and the real number (rounded) that represents that index
+!Retrieve the index of each variable with
+!respect to the grid and the real number
+!(rounded) that represents that index
 do i = 1, Nvar
-       !Repeat this for however many orders of cells deep
-       !we have been instructed to go
-       do j = 1, Norder_max + 1
-              var_index(i,j) = int(vals(i) * divisor(i,j))
-       end do
+    !Repeat this for however many orders of cells deep
+    !we have been instructed to go
+    do j = 1, Norder_max + 1
+        var_index(i,j) = int(vals(i) * divisor(i,j))
+    end do
 end do
-
-!print *, ""
-!print *, ""
-!print *, ""
-!print *, "vals:", vals
-
-!print *, "value: ", vals
-!print *, "var_index: ", var_index(:,1)
-!print *, "var_round: ", var_index(:,1) * multiplier(:,1)
-!print *, "var_index: ", var_index(:,2)
-!print *, "var_round: ", var_index(:,2) * multiplier(:,2)
 
 !Now, we start iterating over the grids
 do k = 1, Ngrid_total
-
-write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") k
-gridpath3 = gridpath0//Ngrid_text//"/grid/"
-
-do l = 1, Norder_max+1
-
+    
+    !Streamline the process by storing the
+    !path to the grid in a string gridpath3
+    write(variable_length_text,FMT=FMT5_variable)&
+            Ngrid_text_length
+    write(Ngrid_text,FMT="(I0."//&
+            trim(adjustl(variable_length_text))//&
+            ")") k
+    gridpath3 = gridpath0//Ngrid_text//"/grid/"
+    
+    !The way we check, we check by order first
+    do l = 1, Norder_max+1
+    
+        !The user can specify in what order to
+        !check the orders through this array
         Norder = Norder_order(l)
         
-        !Read the frames in the cells and process their RMSDs
+        !Read the frames in the cells and
+        !process their RMSDs
+
+        !If 
         if (k == grid_addition) then
-                if ((l==1).or.(Totalnumber_of_frames == 0)) then
-                call getRMSD_1(var_index(:,Norder+1),population)
-                else
-                call getRMSD_2(var_index(:,Norder+1),population)
-                end if
-                local_frame_count(Norder+1) = population
+            if ((l==1) .or. &
+                (Totalnumber_of_frames == 0)) then
+                call getRMSD_1(&
+                        var_index(:,Norder+1),&
+                        population)
+            else
+                call getRMSD_2(&
+                        var_index(:,Norder+1),&
+                        population)
+            end if
+            local_frame_count(Norder+1) = &
+                    population
         else
-                if ((l==1).or.(Totalnumber_of_frames == 0)) then
-                call getRMSD_1(var_index(:,Norder+1),population)
-                else
-                end if
+            if ((l==1) .or. &
+                (Totalnumber_of_frames == 0)) then
+                call getRMSD_1(&
+                        var_index(:,Norder+1),&
+                        population)
+            else
+            end if
         end if
         
         !If the cell is populated...
         if (population > 0) then
-                if ((l==1).or.(Totalnumber_of_frames == 0)) then
+            if ((l==1).or.(Totalnumber_of_frames == 0)) then
         
-                !However many frames are in the subcell we
-                !increment to number_of_frames
-                Totalnumber_of_frames = &
-                Totalnumber_of_frames + population
-                
-                !This is good enough, no need to look at more frames
-                stop_flag = .true.
-
-                end if
+            !However many frames are in the subcell we
+            !increment to number_of_frames
+            Totalnumber_of_frames = &
+            Totalnumber_of_frames + population
+            
+            !This is good enough, no need to look at more frames
+            stop_flag = .true.
+    
+            end if
         end if
         
         !If the cell is unpopulated or a certain flag is true,
         !then we go ahead and look at the neighbors of this cell
         if ((force_Neighbors) .or. (population == 0)) then
         
-                !Integer i keeps track of how far away from the original
-                !subcell we are; we look at cells on the 'diamond' surrounding
-                !the original subcell
-                do i = 1, subcellsearch_max(Norder+1)
+            !Integer i keeps track of how far away from the original
+            !subcell we are; we look at cells on the 'diamond' surrounding
+            !the original subcell
+            do i = 1, subcellsearch_max(Norder+1)
         
-                        var_index_diff = 0
+                var_index_diff = 0
         
-                        call getRelativeIndex(1,var_index(:,Norder+1),i,&
-                                              var_index_diff,stop_flag)
-                        
-                        if ((stop_flag) .and. (.not. force_Neighbors)) exit
-                end do
+                call getRelativeIndex(1,var_index(:,Norder+1),i,&
+                                      var_index_diff,stop_flag)
+                
+                if ((stop_flag) .and. (.not. force_Neighbors)) exit
+            end do
         end if
         
         !Psyche!
 !       if (stop_flag) exit
         if (population > 0) exit
-
-end do
-
-order = order + Norder
-
-if (testtraj_flag) write(filechannels(1+k),FMT=FMT6) candidate_rmsd
-
+    
+    end do
+    
+    order = order + Norder
+    
+    if (testtraj_flag) write(filechannels(1+k),FMT=FMT6) candidate_rmsd
+    
 end do
 
 number_of_frames = Totalnumber_of_frames
@@ -1532,6 +1544,8 @@ real(dp),allocatable :: temp_Ubuffer1(:,:,:)
 real(dp),allocatable :: temp_RMSDbuffer1(:)
 integer,allocatable :: temp_approximation_index(:)
 
+integer,allocatable :: temp_Ntrajbuffer1(:)
+
 logical ,allocatable :: temp_acceptable_frame_mask(:)
 real(dp),allocatable :: temp_inputCLS(:,:)
 
@@ -1590,13 +1604,16 @@ do
                         !which do not need to be stored
                         read(var_filechannel,iostat=iostate) &
                                 (valsbuffer1(i,k),i=1,Nvar)
-        
+ 
                         !If there are no more lines, stop; the population of the cell should be
                         !one less the number of times that this portion of the loop was called
         	        if (iostate /= 0) then
                                 population = population - 1
                                 exit
                         end if
+
+                        read(var_filechannel) &
+                                Ntrajbuffer1(k)
         
                         !The next line is the coordinates
                         read(var_filechannel) &
@@ -1727,6 +1744,8 @@ do
                  temp_approximation_index(buffer1_size),&
                  temp_acceptable_frame_mask(buffer1_size),&
                  temp_inputCLS(Ncoords+buffer1_size,buffer1_size))
+
+        allocate(temp_Ntrajbuffer1(buffer1_size))
         
         !Store the buffer in the temporary buffer
         temp_valsbuffer1 = valsbuffer1
@@ -1737,10 +1756,14 @@ do
         temp_approximation_index = approximation_index
         temp_acceptable_frame_mask = acceptable_frame_mask
         temp_inputCLS = inputCLS
+
+        temp_Ntrajbuffer1 = Ntrajbuffer1
         
         !For now, we simply double the buffer size each time it overfills
         deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
                    approximation_index,acceptable_frame_mask,inputCLS)
+
+        deallocate(Ntrajbuffer1)
         allocate(valsbuffer1(Nvar,buffer1_size*2),&
                  coordsbuffer1(3,Natoms,buffer1_size*2),&
                  gradientbuffer1(3,Natoms,buffer1_size*2),&
@@ -1749,6 +1772,8 @@ do
                  approximation_index(buffer1_size*2),&
                  acceptable_frame_mask(buffer1_size*2),&
                  inputCLS(Ncoords+buffer1_size*2,buffer1_size*2))
+
+        allocate(Ntrajbuffer1(buffer1_size*2))
         
         acceptable_frame_mask = .false.
 
@@ -1762,10 +1787,14 @@ do
         acceptable_frame_mask(1:buffer1_size) = temp_acceptable_frame_mask
         inputCLS(1:Ncoords+buffer1_size,1:buffer1_size) = temp_inputCLS
 
+        Ntrajbuffer1(1:buffer1_size) = temp_Ntrajbuffer1
+
         !Destroy the temporary buffer
         deallocate(temp_valsbuffer1,temp_coordsbuffer1,temp_gradientbuffer1,&
                    temp_Ubuffer1,temp_RMSDbuffer1,temp_approximation_index,&
                    temp_acceptable_frame_mask,temp_inputCLS)
+
+        deallocate(temp_Ntrajbuffer1)
 
         !Permanently increase the buffer size so this will not
         !have to happen next time
@@ -1998,10 +2027,12 @@ if (unreadable_flag) then
         open(filechannel1,file=gridpath2//trim(var_filename),position="append",form="unformatted")
         if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
                 write(filechannel1) (vals(j),j=1,Nvar)
+                write(filechannel1) Ntraj
                 write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
                 write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
         else
                 write(filechannel1) (vals(j),j=1,Nvar)
+                write(filechannel1) Ntraj
 !               write(filechannel1) ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
 !               write(filechannel1) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
                 write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)

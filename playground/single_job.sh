@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0700
+Ntraj_max=0100
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -95,8 +95,8 @@ testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
 threshold_rmsd=.150000d0
 threshold_rmsd1=.150000d0
-threshold_rmsd2=.050000d0
-threshold_rmsd3=.050000d0
+threshold_rmsd2=.150000d0
+threshold_rmsd3=.150000d0
 threshold_rmsd4=.010000d0
 threshold_rmsd5=.050000d0
 inner_threshold="0.00000d0"
@@ -105,10 +105,10 @@ inner_threshold2="0.00000d0"
 inner_threshold3="0.00000d0"
 inner_threshold4="0.00000d0"
 inner_threshold5="0.00000d0"
-alpha_ratio="1.0d2"
-alpha_ratio1="1.0d2"
-alpha_ratio2="1.0d2"
-alpha_ratio3="1.0d2"
+alpha_ratio="1.0d-2"
+alpha_ratio1="1.0d-2"
+alpha_ratio2="5.0d0"
+alpha_ratio3="5.0d1"
 alpha_ratio4="1.0d2"
 alpha_ratio5="1.0d2"
 interpolation_flag=.true.
@@ -120,22 +120,22 @@ grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=200
+Ntrajectories=001
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp310
-exp2name=exp311
-exp3name=exp029
+exp1name=exp619
+exp2name=exp314
+exp3name=exp315
 exp4name=exp014
 exp5name=exp015
 
 #This flag states whether we are continuing an old experiment
-continue_analysis=.true.
+continue_analysis=.false.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.true.
+useoldinitialbonddata_flag=.false.
 #initialbondfolder="001reject.10000"
 initialbondfolder=exp010/
 
@@ -181,7 +181,7 @@ initialbondfolder=exp010/
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Mar57test"
+newGRID="H2H2_May01test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0

@@ -74,7 +74,7 @@ logical,parameter :: testtraj_flag = .true.
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 0, 3 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 0, 9 /)
    integer,dimension(ssm_length) :: ssm2 = (/ 0, 5 /)
 
    !Set .true. to generate a frequency plot of the percentage
@@ -147,7 +147,7 @@ logical,parameter :: testtraj_flag = .true.
             integer :: interpolation_counter
             logical :: interpolation_check_visual = .false.
 
-            real(dp) :: alpha_ratio = 1.0d2
+            real(dp) :: alpha_ratio = 1.0d0
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

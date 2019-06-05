@@ -210,7 +210,7 @@ integer,allocatable :: angle_energy_bins(:,:)
 integer :: occurence_max
 real :: bin_width
 integer :: angle_ratio = angleBins / scatteringangleBins
-integer :: angle_slice = 6!denominator for slicing the scattering angle plot
+integer :: angle_slice = 6
 
 !I/O HANDLING
 integer :: iostate
@@ -221,97 +221,162 @@ integer :: i, j, k
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
 
-!The plots are named starting with Ntraj (the number of trajectories)
-write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ntraj
+!The plots are named starting with
+!Ntraj (the number of trajectories)
+write(variable_length_text,FMT=FMT5_variable)&
+        trajectory_text_length
+write(Ntraj_text,FMT="(I0."//&
+        trim(adjustl(variable_length_text))//")")&
+        Ntraj
 
 allocate(angle_energy_bins(angleBins,energyBins))
 angle_energy_bins = 0
 
-!The size of the bins, of course, depend on how many bins we have as
+!The size of the bins, of course,
+!depends on how many bins we have as
 !well as the bounds of the distribution
-sizeAbsEnergyBin = (max_absenergychange-min_absenergychange) / energychangeBins
-sizeRelEnergyBin = (max_relenergychange-min_relenergychange) / energychangeBins
-sizeRotEnergyBin = (max_rotenergychange-min_rotenergychange) / energychangeBins
+sizeAbsEnergyBin = (max_absenergychange - &
+                    min_absenergychange) /&
+                    energychangeBins
+sizeRelEnergyBin = (max_relenergychange - &
+                    min_relenergychange) /&
+                    energychangeBins
+sizeRotEnergyBin = (max_rotenergychange - &
+                    min_rotenergychange) /&
+                    energychangeBins
 
-sizeDeltaEnergyBin = (max(max_absenergychange,max_relenergychange,max_rotenergychange) - &
-                      min(min_absenergychange,min_relenergychange,min_rotenergychange)) / energychangeBins
-sizeEnergyBin = max_TranslationalEnergy / (energyBins)
+sizeDeltaEnergyBin = (max(max_absenergychange,&
+                          max_relenergychange,&
+                          max_rotenergychange) - &
+                      min(min_absenergychange,&
+                          min_relenergychange,&
+                          min_rotenergychange))/&
+                          energychangeBins
+sizeEnergyBin = max_TranslationalEnergy / &
+        (energyBins)
 sizeAngleBin = pi / (angleBins)
 
-!If we are doing this for a comparison, we may have user-defined bounds
-if (comparison_flag .and. (comparison_upperlimit /= comparison_lowerlimit)) then
+!If we are doing this for a comparison,
+!we may have user-defined bounds
+if (comparison_flag .and. &
+        (comparison_upperlimit /= &
+         comparison_lowerlimit)) then
 
-if (trim(adjustl(comparison_SATRVname)) == "ScatteringAngle") then
-        sizeAngleBin = (comparison_upperlimit - comparison_lowerlimit) / angleBins
-else if (trim(adjustl(comparison_SATRVname)) == "RelativeEnergyChange") then
-        sizeRelEnergyBin = (comparison_upperlimit - comparison_lowerlimit) / energychangeBins
-else if (trim(adjustl(comparison_SATRVname)) == "AbsoluteEnergyChange") then
-        sizeAbsEnergyBin = (comparison_upperlimit - comparison_lowerlimit) / energychangeBins
-else if (trim(adjustl(comparison_SATRVname)) == "RotationalEnergyChange") then
-        sizeRotEnergyBin = (comparison_upperlimit - comparison_lowerlimit) / energychangeBins
+if (trim(adjustl(comparison_SATRVname))&
+        == "ScatteringAngle") then
+    sizeAngleBin = (comparison_upperlimit - &
+                    comparison_lowerlimit) /&
+                    angleBins
+else if (trim(adjustl(comparison_SATRVname))&
+        == "RelativeEnergyChange") then
+    sizeRelEnergyBin = (comparison_upperlimit - &
+                        comparison_lowerlimit) /&
+                        energychangeBins
+else if (trim(adjustl(comparison_SATRVname))&
+        == "AbsoluteEnergyChange") then
+    sizeAbsEnergyBin = (comparison_upperlimit - &
+                        comparison_lowerlimit) /&
+                        energychangeBins
+else if (trim(adjustl(comparison_SATRVname))&
+        == "RotationalEnergyChange") then
+    sizeRotEnergyBin = (comparison_upperlimit - &
+                        comparison_lowerlimit) /&
+                        energychangeBins
 else
 end if
 
 end if
 
 !Now we can actually bin them
-!Here we open up the SATRVfile (which has the observables) and the binnedSATRVfile
+!Here we open up the SATRVfile (which has
+!the observables) and the binnedSATRVfile
 !(which has the observables after binning)
-open(filechannel1,file=gridpath5//prefix_filename//SATRVfile)
-open(filechannel2,file=gridpath5//prefix_filename//binnedSATRVfile)
-!open(filechannel1,file=gridpath0//prefix_filename//SATRVfile)
-!open(filechannel2,file=gridpath5//binnedSATRVfile)
+open(filechannel1,file=gridpath5//&
+        prefix_filename//SATRVfile)
+open(filechannel2,file=gridpath5//&
+        prefix_filename//binnedSATRVfile)
 do i = 1, Ntraj
 
-        !First, we read the line
-        read(filechannel1,FMT=FMTdata,iostat=iostate) ScatteringAngle_real, TranslationalEnergy_real, &
-						      abs_energychange, rel_energychange, rot_energychange
+    !First, we read the line
+    read(filechannel1,FMT=FMTdata,&
+            iostat=iostate)&
+            ScatteringAngle_real,&
+            TranslationalEnergy_real,&
+            abs_energychange,&
+            rel_energychange,&
+            rot_energychange
 
-        !Then we figure out what bin it should be in
-	ScatteringAngle = ceiling(ScatteringAngle_real / sizeAngleBin)
-	TranslationalEnergy = ceiling((TranslationalEnergy_real)/ sizeEnergyBin)
-	AbsEnergyChange = ceiling((abs_energychange)/sizeAbsEnergyBin)
-	RelEnergyChange = ceiling((rel_energychange)/sizeRelEnergyBin)
-	RotEnergyChange = ceiling((rot_energychange)/sizeRotEnergyBin)
+    !Then we figure out what bin it should be in
+    ScatteringAngle = ceiling(ScatteringAngle_real/&
+            sizeAngleBin)
+    TranslationalEnergy = ceiling(TranslationalEnergy_real/&
+            sizeEnergyBin)
+    AbsEnergyChange = ceiling((abs_energychange)/&
+            sizeAbsEnergyBin)
+    RelEnergyChange = ceiling((rel_energychange)/&
+            sizeRelEnergyBin)
+    RotEnergyChange = ceiling((rot_energychange)/&
+            sizeRotEnergyBin)
 
-        !If the bin is out of bounds, put it back in bounds
-	if (ScatteringAngle > angleBins) ScatteringAngle = angleBins
-	if (ScatteringAngle == 0) ScatteringAngle = 1
+    !If the bin is out of bounds,
+    !put it back in bounds
+    if (ScatteringAngle > angleBins)&
+            ScatteringAngle = angleBins
+    if (ScatteringAngle == 0)&
+            ScatteringAngle = 1
 
-	if (TranslationalEnergy > energyBins) TranslationalEnergy = energyBins
-	if (TranslationalEnergy == 0) TranslationalEnergy = 1
+    if (TranslationalEnergy > energyBins)&
+            TranslationalEnergy = energyBins
+    if (TranslationalEnergy == 0)&
+            TranslationalEnergy = 1
 
-	if (AbsEnergyChange > energychangeBins) AbsEnergyChange = energychangeBins
-	if (AbsEnergyChange == 0) AbsEnergyChange = 1
+    if (AbsEnergyChange > energychangeBins)&
+            AbsEnergyChange = energychangeBins
+    if (AbsEnergyChange == 0)&
+            AbsEnergyChange = 1
 
-	if (RelEnergyChange > energychangeBins) RelEnergyChange = energychangeBins
-	if (RelEnergyChange == 0) RelEnergyChange = 1
+    if (RelEnergyChange > energychangeBins)&
+            RelEnergyChange = energychangeBins
+    if (RelEnergyChange == 0)&
+            RelEnergyChange = 1
 
-	if (RotEnergyChange > energychangeBins) RotEnergyChange = energychangeBins
-	if (RotEnergyChange == 0) RotEnergyChange = 1
+    if (RotEnergyChange > energychangeBins)&
+            RotEnergyChange = energychangeBins
+    if (RotEnergyChange == 0)&
+            RotEnergyChange = 1
 
-        !For the scattering angle heatmap, we also store these values in another array
-	angle_energy_bins(ScatteringAngle,TranslationalEnergy) = &
-                   angle_energy_bins(ScatteringAngle,TranslationalEnergy) + 1
+    !For the scattering angle heatmap, we
+    !also store these values in another array
+    angle_energy_bins(ScatteringAngle,&
+                      TranslationalEnergy) = &
+        angle_energy_bins(ScatteringAngle,&
+                          TranslationalEnergy) + 1
 
-        !We have two separate bin sizes for the scattering angle heatmap and the
-        !scattering angle distribution. The former have SMALLER bins
-        !Thus, we can get the binning of the latter by dividing by some factor which
-        !I call "angle_ratio": the ratio between the sizes of these two binnings
-	write(filechannel2,FMT=*) ceiling((ScatteringAngle-0.5)/angle_ratio),&
-                                  TranslationalEnergy,AbsEnergyChange,RelEnergyChange,RotEnergyChange
+    !We have two separate bin sizes for the
+    !scattering angle heatmap and the scattering
+    !angle distribution. The former have SMALLER
+    !bins. Thus, we can get the binning of the
+    !latter by dividing by some factor which I
+    !I call "angle_ratio": the ratio between 
+    !the sizes of these two binnings
+    write(filechannel2,FMT=*)&
+            ceiling((ScatteringAngle-0.5)/angle_ratio),&
+            TranslationalEnergy,&
+            AbsEnergyChange,&
+            RelEnergyChange,&
+            RotEnergyChange
 end do
 close(filechannel1)
 close(filechannel2)
 
 
-!This is the gnuplot code to make the scattering angle and energy change (SATRV) plots
-!This is only plotted if there is no comparison active
+!This is the gnuplot code to make the scattering
+!angle and energy change (SATRV) plots. This is
+!only plotted if there is no comparison active
 
 if (comparison_flag) then
-        deallocate(angle_energy_bins)
-        return
+    deallocate(angle_energy_bins)
+    return
 end if
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
@@ -336,7 +401,6 @@ write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'plot "'//gridpath5//prefix_filename//binnedSATRVfile//&
-!write(gnuplotchannel,*) 'plot "'//gridpath5//binnedSATRVfile//&
                         '" u (box_width*($1-0.5)):(1.0) smooth frequency with boxes'
 
 write(gnuplotchannel,*) 'scaling = 1000'
@@ -351,7 +415,6 @@ write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) "set format x '%.3f'"
 write(gnuplotchannel,*) 'plot "'//gridpath5//prefix_filename//binnedSATRVfile//&
-!write(gnuplotchannel,*) 'plot "'//gridpath5//binnedSATRVfile//&
                         '" u (box_width*($3-0.5)+min_E):(1.0) smooth frequency w boxes'
 
 write(gnuplotchannel,*) 'set xlabel "Relative Translational Energy Change (meV)"'
@@ -363,7 +426,6 @@ write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'plot "'//gridpath5//prefix_filename//binnedSATRVfile//&
-!write(gnuplotchannel,*) 'plot "'//gridpath5//binnedSATRVfile//&
                         '" u (box_width*($4-0.5)+min_E):(1.0) smooth frequency w boxes'
 
 write(gnuplotchannel,*) 'set xlabel "Rotational Energy Change (meV)"'
@@ -376,7 +438,6 @@ write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set xtics min_E, box_width * 10, max_E'
 write(gnuplotchannel,*) 'plot "'//gridpath5//prefix_filename//binnedSATRVfile//&
-!write(gnuplotchannel,*) 'plot "'//gridpath5//binnedSATRVfile//&
                         '" u (box_width*($5-0.5)+min_E):(1.0) smooth frequency w boxes'
 close(gnuplotchannel)
 
@@ -388,10 +449,11 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 occurence_max = maxval(angle_energy_bins)
 open(filechannel1,file=gridpath5//temporaryfile1)
 do i = 1, angleBins/angle_slice+1
-	do j = 1, energyBins
-		write(filechannel1,FMT=*) (i-1)*sizeAngleBin, (j-1)*sizeEnergyBin, angle_energy_bins(i,j)
-	end do
-	write(filechannel1,FMT=*) ""
+    do j = 1, energyBins
+        write(filechannel1,FMT=*) (i-1)*sizeAngleBin,&
+                (j-1)*sizeEnergyBin, angle_energy_bins(i,j)
+    end do
+    write(filechannel1,FMT=*) ""
 end do
 close(filechannel1)
 deallocate(angle_energy_bins)
@@ -403,10 +465,6 @@ write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath4//'HeatMap_'//&
                         PNGfilename//'.png"'
 write(gnuplotchannel,*) 'set title "Scattering Angle Distribution" font ",18" offset 0,-20'
-!write(gnuplotchannel,*) 'set lmargin at screen 0.05'
-!write(gnuplotchannel,*) 'set rmargin at screen 0.85'
-!write(gnuplotchannel,*) 'set bmargin at screen 0.1'
-!write(gnuplotchannel,*) 'set tmargin at screen 0.7705'
 write(gnuplotchannel,*) 'set lmargin at screen 0.05'
 write(gnuplotchannel,*) 'set rmargin at screen 0.85'
 write(gnuplotchannel,*) 'set bmargin at screen 0.1'
@@ -421,13 +479,9 @@ write(gnuplotchannel,*) 'set angles radian'
 write(gnuplotchannel,*) 'r = ', max_TranslationalEnergy
 write(gnuplotchannel,*) 'rmax = r*1.1'
 write(gnuplotchannel,*) 'pi = 3.14159'
-!write(gnuplotchannel,*) 'set palette rgb 7, 5, 15'
 write(variable_length_text,FMT="(I5)") occurence_max
 write(gnuplotchannel,*) 'set cbrange [0:'//trim(adjustl(variable_length_text))//']'
 write(gnuplotchannel,*) 'set cblabel "Frequency"'
-!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model XYZ '
-!write(gnuplotchannel,*) 'set palette positive nops_allcF maxcolors 0 gamma 1.5 color model HSV'
-!write(gnuplotchannel,*) 'set palette rgbformulae 3, 2, 2'
 write(gnuplotchannel,*) 'set palette defined ( 0 0 1 0, 0.3333 0 0 1, 0.6667 1 0 0,\'
 write(gnuplotchannel,*) '     1 1 0.6471 0 )'
 write(gnuplotchannel,*) 'scaling_factor = 2.4'
@@ -439,24 +493,6 @@ write(gnuplotchannel,*) 'set origin 0.0, 0.0'
 write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//'" u (scaling_factor*$2*cos($1)):'//&
                         '(scaling_factor*$2*sin($1)):3'
 write(gnuplotchannel,*) 'set style line 11 lc rgb "black" lw 2'
-!write(gnuplotchannel,*) 'set grid polar ls 11'
-!write(gnuplotchannel,*) 'set polar'
-!write(gnuplotchannel,*) 'set rrange[0:rmax]'
-!write(gnuplotchannel,*) 'set yrange[0:rmax]'
-!write(gnuplotchannel,*) 'set size ratio -1'
-!write(gnuplotchannel,*) 'set bmargin at screen 0.2295'
-!write(gnuplotchannel,*) 'set tmargin at screen 0.9'
-!!write(gnuplotchannel,*) 'unset raxis'
-!!write(gnuplotchannel,*) 'set rlabel "Translational Energy Change (eV)"'
-!!write(gnuplotchannel,*) 'set rtics format "" scale 0'
-!write(gnuplotchannel,*) 'unset title'
-!write(gnuplotchannel,*) 'set rtics r / 4'
-!write(gnuplotchannel,*) 'unset parametric'
-!write(gnuplotchannel,*) 'set for [i=0:330:30] label at first (rmax*scaling_factor)*cos(i*pi/180),'//&
-!                        ' first (rmax*scaling_factor)*sin(i*pi/180)\'
-!write(gnuplotchannel,*) 'center sprintf(''%d'', i)'
-!write(gnuplotchannel,*) 'plot NaN w l'
-!write(gnuplotchannel,*) 'unset multiplot'
 write(gnuplotchannel,*) 'set samples 1000'
 write(gnuplotchannel,*) 'phi_max = pi/', angle_slice
 write(gnuplotchannel,*) 'dphi = phi_max/3'
@@ -482,16 +518,6 @@ write(gnuplotchannel,*) 'plot for [i=1:ceil(rmax/dR)] "+" u (i*dR*cos($1*phi_max
 write(gnuplotchannel,*) 'set origin 0.08, 0.09'
 write(gnuplotchannel,*) 'plot for [i=0:phi_max/dphi+1] "+" u ($1*cos(i*dphi)):($1*sin(i*dphi))'//&
                         ' w l ls 42'! scale 0.8, 0.8'
-!write(gnuplotchannel,*) 'plot \'
-!write(gnuplotchannel,*) '    for [i=0:phi_max/dphi] (x>=0&&x<=rmax*cos(i*dphi))?tan(i*dphi)*x:1/0 w l ls 42'
-!write(gnuplotchannel,*) 'set polar'
-!write(gnuplotchannel,*) 'set trange [0:phi_max]'
-!write(gnuplotchannel,*) 'unset raxis'
-!write(gnuplotchannel,*) 'unset rtics'
-!write(gnuplotchannel,*) 'plot \'
-!write(gnuplotchannel,*) '    for [i=1:ceil(rmax/dR)] i*dR<=rmax?i*dR:1/0 w l ls 42'
-!write(gnuplotchannel,*) 'unset raxis'
-!write(gnuplotchannel,*) 'unset rtics'
 close(gnuplotchannel)
 
 !And then we just input it into gnuplot.exe
@@ -574,7 +600,7 @@ end subroutine getScatteringAngles1
 !
 !       FILES                             FILETYPE                      DESCRIPTION
 !
-!               gridpath1//Initial//#traj//     DAT                             Stores the scattering angle and energy change
+!               gridpath1//#traj//              DAT                             Stores the scattering angle and energy change
 !                 binnedSATRVfile                                               decomposition for all trajectories in the library;
 !                                                                               its is already binned
 !               gridpath0//RMSD//SATRVname      DAT                             Stores the averages, devations, and other data
@@ -667,25 +693,31 @@ lambda_penalty = 2.0
 binTotal = 0
 binCumulative = 0
 sampleSize = 0
-write(variable_length_text,FMT=FMT5_variable) trajectory_text_length
-write(Ntraj_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_max * Ntraj_max
-write(variable_length_text,FMT=FMT5_variable) Ngrid_text_length
-write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid_max
-open(filechannel1,file=gridpath5//Ntraj_text//binnedSATRVfile,action="read")
-!open(filechannel1,file=gridpath5//binnedSATRVfile,action="read")
+write(variable_length_text,FMT=FMT5_variable)&
+        trajectory_text_length
+write(Ntraj_text,FMT="(I0."//&
+        trim(adjustl(variable_length_text))//")")&
+        Ngrid_max * Ntraj_max
+write(variable_length_text,FMT=FMT5_variable)&
+        Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//&
+        trim(adjustl(variable_length_text))//")")&
+        Ngrid_max
+open(filechannel1,file=gridpath5//&
+        Ntraj_text//binnedSATRVfile,action="read")
 do Nsamples = 1, Nsamples_max
-        do i = 1, Ntesttraj
-                read(filechannel1,FMT=*) SATRVdata
-                binTotal(SATRVdata(SATRVcolumn),Nsamples) = &
-                         binTotal(SATRVdata(SATRVcolumn),Nsamples) + 1
-        end do
-        sampleSize(Nsamples) = Nsamples
+    do i = 1, Ntesttraj
+        read(filechannel1,FMT=*) SATRVdata
+        binTotal(SATRVdata(SATRVcolumn),Nsamples) = &
+                 binTotal(SATRVdata(SATRVcolumn),Nsamples) + 1
+    end do
+    sampleSize(Nsamples) = Nsamples
 end do
 close(filechannel1)
 
 do i = 1,scatteringangleBins
-        binAverage(i) = sum(binTotal(i,:)) * 1.0 / Nsamples_max
-        binSD(i) = sqrt(sum((binTotal(i,:)*1.0 - binAverage(i))**2)/(Nsamples_max - 1))
+    binAverage(i) = sum(binTotal(i,:)) * 1.0 / Nsamples_max
+    binSD(i) = sqrt(sum((binTotal(i,:)*1.0 - binAverage(i))**2)/(Nsamples_max - 1))
 end do
 
 !Now we want error bars
@@ -697,35 +729,35 @@ sampleRMSD = 0
 sampleKRP = 0
 open(filechannel1,file=gridpath5//"RMSD"//SATRVname//cumulativefile//".dat",action="write")
 do Nsamples = 1, Nsamples_max
-        binRMSD = 0.0
-        do i = 1, scatteringangleBins
-                binRMSD = binRMSD + (sum(binTotal(i,1:Nsamples)) * 1.0 / Nsamples - binAverage(i))**2
-                sampleRMSD(Nsamples) = sampleRMSD(Nsamples) + (binTotal(i,Nsamples) - binAverage(i))**2
-                binCumulative(i,Nsamples) = sum(binTotal(1:i,Nsamples))
-                sampleKS(Nsamples) = max(sampleKS(Nsamples),abs(binCumulative(i,Nsamples)- &
-                                         sum(binAverage(1:i))))
-                sampleKRP(Nsamples) = sampleKRP(Nsamples) + (abs(binTotal(i,Nsamples) - binAverage(i)) /&
-                                                            max(minsd_penalty,binSD(i)))**lambda_penalty
-        end do
-        sampleRMSD(Nsamples) = sqrt(sampleRMSD(Nsamples) * 1.0 / (scatteringangleBins - 1.0))
-        sampleKRP(Nsamples) = (sampleKRP(Nsamples) * 1.0 / (scatteringangleBins - 1.0))**(1.0/lambda_penalty)
+    binRMSD = 0.0
+    do i = 1, scatteringangleBins
+        binRMSD = binRMSD + (sum(binTotal(i,1:Nsamples)) * 1.0 / Nsamples - binAverage(i))**2
+        sampleRMSD(Nsamples) = sampleRMSD(Nsamples) + (binTotal(i,Nsamples) - binAverage(i))**2
+        binCumulative(i,Nsamples) = sum(binTotal(1:i,Nsamples))
+        sampleKS(Nsamples) = max(sampleKS(Nsamples),abs(binCumulative(i,Nsamples)- &
+                                 sum(binAverage(1:i))))
+        sampleKRP(Nsamples) = sampleKRP(Nsamples) + (abs(binTotal(i,Nsamples) - binAverage(i)) /&
+                                                    max(minsd_penalty,binSD(i)))**lambda_penalty
+    end do
+    sampleRMSD(Nsamples) = sqrt(sampleRMSD(Nsamples) * 1.0 / (scatteringangleBins - 1.0))
+    sampleKRP(Nsamples) = (sampleKRP(Nsamples) * 1.0 / (scatteringangleBins - 1.0))**(1.0/lambda_penalty)
 
-        binRMSD = sqrt(binRMSD/scatteringangleBins)
-        write(filechannel1,FMT=*) Nsamples*Ntesttraj, binRMSD, binThreshold,&
-                                  sampleKS(Nsamples), sampleRMSD(Nsamples), sampleKRP(Nsamples)
+    binRMSD = sqrt(binRMSD/scatteringangleBins)
+    write(filechannel1,FMT=*) Nsamples*Ntesttraj, binRMSD, binThreshold,&
+                              sampleKS(Nsamples), sampleRMSD(Nsamples), sampleKRP(Nsamples)
 
-        if (binRMSD < binThreshold) then
-                binTally = binTally + 1
-        else
-                binTally = 0
-        end if
+    if (binRMSD < binThreshold) then
+        binTally = binTally + 1
+    else
+        binTally = 0
+    end if
 
-!        if (binTally == 5) exit
-!        if (Nsamples == Nsamples_max) then
-!                print *, "    No convergence for true scattering angle"
-!                print *, ""
-!                exit
-!        end if
+!   if (binTally == 5) exit
+!   if (Nsamples == Nsamples_max) then
+!       print *, "    No convergence for true scattering angle"
+!       print *, ""
+!       exit
+!   end if
 end do
 close(filechannel1)
 
@@ -733,7 +765,7 @@ close(filechannel1)
 !Each bin has its own average and standard deviation based on how many samples we took
 open(filechannel1,file=gridpath5//"Adjusted"//SATRVname//cumulativefile//".dat")
 do i = 1, scatteringangleBins
-        write(filechannel1,*) (i-0.5)*bin_width, binAverage(i), binSD(i)
+    write(filechannel1,*) (i-0.5)*bin_width, binAverage(i), binSD(i)
 end do
 close(filechannel1)
 
@@ -952,10 +984,10 @@ if (grid_is_done) then
                                 '" u (scaling*$1>=pi?(pi-0.5*box_width):'//&
                                 '(rounded($1))):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'AdjustedScatteringAngle'//&
-				cumulativefile//'.dat" u 1:2 w boxes'//&
+                                cumulativefile//'.dat" u 1:2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'AdjustedScatteringAngle'//&
-				cumulativefile//'.dat" u 1:2:3 w yerrorbars'
+                                cumulativefile//'.dat" u 1:2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$1>=pi?(pi-0.5*box_width):'//&
@@ -971,7 +1003,7 @@ end if
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width*Nbins/5, max_E'
         write(gnuplotchannel,*) 'set boxwidth box_width'
-	write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
+        write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
         write(gnuplotchannel,*) "set format x '%.3f'"
 if (grid_is_done) then
@@ -979,10 +1011,10 @@ if (grid_is_done) then
                                 '" u (scaling*$3>=max_E?(max_E-0.5*box_width):'//&
                                 '(rounded($3))):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'AdjustedAbsoluteEnergyChange'//&
-				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
+                                cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'AdjustedAbsoluteEnergyChange'//&
-				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
+                                cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$3>=max_E?(max_E-0.5*box_width):'//&
@@ -996,17 +1028,17 @@ end if
         write(gnuplotchannel,*) 'set xrange [min_E:max_E]'
         write(gnuplotchannel,*) 'set xtics min_E, box_width*Nbins/5, max_E'
         write(gnuplotchannel,*) 'set boxwidth box_width'
-	write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
+        write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath5//SATRVfile//&
                                 '" u (scaling*$4>=max_E?(max_E-0.5*box_width):'//&
                                 '(rounded($4))):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'AdjustedRelativeEnergyChange'//&
-				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
+                                cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'AdjustedRelativeEnergyChange'//&
-				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
+                                cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$4>=max_E?(max_E-0.5*box_width):'//&
@@ -1021,17 +1053,17 @@ end if
         write(gnuplotchannel,*) 'set xtics min_E, box_width*Nbins/5, max_E'
         write(gnuplotchannel,*) "set format x '%.3f'"
         write(gnuplotchannel,*) 'set boxwidth box_width'
-	write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
+        write(gnuplotchannel,*) 'bin_number(x) = floor(scaling*x/box_width)'
         write(gnuplotchannel,*) 'rounded(x) = min_E + box_width * (bin_number(x) + 0.5)'
 if (grid_is_done) then
         write(gnuplotchannel,*) 'plot "'//gridpath5//SATRVfile//&
                                 '" u (scaling*$5>=max_E?(max_E-0.5*box_width):'//&
                                 '(rounded($5))):(1.0) smooth frequency w boxes, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'AdjustedRotationalEnergyChange'//&
-				cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
+                                cumulativefile//'.dat" u (scaling*($1)):2 w boxes'//&
                                        ' fs transparent solid 0.5 noborder, \'
         write(gnuplotchannel,*) '     "'//gridpath5//'AdjustedRotationalEnergyChange'//&
-				cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
+                                cumulativefile//'.dat" u (scaling*($1)):2:3 w yerrorbars'
 else
         write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//SATRVfile//&
                                 '" u (scaling*$5>=max_E?(max_E-0.5*box_width):'//&
@@ -1157,22 +1189,22 @@ min_rot = 1.0e9
 total_bonds = 0
 open(filechannel1,file=gridpath0//prefix_filename//initialfile)
 do
-!	read(filechannel1,iostat=iostate,FMT=FMTinitial) INITIAL_BOND_DATA
-	read(filechannel1,iostat=iostate,FMT=*) INITIAL_BOND_DATA
-	if (iostate /= 0) exit
-	do i = 1, Nbonds
-		r0 = INITIAL_BOND_DATA(1,i)
-		rot = INITIAL_BOND_DATA(2,i)
-		max_r0 = max(max_r0,r0)
-		max_rot = max(max_rot,rot)
-		min_r0 = min(min_r0,r0)
-		min_rot = min(min_rot,rot)
-		average_r0 = average_r0 + r0
-		average_rot = average_rot + rot
-		average_Evib = average_Evib + (r0 - HOr0_hydrogen)**2
-		average_Erot = average_Erot + (rot**2)
-		total_bonds = total_bonds + 1
-	end do
+!   read(filechannel1,iostat=iostate,FMT=FMTinitial) INITIAL_BOND_DATA
+    read(filechannel1,iostat=iostate,FMT=*) INITIAL_BOND_DATA
+    if (iostate /= 0) exit
+    do i = 1, Nbonds
+        r0 = INITIAL_BOND_DATA(1,i)
+        rot = INITIAL_BOND_DATA(2,i)
+        max_r0 = max(max_r0,r0)
+        max_rot = max(max_rot,rot)
+        min_r0 = min(min_r0,r0)
+        min_rot = min(min_rot,rot)
+        average_r0 = average_r0 + r0
+        average_rot = average_rot + rot
+        average_Evib = average_Evib + (r0 - HOr0_hydrogen)**2
+        average_Erot = average_Erot + (rot**2)
+        total_bonds = total_bonds + 1
+    end do
 end do
 close(filechannel1)
 
@@ -1451,7 +1483,7 @@ write(Ntraj_text,FMT="(I6)") i*6 - 2
 write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
                         '" u (rounded($'//trim(adjustl(Ntraj_text))//&
-			')):(1.0) smooth frequency with boxes'
+                        ')):(1.0) smooth frequency with boxes'
 
 !
 ! Bond Orientation (Phi) Distribution
@@ -1472,8 +1504,8 @@ if (i == Nbonds) write(gnuplotchannel,*) 'set xtics pi/2'
 write(Ntraj_text,FMT="(I6)") i*6 - 1
 write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded($'//trim(adjustl(Ntraj_text))//&
-			')):(1.0) smooth frequency with boxes'
+                        '" u (rounded($'//trim(adjustl(Ntraj_text))//&
+                        ')):(1.0) smooth frequency with boxes'
 
 !
 ! Vibrational Quantum Number Distribution
@@ -1550,8 +1582,8 @@ write(gnuplotchannel,*) 'set style line 1 linecolor rgb "red" linewidth 1.5'
 ! With ZPE:
 !
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded((upsilon_factor1*(HOr0-$'//trim(adjustl(Ntraj_text))//&
-			')**2)-0.5)):(1.0) smooth frequency with boxes,\'
+                        '" u (rounded((upsilon_factor1*(HOr0-$'//trim(adjustl(Ntraj_text))//&
+                        ')**2)-0.5)):(1.0) smooth frequency with boxes,\'
 !
 ! Without ZPE:
 !
@@ -1633,8 +1665,8 @@ write(gnuplotchannel,*) 'Jf1 = ', 2.0d0 * ((hbar/(RU_energy*RU_time))**2) / &
 write(gnuplotchannel,*) 'f(x) = Jf1 * (2*x+1) * exp(-Jf1*x*(x+1)) * box_width * ', Ntraj_max / N_J
 
 write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
-			'" u (rounded(-0.5+0.5*sqrt(1.0+J_factor1*(($'//trim(adjustl(Ntraj_text))//&
-			')*($'//trim(adjustl(variable_length_text))//'))**2))):(1.0) '//&
+                        '" u (rounded(-0.5+0.5*sqrt(1.0+J_factor1*(($'//trim(adjustl(Ntraj_text))//&
+                        ')*($'//trim(adjustl(variable_length_text))//'))**2))):(1.0) '//&
                         'smooth frequency with boxes,\'
 write(gnuplotchannel,*) '     f(x) with line linestyle 1'
 end do
@@ -1771,14 +1803,17 @@ allocate(referenceBins(Nbins),&
          referenceSDs(Nbins))
 allocate(binTotal(Nbins,comparison_number))
 
-open(filechannel1,file=gridpath5//"Adjusted"//SATRVname//cumulativefile//".dat")
+open(filechannel1,file=gridpath5//"Adjusted"//&
+        SATRVname//cumulativefile//".dat")
 do j = 1, Nbins
-    read(filechannel1,FMT=*) referenceBins(j), referenceMeans(j), referenceSDs(j)
+    read(filechannel1,FMT=*) referenceBins(j),&
+            referenceMeans(j), referenceSDs(j)
 end do
 close(filechannel1)
 
 binTotal = 0
-open(filechannel1,file=gridpath5//allprefixes(1:alllengths(1)-1)//binnedSATRVfile)
+open(filechannel1,file=gridpath5//&
+        allprefixes(1:alllengths(1)-1)//binnedSATRVfile)
 do j = 1, Ntesttraj
     read(filechannel1,FMT=*) SATRVdata
     binTotal(SATRVdata(SATRVcolumn),1) = &
@@ -1787,8 +1822,9 @@ end do
 close(filechannel1)
 
 do i = 1, comparison_number-1
-    open(filechannel1,file=gridpath5//allprefixes(sum(alllengths(1:i))+1:sum(alllengths(1:i+1))-1)//&
-                           binnedSATRVfile)
+    open(filechannel1,file=gridpath5//&
+            allprefixes(sum(alllengths(1:i))+1:&
+            sum(alllengths(1:i+1))-1)//binnedSATRVfile)
     do j = 1, Ntesttraj
         read(filechannel1,FMT=*) SATRVdata
         binTotal(SATRVdata(SATRVcolumn),i+1) = &

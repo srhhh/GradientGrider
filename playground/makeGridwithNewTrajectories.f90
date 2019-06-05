@@ -264,15 +264,22 @@ do Ngrid = 1, Ngrid_max
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-!!! TEST !!!
+!!! TEST !!!!!!!!!!!
 if (heatmap_evolution_flag) then
 call addMultipleTrajectories()
 exit
 end if
-!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!
 
-!       Ngrid_total = 1
-!       call errorCheck2(filechannels)
+
+
+!!! ANOTHER TEST !!!
+if (.false.) then
+Ngrid_total = 1
+call errorCheck2(filechannels)
+exit
+end if
+!!!!!!!!!!!!!!!!!!!!
 
         do n = 1, Ntraj_max
 

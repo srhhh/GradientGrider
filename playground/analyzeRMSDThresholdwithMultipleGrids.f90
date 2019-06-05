@@ -1684,6 +1684,7 @@ character(12) :: short_prefix_text
 real(dp),dimension(Nvar) :: vals
 real(dp),dimension(7) :: rsv, min_rsv, max_rsv
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
+integer :: Nswitch
 
 integer :: frames,neginfinity_counter,posinfinity_counter
 character(1+3*10+2*7+2*7*17) :: firstliner
@@ -1929,6 +1930,12 @@ real(dp),allocatable :: Ninterpolation_binning(:,:)
 real(dp),allocatable :: rsv_binning(:,:,:)
 integer :: starting_index
 
+real(dp),dimension(Nvar) :: vals_prev
+integer,dimension(Nvar) :: deltavals
+integer :: Nswitch
+integer :: beyond_counter,ten_counter
+integer,dimension(3) :: pos_counter,neg_counter
+
 !INTEGER INCREMENTALS
 integer :: n,m,l
 
@@ -1991,6 +1998,17 @@ do n = 1, comparison_number
             lower_Ninterpolation, upper_Ninterpolation,&
             lower_rsv, upper_rsv
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    pos_counter = 0
+    neg_counter = 0
+    beyond_counter = 0
+    ten_counter = 0
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     !We have to get the bounds to ALL the data
     !across all experiments
 
@@ -2014,6 +2032,38 @@ do n = 1, comparison_number
                 tmpvals, Ninterpolation, rsv
         if (iostate /= 0) exit
 
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    if (frames_trials(n) > 0) then
+
+    deltavals = floor(abs(tmpvals-vals_prev)*divisor(:,1))
+    deltavals = abs(floor(tmpvals*divisor(:,2)) - &
+                    floor(vals_prev*divisor(:,2)))
+    Nswitch = sum(deltavals)+1
+
+    if ((Ninterpolation <= 9)) then
+        ten_counter = ten_counter + 1
+    else
+!   if ((Nswitch < 4).and.(Ninterpolation > 9)) then
+    if ((Nswitch < 4)) then
+    if (rsv(7) > 1.0d0) then
+        pos_counter(Nswitch) = pos_counter(Nswitch) + 1
+    else
+        neg_counter(Nswitch) = neg_counter(Nswitch) + 1
+    end if
+    else
+        beyond_counter = beyond_counter + 1
+    end if
+    end if
+
+    end if
+
+    vals_prev = tmpvals
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
         tmpvals = abs(tmpvals-vals) - abs(delta_vals)
 
         if (all(delta_vals>0)) then
@@ -2029,6 +2079,19 @@ do n = 1, comparison_number
         write(filechannel3,FMT=*) Ninterpolation,rsv
     end do
     close(filechannel2)
+
+    print *, ""
+    print *, allprefixes(starting_index+1:sum(alllengths(1:n)))
+    do Nswitch = 1, 3
+    print *, "n = ", Nswitch - 1, " neg / pos:", &
+            neg_counter(Nswitch), "/", pos_counter(Nswitch), "%neg/total:", &
+            neg_counter(Nswitch) *100.0 / (neg_counter(Nswitch) + pos_counter(Nswitch)), "%"
+    end do
+    print *, ""
+    print *, "n > 2:", beyond_counter
+    print *, ""
+    print *, "Ninterpolation <= 9:", ten_counter
+    print *, ""
 end do
 
 close(filechannel1)
