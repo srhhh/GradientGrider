@@ -1163,116 +1163,235 @@ number_of_frames = Totalnumber_of_frames
 neighbor_check = number_of_cells
 Norder_total(1+order/Ngrid_total) = Norder_total(1+order/Ngrid_total) + 1
 
-!print *, ""
-!print *, "step: ", steps
-!print *, "Norder: ", Norder
-!print *, "value: ", vals
-!print *, "coords: ", coords
-!print *, "var_index: ", var_index(:,1)
-!print *, "var_index: ", var_index(:,2)
-!print *, "approx_index: ", approximation_index(1:number_of_cells)
-!print *, "RMSDbuffer1: ", RMSDbuffer1(1:Totalnumber_of_frames)
-!print *, "candidatermsd: ", candidate_rmsd
-
 if ((number_of_cells == 0)) then
-!if (.true.) then
-        return
+    return
 else
-
-!if (Norder == 1) then
-!print *, ""
-!print *, "step: ", steps
-!print *, "value: ", vals
-!print *, "coords: ", coords
-!print *, "var_index: ", var_index(:,1)
-!print *, "var_index: ", var_index(:,2)
-!print *, "approx_index: ", approximation_index(1:number_of_cells)
-!print *, "RMSDbuffer1: ", RMSDbuffer1(1:Totalnumber_of_frames)
-!print *, "candidatermsd: ", candidate_rmsd
-!end if
-
-        chosen_index = maxval(approximation_index(1:number_of_cells),DIM=1)
+    chosen_index = maxval(approximation_index(1:number_of_cells),DIM=1)
 end if
 
 if (chosen_index > 0) then
+    if ((interpolation_flag).and.(Ninterpolation > 1)) then
+        call getInterpolatedGradient(new_coords,gradient)
 
-!       if (interpolation_flag) call getWeightedGradient(new_coords,gradient)
-!       if (interpolation_flag) &
-        if ((interpolation_flag).and.(Ninterpolation > 1)) then
-!       if (.false.) then
-                call getInterpolatedGradient(new_coords,gradient)
+        !Remark: Ken Dill's code uses a version of the RMSD
+        !        that divides by N, not N - 1
 
-!       if ((interpolation_flag).and.(Ninterpolation > 0)) then
-!       if ((interpolation_flag).and.(Ninterpolation > 0)) then
-!       if ((interpolation_flag).and.(Ninterpolation > 2)) then
+        min_rmsd = sqrt(sum((new_coords)**2)/(Natoms))
+    else
+        gradient = matmul(Ubuffer1(:,:,chosen_index),&
+                          gradientbuffer1(:,:,chosen_index))
 
-!               do i = 1, 3
-!                       new_coords(i,:) = new_coords(i,:) + &
-!                                         (sum(var_coords(i,:),dim=1) - &
-!                                          sum(new_coords(i,:),dim=1)) / &
-!                                         Natoms
-!               end do
-        
-                !Remark: Ken Dill's code uses a version of the RMSD that divides
-                !        by N, not N - 1
+        min_rmsd = RMSDbuffer1(chosen_index)
 
-                min_rmsd = sqrt(sum((new_coords)**2)/(Natoms))
+        largest_weighted_rmsd = min_rmsd
+        largest_weighted_rmsd2 = min_rmsd**2
+    end if
 
-!write(6,FMT="(A)") "interpolation used"
-!write(6,FMT="(A,I8)") &
-!        "               Ninterpolation: ", Ninterpolation
-!write(6,FMT="(A,F10.6)") &
-!        "      interpolated frame rmsd: ", min_rmsd
-!write(6,FMT="(A,F10.6,A,F10.6,A)") &
-!        "interpolated gradient O(rmsd): ", min_rmsd ,&
-!        " + (", largest_rmsd, ")^2"
-!write(6,FMT="(A,F10.6)") &
-!        "         tabulated frame rmsd: ", RMSDbuffer1(chosen_index)
-!write(6,FMT="(A,F10.6)") &
-!        "   tabulated gradient O(rmsd): ", RMSDbuffer1(chosen_index)
-
-        else
-
-                gradient = matmul(Ubuffer1(:,:,chosen_index),&
-                                  gradientbuffer1(:,:,chosen_index))
-
-                min_rmsd = RMSDbuffer1(chosen_index)
-
-!               do i = 1, 3
-!                       new_coords(i,:) = coordsbuffer1(i,:,chosen_index) + &
-!                                         (sum(var_coords(i,:),dim=1) - &
-!                                          sum(coordsbuffer1(i,:,chosen_index),dim=1)) / &
-!                                         Natoms
-!               end do
-
-!               new_coords = matmul(Ubuffer1(:,:,chosen_index),new_coords(:,:))
-
-                !Remark: Ken Dill's code uses a version of the RMSD that divides
-                !        by N, not N - 1
-
-!               min_rmsd = sqrt(sum((new_coords - var_coords)**2)/(Natoms))
-!               largest_rmsd = min_rmsd
-                largest_weighted_rmsd = min_rmsd
-!               largest_weighted_rmsd2 = 3*Natoms*min_rmsd**2
-                largest_weighted_rmsd2 = min_rmsd**2
-
-!write(6,FMT="(A)") "no interpolation"
-!write(6,FMT="(A,F10.6)") "      tabulated frame rmsd: ", min_rmsd
-!write(6,FMT="(A,F10.6)") "tabulated gradient O(rmsd): ", RMSDbuffer1(chosen_index)
-        
-        end if
-
-        candidate_rmsd = RMSDbuffer1(chosen_index)
-!       candidate_gradient = gradientbuffer1(:,:,chosen_index)
-        candidate_gradient = matmul(Ubuffer1(:,:,chosen_index),&
-                gradientbuffer1(:,:,chosen_index))
+    candidate_rmsd = RMSDbuffer1(chosen_index)
+    candidate_gradient = matmul(Ubuffer1(:,:,chosen_index),&
+            gradientbuffer1(:,:,chosen_index))
 else
-        min_rmsd = default_rmsd
+    min_rmsd = default_rmsd
 end if
 
 return
 
 end subroutine checkState_new
+
+subroutine checkState_new_permute(vals,coords,gradient,&
+                min_rmsd,filechannels,&
+                number_of_frames,order,neighbor_check)
+use ANALYSIS
+use VARIABLES
+use PARAMETERS
+implicit none
+integer :: i,j,k,l
+integer,intent(out),optional :: order,number_of_frames,neighbor_check
+integer :: population
+integer :: chosen_index
+integer :: OMP_GET_THREAD_NUM
+logical :: stop_flag
+real(dp), dimension(Nvar), intent(in) :: vals
+real(dp), dimension(3,Natoms), intent(in) :: coords
+real(dp), dimension(3,Natoms) :: new_coords
+real(dp), dimension(3,Natoms), intent(out) :: gradient
+real(dp), intent(inout) :: min_rmsd
+integer, dimension(1+Ngrid_total),intent(in) :: filechannels
+character(Ngrid_text_length) :: Ngrid_text
+character(5) :: variable_length_text
+real(dp), dimension(3) :: x_center, y_center
+real(dp), allocatable :: g(:,:)
+real(dp), dimension(3,3) :: new_U
+
+real(dp),dimension(Nvar) :: var_cell
+integer,dimension(Nvar,Norder_max+1) :: var_index
+integer,dimension(Nvar,Norder_max+1) :: var_index_diff
+
+integer  :: largest_rmsd_error_index
+real(dp) :: largest_rmsd_error
+
+var_filechannel = filechannels(1)
+var_coords = coords
+
+!We start off with zero frames having been checked
+local_frame_count = 0
+Totalnumber_of_frames = 0
+order = 0
+number_of_cells = 0
+neighbor_check = 0
+approximation_index = 0
+Ninterpolation = 0
+stop_flag = .false.
+
+acceptable_frame_mask = .false.
+
+candidate_rmsd = min_rmsd
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                 SUBCELL TARGETING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!Retrieve the index of each variable with
+!respect to the grid and the real number
+!(rounded) that represents that index
+do i = 1, Nvar
+    !Repeat this for however many orders of cells deep
+    !we have been instructed to go
+    do j = 1, Norder_max + 1
+        var_index(i,j) = int(vals(i) * divisor(i,j))
+    end do
+end do
+
+!Now, we start iterating over the grids
+do k = 1, Ngrid_total
+    
+    !Streamline the process by storing the
+    !path to the grid in a string gridpath3
+    write(variable_length_text,FMT=FMT5_variable)&
+            Ngrid_text_length
+    write(Ngrid_text,FMT="(I0."//&
+            trim(adjustl(variable_length_text))//&
+            ")") k
+    gridpath3 = gridpath0//Ngrid_text//"/grid/"
+    
+    !The way we check, we check by order first
+    do l = 1, Norder_max+1
+    
+        !The user can specify in what order to
+        !check the orders through this array
+        Norder = Norder_order(l)
+        
+        !Read the frames in the cells and
+        !process their RMSDs
+
+        !If 
+        if (k == grid_addition) then
+            if ((l==1) .or. &
+                (Totalnumber_of_frames == 0)) then
+                call getRMSD_1_permute(&
+                        var_index(:,Norder+1),&
+                        population)
+            else
+                call getRMSD_2(&
+                        var_index(:,Norder+1),&
+                        population)
+            end if
+            local_frame_count(Norder+1) = &
+                    population
+        else
+            if ((l==1) .or. &
+                (Totalnumber_of_frames == 0)) then
+                call getRMSD_1_permute(&
+                        var_index(:,Norder+1),&
+                        population)
+            else
+            end if
+        end if
+        
+        !If the cell is populated...
+        if (population > 0) then
+            if ((l==1).or.(Totalnumber_of_frames == 0)) then
+        
+            !However many frames are in the subcell we
+            !increment to number_of_frames
+            Totalnumber_of_frames = &
+            Totalnumber_of_frames + population
+            
+            !This is good enough, no need to look at more frames
+            stop_flag = .true.
+    
+            end if
+        end if
+        
+        !If the cell is unpopulated or a certain flag is true,
+        !then we go ahead and look at the neighbors of this cell
+        if ((force_Neighbors) .or. (population == 0)) then
+        
+            !Integer i keeps track of how far away from the original
+            !subcell we are; we look at cells on the 'diamond' surrounding
+            !the original subcell
+            do i = 1, subcellsearch_max(Norder+1)
+        
+                var_index_diff = 0
+        
+                call getRelativeIndex(1,var_index(:,Norder+1),i,&
+                                      var_index_diff,stop_flag)
+                
+                if ((stop_flag) .and. (.not. force_Neighbors)) exit
+            end do
+        end if
+        
+        !Psyche!
+!       if (stop_flag) exit
+        if (population > 0) exit
+    
+    end do
+    
+    order = order + Norder
+    
+    if (testtraj_flag) write(filechannels(1+k),FMT=FMT6) candidate_rmsd
+    
+end do
+
+number_of_frames = Totalnumber_of_frames
+neighbor_check = number_of_cells
+Norder_total(1+order/Ngrid_total) = Norder_total(1+order/Ngrid_total) + 1
+
+if ((number_of_cells == 0)) then
+    return
+else
+    chosen_index = maxval(approximation_index(1:number_of_cells),DIM=1)
+end if
+
+if (chosen_index > 0) then
+    if ((interpolation_flag).and.(Ninterpolation > 1)) then
+        call getInterpolatedGradient(new_coords,gradient)
+
+        !Remark: Ken Dill's code uses a version of the RMSD
+        !        that divides by N, not N - 1
+
+        min_rmsd = sqrt(sum((new_coords)**2)/(Natoms))
+    else
+        gradient = matmul(Ubuffer1(:,:,chosen_index),&
+                          gradientbuffer1(:,:,chosen_index))
+
+        min_rmsd = RMSDbuffer1(chosen_index)
+
+        largest_weighted_rmsd = min_rmsd
+        largest_weighted_rmsd2 = min_rmsd**2
+    end if
+
+    candidate_rmsd = RMSDbuffer1(chosen_index)
+    candidate_gradient = matmul(Ubuffer1(:,:,chosen_index),&
+            gradientbuffer1(:,:,chosen_index))
+else
+    min_rmsd = default_rmsd
+end if
+
+return
+
+end subroutine checkState_new_permute
+
 
 
 
@@ -1607,7 +1726,7 @@ do
  
                         !If there are no more lines, stop; the population of the cell should be
                         !one less the number of times that this portion of the loop was called
-        	        if (iostate /= 0) then
+                        if (iostate /= 0) then
                                 population = population - 1
                                 exit
                         end if
@@ -1631,7 +1750,7 @@ do
 
                         !If there are no more lines, stop; the population of the cell should be
                         !one less the number of times that this portion of the loop was called
-        	        if (iostate /= 0) then
+                        if (iostate /= 0) then
                                 population = population - 1
                                 exit
                         end if
@@ -1803,6 +1922,335 @@ end do
 close(var_filechannel)
 
 end subroutine getRMSD_1
+
+subroutine getRMSD_1_permute(var_index,population)
+use ls_rmsd_original
+use PARAMETERS
+use PHYSICS
+use ANALYSIS
+implicit none
+
+!Inputs for file reading
+!character(*),intent(in) :: subcell
+integer,dimension(Nvar),intent(in) :: var_index
+
+character(50) :: var_filename
+character(150) :: subcell
+logical :: subcell_existence
+
+!Variables used in RMSD calculations
+real(dp), dimension(3) :: x_center, y_center
+real(dp), allocatable :: g(:,:)
+
+!Outputs from file reading
+integer,intent(out) :: population
+
+!In case the buffer overfills
+real(dp),allocatable :: temp_valsbuffer1(:,:)
+real(dp),allocatable :: temp_coordsbuffer1(:,:,:)
+real(dp),allocatable :: temp_gradientbuffer1(:,:,:)
+real(dp),allocatable :: temp_Ubuffer1(:,:,:)
+real(dp),allocatable :: temp_RMSDbuffer1(:)
+integer,allocatable :: temp_approximation_index(:)
+
+integer,allocatable :: temp_Ntrajbuffer1(:)
+
+logical ,allocatable :: temp_acceptable_frame_mask(:)
+real(dp),allocatable :: temp_inputCLS(:,:)
+
+!Stores values temporarily
+real(dp) :: current_rmsd
+real(dp),dimension(3,Natoms) :: current_coords
+real(dp),dimension(3,Natoms) :: current_gradient
+real(dp),dimension(Nvar) :: current_vals
+
+!Incremental integers and iostate checking
+integer :: n,i,j,k,iostate
+integer :: endpoint
+
+write(var_filename,FMT=var_multipleFMT&
+      (1+Norder*multipleFMT_length:(Norder+1)*multipleFMT_length) )&
+        var_index * multiplier(:,Norder+1)
+
+!Construct the subcell filename
+subcell = gridpath3//trim(var_filename)
+
+!See whether this subcell exists
+inquire(file=trim(subcell),exist=subcell_existence)
+
+if (.not. subcell_existence) then
+        population = 0
+        return
+else
+        number_of_cells = number_of_cells + 1
+        approximation_index(number_of_cells) = 0
+end if
+
+!Open the file corresponding to the cell
+if (unreadable_flag) then
+        open(var_filechannel,action="read",form="unformatted",&
+             file=trim(subcell))
+else
+        open(var_filechannel,action="read",&
+             file=trim(subcell))
+end if
+
+!Initialize a variable
+!population = 1
+population = 0
+n = 1
+
+!Because the buffer may not be large enough to hold all the frames
+!and, theoretically, we don't know how many times we need to
+!increase the buffer, we need an overarching do loop that is capable
+!of increasing the buffer without bounds
+do
+        !If we have just increased the buffer size, then that means that there
+        !are already some frames in the buffer; in this case, do not start at
+        !1, but at the current line number (population)
+!       do k = Totalnumber_of_frames + population, buffer1_size
+        do k = (Totalnumber_of_frames + population) * &
+               Nindistinguishables + 1, buffer1_size
+
+!       n = modulo(population,Nindistinguishables) + 1
+
+        if (n == 1) then
+
+                !Read the candidate frame
+                if (unreadable_flag) then
+        
+                        !In unformatted files, the first line are the variables
+                        !which do not need to be stored
+                        read(var_filechannel,iostat=iostate) &
+                                (current_vals(i),i=1,Nvar)
+!                               (valsbuffer1(i,k),i=1,Nvar)
+ 
+                        !If there are no more lines, stop; the population of the cell should be
+                        !one less the number of times that this portion of the loop was called
+                        if (iostate /= 0) then
+!                               population = population - 1
+                                exit
+                        end if
+
+                        read(var_filechannel) &
+                                Ntrajbuffer1(k)
+        
+                        !The next line is the coordinates
+                        read(var_filechannel) &
+                               ((current_coords(i,j),i=1,3),j=1,Natoms)
+        
+                        !In unformatted files, the last line is the gradient
+                        read(var_filechannel) &
+                                ((current_gradient(i,j),i=1,3),j=1,Natoms)
+!                               ((gradientbuffer1(i,j,k),i=1,3),j=1,Natoms)
+                else
+        
+                        !In formatted files, everything (variables, coordinates, and gradient)
+                        !are stored in one line; FMT1 reads the variables
+                        read(var_filechannel,FMT=FMT1,advance="no",iostat=iostate) &
+                                (current_vals(i),i=1,Nvar)
+!                               (valsbuffer1(i,k),i=1,Nvar)
+
+                        !If there are no more lines, stop; the population of the cell should be
+                        !one less the number of times that this portion of the loop was called
+                        if (iostate /= 0) then
+!                               population = population - 1
+                                exit
+                        end if
+        
+                        !In formatted files, FMT3 reads the coordinates
+                        read(var_filechannel,FMT=FMT7,advance="no") &
+                               ((current_coords(i,j),i=1,3),j=1,Natoms)
+        
+                        !In formatted files, FMT3 reads the gradient as well
+                        read(var_filechannel,FMT=FMT3) &
+                                ((current_gradient(i,j),i=1,3),j=1,Natoms)
+!                               ((gradientbuffer1(i,j,k),i=1,3),j=1,Natoms)
+                end if
+
+        end if
+
+        BOND_LABELLING_DATA = INDISTINGUISHABLES(n,:)
+
+                valsbuffer1(:,k) = current_vals
+
+                do j = 1, Natoms
+                     coordsbuffer1(:,j,k) = &
+                         current_coords(:,BOND_LABELLING_DATA(j))
+                     gradientbuffer1(:,j,k) = &
+                         current_gradient(:,BOND_LABELLING_DATA(j))
+                end do
+
+!               coordsbuffer1(:,:,k) = current_coords
+!               gradientbuffer1(:,:,k) = current_gradient
+        
+                !Calculate the RMSD between this frame and the incoming frame
+                call rmsd_dp(Natoms,coordsbuffer1(:,:,k),var_coords,&
+                             1,Ubuffer1(:,:,k),x_center,y_center,&
+                             current_rmsd)                               !,.false.,g)
+!               call rmsd_dp(Natoms,current_coords,var_coords,&
+!                            1,Ubuffer1(:,:,k),x_center,y_center,&
+!                            current_rmsd)                               !,.false.,g)
+!               call rmsd_dp(Natoms,var_coords,current_coords,&
+!                            1,Ubuffer1(:,:,k),y_center,x_center,&
+!                            current_rmsd)                               !,.false.,g)
+                RMSDbuffer1(k) = current_rmsd
+        
+                !If in the "accept worst" method:
+                if (accept_worst) then
+        
+                        !If the RMSD is too low, reject the candidate frame for it is "too good"
+                        if (current_rmsd < candidate_rmsd) then
+                
+                        !And if the RMSD if lower than the threshold, designate this frame as the "worst"
+!                       else if (current_rmsd < threshold_rmsd) then
+                        else if ((current_rmsd < threshold_rmsd).and.&
+                                 (current_rmsd >= inner_threshold)) then
+                
+                                approximation_index(number_of_cells) = k
+                                candidate_rmsd = current_rmsd
+                
+                                !In special cases, we exit immediately afterwards
+                                if (accept_first) exit
+                
+                        !If the RMSD is too high, also reject the candidate frame
+                        else
+                
+                        end if
+        
+                !If in the "accept best" method:
+                else
+                        if ((interpolation_flag).and.&
+                            (current_rmsd < threshold_rmsd)) then
+
+                                acceptable_frame_mask(k) = .true.
+
+                                Ninterpolation = Ninterpolation + 1
+
+                                do i = 1, 3
+                                        current_coords(i,:) = &
+                                        current_coords(i,:) - x_center(i)
+                                end do
+
+                                current_coords = matmul(&
+                                        Ubuffer1(:,:,k),current_coords)
+
+                                do i = 1, 3
+                                        current_coords(i,:) = &
+                                        current_coords(i,:) + y_center(i)
+                                end do
+
+                                inputCLS(1:Ncoords,Ninterpolation) =&
+                                           reshape(current_coords-var_coords,(/Ncoords/))
+
+!                               temp_rmsd_weights(Ninterpolation) = current_rmsd
+
+                        end if
+
+                        !If the RMSD is low enough, designate this frame as the "best"
+!                       if (current_rmsd < candidate_rmsd) then
+                        if ((current_rmsd < candidate_rmsd).and.&
+                            (current_rmsd >= inner_threshold)) then
+                        
+                                approximation_index(number_of_cells) = k
+                                candidate_rmsd = current_rmsd
+                
+                                !In special cases, we exit immediately afterwards
+                                if (accept_first) exit
+                
+                        !Otherwise, do nothing
+                        else
+                
+                        end if
+        
+                end if
+
+                n = n + 1
+                if (n > Nindistinguishables) then
+
+                        !Increment the number of frames visited
+                        population = population + 1
+                        n = 1
+        
+                end if
+
+        end do
+        
+        !If the last line of the file has been read, we can exit out of the loop
+        if (iostate /= 0) exit
+
+        !Otherwise, the buffer has run out of room, and we need to first increase
+        !it, then continuereading in frames
+        
+        !Create a temporary buffer
+        allocate(temp_valsbuffer1(Nvar,buffer1_size),&
+                 temp_coordsbuffer1(3,Natoms,buffer1_size),&
+                 temp_gradientbuffer1(3,Natoms,buffer1_size),&
+                 temp_Ubuffer1(3,3,buffer1_size),&
+                 temp_RMSDbuffer1(buffer1_size),&
+                 temp_approximation_index(buffer1_size),&
+                 temp_acceptable_frame_mask(buffer1_size),&
+                 temp_inputCLS(Ncoords+buffer1_size,buffer1_size))
+
+        allocate(temp_Ntrajbuffer1(buffer1_size))
+        
+        !Store the buffer in the temporary buffer
+        temp_valsbuffer1 = valsbuffer1
+        temp_coordsbuffer1 = coordsbuffer1
+        temp_gradientbuffer1 = gradientbuffer1
+        temp_Ubuffer1 = Ubuffer1
+        temp_RMSDbuffer1 = RMSDbuffer1
+        temp_approximation_index = approximation_index
+        temp_acceptable_frame_mask = acceptable_frame_mask
+        temp_inputCLS = inputCLS
+
+        temp_Ntrajbuffer1 = Ntrajbuffer1
+        
+        !For now, we simply double the buffer size each time it overfills
+        deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
+                   approximation_index,acceptable_frame_mask,inputCLS)
+
+        deallocate(Ntrajbuffer1)
+        allocate(valsbuffer1(Nvar,buffer1_size*2),&
+                 coordsbuffer1(3,Natoms,buffer1_size*2),&
+                 gradientbuffer1(3,Natoms,buffer1_size*2),&
+                 Ubuffer1(3,3,buffer1_size*2),&
+                 RMSDbuffer1(buffer1_size*2),&
+                 approximation_index(buffer1_size*2),&
+                 acceptable_frame_mask(buffer1_size*2),&
+                 inputCLS(Ncoords+buffer1_size*2,buffer1_size*2))
+
+        allocate(Ntrajbuffer1(buffer1_size*2))
+        
+        acceptable_frame_mask = .false.
+
+        !And reload all the frames back into the buffer
+        valsbuffer1(:,1:buffer1_size) = temp_valsbuffer1
+        coordsbuffer1(:,:,1:buffer1_size) = temp_coordsbuffer1
+        gradientbuffer1(:,:,1:buffer1_size) = temp_gradientbuffer1
+        Ubuffer1(:,:,1:buffer1_size) = temp_Ubuffer1
+        RMSDbuffer1(1:buffer1_size) = temp_RMSDbuffer1
+        approximation_index(1:buffer1_size) = temp_approximation_index
+        acceptable_frame_mask(1:buffer1_size) = temp_acceptable_frame_mask
+        inputCLS(1:Ncoords+buffer1_size,1:buffer1_size) = temp_inputCLS
+
+        Ntrajbuffer1(1:buffer1_size) = temp_Ntrajbuffer1
+
+        !Destroy the temporary buffer
+        deallocate(temp_valsbuffer1,temp_coordsbuffer1,temp_gradientbuffer1,&
+                   temp_Ubuffer1,temp_RMSDbuffer1,temp_approximation_index,&
+                   temp_acceptable_frame_mask,temp_inputCLS)
+
+        deallocate(temp_Ntrajbuffer1)
+
+        !Permanently increase the buffer size so this will not
+        !have to happen next time
+        buffer1_size = buffer1_size*2
+end do
+close(var_filechannel)
+
+end subroutine getRMSD_1_permute
+
 
 subroutine getRMSD_2(var_index,population)
 use ls_rmsd_original

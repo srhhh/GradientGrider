@@ -801,7 +801,7 @@ subroutine runTrajectory3(filechannels,&
  
         !Check the library to get an
         !approximated gradient
-        call checkState_new(vals,coords,approx_gradient,min_rmsd,&
+        call checkState_new_permute(vals,coords,approx_gradient,min_rmsd,&
                  filechannels,number_of_frames,order,neighbor_check)
 
         !Accept worst has not found an acceptable frame

@@ -282,6 +282,8 @@ logical,parameter :: force_Duplicates = .false.
 !      possibly do not have the same RMSD or even cell index
 logical,parameter :: force_NoLabels = .false.
 
+logical,parameter :: force_Permutations = .false.
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                   MULTI-GRID PARAMETERS

@@ -640,9 +640,13 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
     !each trajectory onto those filechannels
     !Remark: checkMultipleGrids uses
     !filechannel1 to open files in the grid
-    call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
-                               coords_initial,velocities_initial,&
-                               coords_final,velocities_final)
+    call runTrajectory3(&
+            filechannels(1:1+Ngrid_total),&
+            coords_initial,velocities_initial,&
+            coords_final,velocities_final)
+!   call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
+!                              coords_initial,velocities_initial,&
+!                              coords_final,velocities_final)
 
     call system_clock(c2)
     call CPU_time(r2)

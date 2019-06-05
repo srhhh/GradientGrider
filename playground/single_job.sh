@@ -79,7 +79,9 @@ Ngrid_max=1
 force_Duplicates=.false.
 
 #Whether to use the labelling scheme or drop it altogether
-force_NoLabels=.false.
+force_NoLabels=.true.
+
+force_Permutations=.true.
 
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
@@ -113,31 +115,31 @@ alpha_ratio4="1.0d2"
 alpha_ratio5="1.0d2"
 interpolation_flag=.true.
 gather_interpolation_flag=.true.
-reject_flag=.false.
+reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
 grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=001
+Ntrajectories=015
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp619
+exp1name=exp004
 exp2name=exp314
 exp3name=exp315
 exp4name=exp014
 exp5name=exp015
 
 #This flag states whether we are continuing an old experiment
-continue_analysis=.false.
+continue_analysis=.true.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.false.
+useoldinitialbonddata_flag=.true.
 #initialbondfolder="001reject.10000"
-initialbondfolder=exp010/
+initialbondfolder=exp001/
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -181,7 +183,7 @@ initialbondfolder=exp010/
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_May01test"
+newGRID="H2H2_May05test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -336,6 +338,7 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
      s|Ngrid_check_min = .*|Ngrid_check_min = $newGRID_check_min|
      s|force_Duplicates = .*|force_Duplicates = $force_Duplicates|
      s|force_NoLabels = .*|force_NoLabels = $force_NoLabels|
+     s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s|gridpath0 = .*|gridpath0 = \\&\\n\"$gridPATH/\"|
      s|character([0-9]*),parameter :: parametersfile = .*|character($((${#newPARAMETERS}+4))),parameter :: parametersfile = \"$newPARAMETERS.f90\"|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
 

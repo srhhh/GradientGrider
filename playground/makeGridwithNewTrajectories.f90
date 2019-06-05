@@ -331,7 +331,24 @@ end if
                 call CPU_time(r1)
                 call system_clock(c1)
 !                call addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
-                call checkaddTrajectory(filechannels,coords_initial,velocities_initial,coords_final,velocities_final)
+!               call checkaddTrajectory(filechannels,coords_initial,velocities_initial,coords_final,velocities_final)
+
+                if (.not.(force_NoLabels)) then
+                    call runTrajectory1(filechannels,&
+                            coords_initial,velocities_initial,&
+                            coords_final,velocities_final)
+                else if (force_Duplicates) then
+                    call runTrajectory2(filechannels,&
+                            coords_initial,velocities_initial,&
+                            coords_final,velocities_final)
+                else if (force_Permutations) then
+                    call runTrajectory3(filechannels,&
+                            coords_initial,velocities_initial,&
+                            coords_final,velocities_final)
+                else
+                    print *, "error!"
+                end if
+
                 call CPU_time(r2)
                 call system_clock(c2)
                 trajectory_CPU_time = r2 - r1
