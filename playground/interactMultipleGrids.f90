@@ -1384,6 +1384,7 @@ if (chosen_index > 0) then
     candidate_rmsd = RMSDbuffer1(chosen_index)
     candidate_gradient = matmul(Ubuffer1(:,:,chosen_index),&
             gradientbuffer1(:,:,chosen_index))
+
 else
     min_rmsd = default_rmsd
 end if
@@ -1425,7 +1426,8 @@ if (k == N) then
                 var_index_diff(nextVar) = 0
         end do
 
-        call getRMSD_1(var_index + var_index_diff,population)
+!       call getRMSD_1(var_index + var_index_diff,population)
+        call getRMSD_1_permute(var_index + var_index_diff,population)
 
         if (population > 0) then
                 Totalnumber_of_frames = &
@@ -1438,7 +1440,8 @@ else if (currentVar == Nvar) then
 
         var_index_diff(currentVar) = N - k
 
-        call getRMSD_1(var_index + var_index_diff,population)
+!       call getRMSD_1(var_index + var_index_diff,population)
+        call getRMSD_1_permute(var_index + var_index_diff,population)
 
         if (population > 0) then
                 Totalnumber_of_frames = &
@@ -1449,7 +1452,8 @@ else if (currentVar == Nvar) then
 
         var_index_diff(currentVar) = -N + k
 
-        call getRMSD_1(var_index + var_index_diff,population)
+!       call getRMSD_1(var_index + var_index_diff,population)
+        call getRMSD_1_permute(var_index + var_index_diff,population)
 
         if (population > 0) then
                 Totalnumber_of_frames = &
@@ -1555,7 +1559,7 @@ do i = 1, Ninterpolation
         end do
 
         weight = frame_weights(i)
-        if (abs(weight) < 1.0d-9) cycle
+!       if (abs(weight) < 1.0d-9) cycle
 
         total_weight = total_weight + weight
         largest_rmsd = max(largest_rmsd,RMSDbuffer1(Ninterpolation_true))
@@ -1960,9 +1964,10 @@ real(dp),allocatable :: temp_inputCLS(:,:)
 
 !Stores values temporarily
 real(dp) :: current_rmsd
-real(dp),dimension(3,Natoms) :: current_coords
+real(dp),dimension(3,Natoms) :: current_coords,temp_coords
 real(dp),dimension(3,Natoms) :: current_gradient
 real(dp),dimension(Nvar) :: current_vals
+integer :: current_Ntraj
 
 !Incremental integers and iostate checking
 integer :: n,i,j,k,iostate
@@ -2009,8 +2014,12 @@ do
         !are already some frames in the buffer; in this case, do not start at
         !1, but at the current line number (population)
 !       do k = Totalnumber_of_frames + population, buffer1_size
-        do k = (Totalnumber_of_frames + population) * &
-               Nindistinguishables + 1, buffer1_size
+!       do k = (Totalnumber_of_frames + population) * &
+!              Nindistinguishables + n, buffer1_size
+!       do k = Totalnumber_of_frames + Ninterpolation + 1, buffer1_size
+        do k = Ninterpolation + 1, buffer1_size
+
+        do
 
 !       n = modulo(population,Nindistinguishables) + 1
 
@@ -2032,8 +2041,8 @@ do
                                 exit
                         end if
 
-                        read(var_filechannel) &
-                                Ntrajbuffer1(k)
+!                       read(var_filechannel) &
+!                               current_Ntraj
         
                         !The next line is the coordinates
                         read(var_filechannel) &
@@ -2072,29 +2081,47 @@ do
 
         BOND_LABELLING_DATA = INDISTINGUISHABLES(n,:)
 
-                valsbuffer1(:,k) = current_vals
+                n = n + 1
+                if (n > Nindistinguishables) then
+
+                        !Increment the number of frames visited
+                        population = population + 1
+                        n = 1
+        
+                end if
+
+!               valsbuffer1(:,k) = current_vals
+!               Ntrajbuffer1(k) = current_Ntraj
+
+!               do j = 1, Natoms
+!                    coordsbuffer1(:,j,k) = &
+!                        current_coords(:,BOND_LABELLING_DATA(j))
+!                    gradientbuffer1(:,j,k) = &
+!                        current_gradient(:,BOND_LABELLING_DATA(j))
+!               end do
 
                 do j = 1, Natoms
-                     coordsbuffer1(:,j,k) = &
+                     temp_coords(:,j) = &
                          current_coords(:,BOND_LABELLING_DATA(j))
-                     gradientbuffer1(:,j,k) = &
-                         current_gradient(:,BOND_LABELLING_DATA(j))
                 end do
 
 !               coordsbuffer1(:,:,k) = current_coords
 !               gradientbuffer1(:,:,k) = current_gradient
         
                 !Calculate the RMSD between this frame and the incoming frame
-                call rmsd_dp(Natoms,coordsbuffer1(:,:,k),var_coords,&
+                call rmsd_dp(Natoms,temp_coords,var_coords,&
                              1,Ubuffer1(:,:,k),x_center,y_center,&
                              current_rmsd)                               !,.false.,g)
+!               call rmsd_dp(Natoms,coordsbuffer1(:,:,k),var_coords,&
+!                            1,Ubuffer1(:,:,k),x_center,y_center,&
+!                            current_rmsd)                               !,.false.,g)
 !               call rmsd_dp(Natoms,current_coords,var_coords,&
 !                            1,Ubuffer1(:,:,k),x_center,y_center,&
 !                            current_rmsd)                               !,.false.,g)
 !               call rmsd_dp(Natoms,var_coords,current_coords,&
 !                            1,Ubuffer1(:,:,k),y_center,x_center,&
 !                            current_rmsd)                               !,.false.,g)
-                RMSDbuffer1(k) = current_rmsd
+!               RMSDbuffer1(k) = current_rmsd
         
                 !If in the "accept worst" method:
                 if (accept_worst) then
@@ -2118,34 +2145,9 @@ do
                 
                         end if
         
-                !If in the "accept best" method:
-                else
-                        if ((interpolation_flag).and.&
-                            (current_rmsd < threshold_rmsd)) then
-
-                                acceptable_frame_mask(k) = .true.
-
-                                Ninterpolation = Ninterpolation + 1
-
-                                do i = 1, 3
-                                        current_coords(i,:) = &
-                                        current_coords(i,:) - x_center(i)
-                                end do
-
-                                current_coords = matmul(&
-                                        Ubuffer1(:,:,k),current_coords)
-
-                                do i = 1, 3
-                                        current_coords(i,:) = &
-                                        current_coords(i,:) + y_center(i)
-                                end do
-
-                                inputCLS(1:Ncoords,Ninterpolation) =&
-                                           reshape(current_coords-var_coords,(/Ncoords/))
-
-!                               temp_rmsd_weights(Ninterpolation) = current_rmsd
-
-                        end if
+                !If in the "accept best" method
+                !and the RMSD is low enough:
+                else if (current_rmsd < threshold_rmsd) then
 
                         !If the RMSD is low enough, designate this frame as the "best"
 !                       if (current_rmsd < candidate_rmsd) then
@@ -2156,23 +2158,68 @@ do
                                 candidate_rmsd = current_rmsd
                 
                                 !In special cases, we exit immediately afterwards
-                                if (accept_first) exit
+!                               if (accept_first) exit
+                                if (accept_first) iostate = 1
                 
-                        !Otherwise, do nothing
-                        else
-                
+                        end if
+
+!                       if ((interpolation_flag).and.&
+!                           (current_rmsd < threshold_rmsd)) then
+!                       if (&
+!                           (current_rmsd < threshold_rmsd)) then
+!                       if (((interpolation_flag).or.&
+!                            (gather_interpolation_flag)).and.&
+!                           (current_rmsd < threshold_rmsd)) then
+                        if ((interpolation_flag).or.&
+                             (gather_interpolation_flag)) then
+
+                        RMSDbuffer1(k) = current_rmsd
+                        valsbuffer1(:,k) = current_vals
+!                       Ntrajbuffer1(k) = current_Ntraj
+        
+                        do j = 1, Natoms
+                             coordsbuffer1(:,j,k) = &
+                                 current_coords(:,BOND_LABELLING_DATA(j))
+                             gradientbuffer1(:,j,k) = &
+                                 current_gradient(:,BOND_LABELLING_DATA(j))
+                        end do
+
+                        acceptable_frame_mask(k) = .true.
+
+                        Ninterpolation = Ninterpolation + 1
+
+!                       temp_coords = coordsbuffer1(:,:,k)
+
+                        do i = 1, 3
+                                temp_coords(i,:) = &
+                                temp_coords(i,:) - x_center(i)
+                        end do
+
+                        temp_coords(:,:) = matmul(&
+                                Ubuffer1(:,:,k),&
+                                temp_coords(:,:))
+
+                        do i = 1, 3
+                                temp_coords(i,:) = &
+                                temp_coords(i,:) + y_center(i)
+                        end do
+
+                        inputCLS(1:Ncoords,Ninterpolation) =&
+                                   reshape(temp_coords(:,:) -&
+                                   var_coords,(/Ncoords/))
+
+!                       temp_rmsd_weights(Ninterpolation) = current_rmsd
+
+                        exit
+
                         end if
         
                 end if
 
-                n = n + 1
-                if (n > Nindistinguishables) then
+        end do
 
-                        !Increment the number of frames visited
-                        population = population + 1
-                        n = 1
-        
-                end if
+        !If the last line of the file has been read, we can exit out of the loop
+        if (iostate /= 0) exit
 
         end do
         
@@ -2192,7 +2239,7 @@ do
                  temp_acceptable_frame_mask(buffer1_size),&
                  temp_inputCLS(Ncoords+buffer1_size,buffer1_size))
 
-        allocate(temp_Ntrajbuffer1(buffer1_size))
+!       allocate(temp_Ntrajbuffer1(buffer1_size))
         
         !Store the buffer in the temporary buffer
         temp_valsbuffer1 = valsbuffer1
@@ -2204,13 +2251,13 @@ do
         temp_acceptable_frame_mask = acceptable_frame_mask
         temp_inputCLS = inputCLS
 
-        temp_Ntrajbuffer1 = Ntrajbuffer1
+!       temp_Ntrajbuffer1 = Ntrajbuffer1
         
         !For now, we simply double the buffer size each time it overfills
         deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
                    approximation_index,acceptable_frame_mask,inputCLS)
 
-        deallocate(Ntrajbuffer1)
+!       deallocate(Ntrajbuffer1)
         allocate(valsbuffer1(Nvar,buffer1_size*2),&
                  coordsbuffer1(3,Natoms,buffer1_size*2),&
                  gradientbuffer1(3,Natoms,buffer1_size*2),&
@@ -2220,7 +2267,7 @@ do
                  acceptable_frame_mask(buffer1_size*2),&
                  inputCLS(Ncoords+buffer1_size*2,buffer1_size*2))
 
-        allocate(Ntrajbuffer1(buffer1_size*2))
+!       allocate(Ntrajbuffer1(buffer1_size*2))
         
         acceptable_frame_mask = .false.
 
@@ -2234,20 +2281,21 @@ do
         acceptable_frame_mask(1:buffer1_size) = temp_acceptable_frame_mask
         inputCLS(1:Ncoords+buffer1_size,1:buffer1_size) = temp_inputCLS
 
-        Ntrajbuffer1(1:buffer1_size) = temp_Ntrajbuffer1
+!       Ntrajbuffer1(1:buffer1_size) = temp_Ntrajbuffer1
 
         !Destroy the temporary buffer
         deallocate(temp_valsbuffer1,temp_coordsbuffer1,temp_gradientbuffer1,&
                    temp_Ubuffer1,temp_RMSDbuffer1,temp_approximation_index,&
                    temp_acceptable_frame_mask,temp_inputCLS)
 
-        deallocate(temp_Ntrajbuffer1)
+!       deallocate(temp_Ntrajbuffer1)
 
         !Permanently increase the buffer size so this will not
         !have to happen next time
         buffer1_size = buffer1_size*2
 end do
 close(var_filechannel)
+
 
 end subroutine getRMSD_1_permute
 
@@ -2475,12 +2523,12 @@ if (unreadable_flag) then
         open(filechannel1,file=gridpath2//trim(var_filename),position="append",form="unformatted")
         if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
                 write(filechannel1) (vals(j),j=1,Nvar)
-                write(filechannel1) Ntraj
+!               write(filechannel1) Ntraj
                 write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
                 write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
         else
                 write(filechannel1) (vals(j),j=1,Nvar)
-                write(filechannel1) Ntraj
+!               write(filechannel1) Ntraj
 !               write(filechannel1) ((coords(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
 !               write(filechannel1) ((gradient(i,BOND_LABELLING_DATA(j)),i=1,3),j=1,Natoms)
                 write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)

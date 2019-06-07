@@ -198,7 +198,8 @@ integer,parameter,dimension(4,4) :: default_scaling = &
 integer,parameter,dimension(4) :: default_overcrowd = &
         (/     50,     10000,      50,       50 /)
 integer,dimension(4),parameter :: default_Norder_order = &
-        (/ 1, 0, 2, 3 /)
+        (/ 0, 1, 2, 3 /)
+!       (/ 1, 0, 2, 3 /)
 
 !After making these default values, we decide how many we
 !can use, then simply truncate the extra variables off

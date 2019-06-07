@@ -65,7 +65,7 @@ scaling2_0=004
 scaling2_1=004
 
 #The number of frames a parent-level cell accepts before it is subdivided
-overcrowd0=00050
+overcrowd0=10000
 overcrowd1=10000
 overcrowd2=01010
 
@@ -95,8 +95,8 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.150000d0
-threshold_rmsd1=.150000d0
+threshold_rmsd=.100000d0
+threshold_rmsd1=.100000d0
 threshold_rmsd2=.150000d0
 threshold_rmsd3=.150000d0
 threshold_rmsd4=.010000d0
@@ -113,8 +113,8 @@ alpha_ratio2="5.0d0"
 alpha_ratio3="5.0d1"
 alpha_ratio4="1.0d2"
 alpha_ratio5="1.0d2"
-interpolation_flag=.true.
-gather_interpolation_flag=.true.
+interpolation_flag=.false.
+gather_interpolation_flag=.false.
 reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
@@ -122,11 +122,11 @@ grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=015
+Ntrajectories=010
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp004
+exp1name=exp002
 exp2name=exp314
 exp3name=exp315
 exp4name=exp014
@@ -183,7 +183,7 @@ initialbondfolder=exp001/
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_May05test"
+newGRID="H2H2_May09test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0

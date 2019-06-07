@@ -169,6 +169,12 @@ do n = 1, Nvar
 end do
 end do
 
+!If there is no force approximation going on then
+!set the subcell searching to zero
+!if ((reject_flag).and.(.not.&
+!        (gather_interpolation_flag))) ssm1 = 0
+
+!Initialize the subcell search variables
 call setSubcellSearchMax()
 
 

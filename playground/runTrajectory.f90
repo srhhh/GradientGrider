@@ -699,6 +699,7 @@ subroutine runTrajectory3(filechannels,&
                           coords_initial,velocities_initial,&
                           coords_final,velocities_final)
     use PARAMETERS
+    use ls_rmsd_original
     use PHYSICS
     use VARIABLES
     use ANALYSIS
@@ -717,11 +718,22 @@ subroutine runTrajectory3(filechannels,&
 
     !Various other variables
     real(dp) :: error1,error2
+    real(dp),dimension(3) :: x_center, y_center
     real(dp) :: min_rmsd
     integer :: number_of_frames,order,neighbor_check
 
+    real(dp) :: RMSD_prior
+    real(dp) :: max_RMSDdelta, max_deltaRMSD
+    real(dp),dimension(3,Natoms) :: coords_prior
+
+    real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
+    integer,allocatable :: libNtraj(:)
+
     !Incremental Integer
-    integer :: i,n
+    integer :: i,n,m
+
+    max_RMSDdelta = 0.0d0
+    max_deltaRMSD = 0.0d0
 
     !Initialize the scene
     call InitialSetup3(coords,velocities)
@@ -771,7 +783,7 @@ subroutine runTrajectory3(filechannels,&
              RMSDbuffer1(buffer1_size),&
              approximation_index(buffer1_size))
 
-    allocate(Ntrajbuffer1(buffer1_size))
+!   allocate(Ntrajbuffer1(buffer1_size))
 
     !These buffers need not be allocated if interpolation
     !is not occuring
@@ -804,6 +816,53 @@ subroutine runTrajectory3(filechannels,&
         call checkState_new_permute(vals,coords,approx_gradient,min_rmsd,&
                  filechannels,number_of_frames,order,neighbor_check)
 
+!       error2 = 1.0d9
+!       do i = 1, Nindistinguishables
+
+!           BOND_LABELLING_DATA = INDISTINGUISHABLES(i,:)
+    
+!           !We need to input the frame using the labeling scheme
+!           do n = 1, Natoms
+!               coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
+!           end do
+    
+!           call rmsd_dp(Natoms,coords_labelled,&
+!                   coords_initial,1,Ubuffer1(:,:,1),&
+!                   x_center,y_center,error1)
+
+!           if (error1 < error2) error2 = error1
+!       end do
+
+!       print *, ""
+!       print *, steps
+!       print *, vals
+!       print *, error2
+
+!       if (steps > 1) then
+!           call rmsd_dp(Natoms,coords,&
+!                   coords_initial,1,Ubuffer1(:,:,1),&
+!                   x_center,y_center,error1)
+
+!           if (abs(error1 - RMSD_prior) > max_deltaRMSD) &
+!                   max_deltaRMSD = abs(error1 - RMSD_prior)
+!           RMSD_prior = error1
+
+!           call rmsd_dp(Natoms,coords,&
+!                   coords_prior,1,Ubuffer1(:,:,1),&
+!                   x_center,y_center,error1)
+
+!           if (error1 > max_RMSDdelta) &
+!                   max_RMSDdelta = error1
+!           coords_prior = coords
+!       else
+!           call rmsd_dp(Natoms,coords,&
+!                   coords_initial,1,Ubuffer1(:,:,1),&
+!                   x_center,y_center,error1)
+
+!           RMSD_prior = error1
+!           coords_prior = coords
+!       end if
+
         !Accept worst has not found an acceptable frame
         !if min_rmsd is zero
         !(deprecated)
@@ -815,7 +874,7 @@ subroutine runTrajectory3(filechannels,&
  
             !Calculate the true gradient
             call Acceleration(vals,coords,gradient)
- 
+
             !If a frame was found, record data on it
             if (Ninterpolation > 0) then
                 error1 = sqrt(sum((gradient - &
@@ -827,6 +886,44 @@ subroutine runTrajectory3(filechannels,&
                         Ninterpolation,largest_weighted_rmsd2,&
                         largest_weighted_rmsd,candidate_rmsd,&
                         min_rmsd,error1,error2
+
+               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!              if ((Ninterpolation > 10).and.(error1 < error2)) then
+!              if ((Ninterpolation > 10)) then
+!                  allocate(libcoords(Ninterpolation,3,Natoms),&
+!                           libgradients(Ninterpolation,3,Natoms),&
+!                           libNtraj(Ninterpolation))
+!                  m = 0
+!                  do n = 1, Ninterpolation
+!                      do
+!                      m = m + 1
+!                      if (acceptable_frame_mask(m)) then
+!                          libcoords(n,:,:) =&
+!                                  coordsbuffer1(:,:,m)
+!                          libgradients(n,:,:) =&
+!                                  gradientbuffer1(:,:,m)
+!                          libNtraj(n) =&
+!                                  Ntrajbuffer1(m)
+!                          exit
+!                      else
+!                      end if
+!                      end do
+!                  end do
+
+!                  call errorCheck5(filechannels,&
+!                          coords,gradient,&
+!                          Ninterpolation,&
+!                          libcoords,libgradients,&
+!                          libNtraj)
+
+!                  deallocate(libcoords,libgradients,libNtraj)
+!              end if
+
+               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
             end if
 
             !If we are adding to a grid, then relabel
@@ -880,13 +977,18 @@ subroutine runTrajectory3(filechannels,&
             Ubuffer1,RMSDbuffer1,&
             approximation_index)
 
-    deallocate(Ntrajbuffer1)
+!   deallocate(Ntrajbuffer1)
 
     deallocate(acceptable_frame_mask,inputCLS)
 
     !Output the final coordinates and velocities
     coords_final = coords
     velocities_final = velocities
+
+!   print *, "max_RMSDdelta"
+!   print *, max_RMSDdelta
+!   print *, "max_deltaRMSD"
+!   print *, max_deltaRMSD
 
 end subroutine runTrajectory3
 
@@ -4815,10 +4917,17 @@ subroutine errorCheck5(filechannels,coords1,gradient1,&
 
     call getVarsMaxMin(coords1,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
-    do i = 1, Natoms
-        coords2(:,i) = coords1(:,BOND_LABELLING_DATA(i))
-        gradient2(:,i) = gradient1(:,BOND_LABELLING_DATA(i))
-    end do
+    if (force_NoLabels) then
+        do i = 1, Natoms
+            coords2(:,i) = coords1(:,i)
+            gradient2(:,i) = gradient1(:,i)
+        end do
+    else
+        do i = 1, Natoms
+            coords2(:,i) = coords1(:,BOND_LABELLING_DATA(i))
+            gradient2(:,i) = gradient1(:,BOND_LABELLING_DATA(i))
+        end do
+    end if
 
     !Now lets add lots of bad points (but still in threshold)
 !   do steps = 2, Ntest
@@ -5560,6 +5669,288 @@ write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 !   print *, ""
 
 end subroutine errorCheck5
+
+subroutine errorCheck6(filechannels,coords1,gradient1,&
+                       Ninterpolation,&
+                       libcoords,libgradients,libNtraj)
+    use FUNCTIONS
+    use PARAMETERS
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    use ls_rmsd_original
+    implicit none
+
+    !Coordinates, Velocities, and Variables
+    real(dp), dimension(3,Natoms),intent(in) :: coords1,gradient1
+    real(dp), dimension(3,Natoms) :: coords2,gradient2
+    integer,intent(in) :: Ninterpolation
+    real(dp), dimension(Ninterpolation,3,Natoms),intent(in) :: libcoords,libgradients
+    integer,dimension(Ninterpolation) :: libNtraj
+    real(dp), dimension(3,Natoms) :: coords_labelled,delta_coords
+    real(dp), dimension(3,Natoms) :: gradient_var,gradient_labelled,gradient_var_labelled
+    real(dp), dimension(3,Natoms) :: gradient_var_min, gradient_var_max
+    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
+    real(dp), dimension(Nvar) :: vals
+    real(dp), dimension(3,Natoms) :: coords,gradient
+    integer :: bond_index1, bond_index2
+
+!   real(dp), allocatable :: rmsd_x(:,:),rmsd_x_interpolated(:,:)
+!   real(dp), allocatable :: rmsd_fx(:,:),rmsd_fx_interpolated(:,:)
+!   real(dp), allocatable :: rmsd_weights(:,:,:)
+!   real(dp),dimension(4) :: selected_means,selected_SDs
+    real(dp) :: delta_length
+    real(dp),dimension(Ninterpolation,3,Natoms) :: randcoords
+    integer :: Ntest,Nsamples,Nsample
+    integer :: Nanomaly,Nanomaly_index
+    character(3) :: Nanomaly_text
+    real(dp), allocatable :: outputCLS(:)
+    real(dp), dimension(3,Natoms,Ninterpolation) :: gradient_steps
+    real(dp), dimension(Ncoords+Ninterpolation,Ninterpolation) :: inputCLS2
+    real(dp), allocatable :: frame_weights(:)
+    real(dp), allocatable :: restraints(:,:),restraint_values(:)
+    real(dp), allocatable :: minimized_differences2(:,:)
+    real(dp) :: error1,error2,error3,error4,rmsd1
+    real(dp) :: dropoff_cutoff,dropoff_mean,dropoff_SD
+    real(dp) :: convergence_mean,convergence_SD
+
+    !Various other variables
+    real(dp) :: min_rmsd,min_rmsd_prime,max_rmsd_prime
+    integer :: min_rmsd_index,max_rmsd_index
+    integer :: number_of_frames,order,neighbor_check
+    character(9) :: vals_interpolation_text
+
+    integer :: Ntrials
+
+    integer :: Nbins
+    integer :: min_rmsd_bin
+    real(dp) :: min_rmsd_binwidth
+    real(dp),allocatable :: min_rmsd_binning(:)
+    real(dp),dimension(Ncoords+Ninterpolation,1) :: cost_final
+    real(dp) :: alpha_test,total_cost
+
+    integer :: Nunique, unique_counter
+    real(dp),dimension(Ncoords) :: meancoords
+    real(dp),dimension(Ninterpolation) :: mu, sigma
+    integer,dimension(Ninterpolation) :: uniqueNtraj
+    logical :: unique_flag
+
+    integer,dimension(1+Ngrid_total),intent(in) :: filechannels
+    real(dp), dimension(3) :: x_center, y_center
+    real(dp), allocatable :: g(:,:)
+    real(dp),dimension(3,3) :: U
+    real(dp),dimension(3,3) :: candidate_U
+
+    !Incremental Integer
+    integer :: i,n
+    integer :: step
+
+!   print *, ""
+!   print *, "Started Error Check 6!"
+!   print *, ""
+
+    Nanomaly = 0
+    Ntest = Ninterpolation
+    Nsamples = 1
+    Ntrials = 0
+
+    Nanomaly_index = 0
+
+    allocate(frame_weights(Ninterpolation),&
+             outputCLS(Ncoords+Ninterpolation),&
+             restraints(1,Ninterpolation),&
+             restraint_values(1),&
+             minimized_differences2(Ninterpolation,1))
+
+    restraints = 1.0d0
+    restraint_values = 1.0d0
+    outputCLS(1:Ncoords) = 0.0d0
+    outputCLS(Ncoords+1:Ncoords+Ninterpolation) = 0.0d0
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !      Dropoff Part 1
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    call getVarsMaxMin(coords1,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+    if (force_NoLabels) then
+        do i = 1, Natoms
+            coords2(:,i) = coords1(:,i)
+            gradient2(:,i) = gradient1(:,i)
+        end do
+    else
+        do i = 1, Natoms
+            coords2(:,i) = coords1(:,BOND_LABELLING_DATA(i))
+            gradient2(:,i) = gradient1(:,BOND_LABELLING_DATA(i))
+        end do
+    end if
+
+    !Now lets add lots of bad points (but still in threshold)
+    open(6666,file=gridpath5//"tmp_A.dat")
+    min_rmsd_prime = 1.0d9
+    max_rmsd_prime = 0.0d0
+    do step = 1, Ninterpolation
+        coords = libcoords(step,:,:)
+        gradient_var = libgradients(step,:,:)
+
+        call rmsd_dp(Natoms,coords,coords2,1,&
+                     candidate_U,x_center,y_center,min_rmsd)
+
+        if (min_rmsd < min_rmsd_prime) then
+            min_rmsd_prime = min_rmsd
+            min_rmsd_index = step
+        end if
+
+        if (min_rmsd > max_rmsd_prime) then
+            max_rmsd_prime = min_rmsd
+            max_rmsd_index = step
+        end if
+
+        gradient_var = matmul(candidate_U,gradient_var)
+        gradient_steps(:,:,step) = gradient_var
+
+        do i = 1, 3
+            coords(i,:) = &
+            coords(i,:) - x_center(i)
+        end do
+
+        coords = matmul(candidate_U,coords)
+
+        do i = 1, 3
+            coords(i,:) = &
+            coords(i,:) + y_center(i)
+        end do
+
+        inputCLS2(1:Ncoords,step) = reshape(coords - coords2,(/Ncoords/))
+        inputCLS2(Ncoords+step,:) = 0.0d0
+        inputCLS2(Ncoords+step,step) = alpha_ratio * &
+                sum(inputCLS2(1:Ncoords,step)**2)/Natoms
+
+    end do
+    close(6666)
+
+
+    !Linear binning!
+    Nbins = 20
+    min_rmsd_binwidth = (threshold_rmsd)/Nbins
+    allocate(min_rmsd_binning(Nbins))
+
+    min_rmsd_binning = 0
+    do step = 1, Ninterpolation
+        min_rmsd = sqrt(sum(inputCLS2(1:Ncoords,step)**2)/Natoms)
+        min_rmsd_bin = floor((min_rmsd - 0.0d0) / &
+                min_rmsd_binwidth) + 1
+        if (min_rmsd_bin < 1) min_rmsd_bin = 1
+        if (min_rmsd_bin > Nbins) min_rmsd_bin = Nbins
+
+        min_rmsd_binning(min_rmsd_bin) = &
+                min_rmsd_binning(min_rmsd_bin) + 1
+
+    end do
+
+    open(6666,file=gridpath5//"tmp_B.dat")
+
+    do n = 1, Nbins
+        write(6666,FMT=*) (n - 0.5)*min_rmsd_binwidth + &
+                0.0d0, min_rmsd_binning(n)
+    end do
+
+    close(6666)
+
+    deallocate(min_rmsd_binning)
+
+    Nunique = 0
+    do step = 1, Ninterpolation
+        unique_flag = .true.
+        do n = 1, Nunique
+            if (libNtraj(step) == uniqueNtraj(n)) unique_flag = .false.
+        end do
+
+        if (.not.(unique_flag)) cycle
+
+        Nunique = Nunique + 1
+        uniqueNtraj(Nunique) = libNtraj(step)
+    end do
+
+    do n = 1, Nunique
+        meancoords = 0.0d0
+        unique_counter = 0
+        do step = 1, Ninterpolation
+            if (libNtraj(step) == uniqueNtraj(n)) then
+                meancoords = meancoords + &
+                        inputCLS2(1:Ncoords,step)
+                unique_counter = unique_counter + 1
+            end if
+        end do
+
+        meancoords = meancoords / unique_counter
+        mu(n) = sqrt(sum((meancoords)**2)/Natoms)
+
+        sigma(n) = 0.0d0
+        do step = 1, Ninterpolation
+            if (libNtraj(step) == uniqueNtraj(n)) then
+                sigma(n) = sigma(n) + &
+                        sqrt(sum((meancoords - inputCLS2(1:Ncoords,step))**2)/Natoms)
+            end if
+        end do
+        sigma(n) = sigma(n)/unique_counter
+    end do
+
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !      Plotting
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    call getVarsMaxMin(coords1,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+    open(gnuplotchannel,file=gridpath5//gnuplotfile)
+    write(gnuplotchannel,*) "set term pngcairo enhanced size 1800,2400"
+    write(gnuplotchannel,*) 'set encoding utf8'
+    write(gnuplotchannel,FMT="(A,2F7.4,A,I0.5,A)") &
+            'set output "'//gridpath4, vals,'.png"'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'set multiplot layout 2'//&
+                        ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
+                        '"Single Frame Interpolation'//&
+                        '" font ",32" offset 0,-3'
+
+    write(gnuplotchannel,FMT="(A,I0.2,A,I0.8,A)") &
+            'set label ',1,' "Ntraj    RMSD of Mean       SD of Mean" '//&
+            'at screen 0.1, character ',76, ' font ",14"'
+    do n = 1, Nunique
+    write(gnuplotchannel,FMT="(A,I0.2,A,I0.3,6x,E12.7,7x,E12.7,A,I0.8,A)") &
+            'set label ',n+1,' "',uniqueNtraj(n),mu(n),sigma(n),'" '//&
+            'at screen 0.1, character ',76 - (n)*1, ' font ",14"'
+    end do
+
+
+write(gnuplotchannel,*) 'unset ylabel'
+write(gnuplotchannel,*) 'set y2label "Occurence" font ",24"'
+write(gnuplotchannel,*) 'set ytics font ",16" nomirror'
+    write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'unset y2tics'
+    write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'set style histogram clustered gap 1'
+write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+    write(gnuplotchannel,*) 'set format x "%6.3f"'
+    write(gnuplotchannel,*) 'set xlabel "RMSD Between Current and Target Frame" font ",24"'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_B.dat" u 1:2 w boxes t ""'
+    close(gnuplotchannel)
+
+    call system("gnuplot < "//gridpath5//gnuplotfile)
+
+
+!   print *, ""
+!   print *, "Finished Error Check 6!"
+!   print *, ""
+
+end subroutine errorCheck6
+
 
 
 subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
