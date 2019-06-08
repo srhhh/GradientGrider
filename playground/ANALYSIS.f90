@@ -74,7 +74,7 @@ logical,parameter :: testtraj_flag = .true.
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 3, 0 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 0, 3 /)
    integer,dimension(ssm_length) :: ssm2 = (/ 0, 5 /)
 
    !Set .true. to generate a frequency plot of the percentage

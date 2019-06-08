@@ -1459,6 +1459,8 @@ write(gnuplotchannel,*) 'set multiplot layout ',Nbonds,',4 '//&
                         'margins 0.025,0.975,.1,.95 spacing 0.05,0 '//&
                         'title "Initial Bond Distribution of '//trim(adjustl(Ntraj_text))//&
                         ' Trajectories" font ",24" offset 0,5'
+write(gnuplotchannel,*) 'unset xlabel'
+
 do i = 1, Nbonds
 
 !
@@ -1472,12 +1474,14 @@ write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor(x/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = box_width * (bin_number(x) + 0.5)'
 
-write(gnuplotchannel,*) 'set xlabel "Initial Bond Theta Angle (rad)" font ",18"'
 write(gnuplotchannel,*) 'set xrange [-pi:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'unset xtics'
-if (i == Nbonds) write(gnuplotchannel,*) 'set xtics pi/2'
+if (i == Nbonds) then
+        write(gnuplotchannel,*) 'set xtics pi/2'
+        write(gnuplotchannel,*) 'set xlabel "Initial Bond Theta Angle (rad)" font ",18"'
+end if
 
 write(Ntraj_text,FMT="(I6)") i*6 - 2
 write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
@@ -1494,12 +1498,14 @@ write(gnuplotchannel,*) 'plot "'//gridpath0//prefix_filename//initialfile//&
 write(gnuplotchannel,*) 'box_width = pi /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 
-write(gnuplotchannel,*) 'set xlabel "Initial Bond Phi Angle (rad)" font ",18"'
 write(gnuplotchannel,*) 'set xrange [0:pi]'
 write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) "set format x '%.1P π'"
 write(gnuplotchannel,*) 'unset xtics'
-if (i == Nbonds) write(gnuplotchannel,*) 'set xtics pi/2'
+if (i == Nbonds) then
+        write(gnuplotchannel,*) 'set xtics pi/2'
+        write(gnuplotchannel,*) 'set xlabel "Initial Bond Phi Angle (rad)" font ",18"'
+end if
 
 write(Ntraj_text,FMT="(I6)") i*6 - 1
 write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
@@ -1552,10 +1558,12 @@ write(gnuplotchannel,*) 'box_width = (max_upsilon-min_upsilon) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_upsilon)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_upsilon+box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xlabel "Vibrational Quantum Number" font ",18"'
 write(gnuplotchannel,*) 'set format x "%5.1e'
 write(gnuplotchannel,*) 'unset xtics'
-if (i == Nbonds) write(gnuplotchannel,*) 'set xtics min_upsilon, (max_upsilon-min_upsilon)/5, max_upsilon'
+if (i == Nbonds) then
+        write(gnuplotchannel,*) 'set xtics min_upsilon, (max_upsilon-min_upsilon)/5, max_upsilon'
+        write(gnuplotchannel,*) 'set xlabel "Vibrational Quantum Number" font ",18"'
+end if
 write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'set xrange [min_upsilon:max_upsilon]'
 write(gnuplotchannel,*) 'set yrange [0:]'
@@ -1636,10 +1644,12 @@ write(gnuplotchannel,*) 'box_width = (max_J-min_J) /', initialBins
 write(gnuplotchannel,*) 'set boxwidth box_width'
 write(gnuplotchannel,*) 'bin_number(x) = floor((x-min_J)/box_width)'
 write(gnuplotchannel,*) 'rounded(x) = min_J+box_width * (bin_number(x) + 0.5)'
-write(gnuplotchannel,*) 'set xlabel "Rotational Quantum Number" font ",18"'
 write(gnuplotchannel,*) "set format x '%.1f'"
 write(gnuplotchannel,*) 'unset xtics'
-if (i == Nbonds) write(gnuplotchannel,*) 'set xtics min_J, (max_J-min_J)/5, max_J'
+if (i == Nbonds) then
+        write(gnuplotchannel,*) 'set xtics min_J, (max_J-min_J)/5, max_J'
+        write(gnuplotchannel,*) 'set xlabel "Rotational Quantum Number" font ",18"'
+end if
 write(gnuplotchannel,*) 'set ylabel "Occurence" font ",18"'
 write(gnuplotchannel,*) 'set xrange [min_J:max_J]'
 write(gnuplotchannel,*) 'set yrange [0:]'

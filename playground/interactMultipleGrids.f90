@@ -1114,20 +1114,37 @@ do k = 1, Ngrid_total
             end if
         end if
         
-        !If the cell is populated...
-        if (population > 0) then
-            if ((l==1).or.(Totalnumber_of_frames == 0)) then
-        
-            !However many frames are in the subcell we
-            !increment to number_of_frames
-            Totalnumber_of_frames = &
+!        !If the cell is populated...
+!        if (population > 0) then
+!            if ((l==1).or.(Totalnumber_of_frames == 0)) then
+!        
+!            !However many frames are in the subcell we
+!            !increment to number_of_frames
+!            Totalnumber_of_frames = &
+!            Totalnumber_of_frames + population
+!            
+!!           if ((population > var_overcrowd(Norder+1)) &
+!!               .and. (Norder < Norder_max)) then
+!            if ((population >= var_overcrowd(Norder+1)) &
+!                .and. (Norder < Norder_max)) then
+!                print *, "hello"
+!                cycle
+!            end if
+!
+!            !This is good enough, no need to look at more frames
+!            stop_flag = .true.
+!    
+!            end if
+!        end if
+
+        Totalnumber_of_frames = &
             Totalnumber_of_frames + population
-            
-            !This is good enough, no need to look at more frames
-            stop_flag = .true.
-    
-            end if
+
+        if (population >= var_overcrowd(Norder+1)) then
+            if (Norder < Norder_max) cycle
         end if
+
+        print *, Norder, population
         
         !If the cell is unpopulated or a certain flag is true,
         !then we go ahead and look at the neighbors of this cell
@@ -1308,19 +1325,26 @@ do k = 1, Ngrid_total
             end if
         end if
         
-        !If the cell is populated...
-        if (population > 0) then
-            if ((l==1).or.(Totalnumber_of_frames == 0)) then
-        
-            !However many frames are in the subcell we
-            !increment to number_of_frames
-            Totalnumber_of_frames = &
+!       !If the cell is populated...
+!       if (population > 0) then
+!           if ((l==1).or.(Totalnumber_of_frames == 0)) then
+!       
+!           !However many frames are in the subcell we
+!           !increment to number_of_frames
+!           Totalnumber_of_frames = &
+!           Totalnumber_of_frames + population
+!           
+!           !This is good enough, no need to look at more frames
+!           stop_flag = .true.
+!   
+!           end if
+!       end if
+
+        Totalnumber_of_frames = &
             Totalnumber_of_frames + population
-            
-            !This is good enough, no need to look at more frames
-            stop_flag = .true.
-    
-            end if
+
+        if (population >= var_overcrowd(Norder+1)) then
+            if (Norder < Norder_max) cycle
         end if
         
         !If the cell is unpopulated or a certain flag is true,
@@ -1343,12 +1367,19 @@ do k = 1, Ngrid_total
         
         !Psyche!
 !       if (stop_flag) exit
-        if (population > 0) exit
+
+        !If we found a non-empty cell then our search has
+        !been over this particular order and does not need
+        !to go over other orders
+        if (population > 0) then
+                order = order + Norder
+                exit
+        end if
     
     end do
     
-    order = order + Norder
-    
+    !Record the RMSD encountered here for later analysis:
+    !particularly, percent-RMSD graphs
     if (testtraj_flag) write(filechannels(1+k),FMT=FMT6) candidate_rmsd
     
 end do

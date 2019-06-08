@@ -1054,12 +1054,16 @@ write(gnuplotchannel,*) 'plot "'//gridpath1//informaticsfile//'" u 3:(($6)/1000.
 
 write(gnuplotchannel,*) 'set ylabel "Number of Calls\nto DivyUp"'
 write(gnuplotchannel,*) 'delta_header1 = (',max_header1_delta_in,' / 5.0)'
-write(gnuplotchannel,*) 'set yrange [-delta_header1*tic_spacing:delta_header1*(5.0+tic_spacing)]'
+write(gnuplotchannel,*) 'if (delta_header1==0.0) { set yrange [-0.2:1.2];'
+write(gnuplotchannel,*) 'set ytics 1'
+write(gnuplotchannel,*) '} else {'
+write(gnuplotchannel,*) 'set yrange [-delta_header1*tic_spacing:delta_header1*(5.0+tic_spacing)];'
 write(gnuplotchannel,*) 'set ytics 0, floor(delta_header1)'
+write(gnuplotchannel,*) '}'
 write(gnuplotchannel,*) 'plot "'//gridpath1//informaticsfile//'" u 3:4 w lines, '//&
                            '"'//gridpath1//informaticsfile//'" u 3:5 w lines'
 
-write(gnuplotchannel,*) 'set ylabel "Percentage of Frames\nAdded to Order 1"'
+write(gnuplotchannel,*) 'set ylabel "Percentage of Frame\nSearches in Order 1"'
 write(gnuplotchannel,*) 'delta_percentage = 20'
 write(gnuplotchannel,*) 'set yrange [-delta_percentage*tic_spacing:100+delta_percentage*tic_spacing]'
 write(gnuplotchannel,*) 'set ytics 0, delta_percentage, 100'

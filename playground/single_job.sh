@@ -65,12 +65,12 @@ scaling2_0=004
 scaling2_1=004
 
 #The number of frames a parent-level cell accepts before it is subdivided
-overcrowd0=10000
+overcrowd0=00050
 overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0050
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -126,7 +126,7 @@ Ntrajectories=010
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp002
+exp1name=exp003
 exp2name=exp314
 exp3name=exp315
 exp4name=exp014
@@ -137,7 +137,7 @@ continue_analysis=.true.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.true.
+useoldinitialbonddata_flag=.false.
 #initialbondfolder="001reject.10000"
 initialbondfolder=exp001/
 
@@ -183,10 +183,10 @@ initialbondfolder=exp001/
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_May09test"
+newGRID="H2H2_May13test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=0
+newGRID_flag=1
 
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
@@ -195,7 +195,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)
