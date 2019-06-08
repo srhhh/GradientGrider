@@ -1340,11 +1340,11 @@ do k = 1, Ngrid_total
 !           end if
 !       end if
 
-        Totalnumber_of_frames = &
-            Totalnumber_of_frames + population
-
         if (population >= var_overcrowd(Norder+1)) then
             if (Norder < Norder_max) cycle
+        else
+            Totalnumber_of_frames = &
+                Totalnumber_of_frames + population
         end if
         
         !If the cell is unpopulated or a certain flag is true,
@@ -1371,7 +1371,8 @@ do k = 1, Ngrid_total
         !If we found a non-empty cell then our search has
         !been over this particular order and does not need
         !to go over other orders
-        if (population > 0) then
+!       if (population > 0) then
+        if (Totalnumber_of_frames > 0) then
                 order = order + Norder
                 exit
         end if
