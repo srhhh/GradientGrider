@@ -30,7 +30,7 @@ subroutine partition(A,B,rows,cols,start_index,end_index,var,pivot_index)
 implicit none
 integer, intent(in) :: start_index,end_index,rows,cols,var
 integer, intent(out) :: pivot_index
-integer, dimension(rows,cols), intent(out) :: A
+real(dp), dimension(rows,cols), intent(out) :: A
 integer, dimension(rows,1), intent(out) :: B
 integer :: i, j
 integer :: test_value,pivot_value
@@ -41,12 +41,12 @@ do i = start_index, end_index-1
         test_value = A(i,var)
         if (test_value.le.pivot_value) then
                 j = j + 1
-                call swapI(A,rows,cols,i,j)
+                call swapD(A,rows,cols,i,j)
                 call swapI(B,rows,1,i,j)
         end if
 end do
 pivot_index = j+1
-call swapI(A,rows,cols,pivot_index,end_index)
+call swapD(A,rows,cols,pivot_index,end_index)
 call swapI(B,rows,1,pivot_index,end_index)
 
 end subroutine partition
@@ -60,9 +60,28 @@ end subroutine partition
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       Spots 1 and 2 are swapped in matrix A
 !       
+!       swapD is for matrices of type real(dp) (vals)
 !       swapR is for matrices of type real (vals)
 !       swapI is for matrices of type integer (indexer)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine swapD(A,rows,cols,i1, i2)
+implicit none
+integer, intent(in) :: rows, cols, i1, i2
+real(dp), dimension(rows,cols), intent(out) :: A
+integer :: i
+real(dp), dimension(cols) :: val1, val2
+
+do i = 1, cols
+        val1(i) = A(i1,i)
+        val2(i) = A(i2,i)
+end do
+do i = 1, cols
+        A(i2,i) = val1(i)
+        A(i1,i) = val2(i)
+end do
+
+end subroutine swapD
 
 subroutine swapR(A,rows,cols,i1, i2)
 implicit none
@@ -140,7 +159,7 @@ recursive subroutine qsort2(A,B,rows,cols,start_index,end_index,var)
 implicit none
 integer, intent(in) :: rows, cols, start_index, end_index, var
 integer :: pivot_index
-integer, dimension(rows,cols), intent(out) :: A
+real(dp), dimension(rows,cols), intent(out) :: A
 integer, dimension(rows,1), intent(out) :: B
 
 call partition(A,B,rows,cols,start_index,end_index,var,pivot_index)

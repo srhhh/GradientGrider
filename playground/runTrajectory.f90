@@ -775,20 +775,20 @@ subroutine runTrajectory3(filechannels,&
 
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
-    buffer1_size = 1 + var_overcrowd(1)
+    buffer1_size = 2 + Ninterpolation_max
     allocate(valsbuffer1(Nvar,buffer1_size),&
              coordsbuffer1(3,Natoms,buffer1_size),&
              gradientbuffer1(3,Natoms,buffer1_size),&
              Ubuffer1(3,3,buffer1_size),&
              RMSDbuffer1(buffer1_size),&
-             approximation_index(buffer1_size))
+             inputCLS(Ncoords+buffer1_size,buffer1_size))
+
+    RMSDbuffer1 = default_rmsd
+     
+!   allocate(acceptable_frame_mask(buffer1_size),&
+!            approximation_index(buffer1_size))
 
 !   allocate(Ntrajbuffer1(buffer1_size))
-
-    !These buffers need not be allocated if interpolation
-    !is not occuring
-    allocate(acceptable_frame_mask(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
 
     do steps = 1, Nsteps
 
@@ -813,7 +813,7 @@ subroutine runTrajectory3(filechannels,&
  
         !Check the library to get an
         !approximated gradient
-        call checkState_new_permute(vals,coords,approx_gradient,min_rmsd,&
+        call checkState_new_permute_cap(vals,coords,approx_gradient,min_rmsd,&
                  filechannels,number_of_frames,order,neighbor_check)
 
 !       error2 = 1.0d9
@@ -889,6 +889,7 @@ subroutine runTrajectory3(filechannels,&
 
                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 !              if ((Ninterpolation > 10).and.(error1 < error2)) then
 !              if ((Ninterpolation > 10)) then
 !                  allocate(libcoords(Ninterpolation,3,Natoms),&
@@ -903,13 +904,15 @@ subroutine runTrajectory3(filechannels,&
 !                                  coordsbuffer1(:,:,m)
 !                          libgradients(n,:,:) =&
 !                                  gradientbuffer1(:,:,m)
-!                          libNtraj(n) =&
-!                                  Ntrajbuffer1(m)
+!                         !libNtraj(n) =&
+!                         !        Ntrajbuffer1(m)
 !                          exit
 !                      else
 !                      end if
 !                      end do
 !                  end do
+
+!                  libNtraj = 0
 
 !                  call errorCheck5(filechannels,&
 !                          coords,gradient,&
@@ -975,11 +978,11 @@ subroutine runTrajectory3(filechannels,&
     deallocate(valsbuffer1,&
             coordsbuffer1,gradientbuffer1,&
             Ubuffer1,RMSDbuffer1,&
-            approximation_index)
+            inputCLS)
 
 !   deallocate(Ntrajbuffer1)
 
-    deallocate(acceptable_frame_mask,inputCLS)
+!   deallocate(acceptable_frame_mask,approximation_index)
 
     !Output the final coordinates and velocities
     coords_final = coords
@@ -5061,57 +5064,58 @@ subroutine errorCheck5(filechannels,coords1,gradient1,&
 
     do step = 1, Ninterpolation
         min_rmsd = sqrt(sum(inputCLS2(1:Ncoords,step)**2)/Natoms)
-        write(6666,FMT=*) min_rmsd, frame_weights(step), libNtraj(step)
+!       write(6666,FMT=*) min_rmsd, frame_weights(step), libNtraj(step)
+        write(6666,FMT=*) min_rmsd, frame_weights(step)
     end do
 
     close(6666)
 
-    Nunique = 0
-    do step = 1, Ninterpolation
-        unique_flag = .true.
-        do n = 1, Nunique
-            if (libNtraj(step) == uniqueNtraj(n)) unique_flag = .false.
-        end do
-
-        if (.not.(unique_flag)) cycle
-
-        Nunique = Nunique + 1
-        uniqueNtraj(Nunique) = libNtraj(step)
-    end do
-
-    do n = 1, Nunique
-        meancoords = 0.0d0
-        unique_counter = 0
-        do step = 1, Ninterpolation
-            if (libNtraj(step) == uniqueNtraj(n)) then
-!               coords = coords + &
-!                       libcoords(step,:,:)
-!               coords = coords + &
-!                       reshape(inputCLS2(1:Ncoords,step),&
-!                       (/3,Natoms/))
-                meancoords = meancoords + &
-                        inputCLS2(1:Ncoords,step)
-                unique_counter = unique_counter + 1
-            end if
-        end do
-
-!       meancoords = reshape(coords,(/Ncoords/)) / unique_counter
-        meancoords = meancoords / unique_counter
-!       mu(n) = sqrt(sum((meancoords-coords1)**2))
-        mu(n) = sqrt(sum((meancoords)**2)/Natoms)
-
-        sigma(n) = 0.0d0
-        do step = 1, Ninterpolation
-            if (libNtraj(step) == uniqueNtraj(n)) then
-!               sigma(n) = sigma(n) + &
-!                       sum((meancoords - libcoords(step,:,:))**2)
-                sigma(n) = sigma(n) + &
-                        sqrt(sum((meancoords - inputCLS2(1:Ncoords,step))**2)/Natoms)
-            end if
-        end do
-!       sigma(n) = sqrt(sigma(n)/unique_counter)
-        sigma(n) = sigma(n)/unique_counter
-    end do
+!    Nunique = 0
+!    do step = 1, Ninterpolation
+!        unique_flag = .true.
+!        do n = 1, Nunique
+!            if (libNtraj(step) == uniqueNtraj(n)) unique_flag = .false.
+!        end do
+!
+!        if (.not.(unique_flag)) cycle
+!
+!        Nunique = Nunique + 1
+!        uniqueNtraj(Nunique) = libNtraj(step)
+!    end do
+!
+!    do n = 1, Nunique
+!        meancoords = 0.0d0
+!        unique_counter = 0
+!        do step = 1, Ninterpolation
+!            if (libNtraj(step) == uniqueNtraj(n)) then
+!!               coords = coords + &
+!!                       libcoords(step,:,:)
+!!               coords = coords + &
+!!                       reshape(inputCLS2(1:Ncoords,step),&
+!!                       (/3,Natoms/))
+!                meancoords = meancoords + &
+!                        inputCLS2(1:Ncoords,step)
+!                unique_counter = unique_counter + 1
+!            end if
+!        end do
+!
+!!       meancoords = reshape(coords,(/Ncoords/)) / unique_counter
+!        meancoords = meancoords / unique_counter
+!!       mu(n) = sqrt(sum((meancoords-coords1)**2))
+!        mu(n) = sqrt(sum((meancoords)**2)/Natoms)
+!
+!        sigma(n) = 0.0d0
+!        do step = 1, Ninterpolation
+!            if (libNtraj(step) == uniqueNtraj(n)) then
+!!               sigma(n) = sigma(n) + &
+!!                       sum((meancoords - libcoords(step,:,:))**2)
+!                sigma(n) = sigma(n) + &
+!                        sqrt(sum((meancoords - inputCLS2(1:Ncoords,step))**2)/Natoms)
+!            end if
+!        end do
+!!       sigma(n) = sqrt(sigma(n)/unique_counter)
+!        sigma(n) = sigma(n)/unique_counter
+!    end do
 
 
 
@@ -5532,9 +5536,12 @@ write(gnuplotchannel,*) 'set y2tics'
 !   write(gnuplotchannel,*) 'ymax = ', maxval(frame_weights)
 !   write(gnuplotchannel,*) 'ydelta = (ymax - ymin)*0.05'
 !   write(gnuplotchannel,*) 'set yrange [ymin-ydelta:ymax+ydelta]'
+!   write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_C.dat" u '//&
+!           '1:2:(sprintf(''%d'',$3)) w labels offset 0,1 point pt 6 lw 4 lc "black" t ""'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_C.dat" u '//&
-            '1:2:(sprintf(''%d'',$3)) w labels offset 0,1 point pt 6 lw 4 lc "black" t ""'
+            '1:2 w p pt 6 lw 4 lc "black" t ""'
 
+    if (.false.) then
     write(gnuplotchannel,FMT="(A,I0.2,A,I0.8,A)") &
             'set label ',1,' "Ntraj    RMSD of Mean       SD of Mean" '//&
             'at screen 0.1, character ',76, ' font ",14"'
@@ -5543,6 +5550,7 @@ write(gnuplotchannel,*) 'set y2tics'
             'set label ',n+1,' "',uniqueNtraj(n),mu(n),sigma(n),'" '//&
             'at screen 0.1, character ',76 - (n)*1, ' font ",14"'
     end do
+    end if
 
 write(gnuplotchannel,*) 'unset ylabel'
 write(gnuplotchannel,*) 'set y2label "Occurence" font ",24"'
@@ -5615,6 +5623,7 @@ write(gnuplotchannel,*) 'set xlabel "Error"'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_E.dat" u '//&
             '1:2:(sprintf(''%s'',stringcolumn(3))) w labels offset 0,1 point pt 6 lw 4 t ""'
 
+    if (.false.) then
     write(gnuplotchannel,FMT="(A,I0.2,A,I0.8,A)") &
             'set label ',1,' "Ntraj    RMSD of Mean       SD of Mean" '//&
             'at screen 0.1, character ',76, ' font ",14"'
@@ -5623,6 +5632,7 @@ write(gnuplotchannel,*) 'set xlabel "Error"'
             'set label ',n+1,' "',uniqueNtraj(n),mu(n),sigma(n),'" '//&
             'at screen 0.1, character ',76 - (n)*1, ' font ",14"'
     end do
+    end if
 
 
     write(gnuplotchannel,*) 'set multiplot next'
@@ -5634,16 +5644,18 @@ write(gnuplotchannel,*) 'set ylabel "Weighting" font ",24"'
     write(gnuplotchannel,*) 'unset xtics'
     write(gnuplotchannel,*) 'set autoscale y'
 write(gnuplotchannel,*) 'set y2tics'
-!   write(gnuplotchannel,*) 'ymin = ', minval(frame_weights)
-!   write(gnuplotchannel,*) 'ymax = ', maxval(frame_weights)
-!   write(gnuplotchannel,*) 'ydelta = (ymax - ymin)*0.05'
-!   write(gnuplotchannel,*) 'set yrange [ymin-ydelta:ymax+ydelta]'
+!   write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_F1.dat" u '//&
+!           '1:2:(sprintf(''%d'',$3)) w labels offset 0,1 point pt 6 lw 4 lc "black" t ""'
+!   write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_F2.dat" u '//&
+!           '1:2:(sprintf(''%d'',$3)) w labels offset 0,1 point pt 6 lw 4 lc "black" t ""'
+!   write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_F3.dat" u '//&
+!           '1:2:(sprintf(''%d'',$3)) w labels offset 0,1 point pt 6 lw 4 lc "black" t ""'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_F1.dat" u '//&
-            '1:2:(sprintf(''%d'',$3)) w labels offset 0,1 point pt 6 lw 4 lc "black" t ""'
+            '1:2 w points pt 6 lw 4 lc "black" t ""'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_F2.dat" u '//&
-            '1:2:(sprintf(''%d'',$3)) w labels offset 0,1 point pt 6 lw 4 lc "black" t ""'
+            '1:2 w points pt 6 lw 4 lc "black" t ""'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_F3.dat" u '//&
-            '1:2:(sprintf(''%d'',$3)) w labels offset 0,1 point pt 6 lw 4 lc "black" t ""'
+            '1:2 w points pt 6 lw 4 lc "black" t ""'
 
 write(gnuplotchannel,*) 'unset ylabel'
 write(gnuplotchannel,*) 'set y2label "Occurence" font ",24"'

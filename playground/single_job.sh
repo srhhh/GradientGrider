@@ -95,11 +95,11 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.100000d0
-threshold_rmsd1=.100000d0
+threshold_rmsd=.150000d0
+threshold_rmsd1=.150000d0
 threshold_rmsd2=.150000d0
-threshold_rmsd3=.150000d0
-threshold_rmsd4=.010000d0
+threshold_rmsd3=.100000d0
+threshold_rmsd4=.100000d0
 threshold_rmsd5=.050000d0
 inner_threshold="0.00000d0"
 inner_threshold1="0.00000d0"
@@ -109,13 +109,13 @@ inner_threshold4="0.00000d0"
 inner_threshold5="0.00000d0"
 alpha_ratio="1.0d-2"
 alpha_ratio1="1.0d-2"
-alpha_ratio2="5.0d0"
-alpha_ratio3="5.0d1"
-alpha_ratio4="1.0d2"
-alpha_ratio5="1.0d2"
-interpolation_flag=.false.
-gather_interpolation_flag=.false.
-reject_flag=.true.
+alpha_ratio2="1.0d0"
+alpha_ratio3="1.0d-2"
+alpha_ratio4="1.0d0"
+alpha_ratio5="1.0d-2"
+interpolation_flag=.true.
+gather_interpolation_flag=.true.
+reject_flag=.false.
 accept_first=.false.
 accept_worst=.false.
 grid_addition=0
@@ -126,18 +126,18 @@ Ntrajectories=010
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp003
-exp2name=exp314
-exp3name=exp315
-exp4name=exp014
-exp5name=exp015
+exp1name=exp015
+exp2name=exp011
+exp3name=exp012
+exp4name=exp013
+exp5name=exp014
 
 #This flag states whether we are continuing an old experiment
 continue_analysis=.true.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.false.
+useoldinitialbonddata_flag=.true.
 #initialbondfolder="001reject.10000"
 initialbondfolder=exp001/
 
@@ -186,7 +186,7 @@ initialbondfolder=exp001/
 newGRID="H2H2_May14test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
 
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
@@ -195,7 +195,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)
