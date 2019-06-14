@@ -546,7 +546,7 @@ end subroutine getRMSDThresholds1
 !
 !       INPUT                           KIND                            DESCRIPTION
 !
-!               JPGfilename                     CHARACTER(*)                    The suffix we use for the output JPG
+!               PNGfilename                     CHARACTER(*)                    The suffix we use for the output PNG
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -572,11 +572,11 @@ end subroutine getRMSDThresholds1
 !                                                                       each trial (and other data)
 !		gridpath5//percent_rmsd//	DAT			Temporary buffer to accumulate a minimum rmsd
 !			Ngrid						across multiple grids
-!               gridpath4//JPGfilename          PNG                     Generic format for image names
+!               gridpath4//PNGfilename          PNG                     Generic format for image names
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine getRMSDDifferences1(JPGfilename)
+subroutine getRMSDDifferences1(PNGfilename)
 use PARAMETERS
 use ANALYSIS
 implicit none
@@ -589,10 +589,10 @@ real(dp) :: min_rmsd, min_rmsd_prime
 real(dp) :: min_min_rmsd
 integer :: number_of_frames_accepted
 
-!FORMAT OF JPG FILES TO BE MADE
+!FORMAT OF PNG FILES TO BE MADE
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
-character(*), intent(in) :: JPGfilename
+character(*), intent(in) :: PNGfilename
 
 !FORMATTING OF JPG FILES
 character(5) :: variable_length_text
@@ -679,18 +679,17 @@ close(filechannel1)
 
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
-write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//JPGfilename//'.jpg"'
-write(gnuplotchannel,*) 'set title "RMSD Comparison of a Zero Neighbor and Two Neighbor Check\n'//&
-                        'For One Trajectory"'
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'set title "RMSD Encountered in Binary Check"'
 write(gnuplotchannel,*) 'set key left top'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'min_min_rmsd = ', min_min_rmsd
 write(gnuplotchannel,*) 'set xrange [min_min_rmsd:',default_rmsd,']'
 write(gnuplotchannel,*) 'set yrange [min_min_rmsd:',default_rmsd,']'
-write(gnuplotchannel,*) 'set xlabel "RMSD Encountered for a Zero Neighbor Check (A)"'
-write(gnuplotchannel,*) 'set ylabel "RMSD Encountered for a Two Neighbor Check (A)"'
+write(gnuplotchannel,*) 'set xlabel "RMSD (A) Encountered for the First Check"'
+write(gnuplotchannel,*) 'set ylabel "RMSD (A) Encountered for the Second Check"'
 write(gnuplotchannel,*) 'plot "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
                                '($4==0?$2:1/0):3 w p lc rgb "red" title "Both Order 0",\'
 write(gnuplotchannel,*) '     "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
@@ -702,15 +701,14 @@ close(gnuplotchannel)
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
-write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//JPGfilename//'_1.jpg"'
-write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered for Zero vs Two Neighbor Check\n'//&
-                        'For One Trajectory"'
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//PNGfilename//'_1.png"'
+write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered in Binary Check"'
 write(gnuplotchannel,*) 'set key left top'
 write(gnuplotchannel,*) 'scaling = ', frames
 write(gnuplotchannel,*) 'xmin = ', min_min_rmsd / default_rmsd
 write(gnuplotchannel,*) 'xmax = ', default_rmsd / min_min_rmsd
-write(gnuplotchannel,*) 'set xlabel "RMSD0/RMSD2"'
+write(gnuplotchannel,*) 'set xlabel "RMSD (first check) / RMSD (second check)"'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
 
 write(gnuplotchannel,*) 'Nbins = ', Nbins
@@ -748,15 +746,14 @@ close(gnuplotchannel)
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
-write(gnuplotchannel,*) 'set term jpeg size 1200,1200'
-write(gnuplotchannel,*) 'set output "'//JPGfilename//'_2.jpg"'
-write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered for Zero vs Two Neighbor Check\n'//&
-                        'For One Trajectory"'
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//PNGfilename//'_2.png"'
+write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered for Binary Check"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'scaling = ', frames
 write(gnuplotchannel,*) 'xmin = ', min_min_rmsd
 write(gnuplotchannel,*) 'xmax = ', default_rmsd
-write(gnuplotchannel,*) 'set xlabel "RMSD After the Two Neighbor Check"'
+write(gnuplotchannel,*) 'set xlabel "RMSD (A) Encountered After the Second Check"'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
 
 write(variable_length_text,"(F5.2)") number_of_frames_accepted * 100.0 / frames
@@ -1732,6 +1729,9 @@ do
             
     if (iostate /= 0) exit
 
+    rsv(5) = rsv(5) * RU_energy / eV
+    rsv(6) = rsv(6) * RU_energy / eV
+
     !One of the processed variables that this
     !subroutine makes is the ratio between
     !RSV(5) and RSV(6) which means a few
@@ -1753,8 +1753,12 @@ do
                 Ninterpolation)
 
         do n = 1, 7
-            min_rsv(n) = min(min_rsv(n),rsv(n))
             max_rsv(n) = max(max_rsv(n),rsv(n))
+
+            if (rsv(n) == 0.0d0) then
+            else
+                min_rsv(n) = min(min_rsv(n),rsv(n))
+            end if
         end do
         
     else if (rsv(5) == 0.0d0) then
@@ -1774,8 +1778,12 @@ do
                 Ninterpolation)
 
         do n = 1, 7
-            min_rsv(n) = min(min_rsv(n),rsv(n))
             max_rsv(n) = max(max_rsv(n),rsv(n))
+
+            if (rsv(n) == 0.0d0) then
+            else
+                min_rsv(n) = min(min_rsv(n),rsv(n))
+            end if
         end do
     
     end if
@@ -1910,9 +1918,12 @@ integer,dimension(comparison_number,3),intent(out) :: counters
 integer,dimension(comparison_number) :: frames_trials
 
 real(dp),dimension(7) :: rsv, min_rsv, max_rsv
-real(dp),dimension(7) :: lower_rsv, upper_rsv
-integer :: lower_Ninterpolation,upper_Ninterpolation
+real(dp),dimension(comparison_number,7) :: lower_rsv, upper_rsv
+real(dp),dimension(comparison_number,7) :: arithmetic_mean_rsv,geometric_mean_rsv
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
+integer,dimension(comparison_number) :: lower_Ninterpolation,upper_Ninterpolation
+real(dp),dimension(comparison_number) :: arithmetic_mean_Ninterpolation
+real(dp),dimension(comparison_number) :: geometric_mean_Ninterpolation
 
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
@@ -1929,12 +1940,15 @@ integer :: frames, Nbins
 real(dp),allocatable :: Ninterpolation_binning(:,:)
 real(dp),allocatable :: rsv_binning(:,:,:)
 integer :: starting_index
+real(dp),allocatable :: zero_array(:)
 
 real(dp),dimension(Nvar) :: vals_prev
 integer,dimension(Nvar) :: deltavals
 integer :: Nswitch
 integer :: beyond_counter,ten_counter
 integer,dimension(3) :: pos_counter,neg_counter
+
+logical :: debug_flag = .false.
 
 !INTEGER INCREMENTALS
 integer :: n,m,l
@@ -1945,12 +1959,6 @@ gridpath5 = gridpath4//intermediatefolder
 counters = 0
 frames_trials = 0
 frames = 0
-
-min_Ninterpolation = 1000
-max_Ninterpolation = 0
-
-min_rsv = 1.0d9
-max_rsv = 0.0d9
 
 open(filechannel1,file=gridpath0//comparison_file)
 open(filechannel3,file=gridpath5//"tmp"//interpolationfile)
@@ -1995,32 +2003,18 @@ do n = 1, comparison_number
     read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
             "2(7(G16.6,1x)))",iostat=iostate) &
             counters(n,1),counters(n,2),counters(n,3),&
-            lower_Ninterpolation, upper_Ninterpolation,&
-            lower_rsv, upper_rsv
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            lower_Ninterpolation(n), upper_Ninterpolation(n),&
+            lower_rsv(n,:),&
+            upper_rsv(n,:)
+!           (lower_rsv(n,i),i=1,7),&
+!           (upper_rsv(n,i),i=1,7),&
+!           (arithmetic_mean_rsv(n,i),i=1,7),&
+!           (geometric_mean_rsv(n,i),i=1,7)
 
     pos_counter = 0
     neg_counter = 0
     beyond_counter = 0
     ten_counter = 0
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    !We have to get the bounds to ALL the data
-    !across all experiments
-
-    min_Ninterpolation = min(min_Ninterpolation,&
-            lower_Ninterpolation)
-    max_Ninterpolation = max(max_Ninterpolation,&
-            upper_Ninterpolation)
-
-    do m = 1, 7
-        min_rsv(m) = min(min_rsv(m),lower_rsv(m))
-        max_rsv(m) = max(max_rsv(m),upper_rsv(m))
-    end do
 
     !We also excise any data that is not in the region
     !of the phase space of interest
@@ -2032,37 +2026,31 @@ do n = 1, comparison_number
                 tmpvals, Ninterpolation, rsv
         if (iostate /= 0) exit
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    if (frames_trials(n) > 0) then
-
-    deltavals = floor(abs(tmpvals-vals_prev)*divisor(:,1))
-    deltavals = abs(floor(tmpvals*divisor(:,2)) - &
-                    floor(vals_prev*divisor(:,2)))
-    Nswitch = sum(deltavals)+1
-
-    if ((Ninterpolation <= 9)) then
-        ten_counter = ten_counter + 1
-    else
-!   if ((Nswitch < 4).and.(Ninterpolation > 9)) then
-    if ((Nswitch < 4)) then
-    if (rsv(7) > 1.0d0) then
-        pos_counter(Nswitch) = pos_counter(Nswitch) + 1
-    else
-        neg_counter(Nswitch) = neg_counter(Nswitch) + 1
-    end if
-    else
-        beyond_counter = beyond_counter + 1
-    end if
-    end if
-
-    end if
-
-    vals_prev = tmpvals
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        if (frames_trials(n) > 0) then
+    
+        deltavals = floor(abs(tmpvals-vals_prev)*divisor(:,1))
+        deltavals = abs(floor(tmpvals*divisor(:,2)) - &
+                        floor(vals_prev*divisor(:,2)))
+        Nswitch = sum(deltavals)+1
+    
+        if ((Ninterpolation <= 9)) then
+            ten_counter = ten_counter + 1
+        else
+!       if ((Nswitch < 4).and.(Ninterpolation > 9)) then
+        if ((Nswitch < 4)) then
+        if (rsv(7) > 1.0d0) then
+            pos_counter(Nswitch) = pos_counter(Nswitch) + 1
+        else
+            neg_counter(Nswitch) = neg_counter(Nswitch) + 1
+        end if
+        else
+            beyond_counter = beyond_counter + 1
+        end if
+        end if
+    
+        end if
+    
+        vals_prev = tmpvals
 
         tmpvals = abs(tmpvals-vals) - abs(delta_vals)
 
@@ -2080,22 +2068,35 @@ do n = 1, comparison_number
     end do
     close(filechannel2)
 
-    print *, ""
-    print *, allprefixes(starting_index+1:sum(alllengths(1:n)))
-    do Nswitch = 1, 3
-    print *, "n = ", Nswitch - 1, " neg / pos:", &
-            neg_counter(Nswitch), "/", pos_counter(Nswitch), "%neg/total:", &
-            neg_counter(Nswitch) *100.0 / (neg_counter(Nswitch) + pos_counter(Nswitch)), "%"
-    end do
-    print *, ""
-    print *, "n > 2:", beyond_counter
-    print *, ""
-    print *, "Ninterpolation <= 9:", ten_counter
-    print *, ""
+    if (debug_flag) then
+        print *, ""
+        print *, allprefixes(starting_index+1:sum(alllengths(1:n)))
+        do Nswitch = 1, 3
+        print *, "n = ", Nswitch - 1, " neg / pos:", &
+                neg_counter(Nswitch), "/", pos_counter(Nswitch), "%neg/total:", &
+                neg_counter(Nswitch) *100.0 / (neg_counter(Nswitch) + pos_counter(Nswitch)), "%"
+        end do
+        print *, ""
+        print *, "n > 2:", beyond_counter
+        print *, ""
+        print *, "Ninterpolation <= 9:", ten_counter
+        print *, ""
+    end if
 end do
 
 close(filechannel1)
 close(filechannel3)
+
+!We have to get the bounds to ALL the data
+!across all experiments
+
+min_Ninterpolation = minval(lower_Ninterpolation)
+max_Ninterpolation = maxval(upper_Ninterpolation)
+
+do m = 1, 7
+    min_rsv(m) = minval(lower_rsv(:,m))
+    max_rsv(m) = maxval(upper_rsv(:,m))
+end do
 
 !If any of the trials has no frames, there will
 !probably be trouble plotting it
@@ -2141,9 +2142,22 @@ rsv_binwidth = log10(max_rsv/min_rsv)*1.0d0/Nbins
 !There is a multiplication by three because three
 !subsets of each distribution are differentiated
 allocate(Ninterpolation_binning(3*comparison_number,Nbins),&
-         rsv_binning(7,3*comparison_number,Nbins))
+         rsv_binning(7,3*comparison_number,Nbins),&
+         zero_array(3*comparison_number))
+zero_array = 0.0d0
 Ninterpolation_binning = 0.0d0
 rsv_binning = 0.0d0
+
+do n = 1, comparison_number
+    upper_Ninterpolation(n) = min_Ninterpolation
+    upper_rsv(n,:) = min_rsv
+end do
+
+arithmetic_mean_Ninterpolation = 0.0d0
+geometric_mean_Ninterpolation = 0.0d0
+
+arithmetic_mean_rsv = 0.0d0
+geometric_mean_rsv = 0.0d0
 
 !The data for ALL trials is stored in the temporary
 !interpolation file
@@ -2154,6 +2168,28 @@ do n = 1, comparison_number
     !number of lines of data read must be counted
     do m = 1, frames_trials(n)
         read(filechannel1,FMT=*) Ninterpolation,rsv
+
+        upper_Ninterpolation(n) = max(upper_Ninterpolation(n),&
+                Ninterpolation)
+        arithmetic_mean_Ninterpolation(n) = &
+            arithmetic_mean_Ninterpolation(n) + Ninterpolation
+        geometric_mean_Ninterpolation(n) = &
+            geometric_mean_Ninterpolation(n) + log10(1.0d0*Ninterpolation)
+
+        do l = 1, 7
+            upper_rsv(n,l) = max(upper_rsv(n,l),rsv(l))
+            arithmetic_mean_rsv(n,l) = &
+                arithmetic_mean_rsv(n,l) + rsv(l)
+
+            if (rsv(l) == 0.0d0) then
+                geometric_mean_rsv(n,l) = &
+                    geometric_mean_rsv(n,l) + log10(min_rsv(n))
+            else
+                geometric_mean_rsv(n,l) = &
+                    geometric_mean_rsv(n,l) + log10(rsv(l))
+            end if
+        end do
+        
 
         !Read each line and bin them accordingly
     
@@ -2215,16 +2251,52 @@ do n = 1, comparison_number
 end do
 close(filechannel1)
 
+do n = 1, comparison_number
+    arithmetic_mean_rsv(n,:) = &
+        arithmetic_mean_rsv(n,:) / frames_trials(n)
+    geometric_mean_rsv(n,:) = &
+        10.0d0 ** (geometric_mean_rsv(n,:)  / frames_trials(n))
+    
+    arithmetic_mean_Ninterpolation(n) = &
+        arithmetic_mean_Ninterpolation(n) * 1.0d0 / &
+        frames_trials(n)
+    geometric_mean_Ninterpolation = &
+        10.0d0 ** (geometric_mean_Ninterpolation / &
+        frames_trials(n))
+end do
 
 !Finally, record the data for
 !later plotting
 
 open(filechannel1,file=gridpath5//"InterpolationTDD_binning.dat")
+
+if (comparison_upperlimit > comparison_lowerlimit) then
+    write(filechannel1,FMT="(A1,2(E16.6,1x))") "#",&
+            comparison_lowerlimit, comparison_upperlimit
+else
+    write(filechannel1,FMT="(A1,2(E16.6,1x))") "#",&
+            min_Ninterpolation - 0.5*Ninterpolation_binwidth, &
+            max_Ninterpolation + 0.5*Ninterpolation_binwidth
+end if
+
+do n = 1, comparison_number
+write(filechannel1,FMT="(A1,3(E16.6,1x))") &
+        "#",1.0d0*upper_Ninterpolation(n), &
+        arithmetic_mean_Ninterpolation(n),&
+        geometric_mean_Ninterpolation(n)
+end do
+
+write(filechannel1,FMT=*) min_Ninterpolation + &
+        Ninterpolation_binwidth*(-0.5), &
+        zero_array
 do n = 1, Nbins
     write(filechannel1,FMT=*) min_Ninterpolation + &
             Ninterpolation_binwidth*(n-0.5),&
             Ninterpolation_binning(:,n)
 end do
+write(filechannel1,FMT=*) min_Ninterpolation + &
+        Ninterpolation_binwidth*(Nbins+0.5), &
+        zero_array
 close(filechannel1)
 
 do l = 1, 7
@@ -2251,17 +2323,41 @@ if (l == 6) open(filechannel1,file=gridpath5//&
 if (l == 7) open(filechannel1,file=gridpath5//&
         "InterpolationRED_binning.dat")
 
+if (comparison_upperlimit > comparison_lowerlimit) then
+    write(filechannel1,FMT="(A1,2(E16.6,1x))") "#",&
+            comparison_lowerlimit, comparison_upperlimit
+else
+    write(filechannel1,FMT="(A1,2(E16.6,1x))") "#",&
+            log10(min_rsv(l)) - 0.5*rsv_binwidth(l), &
+            log10(max_rsv(l)) + 0.5*rsv_binwidth(l)
+end if
+
+do n = 1, comparison_number
+write(filechannel1,FMT="(A1,3(E16.6,1x))") &
+        "#",log10(upper_rsv(n,l)), &
+        log10(arithmetic_mean_rsv(n,l)),&
+        log10(geometric_mean_rsv(n,l))
+end do
+
+write(filechannel1,FMT=*)&
+        log10(min_rsv(l)) +&
+        rsv_binwidth(l)*(-0.5d0),&
+        zero_array
 do n = 1, Nbins
     write(filechannel1,FMT=*)&
             log10(min_rsv(l)) +&
-            rsv_binwidth(l)*n,&
+            rsv_binwidth(l)*(n-0.5d0),&
             rsv_binning(l,:,n)
 end do
+write(filechannel1,FMT=*)&
+        log10(min_rsv(l)) +&
+        rsv_binwidth(l)*(Nbins+0.5d0),&
+        zero_array
 
 close(filechannel1)
 end do
 
-deallocate(Ninterpolation_binning,rsv_binning)
+deallocate(Ninterpolation_binning,rsv_binning,zero_array)
 
 end subroutine processMultipleInterpolationFiles
 
@@ -2496,6 +2592,8 @@ character(gridpath_length+expfolder_length+5) :: gridpath5
 character(*), intent(in) :: PNGfilename
 
 integer, dimension(comparison_number,3) :: counters
+real(dp),dimension(comparison_number) :: var_max,var_Amean,var_Gmean
+real(dp) :: lowerlimit, upperlimit
 
 integer :: iostate
 
@@ -2510,6 +2608,18 @@ call processMultipleInterpolationFiles(counters)
 if (all(counters == 0)) then
     return
 end if
+
+open(filechannel1,file=gridpath5//&
+        trim(adjustl(comparison_SATRVname))//&
+        "_binning.dat")
+read(filechannel1,FMT="(1x,2(E16.6,1x))") &
+    lowerlimit, upperlimit
+
+do n = 1, comparison_number
+    read(filechannel1,FMT="(1x,3(E16.6,1x))") &
+        var_max(n), var_Amean(n), var_Gmean(n)
+end do
+close(filechannel1)
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile//"_"//&
         trim(adjustl(comparison_SATRVname)))
@@ -2534,7 +2644,9 @@ write(gnuplotchannel,*) 'set grid xtics lw 2'
 
 write(gnuplotchannel,*) 'unset xlabel'
 write(gnuplotchannel,*) 'set xtics nomirror font ",16"'
-write(gnuplotchannel,*) 'set xtics ('//&
+
+if (trim(adjustl(comparison_SATRVname)) /= 'InterpolationTDD') then
+    write(gnuplotchannel,*) 'set xtics ('//&
                                          '"" log10(.00000001), '//&
                                          '"" log10(.00000005), '//&
                                           '"" log10(.0000001), '//&
@@ -2561,18 +2673,29 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                            ' ""    log10(5000), '//&
                                            ' ""   log10(10000), '//&
                                    ')'
-
-if (comparison_lowerlimit < comparison_upperlimit) then
-    write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
-            'set xrange [log10(',&
-            comparison_lowerlimit,'):log10(',&
-            comparison_upperlimit,')]'
 end if
+
+write(gnuplotchannel,FMT="(A,E16.8,A,E16.8,A)")&
+        'set xrange [',lowerlimit,':',upperlimit,']'
 
 if (comparison_number > 1) then
 write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A)") '# Edit to title this plot (01)'
 write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") 'unset arrow'
+write(gnuplotchannel,FMT="(A)") 'set format x ""'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_max(1),&
+        ',graph 0 to ', var_max(1), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "black"'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_Amean(1),&
+        ',graph 0 to ', var_Amean(1), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "blue"'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_Gmean(1),&
+        ',graph 0 to ', var_Gmean(1), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "green"'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
         'plot ARG1."/".'//&
         'ARG0[PL+14:]."_binning.dat" u '//'1:',2,' w boxes t "" '//&
@@ -2594,6 +2717,19 @@ do n = 2, comparison_number-1
 write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',n,')'
 write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") 'unset arrow'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_max(n),&
+        ',graph 0 to ', var_max(n), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "black"'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_Amean(n),&
+        ',graph 0 to ', var_Amean(n), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "blue"'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_Gmean(n),&
+        ',graph 0 to ', var_Gmean(n), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "green"'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
         'plot ARG1."/".'//&
         'ARG0[PL+14:]."_binning.dat" u '//'1:',3*(n-1)+2,' w boxes t "" '//&
@@ -2614,7 +2750,8 @@ end do
 end if
 
 write(gnuplotchannel,*) 'set xtics out nomirror font ",16"'
-write(gnuplotchannel,*) 'set xtics ('//&
+if (trim(adjustl(comparison_SATRVname)) /= 'InterpolationTDD') then
+    write(gnuplotchannel,*) 'set xtics ('//&
                                          '"1e-8" log10(.00000001), '//&
                                          '"5e-8" log10(.00000005), '//&
                                           '"1e-7" log10(.0000001), '//&
@@ -2641,11 +2778,26 @@ write(gnuplotchannel,*) 'set xtics ('//&
                                            ' "5e3"    log10(5000), '//&
                                            ' "1e4"   log10(10000), '//&
                                    ')'
+end if
 
 write(gnuplotchannel,*) 'set xlabel "" font ",24"'
 write(gnuplotchannel,FMT="(A)") '#'
 write(gnuplotchannel,FMT="(A,I0.2,A)") '# Edit to title this plot (',comparison_number,')'
 write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") 'unset arrow'
+write(gnuplotchannel,FMT="(A)") 'set format x "% g"'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_max(comparison_number),&
+        ',graph 0 to ', var_max(comparison_number), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "black"'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_Amean(comparison_number),&
+        ',graph 0 to ', var_Amean(comparison_number), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "blue"'
+write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+        'set arrow from ', var_Gmean(comparison_number),&
+        ',graph 0 to ', var_Gmean(comparison_number), ', graph 1 nohead front '//&
+        'lw 2 lc rgb "green"'
 write(gnuplotchannel,FMT="(A,I2,A,F9.6,A)") &
         'plot ARG1."/".'//&
         'ARG0[PL+14:]."_binning.dat" u '//'1:',3*comparison_number-1,' w boxes t "" '//&

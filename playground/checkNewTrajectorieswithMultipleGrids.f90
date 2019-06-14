@@ -636,17 +636,32 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
     print *, " Working on random new trajectory number: ",&
             Ntraj_text
 
-    !Then write the outputted RMSDS of
-    !each trajectory onto those filechannels
-    !Remark: checkMultipleGrids uses
-    !filechannel1 to open files in the grid
-    call runTrajectory3(&
-            filechannels(1:1+Ngrid_total),&
-            coords_initial,velocities_initial,&
-            coords_final,velocities_final)
+    if (testtrajDetailedRMSD_flag) then
+        call runTestTrajectory(&
+                filechannels(1:1+Ngrid_total),&
+                coords_initial,velocities_initial,&
+                coords_final,velocities_final)
+    else
+
+        !Then write the outputted RMSDS of
+        !each trajectory onto those filechannels
+        !Remark: checkMultipleGrids uses
+        !filechannel1 to open files in the grid
+        if (force_Permutations) then
+            call runTrajectory3(&
+                    filechannels(1:1+Ngrid_total),&
+                    coords_initial,velocities_initial,&
+                    coords_final,velocities_final)
+        else
+            call runTrajectory2(&
+                    filechannels(1:1+Ngrid_total),&
+                    coords_initial,velocities_initial,&
+                    coords_final,velocities_final)
+        end if
 !   call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
 !                              coords_initial,velocities_initial,&
 !                              coords_final,velocities_final)
+    end if
 
     call system_clock(c2)
     call CPU_time(r2)
@@ -752,6 +767,10 @@ end if
 !most likely we just made some new trajectories
 !that we want to check
 if (.not.comparison_flag) then
+
+if (testtrajDetailedRMSD_flag) &
+    call getRMSDDifferences1(&
+    gridpath4//"BinaryRMSDCheck")
 
 !But, note that we only have interpolations
 !to check if we actually interpolated AND

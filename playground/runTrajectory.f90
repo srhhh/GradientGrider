@@ -548,7 +548,7 @@ subroutine runTrajectory2(filechannels,&
 
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
-    buffer1_size = 1 + var_overcrowd(1)
+    buffer1_size = 2 + Ninterpolation_max
     allocate(valsbuffer1(Nvar,buffer1_size),&
              coordsbuffer1(3,Natoms,buffer1_size),&
              gradientbuffer1(3,Natoms,buffer1_size),&
@@ -583,10 +583,12 @@ subroutine runTrajectory2(filechannels,&
         else
             min_rmsd = default_rmsd
         end if
+
+        RMSDbuffer1 = min_rmsd
  
         !Check the library to get an
         !approximated gradient
-        call checkState_new(vals,coords,approx_gradient,min_rmsd,&
+        call checkState_new_cap(vals,coords,approx_gradient,min_rmsd,&
                  filechannels,number_of_frames,order,neighbor_check)
 
         !Accept worst has not found an acceptable frame
@@ -810,6 +812,8 @@ subroutine runTrajectory3(filechannels,&
         else
             min_rmsd = default_rmsd
         end if
+
+        RMSDbuffer1 = min_rmsd
  
         !Check the library to get an
         !approximated gradient
@@ -994,6 +998,310 @@ subroutine runTrajectory3(filechannels,&
 !   print *, max_deltaRMSD
 
 end subroutine runTrajectory3
+
+subroutine runTestTrajectory(filechannels,&
+                             coords_initial,velocities_initial,&
+                             coords_final,velocities_final)
+    use PARAMETERS
+    use ls_rmsd_original
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    use interactMultipleGrids
+    use analyzeRMSDThresholdwithMultipleGrids
+    implicit none
+
+    !Coordinates, Velocities, and Variables
+    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
+    real(dp), dimension(3,Natoms) :: gradient,gradient_labelled
+    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
+    real(dp), dimension(Nvar) :: vals
+    real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
+    real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
+    integer,dimension(1+Ngrid_max) :: filechannels
+
+    !Various other variables
+    real(dp) :: error1,error2
+    real(dp),dimension(3) :: x_center, y_center
+    real(dp) :: min_rmsd,min_rmsd_prime
+    integer :: number_of_frames,order,neighbor_check
+    real(dp) :: U, KE
+
+    real(dp) :: RMSD_prior
+    real(dp) :: max_RMSDdelta, max_deltaRMSD
+    real(dp),dimension(3,Natoms) :: coords_prior
+    logical :: bond_flag
+
+    real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
+    integer,allocatable :: libNtraj(:)
+
+    !Incremental Integer
+    integer :: i,j,n,m
+
+    max_RMSDdelta = 0.0d0
+    max_deltaRMSD = 0.0d0
+
+    !Initialize the scene
+    call InitialSetup3(coords,velocities)
+    Norder1 = 0
+    Norder_total = 0
+
+    coords_initial = coords
+    velocities_initial = velocities
+
+    !Always calculate the variables before accelerating
+    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+    !Accelerate the velcocities for a half step (verlet)
+    call Acceleration(vals,coords,gradient)
+
+    !Update the velocities
+    velocities = velocities + 0.5d0 * gradient
+
+    !To randomize the periods of the bond, I let the scene go on
+    !for a small period of time (need to standardize this later)
+    do n = 1, Nbonds
+        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
+            coords = coords + dt * velocities
+            call Acceleration(vals,coords,gradient)
+            velocities = velocities + gradient
+        end do
+
+        !And then reset the bond
+        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
+        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
+        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
+        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
+    end do
+
+    !We keep this file open for the whole trajectory (instead of
+    !continually opening and closing) to keep data of each frame
+    open(filechannel2,file=gridpath5//checkstatefile,&
+                      position="append")
+
+    if (gather_interpolation_flag) open(filechannel3,file=&
+            gridpath5//interpolationfile,position="append")
+
+    !Allocate all buffers; initialize the buffer size to be
+    !the maximum number of frames expected to be seen
+    buffer1_size = 2 + Ninterpolation_max
+    allocate(valsbuffer1(Nvar,buffer1_size),&
+             coordsbuffer1(3,Natoms,buffer1_size),&
+             gradientbuffer1(3,Natoms,buffer1_size),&
+             Ubuffer1(3,3,buffer1_size),&
+             RMSDbuffer1(buffer1_size),&
+             inputCLS(Ncoords+buffer1_size,buffer1_size))
+
+    RMSDbuffer1 = default_rmsd
+     
+    do steps = 1, Nsteps
+
+        !Check every 500 steps to see if we are out-of-bounds
+        if (modulo(steps,500) == 1) then
+            if (any(vals > var_maxvar)) exit
+        endif
+
+        !Upate the coordinates with the velocities
+        coords = coords + dt * velocities
+
+        !Always calculate the variables before checking a frame or accelerating
+        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+        !Check for a frame in the grid
+        !Set the default value beforehand
+        if (accept_worst) then
+            min_rmsd = 0.0d0
+        else
+            min_rmsd = default_rmsd
+        end if
+        
+        order = 0
+
+        RMSDbuffer1 = min_rmsd
+
+        subcellsearch_max = subcellsearch_max1
+ 
+        !Check the library to get an
+        !approximated gradient
+        call checkState_new_cap(vals,coords,approx_gradient,min_rmsd,&
+                 filechannels,number_of_frames,m,neighbor_check)
+        order = order + m
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+       if ((Ninterpolation > 10)) then
+           allocate(libcoords(Ninterpolation,3,Natoms),&
+                    libgradients(Ninterpolation,3,Natoms),&
+                    libNtraj(Ninterpolation))
+           do n = 1, Ninterpolation
+               libcoords(n,:,:) =&
+                       coordsbuffer1(:,:,n)
+               libgradients(n,:,:) =&
+                       gradientbuffer1(:,:,n)
+           end do
+
+           libNtraj = 0
+
+           call errorCheck7(filechannels,&
+                   coords,gradient,&
+                   Ninterpolation,&
+                   libcoords,libgradients,&
+                   libNtraj)
+
+           deallocate(libcoords,libgradients,libNtraj)
+       end if
+
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        min_rmsd = candidate_rmsd
+
+        !Set a separate default value
+        if (accept_worst) then
+            min_rmsd_prime = 0.0d0
+        else
+            min_rmsd_prime = default_rmsd
+        end if
+
+        RMSDbuffer1 = min_rmsd_prime
+    
+        !The second search uses interpolation as it
+        !usually is a wider search
+        subcellsearch_max = subcellsearch_max2
+
+        call checkState_new_permute_cap(vals,coords,&
+                approx_gradient_prime,min_rmsd_prime,&
+                filechannels,number_of_frames,m,neighbor_check)
+        order = order + m
+
+        !For the B -> B' test
+        if (min_rmsd > threshold_rmsd) Ninterpolation = 0
+
+        !Calculate the potential and kinetic energy
+        U = 0.0d0
+        KE = 0.0d0
+    
+        do i = 1, Natoms
+    
+            do j = i+1, Natoms
+        
+                bond_flag = .false.
+                do n = 1, Nbonds
+                    if ((i == BONDING_DATA(n,1)).and.&
+                        (j == BONDING_DATA(n,2))) then
+                        bond_flag = .true.
+                    end if
+                end do
+            
+                if (bond_flag) then
+                    U = U + HOPotential(coords(:,i),&
+                                        coords(:,j))
+                else
+                    U = U + MorsePotential(coords(:,i),&
+                                           coords(:,j))
+                end if
+        
+            end do
+        
+            KE = KE + KineticEnergy(velocities(:,i))
+        end do
+    
+        !Finally write to the data file all the important data values
+        write(filechannel2,FMT=*) number_of_frames,order,neighbor_check,steps,&
+                                  min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
+
+        !The better frame is usually found with second search
+        !so this will be used for further data handling
+        min_rmsd = min_rmsd_prime
+
+
+
+
+        !Accept worst has not found an acceptable frame
+        !if min_rmsd is zero
+        !(deprecated)
+        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
+            call Acceleration(vals,coords,gradient)
+        
+        !If we are gather interpolation data...
+        else if (gather_interpolation_flag) then
+ 
+            !Calculate the true gradient
+            call Acceleration(vals,coords,gradient)
+
+            !If a frame was found, record data on it
+            if (Ninterpolation > 0) then
+                error1 = sqrt(sum((gradient - &
+                        candidate_gradient)**2)/Natoms)
+                error2 = sqrt(sum((gradient - &
+                        approx_gradient)**2)/Natoms)
+ 
+                write(filechannel3,FMT=*) vals(1),vals(2),&
+                        Ninterpolation,largest_weighted_rmsd2,&
+                        largest_weighted_rmsd,candidate_rmsd,&
+                        min_rmsd,error1,error2
+            end if
+
+            !If we are adding to a grid, then relabel
+            !the coordinates and gradients, and do so
+            if (grid_addition > 0) then
+                call addState_new(vals,&
+                        coords,&
+                        gradient)
+            end if
+ 
+            !If the approximated frame is good enough
+            !and we are not rejecting it, then use it
+            if ((min_rmsd .ge. threshold_RMSD) &
+                    .or. (reject_flag)) then
+            else
+                    gradient = approx_gradient
+            end if
+ 
+        !If no interpolation data is being gathered, then the
+        !true gradient is not needed
+ 
+        !If the frame is not good enough or we are rejecting
+        !frames, calculate the true gradient
+        else if ((min_rmsd .ge. threshold_RMSD) &
+                .or. (reject_flag)) then
+            call Acceleration(vals,coords,gradient)
+ 
+            !If we are adding to a grid, then relabel
+            !the coordinates and gradients, and do so
+            if (grid_addition > 0) then
+                call addState_new(vals,&
+                        coords,&
+                        gradient)
+            end if
+ 
+        !If the approximated frame is good enough then
+        !we can use it (after relabelling)!
+        else
+            gradient = approx_gradient
+        end if
+
+        !Update the velocities
+        velocities = velocities + gradient
+    end do
+
+    close(filechannel2)
+
+    if (gather_interpolation_flag) close(filechannel3)
+
+    !Deallocate the buffers
+    deallocate(valsbuffer1,&
+            coordsbuffer1,gradientbuffer1,&
+            Ubuffer1,RMSDbuffer1,&
+            inputCLS)
+
+    !Output the final coordinates and velocities
+    coords_final = coords
+    velocities_final = velocities
+
+end subroutine runTestTrajectory
+
 
 
 
@@ -5468,8 +5776,9 @@ write(gnuplotchannel,*) 'set multiplot layout 5'//&
                         ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
                         '"Single Frame Interpolation'//&
                         '" font ",32" offset 0,-3'
+write(gnuplotchannel,*) 'error_scaling = ', RU_energy / eV
 write(gnuplotchannel,*) 'unset ylabel'
-write(gnuplotchannel,*) 'set y2label "Error" font ",24"'
+write(gnuplotchannel,*) 'set y2label "Error (eV/A)" font ",24"'
 write(gnuplotchannel,*) 'set ytics font ",16" nomirror'
 write(gnuplotchannel,*) 'unset y2tics'
 write(gnuplotchannel,*) 'unset xlabel'
@@ -5509,13 +5818,17 @@ write(gnuplotchannel,*) 'unset xlabel'
 !                                      '"5e-1"      .5, '//&
 !                                      ' "1.0"       1, '//&
 !                              ')'
-    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_A.dat" u 1:2 w lines lw 3 lc "green" t "Interpolation",\'
-    write(gnuplotchannel,*) '     "'//gridpath5//'tmp_A.dat" u 1:4 w lines lw 3 lc "black" t "Accept Current",\'
-    write(gnuplotchannel,*) '     "'//gridpath5//'tmp_A.dat" u 1:3 w lines lw 3 lc "blue" t "Accept Best",\'
-    write(gnuplotchannel,*) '     "'//gridpath5//'tmp_A.dat" u 1:5 w lines lw 3 lc "red" t "Accept Worst"'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_A.dat" u 1:(error_scaling*($2)) '//&
+                            'w lines lw 3 lc "green" t "Interpolation",\'
+    write(gnuplotchannel,*) '     "'//gridpath5//'tmp_A.dat" u 1:(error_scaling*($4)) '//&
+                            'w lines lw 3 lc "black" t "Accept Current",\'
+    write(gnuplotchannel,*) '     "'//gridpath5//'tmp_A.dat" u 1:(error_scaling*($3)) '//&
+                            'w lines lw 3 lc "blue" t "Accept Best",\'
+    write(gnuplotchannel,*) '     "'//gridpath5//'tmp_A.dat" u 1:(error_scaling*($5)) '//&
+                            'w lines lw 3 lc "red" t "Accept Worst"'
     write(gnuplotchannel,*) 'set xlabel "Ninterpolation" font ",24"'
 write(gnuplotchannel,*) 'unset y2label'
-write(gnuplotchannel,*) 'set ylabel "RMSD" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "RMSD (A)" font ",24"'
 write(gnuplotchannel,*) 'set y2tics font ",16" nomirror'
 write(gnuplotchannel,*) 'unset ytics'
     write(gnuplotchannel,*) 'set logscale y2'
@@ -5562,7 +5875,7 @@ write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
     write(gnuplotchannel,*) 'set format x "%6.3f"'
-    write(gnuplotchannel,*) 'set xlabel "RMSD Between Current and Target Frame" font ",24"'
+    write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Current and Target Frame" font ",24"'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_B.dat" u 1:2 w boxes t ""'
     close(gnuplotchannel)
 
@@ -5606,6 +5919,7 @@ write(gnuplotchannel,*) 'set rmargin 1'
                                            '"1e-2"     .01, '//&
                                          '"2e-2" .00000002, '//&
                                    ')'
+write(gnuplotchannel,*) 'error_scaling = ', RU_energy / eV
 write(gnuplotchannel,*) 'set multiplot layout 6'//&
                         ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
                         '"Single Frame Interpolation'//&
@@ -5618,10 +5932,10 @@ write(gnuplotchannel,*) 'unset ytics'
 !   write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
     write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.8,0.925'
     write(gnuplotchannel,*) 'xmax = ', Ninterpolation
-write(gnuplotchannel,*) 'set xlabel "Error"'
+write(gnuplotchannel,*) 'set xlabel "Error (eV/A)"'
     write(gnuplotchannel,*) 'set logscale x'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_E.dat" u '//&
-            '1:2:(sprintf(''%s'',stringcolumn(3))) w labels offset 0,1 point pt 6 lw 4 t ""'
+            '(error_scaling*($1)):2:(sprintf(''%s'',stringcolumn(3))) w labels offset 0,1 point pt 6 lw 4 t ""'
 
     if (.false.) then
     write(gnuplotchannel,FMT="(A,I0.2,A,I0.8,A)") &
@@ -5667,7 +5981,7 @@ write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
     write(gnuplotchannel,*) 'set format x "%6.3f"'
-    write(gnuplotchannel,*) 'set xlabel "RMSD Between Current and Target Frame" font ",24"'
+    write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Current and Target Frame" font ",24"'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_B.dat" u 1:2 w boxes t ""'
     close(gnuplotchannel)
 
@@ -5950,7 +6264,7 @@ write(gnuplotchannel,*) 'set yrange [0:]'
 write(gnuplotchannel,*) 'set style histogram clustered gap 1'
 write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
     write(gnuplotchannel,*) 'set format x "%6.3f"'
-    write(gnuplotchannel,*) 'set xlabel "RMSD Between Current and Target Frame" font ",24"'
+    write(gnuplotchannel,*) 'set xlabel "RMSD(A) Between Current and Target Frame" font ",24"'
     write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_B.dat" u 1:2 w boxes t ""'
     close(gnuplotchannel)
 
@@ -5962,6 +6276,200 @@ write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
 !   print *, ""
 
 end subroutine errorCheck6
+
+subroutine errorCheck7(filechannels,coords1,gradient1,&
+                       Ninterpolation,&
+                       libcoords,libgradients,libNtraj)
+    use FUNCTIONS
+    use PARAMETERS
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    use ls_rmsd_original
+    implicit none
+
+    !Coordinates, Velocities, and Variables
+    real(dp), dimension(3,Natoms),intent(in) :: coords1,gradient1
+    real(dp), dimension(3,Natoms) :: coords2,gradient2
+    integer,intent(in) :: Ninterpolation
+    real(dp), dimension(Ninterpolation,3,Natoms),intent(in) :: libcoords,libgradients
+    integer,dimension(Ninterpolation) :: libNtraj
+    real(dp), dimension(3,Natoms) :: coords_labelled,delta_coords
+    real(dp), dimension(3,Natoms) :: gradient_var,gradient_labelled,gradient_var_labelled
+    real(dp), dimension(3,Natoms) :: gradient_var_min, gradient_var_max
+    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
+    real(dp), dimension(Nvar) :: vals
+    real(dp), dimension(3,Natoms) :: coords,gradient
+    integer :: bond_index1, bond_index2
+
+!   real(dp), allocatable :: rmsd_x(:,:),rmsd_x_interpolated(:,:)
+!   real(dp), allocatable :: rmsd_fx(:,:),rmsd_fx_interpolated(:,:)
+!   real(dp), allocatable :: rmsd_weights(:,:,:)
+!   real(dp),dimension(4) :: selected_means,selected_SDs
+    real(dp) :: delta_length
+    real(dp),dimension(Ninterpolation,3,Natoms) :: randcoords
+    integer :: Ntest,Nsamples,Nsample
+    integer :: Nanomaly,Nanomaly_index
+    character(3) :: Nanomaly_text
+    real(dp), allocatable :: outputCLS(:)
+    real(dp), dimension(3,Natoms,Ninterpolation) :: gradient_steps
+    real(dp), dimension(Ncoords+Ninterpolation,Ninterpolation) :: inputCLS2
+    real(dp), allocatable :: frame_weights(:)
+    real(dp), allocatable :: restraints(:,:),restraint_values(:)
+    real(dp), allocatable :: minimized_differences2(:,:)
+    real(dp) :: error1,error2,error3,error4,rmsd1
+    real(dp) :: dropoff_cutoff,dropoff_mean,dropoff_SD
+    real(dp) :: convergence_mean,convergence_SD
+
+    !Various other variables
+    real(dp) :: min_rmsd,min_rmsd_prime,max_rmsd_prime
+    integer :: min_rmsd_index,max_rmsd_index
+    integer :: number_of_frames,order,neighbor_check
+    character(9) :: vals_interpolation_text
+
+    integer :: Ntrials
+
+    integer :: Nbins
+    integer :: min_rmsd_bin
+    real(dp) :: min_rmsd_binwidth
+    real(dp),allocatable :: min_rmsd_binning(:)
+    real(dp),dimension(Ncoords+Ninterpolation,1) :: cost_final
+    real(dp) :: alpha_test,total_cost
+
+    integer :: Nunique, unique_counter
+    real(dp),dimension(Ncoords) :: meancoords
+    real(dp),dimension(Ninterpolation) :: mu, sigma
+    integer,dimension(Ninterpolation) :: uniqueNtraj
+    logical :: unique_flag
+
+    integer,dimension(1+Ngrid_total),intent(in) :: filechannels
+    real(dp), dimension(3) :: x_center, y_center
+    real(dp), allocatable :: g(:,:)
+    real(dp),dimension(3,3) :: U
+    real(dp),dimension(3,3) :: candidate_U
+
+    real(dp) :: min_rmsd1, min_rmsd2, max_rmsd2
+    real(dp),dimension(Ninterpolation,3) :: rmsd_catalog
+    integer,dimension(3) :: min_rmsd_bins
+    integer,allocatable :: rmsd_binning(:,:)
+
+    !Incremental Integer
+    integer :: i,n
+    integer :: step
+
+!   print *, ""
+!   print *, "Started Error Check 7!"
+!   print *, ""
+
+    do step = 1, Ninterpolation
+
+        call rmsd_dp(Natoms,libcoords(step,:,:),coords1,1,&
+                     candidate_U,x_center,y_center,min_rmsd1)
+        
+        min_rmsd2 = min_rmsd1
+        max_rmsd2 = min_rmsd1
+
+        do n = 1, Nindistinguishables
+            BOND_LABELLING_DATA = &
+                INDISTINGUISHABLES(n,:)
+            do i = 1, Natoms
+                coords(:,i) = libcoords(step,:,&
+                        BOND_LABELLING_DATA(i))
+            end do
+
+            call rmsd_dp(Natoms,coords,coords1,1,&
+                         candidate_U,x_center,&
+                         y_center,min_rmsd)
+
+            min_rmsd2 = min(min_rmsd2,min_rmsd)
+            max_rmsd2 = max(max_rmsd2,min_rmsd)
+        end do
+
+        rmsd_catalog(step,:) = &
+                (/min_rmsd1, min_rmsd2, max_rmsd2/)
+    end do
+
+    Nbins = 20
+    min_rmsd2 = minval(rmsd_catalog(:,2))
+    max_rmsd2 = maxval(rmsd_catalog(:,1))
+    min_rmsd_binwidth = (max_rmsd2 - min_rmsd2) / Nbins
+
+    allocate(rmsd_binning(3,Nbins))
+    rmsd_binning = 0
+
+    do step = 1, Ninterpolation
+
+        min_rmsd_bins = floor((rmsd_catalog(step,:) - &
+                min_rmsd2) / min_rmsd_binwidth)
+        do i = 1, 2
+            if (min_rmsd_bins(i) > Nbins) &
+                min_rmsd_bins(i) = Nbins
+            if (min_rmsd_bins(i) < 1) &
+                min_rmsd_bins(i) = 1
+
+            rmsd_binning(i,min_rmsd_bins(i)) =&
+            rmsd_binning(i,min_rmsd_bins(i)) + 1
+        end do
+    end do
+
+    open(6666,file=gridpath5//"tmp_A.dat")
+    do n = 1, Nbins
+        write(6666,FMT=*) min_rmsd2 + (n-0.5)*min_rmsd_binwidth,&
+                rmsd_binning(1:2,n)
+    end do
+    close(6666)
+
+    deallocate(rmsd_binning)
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !      Plotting
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    call getVarsMaxMin(coords1,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+    open(gnuplotchannel,file=gridpath5//gnuplotfile)
+    write(gnuplotchannel,*) "set term pngcairo enhanced size 1800,2400"
+    write(gnuplotchannel,*) 'set encoding utf8'
+    write(gnuplotchannel,FMT="(A,2F7.4,A,I0.5,A)") &
+            'set output "'//gridpath4, vals,'.png"'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,*) 'unset xtics'
+write(gnuplotchannel,*) 'set multiplot layout 2'//&
+                        ',1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 title '//&
+                        '"Single Frame Interpolation'//&
+                        '" font ",32" offset 0,-3'
+
+write(gnuplotchannel,*) 'set ylabel "Occurence" font ",24"'
+write(gnuplotchannel,*) 'set ytics font ",16" nomirror'
+    write(gnuplotchannel,*) 'set xtics font ",16"'
+    write(gnuplotchannel,*) 'set autoscale y'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'set style histogram clustered gap 1'
+write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+    write(gnuplotchannel,*) 'set format x ""'
+    write(gnuplotchannel,*) 'unset xlabel'
+write(gnuplotchannel,FMT="(A,F9.7,':',F9.7,A)") 'set xrange [',&
+                                        min_rmsd2 - min_rmsd_binwidth,&
+                                        max_rmsd2 + min_rmsd_binwidth, ']'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_A.dat" u 1:2 w boxes t ""'
+!   write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_A.dat" u 1:3 w boxes t ""'
+    write(gnuplotchannel,*) 'set format x "%6.3f"'
+    write(gnuplotchannel,*) 'set xlabel "RMSD(A) Between Current and Target Frame" font ",24"'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_A.dat" u 1:3 w boxes t ""'
+    close(gnuplotchannel)
+
+    call system("gnuplot < "//gridpath5//gnuplotfile)
+
+
+!   print *, ""
+!   print *, "Finished Error Check 7!"
+!   print *, ""
+
+end subroutine errorCheck7
+
 
 
 

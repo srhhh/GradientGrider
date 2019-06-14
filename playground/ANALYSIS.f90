@@ -70,12 +70,14 @@ logical,parameter :: testtraj_flag = .true.
    !to also check the rmsd of frames in adjacent cells
    logical :: force_Neighbors = .true.
 
+   logical :: force_Permutations = .false.
+
    !The point at which checkState stops checking neighbors
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
    integer,dimension(ssm_length) :: ssm1 = (/ 1, 1 /)
-   integer,dimension(ssm_length) :: ssm2 = (/ 0, 5 /)
+   integer,dimension(ssm_length) :: ssm2 = (/ 1, 1 /)
 
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD

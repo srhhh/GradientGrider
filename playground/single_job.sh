@@ -81,8 +81,6 @@ force_Duplicates=.false.
 #Whether to use the labelling scheme or drop it altogether
 force_NoLabels=.true.
 
-force_Permutations=.true.
-
 #The default flags to be used for analyses
 #Of course, you don't want all analyses to be the same so go down to each analysis and change
 #what you want each individual one to do
@@ -113,22 +111,23 @@ alpha_ratio2="1.0d0"
 alpha_ratio3="1.0d-2"
 alpha_ratio4="1.0d0"
 alpha_ratio5="1.0d-2"
+force_Permutations=.true.
 interpolation_flag=.true.
 gather_interpolation_flag=.true.
-reject_flag=.false.
+reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
 grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=010
+Ntrajectories=001
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp015
-exp2name=exp011
-exp3name=exp012
+exp1name=exp700
+exp2name=exp311
+exp3name=exp312
 exp4name=exp013
 exp5name=exp014
 
@@ -195,7 +194,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=1
+Nanalyses=0
 
 #The path that has the original source code
 currentPATH=$(pwd)
@@ -338,7 +337,6 @@ sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max|
      s|Ngrid_check_min = .*|Ngrid_check_min = $newGRID_check_min|
      s|force_Duplicates = .*|force_Duplicates = $force_Duplicates|
      s|force_NoLabels = .*|force_NoLabels = $force_NoLabels|
-     s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s|gridpath0 = .*|gridpath0 = \\&\\n\"$gridPATH/\"|
      s|character([0-9]*),parameter :: parametersfile = .*|character($((${#newPARAMETERS}+4))),parameter :: parametersfile = \"$newPARAMETERS.f90\"|" <$currentPATH/$oldPARAMETERS.f90 >$newPATH/$newPARAMETERS.f90
 
@@ -382,6 +380,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
      s/inner_threshold = .*/inner_threshold = $inner_threshold/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio/
+     s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = .true./
@@ -606,6 +605,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
      s/inner_threshold = .*/inner_threshold = $inner_threshold1/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio1/
+     s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -673,6 +673,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
      s/inner_threshold = .*/inner_threshold = $inner_threshold2/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio2/
+     s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -738,6 +739,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
      s/inner_threshold = .*/inner_threshold = $inner_threshold3/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio3/
+     s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -803,6 +805,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
      s/inner_threshold = .*/inner_threshold = $inner_threshold4/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio4/
+     s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
@@ -868,6 +871,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/
      s/inner_threshold = .*/inner_threshold = $inner_threshold5/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio5/
+     s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
