@@ -66,6 +66,15 @@ logical,parameter :: testtraj_flag = .true.
    !(Not recommended for large Ntesttraj or Ngrid_total_cap)
    logical :: testtrajDetailedRMSD_flag = .false.
 
+
+       !Various variables if we are tracking the interpolation
+       !at various alpha ratios for this detailed trajectory
+       integer,parameter :: Nalpha = 61
+       real(dp) :: alpha_start = -7.0d0
+       real(dp) :: alpha_end = 5.0d0
+       logical :: logarithmic_alpha_flag = .true.
+       character(9) :: alphafile = "alpha.dat"
+
    !This takes much more time but you can force the checkState subroutine
    !to also check the rmsd of frames in adjacent cells
    logical :: force_Neighbors = .true.
@@ -76,8 +85,8 @@ logical,parameter :: testtraj_flag = .true.
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 1, 1 /)
-   integer,dimension(ssm_length) :: ssm2 = (/ 1, 1 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 10, 0 /)
+   integer,dimension(ssm_length) :: ssm2 = (/ 10, 0 /)
 
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD

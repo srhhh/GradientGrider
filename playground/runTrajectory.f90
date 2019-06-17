@@ -1035,6 +1035,8 @@ subroutine runTestTrajectory(filechannels,&
     real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
     integer,allocatable :: libNtraj(:)
 
+    integer,dimension(Nalpha) :: alpha_flagging
+
     !Incremental Integer
     integer :: i,j,n,m
 
@@ -1079,8 +1081,12 @@ subroutine runTestTrajectory(filechannels,&
     open(filechannel2,file=gridpath5//checkstatefile,&
                       position="append")
 
-    if (gather_interpolation_flag) open(filechannel3,file=&
+    if (gather_interpolation_flag) then
+        open(filechannel3,file=&
             gridpath5//interpolationfile,position="append")
+        open(6666,file=&
+            gridpath5//alphafile,position="append")
+    end if
 
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
@@ -1130,27 +1136,23 @@ subroutine runTestTrajectory(filechannels,&
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-       if ((Ninterpolation > 10)) then
-           allocate(libcoords(Ninterpolation,3,Natoms),&
-                    libgradients(Ninterpolation,3,Natoms),&
-                    libNtraj(Ninterpolation))
-           do n = 1, Ninterpolation
-               libcoords(n,:,:) =&
-                       coordsbuffer1(:,:,n)
-               libgradients(n,:,:) =&
-                       gradientbuffer1(:,:,n)
-           end do
+!      if ((Ninterpolation > 10)) then
+!          allocate(libcoords(Ninterpolation,3,Natoms),&
+!                   libgradients(Ninterpolation,3,Natoms))
+!          do n = 1, Ninterpolation
+!              libcoords(n,:,:) =&
+!                      coordsbuffer1(:,:,n)
+!              libgradients(n,:,:) =&
+!                      gradientbuffer1(:,:,n)
+!          end do
 
-           libNtraj = 0
+!          call errorCheck8(filechannels,&
+!                  coords,gradient,&
+!                  Ninterpolation,&
+!                  libcoords,libgradients)
 
-           call errorCheck7(filechannels,&
-                   coords,gradient,&
-                   Ninterpolation,&
-                   libcoords,libgradients,&
-                   libNtraj)
-
-           deallocate(libcoords,libgradients,libNtraj)
-       end if
+!          deallocate(libcoords,libgradients)
+!      end if
 
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1237,6 +1239,26 @@ subroutine runTestTrajectory(filechannels,&
                 error2 = sqrt(sum((gradient - &
                         approx_gradient)**2)/Natoms)
  
+                allocate(libcoords(Ninterpolation,3,Natoms),&
+                         libgradients(Ninterpolation,3,Natoms))
+
+                do n = 1, Ninterpolation
+                    libcoords(n,:,:) =&
+                            coordsbuffer1(:,:,n)
+                    libgradients(n,:,:) =&
+                            gradientbuffer1(:,:,n)
+                end do
+
+                call errorCheck8(filechannels,&
+                        coords,gradient,&
+                        Ninterpolation,&
+                        libcoords,libgradients,&
+                        alpha_flagging)
+
+                deallocate(libcoords,libgradients)
+
+                write(6666,FMT=*) alpha_flagging
+ 
                 write(filechannel3,FMT=*) vals(1),vals(2),&
                         Ninterpolation,largest_weighted_rmsd2,&
                         largest_weighted_rmsd,candidate_rmsd,&
@@ -1288,7 +1310,10 @@ subroutine runTestTrajectory(filechannels,&
 
     close(filechannel2)
 
-    if (gather_interpolation_flag) close(filechannel3)
+    if (gather_interpolation_flag) then
+        close(filechannel3)
+        close(6666)
+    end if
 
     !Deallocate the buffers
     deallocate(valsbuffer1,&
@@ -6469,6 +6494,241 @@ write(gnuplotchannel,FMT="(A,F9.7,':',F9.7,A)") 'set xrange [',&
 !   print *, ""
 
 end subroutine errorCheck7
+
+subroutine errorCheck8(filechannels,coords1,gradient1,&
+                       Ninterpolation,&
+                       libcoords,libgradients,&
+                       alpha_flagging)
+    use FUNCTIONS
+    use PARAMETERS
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    use ls_rmsd_original
+    implicit none
+
+    !Coordinates, Velocities, and Variables
+    real(dp), dimension(3,Natoms),intent(in) :: coords1,gradient1
+    integer,intent(in) :: Ninterpolation
+    real(dp), dimension(Ninterpolation,3,Natoms),intent(in) :: libcoords,libgradients
+    integer,dimension(Nalpha),intent(out) :: alpha_flagging
+    real(dp), dimension(Nvar) :: vals
+    real(dp), dimension(3,Natoms) :: coords,gradient,approx_gradient
+
+    real(dp), dimension(Ncoords+Ninterpolation) :: outputCLS
+    real(dp), dimension(3,Natoms,Ninterpolation) :: gradient_steps
+    real(dp), dimension(Ncoords+Ninterpolation,Ninterpolation) :: inputCLS2
+    real(dp), dimension(Ninterpolation) :: frame_weights
+    real(dp), dimension(1,Ninterpolation) :: restraints
+    real(dp), dimension(1) :: restraint_values
+
+    !Various other variables
+    real(dp) :: error1, max_error1, min_error1
+    real(dp) :: best_error
+    real(dp),dimension(Ninterpolation) :: min_rmsd
+
+    real(dp),dimension(Nalpha) :: alpha_array
+
+    integer,dimension(1+Ngrid_total),intent(in) :: filechannels
+    real(dp), dimension(3) :: x_center, y_center
+    real(dp), allocatable :: g(:,:)
+    real(dp),dimension(3,3) :: U
+    real(dp),dimension(3,3) :: candidate_U
+
+    !Incremental Integer
+    integer :: i,n,iostate
+    integer :: step
+
+!   print *, ""
+!   print *, "Started Error Check 8!"
+!   print *, ""
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !      First Graph
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    do step = 1, Ninterpolation
+
+        coords = libcoords(step,:,:)
+
+        call rmsd_dp(Natoms,coords,coords1,1,&
+                     candidate_U,x_center,y_center,min_rmsd(step))
+
+        gradient_steps(:,:,step) = matmul(candidate_U,libgradients(step,:,:))
+
+        do i = 1, 3
+            coords(i,:) = &
+            coords(i,:) - x_center(i)
+        end do
+
+        coords = matmul(candidate_U,coords)
+
+        do i = 1, 3
+            coords(i,:) = &
+            coords(i,:) + y_center(i)
+        end do
+
+        inputCLS2(1:Ncoords,step) = reshape(coords - coords1,(/Ncoords/))
+
+        inputCLS2(Ncoords+step,:) = 0.0d0
+
+    end do
+
+    do n = 1, Nalpha-1
+        alpha_array(n) = alpha_start + &
+            (n-1)*(alpha_end-alpha_start)/&
+            (1.0d0*(Nalpha-1))
+    end do
+    alpha_array(Nalpha) = alpha_end
+
+    if (logarithmic_alpha_flag) then
+        do n = 1, Nalpha
+            alpha_array(n) = &
+                10.0d0 ** alpha_array(n)
+        end do
+    end if
+
+    !The frame with the lowest RMSD should be the first
+    !in the library because of the sorting
+    best_error = sqrt(sum((gradient1-gradient_steps(:,:,1))**2)/Natoms)
+    alpha_flagging = 0
+
+    max_error1 = 0.0d0
+    min_error1 = 1.0d9
+
+    open(6667,file=gridpath5//"tmp_A.dat")
+    do n = 1, Nalpha
+
+        do step = 1, Ninterpolation
+            inputCLS2(Ncoords+step,step) = alpha_array(n) * &
+                    sum(inputCLS2(1:Ncoords,step)**2)/Natoms
+        end do
+         
+        restraints = 1.0d0
+        restraint_values = 1.0d0
+        outputCLS(1:Ncoords) = 0.0d0
+        outputCLS(Ncoords+1:Ncoords+Ninterpolation) = 0.0d0
+        
+        call CLS2(inputCLS2(1:Ncoords+Ninterpolation,&
+                  1:Ninterpolation),Ncoords+Ninterpolation,Ninterpolation,&
+                  restraints,1,restraint_values,&
+                  outputCLS(1:Ncoords+Ninterpolation),&
+                  frame_weights(1:Ninterpolation))
+
+        iostate = 0
+        if (all(frame_weights == 0.0d0)) then
+            frame_weights(1) = 1.0d0
+            iostate = 1
+        end if
+    
+        approx_gradient = 0.0d0
+        do step = 1, Ninterpolation
+            approx_gradient = approx_gradient + frame_weights(step) *&
+                    gradient_steps(:,:,step)
+        end do
+    
+        error1 = sqrt(sum((gradient1-approx_gradient)**2)/Natoms)
+        min_error1 = min(min_error1,error1)
+        max_error1 = max(max_error1,error1)
+
+        write(6667,FMT=*) alpha_array(n), &
+                 error1 * RU_energy / eV, iostate
+
+        if (error1 > best_error) alpha_flagging(n) =&
+                alpha_flagging(n) + 1
+
+    end do
+    close(6667)
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !      Second Graph
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    open(6667,file=gridpath5//"tmp_B.dat")
+    do step = 1, Ninterpolation
+
+        error1 = sqrt(sum((gradient1-gradient_steps(:,:,step))**2)/Natoms)
+        min_error1 = min(min_error1,error1)
+        max_error1 = max(max_error1,error1)
+
+        write(6667,FMT=*) n, min_rmsd(step), error1 * RU_energy / eV
+
+    end do
+    close(6667)
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !      Plotting
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    min_error1 = min_error1 * RU_energy / eV
+    max_error1 = max_error1 * RU_energy / eV
+
+    call getVarsMaxMin(coords1,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+    open(gnuplotchannel,file=gridpath5//gnuplotfile)
+    write(gnuplotchannel,*) "set term pngcairo enhanced size 2400,1800"
+    write(gnuplotchannel,*) 'set encoding utf8'
+    write(gnuplotchannel,FMT="(A,2F7.4,A,I0.5,A)") &
+            'set output "'//gridpath4, vals,'.png"'
+    write(gnuplotchannel,*) 'set tmargin 0'
+    write(gnuplotchannel,*) 'set bmargin 0'
+    write(gnuplotchannel,*) 'set lmargin 1'
+    write(gnuplotchannel,*) 'set rmargin 1'
+    write(gnuplotchannel,*) 'set multiplot layout 1'//&
+                            ',2 rowsfirst margins 0.1,0.95,.1,.9 spacing 0,0.1 title '//&
+                            '"Single Frame Interpolation, Variable Alpha'//&
+                            '" font ",32" offset 0,-3'
+
+    write(gnuplotchannel,*) 'set ylabel "Error (eV/A)" font ",24"'
+    write(gnuplotchannel,*) 'set ytics font ",16" nomirror'
+    write(gnuplotchannel,*) 'set xtics font ",16"'
+    write(gnuplotchannel,*) 'set autoscale y'
+    write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+            'set yrange [',&
+            (min_error1 - (max_error1-min_error1)/Nalpha),&
+            (max_error1 + (max_error1-min_error1)/Nalpha),']'
+    if (logarithmic_alpha_flag) then
+        write(gnuplotchannel,*) 'set logscale x'
+        write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+                'set xrange [',&
+                10.0d0 ** (alpha_start - (alpha_end-alpha_start)/Nalpha),&
+                10.0d0 ** (alpha_end + (alpha_end-alpha_start)/Nalpha),']'
+    else
+        write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+                'set xrange [',&
+                (alpha_start - (alpha_end-alpha_start)/Nalpha),&
+                (alpha_end + (alpha_end-alpha_start)/Nalpha),']'
+    end if
+    write(gnuplotchannel,*) 'set xlabel "Alpha Ratio" font ",24"'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_A.dat" u 1:($3==0?$2:1/0) w points ps 3 pt 7 lc "black" t "",\'
+    write(gnuplotchannel,*) '     "'//gridpath5//'tmp_A.dat" u 1:($3==1?$2:1/0) w points ps 3 pt 7 lc "red" t ""'
+
+    write(gnuplotchannel,*) 'unset ytics'
+    write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+            'set yrange [',&
+            (min_error1 - (max_error1-min_error1)/Nalpha),&
+            (max_error1 + (max_error1-min_error1)/Nalpha),']'
+    write(gnuplotchannel,*) 'set format y ""'
+    write(gnuplotchannel,*) 'unset ylabel'
+    if (logarithmic_alpha_flag) write(gnuplotchannel,*) 'unset logscale x'
+    write(gnuplotchannel,*) 'set autoscale x'
+    write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+            'set xrange [',&
+            (minval(min_rmsd) - (maxval(min_rmsd)-minval(min_rmsd))/Nalpha),&
+            (maxval(min_rmsd) + (maxval(min_rmsd)-minval(min_rmsd))/Nalpha),']'
+    write(gnuplotchannel,*) 'set xlabel "RMSD(A) Between Current and Target Frame" font ",24"'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_B.dat" u 2:3 w points ps 3 pt 7 t ""'
+    close(gnuplotchannel)
+
+    call system("gnuplot < "//gridpath5//gnuplotfile)
+
+
+!   print *, ""
+!   print *, "Finished Error Check 8!"
+!   print *, ""
+
+end subroutine errorCheck8
+
 
 
 

@@ -65,7 +65,7 @@ scaling2_0=004
 scaling2_1=004
 
 #The number of frames a parent-level cell accepts before it is subdivided
-overcrowd0=00050
+overcrowd0=10050
 overcrowd1=10000
 overcrowd2=01010
 
@@ -93,9 +93,9 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.150000d0
-threshold_rmsd1=.150000d0
-threshold_rmsd2=.150000d0
+threshold_rmsd=.100000d0
+threshold_rmsd1=.100000d0
+threshold_rmsd2=.100000d0
 threshold_rmsd3=.100000d0
 threshold_rmsd4=.100000d0
 threshold_rmsd5=.050000d0
@@ -121,12 +121,12 @@ grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=001
+Ntrajectories=005
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp700
-exp2name=exp311
+exp1name=exp020
+exp2name=exp101
 exp3name=exp312
 exp4name=exp013
 exp5name=exp014
@@ -136,7 +136,7 @@ continue_analysis=.true.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.true.
+useoldinitialbonddata_flag=.false.
 #initialbondfolder="001reject.10000"
 initialbondfolder=exp001/
 
@@ -182,7 +182,7 @@ initialbondfolder=exp001/
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_May14test"
+newGRID="H2H2_May16test"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -194,7 +194,7 @@ newGRID_check_min=1000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
 currentPATH=$(pwd)

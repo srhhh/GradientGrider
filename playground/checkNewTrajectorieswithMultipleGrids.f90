@@ -772,19 +772,26 @@ if (testtrajDetailedRMSD_flag) &
     call getRMSDDifferences1(&
     gridpath4//"BinaryRMSDCheck")
 
+if ((testtrajDetailedRMSD_flag).and.&
+    (gather_interpolation_flag)) &
+    call getAlphaErrorDistribution(&
+    gridpath4//"AlphaErrorDistribution")
+
 !But, note that we only have interpolations
 !to check if we actually interpolated AND
 !gathered data
 if ((gather_interpolation_flag).and.&
     (interpolation_flag)) then
 
+    !First process the raw data; this is
+    !required for all the next steps and for
+    !future comparisons
+    call processInterpolationFile2()
+
     call itime(now)
     write(6,FMT=FMTnow) now
     print *, "   Making plot: ", "TDDRED"
     print *, ""
-
-    !First process the raw data
-    call processInterpolationFile2()
 
     !For each interpolation analysis we need a
     !temporary comparison file that specifies
@@ -807,6 +814,15 @@ if ((gather_interpolation_flag).and.&
     call system("rm "//gridpath0//comparison_file)
     call system('echo "2.990 3.780 -0.55 -0.55" >>'//gridpath0//comparison_file)
     call getRMSDinterpolation2("TDDRED_NonCollision")
+
+    call itime(now)
+    write(6,FMT=FMTnow) now
+    print *, "   Making plot: ", "InterpolationOccurenceHeatmap"
+    print *, ""
+
+    !Finally, a heatmap of all these interpolation
+    !occurences (with some restrictions)
+    call plotInterpolationOccurenceHeatmap()
 end if
 
 !All other interpolation analysis is done as

@@ -792,6 +792,101 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 end subroutine getRMSDDifferences1
 
 
+subroutine getAlphaErrorDistribution(PNGfilename)
+use PARAMETERS
+use ANALYSIS
+implicit none
+
+integer :: frames
+integer,dimension(Nalpha) :: alpha_flagging
+integer,dimension(Nalpha) :: alpha_binning
+real(dp),dimension(Nalpha) :: alpha_array
+
+!FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+character(*), intent(in) :: PNGfilename
+
+!I/O HANDLING
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+alpha_binning = 0
+frames = 0
+
+open(6666,file=gridpath5//alphafile)
+do
+    read(6666,FMT=*,iostat=iostate)&
+            (alpha_flagging(n),n=1,Nalpha)
+
+    if (iostate /= 0) exit
+
+    frames = frames + 1
+    alpha_binning = alpha_binning +&
+            alpha_flagging
+
+end do
+close(6666)
+
+do n = 1, Nalpha
+    alpha_array(n) = alpha_start + (n-1-0.5) * &
+        (alpha_end - alpha_start) / (Nalpha-1)
+end do
+
+if (logarithmic_alpha_flag) then
+    do n = 1, Nalpha
+        alpha_array(n) = &
+             10.0d0 ** alpha_array(n)
+    end do
+end if
+
+open(6666,file=gridpath5//"tmpA.dat")
+do n = 1, Nalpha
+    write(6666,FMT=*) alpha_array(n),&
+            alpha_binning(n) * 1.0d2 / frames
+end do
+close(6666)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//PNGfilename//'.png"'
+write(gnuplotchannel,*) 'set title "Blue Point Occurence by Alpha Ratio"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set yrange [0:', &
+        min(100.0d0,maxval(alpha_binning)*110.0d0/frames),']'
+
+if (logarithmic_alpha_flag) then
+    write(gnuplotchannel,*) 'set logscale x'
+    write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+            'set xrange [',&
+            10.0d0 ** (alpha_start - (alpha_end-alpha_start)/Nalpha),&
+            10.0d0 ** (alpha_end + (alpha_end-alpha_start)/Nalpha),']'
+else
+    write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+            'set xrange [',&
+            (alpha_start - (alpha_end-alpha_start)/Nalpha),&
+            (alpha_end + (alpha_end-alpha_start)/Nalpha),']'
+end if
+
+
+write(gnuplotchannel,*) 'set xlabel "Alpha Ratio"'
+write(gnuplotchannel,*) 'set ylabel "Percentage of Frames with IE > AE"'
+write(gnuplotchannel,*) 'set style histogram clustered gap 1'
+write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+write(gnuplotchannel,*) 'plot "'//gridpath5//'tmpA.dat" u 1:2 w boxes'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+end subroutine getAlphaErrorDistribution
+
+
+
 subroutine getRMSDinterpolation(vals,delta_vals,PNGfilename)
 use PARAMETERS
 use FUNCTIONS
@@ -1960,6 +2055,11 @@ counters = 0
 frames_trials = 0
 frames = 0
 
+min_Ninterpolation = 1000000
+max_Ninterpolation = 0
+min_rsv = 1.0d19
+max_rsv = 0.0d0
+
 open(filechannel1,file=gridpath0//comparison_file)
 open(filechannel3,file=gridpath5//"tmp"//interpolationfile)
 
@@ -2016,6 +2116,19 @@ do n = 1, comparison_number
     beyond_counter = 0
     ten_counter = 0
 
+    min_Ninterpolation = min(min_Ninterpolation,&
+            lower_Ninterpolation(n))
+    max_Ninterpolation = max(max_Ninterpolation,&
+            upper_Ninterpolation(n))
+    
+    do m = 1, 7
+        min_rsv(m) = min(min_rsv(m),lower_rsv(n,m))
+        max_rsv(m) = max(max_rsv(m),upper_rsv(n,m))
+    end do
+
+    upper_Ninterpolation(n) = min_Ninterpolation
+    upper_rsv(n,:) = min_rsv
+
     !We also excise any data that is not in the region
     !of the phase space of interest
     !All data is stored in the temporary interpolation
@@ -2060,6 +2173,12 @@ do n = 1, comparison_number
             if (all(tmpvals <= 0)) cycle
         end if
 
+        upper_Ninterpolation(n) = max(upper_Ninterpolation(n),&
+                Ninterpolation)
+        do m = 1, 7
+            upper_rsv(n,m) = max(upper_rsv(n,m),rsv(m))
+        end do
+
         !Recording the number of frames in each
         !trial lets us know where each trial begins
         !and ends on this one big file
@@ -2090,13 +2209,13 @@ close(filechannel3)
 !We have to get the bounds to ALL the data
 !across all experiments
 
-min_Ninterpolation = minval(lower_Ninterpolation)
-max_Ninterpolation = maxval(upper_Ninterpolation)
-
-do m = 1, 7
-    min_rsv(m) = minval(lower_rsv(:,m))
-    max_rsv(m) = maxval(upper_rsv(:,m))
-end do
+!min_Ninterpolation = minval(lower_Ninterpolation)
+!max_Ninterpolation = maxval(upper_Ninterpolation)
+!
+!do m = 1, 7
+!    min_rsv(m) = minval(lower_rsv(:,m))
+!    max_rsv(m) = maxval(upper_rsv(:,m))
+!end do
 
 !If any of the trials has no frames, there will
 !probably be trouble plotting it
@@ -2148,10 +2267,10 @@ zero_array = 0.0d0
 Ninterpolation_binning = 0.0d0
 rsv_binning = 0.0d0
 
-do n = 1, comparison_number
-    upper_Ninterpolation(n) = min_Ninterpolation
-    upper_rsv(n,:) = min_rsv
-end do
+!do n = 1, comparison_number
+!    upper_Ninterpolation(n) = min_Ninterpolation
+!    upper_rsv(n,:) = min_rsv
+!end do
 
 arithmetic_mean_Ninterpolation = 0.0d0
 geometric_mean_Ninterpolation = 0.0d0
@@ -2169,15 +2288,15 @@ do n = 1, comparison_number
     do m = 1, frames_trials(n)
         read(filechannel1,FMT=*) Ninterpolation,rsv
 
-        upper_Ninterpolation(n) = max(upper_Ninterpolation(n),&
-                Ninterpolation)
+!        upper_Ninterpolation(n) = max(upper_Ninterpolation(n),&
+!                Ninterpolation)
         arithmetic_mean_Ninterpolation(n) = &
             arithmetic_mean_Ninterpolation(n) + Ninterpolation
         geometric_mean_Ninterpolation(n) = &
             geometric_mean_Ninterpolation(n) + log10(1.0d0*Ninterpolation)
 
         do l = 1, 7
-            upper_rsv(n,l) = max(upper_rsv(n,l),rsv(l))
+!            upper_rsv(n,l) = max(upper_rsv(n,l),rsv(l))
             arithmetic_mean_rsv(n,l) = &
                 arithmetic_mean_rsv(n,l) + rsv(l)
 
@@ -2222,7 +2341,8 @@ do n = 1, comparison_number
         !The second portion of the data is that
         !which has this quality (can be
         !arbitrarily picked)
-        if (rsv(7) < 1.0d1) then
+!       if (rsv(7) < 1.0d1) then
+        if (rsv(6) <= upper_rsv(n,5)) then
             Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) = &
                     Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) + &
                     1.0d0/frames_trials(n)
@@ -2237,7 +2357,8 @@ do n = 1, comparison_number
         !which has this quality (can be
         !arbitrarily picked); this will be in
         !the front of all other data
-        if (rsv(7) <= 1.0d0) then
+!       if (rsv(7) <= 1.0d0) then
+        if (rsv(6) <= 0.5d0 * upper_rsv(n,5)) then
             Ninterpolation_binning(3*n,Ninterpolation_bin) = &
                     Ninterpolation_binning(3*n,Ninterpolation_bin) + &
                     1.0d0/frames_trials(n)
@@ -2360,6 +2481,127 @@ end do
 deallocate(Ninterpolation_binning,rsv_binning,zero_array)
 
 end subroutine processMultipleInterpolationFiles
+
+
+subroutine plotInterpolationOccurenceHeatmap()
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+!COLLECTIVE VARIABLES TO FILTER DATA
+real,dimension(Nvar) :: tmpvals,var_minvar
+integer,dimension(Nvar) :: max_val_bin, val_bins
+integer :: max_bin
+
+real(dp),dimension(7) :: rsv, min_rsv, max_rsv
+integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
+
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+
+!I/O HANDLING
+integer :: iostate
+
+!HISTOGRAM VARIABLES
+real(dp),allocatable :: heatmap_binning(:,:)
+
+!INTEGER INCREMENTALS
+integer :: n,i,j
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+var_minvar = (/ 2.0, 2.0 /)
+
+max_val_bin = int((var_maxvar - var_minvar)/var_spacing)
+
+allocate(heatmap_binning(max_val_bin(1),&
+                         max_val_bin(2)))
+heatmap_binning = 0
+
+open(filechannel1,file=gridpath5//&
+        "truncated"//interpolationfile)
+read(filechannel1,FMT="(1x,3(I9,1x),2(I6,1x),"//&
+        "2(7(G16.6,1x)))",iostat=iostate) &
+        i, j, n,&
+        min_Ninterpolation, max_Ninterpolation,&
+        min_rsv,max_rsv
+
+do
+    read(filechannel1,FMT=*,iostat=iostate)&
+            tmpvals, Ninterpolation, rsv
+    if (iostate /= 0) exit
+
+    !Here we define what is NOT an occurence
+    if (rsv(6) <= max_rsv(5)) cycle
+
+    val_bins = floor((tmpvals-var_minvar)/var_spacing)
+
+    do n = 1, Nvar
+        if (val_bins(n) == 0) val_bins(n) = 1
+        if (val_bins(n) > max_val_bin(n)) &
+                val_bins(n) = max_val_bin(n)
+    end do
+
+    heatmap_binning(val_bins(1),val_bins(2)) = &
+        heatmap_binning(val_bins(1),val_bins(2)) + 1
+
+end do
+close(filechannel1)
+
+max_bin = maxval(heatmap_binning)
+
+open(filechannel1,file=gridpath5//temporaryfile1)
+do i = 1, max_val_bin(1)
+    tmpvals(1) = var_minvar(1) + (i-1)*var_spacing(1)
+    
+    do j = 1, max_val_bin(2)
+        tmpvals(2) = var_minvar(2) + (j-1)*var_spacing(2)
+        
+        write(filechannel1,FMT=*) tmpvals, &
+                heatmap_binning(i,j)
+    end do
+    
+    write(filechannel1,FMT=*) "" 
+end do
+close(filechannel1)
+
+deallocate(heatmap_binning)
+
+
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set terminal pngcairo size 1800,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'InterpolationOccurenceHeatMap.png"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,FMT='(A,4(I0.5,A))') &
+        'set palette defined (',&
+        0, ' "green", ',&
+        1, ' "blue", ',&
+        max(max_bin/2,2), ' "yellow", ',&
+        max(max_bin,3), ' "red")'
+write(gnuplotchannel,FMT='(A,I0.5,A)') 'set cbrange [0:',max_bin,']'
+write(gnuplotchannel,*) 'set cblabel "Number of Occurences" font ",18" offset 1,0'
+
+write(gnuplotchannel,*) 'set title "Interpolation Occurence Heatmap of an H_2 - H_2 System" font ",32" offset 0,3'
+write(gnuplotchannel,*) 'set xlabel "Var1 (A)" font ",28" offset 0,-2'
+write(gnuplotchannel,*) 'set xtics 1 font ",24"'
+write(gnuplotchannel,*) 'set xrange [', var_minvar(1), ':', var_maxvar(1),']'
+write(gnuplotchannel,*) 'set ylabel "Var2 (A)" font ",28" offset -5,0'
+write(gnuplotchannel,*) 'set ytics 1 font ",24"'
+write(gnuplotchannel,*) 'set yrange [', var_minvar(2), ':',var_maxvar(2),']'
+write(gnuplotchannel,*) 'set cbtics'
+write(gnuplotchannel,*) 'set view map'
+write(gnuplotchannel,*) 'set pm3d interpolate 1,1'
+write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//'" u 1:2:3 w pm3d'
+close(gnuplotchannel)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+
+
+end subroutine plotInterpolationOccurenceHeatmap
+
 
 
 subroutine getRMSDinterpolation2(PNGfilename)
