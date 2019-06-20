@@ -1023,13 +1023,14 @@ subroutine runTestTrajectory(filechannels,&
     !Various other variables
     real(dp) :: error1,error2
     real(dp),dimension(3) :: x_center, y_center
+    real(dp),dimension(3,3) ::  U_prior
     real(dp) :: min_rmsd,min_rmsd_prime
     integer :: number_of_frames,order,neighbor_check
     real(dp) :: U, KE
 
-    real(dp) :: RMSD_prior
+    real(dp) :: RMSD_prior, error_prior
     real(dp) :: max_RMSDdelta, max_deltaRMSD
-    real(dp),dimension(3,Natoms) :: coords_prior
+    real(dp),dimension(3,Natoms) :: coords_prior, gradient_prior
     logical :: bond_flag
 
     real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
@@ -1039,9 +1040,6 @@ subroutine runTestTrajectory(filechannels,&
 
     !Incremental Integer
     integer :: i,j,n,m
-
-    max_RMSDdelta = 0.0d0
-    max_deltaRMSD = 0.0d0
 
     !Initialize the scene
     call InitialSetup3(coords,velocities)
@@ -1078,14 +1076,19 @@ subroutine runTestTrajectory(filechannels,&
 
     !We keep this file open for the whole trajectory (instead of
     !continually opening and closing) to keep data of each frame
-    open(filechannel2,file=gridpath5//checkstatefile,&
-                      position="append")
-
     if (gather_interpolation_flag) then
+        open(filechannel2,file=&
+            gridpath5//checkstatefile,position="append")
         open(filechannel3,file=&
             gridpath5//interpolationfile,position="append")
+!       open(filechannel2,file=&
+!           gridpath5//checkstatefile)
+!       open(filechannel3,file=&
+!           gridpath5//interpolationfile)
         open(6666,file=&
             gridpath5//alphafile,position="append")
+    else
+        open(filechannel2,file=gridpath5//checkstatefile)
     end if
 
     !Allocate all buffers; initialize the buffer size to be
@@ -1177,8 +1180,8 @@ subroutine runTestTrajectory(filechannels,&
                 filechannels,number_of_frames,m,neighbor_check)
         order = order + m
 
-        !For the B -> B' test
-        if (min_rmsd > threshold_rmsd) Ninterpolation = 0
+!       !For the B -> B' test
+!       if (min_rmsd > threshold_rmsd) Ninterpolation = 0
 
         !Calculate the potential and kinetic energy
         U = 0.0d0
@@ -1216,6 +1219,7 @@ subroutine runTestTrajectory(filechannels,&
         !The better frame is usually found with second search
         !so this will be used for further data handling
         min_rmsd = min_rmsd_prime
+        approx_gradient = approx_gradient_prime
 
 
 
@@ -1232,6 +1236,26 @@ subroutine runTestTrajectory(filechannels,&
             !Calculate the true gradient
             call Acceleration(vals,coords,gradient)
 
+!           !!!!!!!!!!!!!
+!           ! TEST START
+!           !!!!!!!!!!!!!
+
+!           if (steps > 1) then
+!               RMSD_prior = sqrt(sum((coords-coords_prior)**2)/Natoms)
+!               error_prior = sqrt(sum((gradient-gradient_prior)**2)/Natoms)
+
+!               print *, ""
+!               print *, steps
+!               print *, RMSD_prior
+!               print *, error_prior
+!           end if
+!           coords_prior = coords
+!           gradient_prior = gradient
+
+!           !!!!!!!!!!!!!
+!           ! TEST END
+!           !!!!!!!!!!!!!
+
             !If a frame was found, record data on it
             if (Ninterpolation > 0) then
                 error1 = sqrt(sum((gradient - &
@@ -1239,25 +1263,25 @@ subroutine runTestTrajectory(filechannels,&
                 error2 = sqrt(sum((gradient - &
                         approx_gradient)**2)/Natoms)
  
-                allocate(libcoords(Ninterpolation,3,Natoms),&
-                         libgradients(Ninterpolation,3,Natoms))
+!               allocate(libcoords(Ninterpolation,3,Natoms),&
+!                        libgradients(Ninterpolation,3,Natoms))
 
-                do n = 1, Ninterpolation
-                    libcoords(n,:,:) =&
-                            coordsbuffer1(:,:,n)
-                    libgradients(n,:,:) =&
-                            gradientbuffer1(:,:,n)
-                end do
+!               do n = 1, Ninterpolation
+!                   libcoords(n,:,:) =&
+!                           coordsbuffer1(:,:,n)
+!                   libgradients(n,:,:) =&
+!                           gradientbuffer1(:,:,n)
+!               end do
 
-                call errorCheck8(filechannels,&
-                        coords,gradient,&
-                        Ninterpolation,&
-                        libcoords,libgradients,&
-                        alpha_flagging)
+!               call errorCheck8(filechannels,&
+!                       coords,gradient,&
+!                       Ninterpolation,&
+!                       libcoords,libgradients,&
+!                       alpha_flagging)
 
-                deallocate(libcoords,libgradients)
+!               deallocate(libcoords,libgradients)
 
-                write(6666,FMT=*) alpha_flagging
+!               write(6666,FMT=*) alpha_flagging
  
                 write(filechannel3,FMT=*) vals(1),vals(2),&
                         Ninterpolation,largest_weighted_rmsd2,&
@@ -1303,6 +1327,24 @@ subroutine runTestTrajectory(filechannels,&
         else
             gradient = approx_gradient
         end if
+
+!       !!!!!!!!!!!!!
+!       ! TEST START
+!       !!!!!!!!!!!!!
+
+!       if ((reject_flag).and.(modulo(steps,2)==0)) then
+!           call rmsd_dp(Natoms,coords,coords_prior,&
+!                   1,U_prior,x_center,y_center,RMSD_prior)
+!           gradient = matmul(U_prior,gradient_prior)
+!!          gradient = gradient_prior
+!       else
+!           coords_prior = coords
+!           gradient_prior = gradient
+!       end if
+
+!       !!!!!!!!!!!!!
+!       ! TEST END
+!       !!!!!!!!!!!!!
 
         !Update the velocities
         velocities = velocities + gradient
@@ -8091,6 +8133,419 @@ subroutine plotFinalErrorCheck1(Nsamples)
         call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 end subroutine plotFinalErrorCheck1
+
+subroutine plotCheckstateEnergy(PNGname)
+        use FUNCTIONS
+        use PARAMETERS
+        use PHYSICS
+        use VARIABLES
+        use ANALYSIS
+        implicit none
+
+        character(*),intent(in) :: PNGname
+        integer :: step, frames
+
+        real(dp) :: min_rmsd, min_rmsd_prime
+        real(dp) :: min_rmsd_previous
+        real,dimension(Nvar) :: vals
+        real(dp),dimension(6) :: rsv
+
+        real(dp) :: U, KE
+        real(dp) :: E, E_previous
+        real(dp) :: avg_DE,max_absDE
+        real(dp) :: avg_absDE,sd_absDE
+
+        real(dp) :: DE_binwidth
+        integer :: Nbins,DE_bin
+        integer,allocatable :: DE_binning1(:), DE_binning2(:)
+
+        integer :: i1, i2, i3
+        integer :: n, m, iostate
+
+        open(filechannel2,file=gridpath5//checkstatefile)
+
+        max_absDE = 0.0d0
+        avg_absDE = 0.0d0
+        avg_DE = 0.0d0
+        frames = 1
+        do
+            read(filechannel2,iostat=iostate,FMT=*) &
+                    i1,i2,i3,step,&
+                    min_rmsd,min_rmsd_prime,&
+                    vals(1),vals(2),U,KE
+            if (iostate /= 0) exit
+
+            if (step == 1) then
+                E_previous = U + KE
+                min_rmsd_previous = min_rmsd_prime
+                cycle
+            end if
+
+            E = U + KE
+
+            max_absDE = max(abs(E-E_previous),max_absDE)
+            avg_absDE = avg_absDE + abs(E-E_previous)
+            avg_DE = avg_DE + E - E_previous
+
+            E_previous = E
+            frames = frames + 1
+        end do
+        close(filechannel2)
+
+        avg_absDE = avg_absDE / frames
+        avg_DE = avg_DE / frames
+
+
+        Nbins = 40
+        DE_binwidth = 2 * max_absDE / Nbins
+        allocate(DE_binning1(Nbins),DE_binning2(Nbins))
+        DE_binning1 = 0
+        DE_binning2 = 0
+
+        if (gather_interpolation_flag) &
+                open(filechannel1,file=gridpath5//interpolationfile)
+        open(filechannel2,file=gridpath5//checkstatefile)
+        open(filechannel3,file=gridpath5//temporaryfile2)
+
+        min_rmsd_previous = default_rmsd
+        sd_absDE = 0.0d0
+        do
+            read(filechannel2,iostat=iostate,FMT=*) &
+                    i1,i2,i3,step,&
+                    min_rmsd,min_rmsd_prime,&
+                    vals(1),vals(2),U,KE
+            if (iostate /= 0) exit
+
+            if (step == 1) then
+                if (min_rmsd_previous < default_rmsd*0.9) then
+                    if (gather_interpolation_flag) then
+                        read(filechannel1,FMT=*) vals, i1, rsv
+                    end if
+                end if
+
+                E_previous = U + KE
+                min_rmsd_previous = min_rmsd_prime
+                cycle
+            end if
+
+            E = U + KE
+            sd_absDE = sd_absDE + (abs(E-E_previous) -&
+                    avg_absDE)**2
+
+            DE_bin = floor((max_absDE + E-E_previous)/&
+                    DE_binwidth)
+            if (DE_bin == 0) DE_bin = 1
+            if (DE_bin > Nbins) DE_bin = Nbins
+
+            if (min_rmsd_previous < default_rmsd*0.9) then
+                DE_binning1(DE_bin) = DE_binning1(DE_bin) + 1
+
+!               write(filechannel3,FMT=*) vals(1),vals(2),&
+!                       Ninterpolation,largest_weighted_rmsd2,&
+!                       largest_weighted_rmsd,candidate_rmsd,&
+!                       min_rmsd,error1,error2
+                if (gather_interpolation_flag) then
+                    read(filechannel1,FMT=*) vals, i1, rsv
+    
+                    write(filechannel3,FMT=*) &
+                            (E-E_previous) * RU_energy / eV, &
+                            min_rmsd_prime, &
+                            rsv(6) * RU_energy / eV
+                end if
+            else
+                DE_binning2(DE_bin) = DE_binning2(DE_bin) + 1
+            end if
+
+            E_previous = E
+            min_rmsd_previous = min_rmsd_prime
+        end do
+
+        if (gather_interpolation_flag) &
+                close(filechannel1)
+        close(filechannel2)
+        close(filechannel3)
+
+        sd_absDE = sqrt(sd_absDE / frames)
+
+        open(filechannel2,file=gridpath5//temporaryfile1)
+        do n = 1, Nbins
+            write(filechannel2,FMT=*) &
+                    (DE_binwidth * (n + 0.5) - max_absDE) *&
+                    RU_energy / eV,&
+                    DE_binning1(n), DE_binning2(n)
+        end do
+        close(filechannel2)
+        deallocate(DE_binning1, DE_binning2)
+
+
+
+        open(filechannel2,file=gridpath5//&
+                "energyconservation.dat",position="append")
+        write(filechannel2,FMT=*) avg_DE, &
+                max_absDE, avg_absDE, sd_absDE
+        close(filechannel2)
+
+
+
+        if (.not.(gather_interpolation_flag)) then
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
+        write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+        write(gnuplotchannel,FMT="(A)") &
+                'set output "'//gridpath4//PNGname//'.png"'
+        write(gnuplotchannel,*) 'set title "Energy Conservation over a Trajectory"'
+        write(gnuplotchannel,*) 'set xlabel "Time (fs)"'
+        write(gnuplotchannel,*) 'xscale = ', dt
+        write(gnuplotchannel,*) 'set ylabel "Energy (eV)"'
+        write(gnuplotchannel,*) 'yscale = ', RU_energy / eV
+        write(gnuplotchannel,*) 'plot "'//gridpath5//checkstatefile//&
+                '" u (($4)*xscale):(($9)*yscale) w l lc "blue" t "U",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//checkstatefile//&
+                '" u (($4)*xscale):(($10)*yscale) w l lc "red" t "KE",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//checkstatefile//&
+                '" u (($4)*xscale):((($9)+($10))*yscale) w l lc "black" t "Total",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//checkstatefile//&
+                '" u (($4)*xscale):($6>1.0?1/0:((($9)+($10))*yscale)) w p pt 7 ps 1 lc "red" t ""'
+        close(gnuplotchannel)
+
+        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+        else
+
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
+        write(gnuplotchannel,*) 'set term pngcairo size 1200,1800'
+        write(gnuplotchannel,FMT="(A)") &
+                'set output "'//gridpath4//PNGname//'_Distribution.png"'
+        write(gnuplotchannel,*) 'set tmargin 0'
+        write(gnuplotchannel,*) 'set bmargin 0'
+        write(gnuplotchannel,*) 'set lmargin 1'
+        write(gnuplotchannel,*) 'set rmargin 1'
+        write(gnuplotchannel,*) 'unset title'
+        write(gnuplotchannel,FMT="(A)") 'set multiplot layout '//&
+                                '4,1 columnsfirst margins 0.1,0.95,.1,.9 spacing 0.1,0 '//&
+                                'title "Energy Jump Distributions" font ",32"'
+        write(gnuplotchannel,FMT='(A,E16.6,":",E16.6,A)') &
+                'set xrange [',&
+                (-max_absDE - 0.5 * DE_binwidth) * RU_energy / eV,&
+                ( max_absDE + 0.5 * DE_binwidth) * RU_energy / eV,&
+                ']'
+        write(gnuplotchannel,*) 'set ytics font ",16"'
+        write(gnuplotchannel,*) 'set xtics font ",16"'
+        write(gnuplotchannel,*) 'set format x ""'
+        write(gnuplotchannel,*) 'unset xlabel'
+
+        write(gnuplotchannel,*) 'set ylabel "Error (eV/A)" font ",24"'
+!       write(gnuplotchannel,FMT='(A,E16.6,":",E16.6,A)') &
+!               'set yrange [',&
+!               inner_threshold,&
+!               threshold_rmsd,&
+!               ']'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile2//&
+                '" u 1:3 w points pt 1 ps 1 t "Accept Best"'
+ 
+        write(gnuplotchannel,*) 'set ylabel "RMSD (A)" font ",24"'
+        write(gnuplotchannel,FMT='(A,E16.6,":",E16.6,A)') &
+                'set yrange [',&
+                inner_threshold,&
+                threshold_rmsd,&
+                ']'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile2//&
+                '" u 1:2 w points pt 1 ps 1 t "Accept Best"'
+
+        write(gnuplotchannel,*) 'set style histogram clustered gap 1'
+        write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+        write(gnuplotchannel,*) 'set ylabel "Occurence" font ",24"'
+        write(gnuplotchannel,*) 'set autoscale y'
+        write(gnuplotchannel,*) 'set yrange [0:]'
+        
+        write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                '" u 1:2 w boxes t "Accept Best"'
+        write(gnuplotchannel,*) 'set format x "%.1e"'
+        write(gnuplotchannel,*) 'set xlabel "Energy Jump (eV)"'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                '" u 1:3 w boxes t "Reject"'
+        close(gnuplotchannel)
+
+        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+        end if
+
+
+end subroutine plotCheckstateEnergy
+
+subroutine plotEnergyConservationInformatics()
+    use FUNCTIONS
+    use PARAMETERS
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    implicit none
+
+    integer :: frames
+
+!   real(dp) :: avg_DE,max_absDE
+!   real(dp) :: avg_absDE,sd_absDE
+
+    real(dp),dimension(4) :: DEs
+    real(dp),dimension(4) :: max_DEs,min_DEs
+    real(dp),dimension(4) :: DE_binwidths
+    integer,dimension(4) :: DE_bins
+
+    real(dp) :: avg_absDE1
+    real(dp) :: max_DE2
+    real(dp) :: avg_DE3
+    real(dp) :: avg_DE4
+
+    integer :: Nbins
+    integer,allocatable :: DE_binning(:,:)
+
+    integer :: n, m, iostate
+
+    frames = 0
+    max_DEs = -1.0d19
+    min_DEs = 1.0d19
+
+    avg_absDE1 = 0.0d0
+    max_DE2 = -1.0d19
+    avg_DE3 = 0.0d0
+    avg_DE4 = 0.0d0
+
+    open(filechannel2,file=gridpath5//&
+            "energyconservation.dat")
+    do 
+!       read(filechannel2,iostat=iostate,FMT=*) avg_DE, &
+!               max_absDE, avg_absDE, sd_absDE
+        read(filechannel2,iostat=iostate,FMT=*) DEs
+        if (iostate /= 0) exit
+
+        do n = 1, 4
+            max_DEs(n) = max(max_DEs(n),DEs(n))
+            min_DEs(n) = min(min_DEs(n),DEs(n))
+        end do
+
+        avg_absDE1 = avg_absDE1 + abs(DEs(1))
+        max_DE2 = max(max_DE2,DEs(2))
+        avg_DE3 = avg_DE3 + DEs(3)
+        avg_DE4 = avg_DE4 + DEs(4)
+
+        frames = frames + 1
+    end do
+    close(filechannel2)
+
+    avg_absDE1 = (avg_absDE1 / frames)  * RU_energy / eV
+    max_DE2 = max_DE2 * RU_energy / eV
+    avg_DE3 = (avg_DE3 / frames) * RU_energy / eV
+    avg_DE4 = (avg_DE4 / frames) * RU_energy / eV
+
+    Nbins = 40
+    allocate(DE_binning(4,Nbins))
+    DE_binning = 0
+
+    DE_binwidths = (max_DEs - min_DEs) / Nbins
+
+    open(filechannel2,file=gridpath5//&
+            "energyconservation.dat")
+    do 
+        read(filechannel2,iostat=iostate,FMT=*) DEs
+        if (iostate /= 0) exit
+
+        DE_bins = floor((DEs - min_DEs)/DE_binwidths)
+
+        do n = 1, 4
+            if (DE_bins(n) == 0) DE_bins(n) = 1
+            if (DE_bins(n) > Nbins) DE_bins = Nbins
+
+            DE_binning(n,DE_bins(n)) = &
+                DE_binning(n,DE_bins(n)) + 1
+        end do
+    end do
+    close(filechannel2)
+
+    open(filechannel2,file=gridpath5//temporaryfile1)
+    do n = 1, Nbins
+        write(filechannel2,FMT=*) &
+                (min_DEs + (n-0.5) * DE_binwidths) * RU_energy / eV,&
+                DE_binning(:,n)
+    end do
+    close(filechannel2)
+    
+
+    open(gnuplotchannel,file=gridpath5//gnuplotfile)
+    write(gnuplotchannel,*) 'set term pngcairo size 4200,1200'
+    write(gnuplotchannel,FMT="(A)") &
+            'set output "'//gridpath4//'EnergyConservationInformatics.png"'
+    write(gnuplotchannel,*) 'unset title'
+    write(gnuplotchannel,*) 'set multiplot layout 1,4 '//&
+            'title "Energy Conservation Informatics" font ",32"'
+    write(gnuplotchannel,*) 'set ylabel "Occurence" font ",24"'
+    write(gnuplotchannel,*) 'set yrange [0:]'
+    write(gnuplotchannel,*) 'set ytics font ",16"'
+    write(gnuplotchannel,*) 'set xtics font ",16"'
+!   write(gnuplotchannel,*) 'set format x "%e"'
+!   write(gnuplotchannel,*) 'set format x "%.1t*10^%+03T"'
+    write(gnuplotchannel,*) 'set format x "%.1e"'
+    write(gnuplotchannel,*) 'unset key'
+    write(gnuplotchannel,*) 'set style histogram clustered gap 1'
+    write(gnuplotchannel,*) 'set style fill solid 1.0 noborder'
+
+    write(gnuplotchannel,*) 'set xlabel "Total Energy Drift (eV)" font ",24"'
+    write(gnuplotchannel,FMT="(A)") 'unset arrow'
+    write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+            'set arrow from ', avg_absDE1,&
+            ',graph 0 to ', avg_absDE1, ', graph 1 nohead front '//&
+            'lw 2 lc rgb "black"'
+    write(gnuplotchannel,FMT='(A,E16.6,":",E16.6,A)') &
+            'set xrange [',&
+            (min_DEs(1) - 0.5 * DE_binwidths(1)) * RU_energy / eV,&
+            (max_DEs(1) + 0.5 * DE_binwidths(1)) * RU_energy / eV,&
+            ']'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+            '" u 1:5 w boxes'
+
+    write(gnuplotchannel,*) 'set xlabel "Maximum Energy Jump (eV)" font ",24"'
+    write(gnuplotchannel,FMT="(A)") 'unset arrow'
+    write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+            'set arrow from ', max_DE2,&
+            ',graph 0 to ', max_DE2, ', graph 1 nohead front '//&
+            'lw 2 lc rgb "black"'
+    write(gnuplotchannel,FMT='(A,E16.6,":",E16.6,A)') &
+            'set xrange [',&
+            (min_DEs(2) - 0.5 * DE_binwidths(2)) * RU_energy / eV,&
+            (max_DEs(2) + 0.5 * DE_binwidths(2)) * RU_energy / eV,&
+            ']'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+            '" u 2:6 w boxes'
+
+    write(gnuplotchannel,*) 'set xlabel "Average Energy Jump (eV)" font ",24"'
+    write(gnuplotchannel,FMT="(A)") 'unset arrow'
+    write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+            'set arrow from ', avg_DE3,&
+            ',graph 0 to ', avg_DE3, ', graph 1 nohead front '//&
+            'lw 2 lc rgb "black"'
+    write(gnuplotchannel,FMT='(A,E16.6,":",E16.6,A)') &
+            'set xrange [',&
+            (min_DEs(3) - 0.5 * DE_binwidths(3)) * RU_energy / eV,&
+            (max_DEs(3) + 0.5 * DE_binwidths(3)) * RU_energy / eV,&
+            ']'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+            '" u 3:7 w boxes'
+
+    write(gnuplotchannel,*) 'set xlabel "Standard Deviation of Energy Jumps (eV)" font ",24"'
+    write(gnuplotchannel,FMT="(A)") 'unset arrow'
+    write(gnuplotchannel,FMT="(A,E16.6,A,E16.6,A)")&
+            'set arrow from ', avg_DE4,&
+            ',graph 0 to ', avg_DE4, ', graph 1 nohead front '//&
+            'lw 2 lc rgb "black"'
+    write(gnuplotchannel,FMT='(A,E16.6,":",E16.6,A)') &
+            'set xrange [',&
+            (min_DEs(4) - 0.5 * DE_binwidths(4)) * RU_energy / eV,&
+            (max_DEs(4) + 0.5 * DE_binwidths(4)) * RU_energy / eV,&
+            ']'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+            '" u 4:8 w boxes'
+
+    call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+end subroutine plotEnergyConservationInformatics
 
 
 

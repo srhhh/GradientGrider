@@ -64,7 +64,7 @@ logical,parameter :: testtraj_flag = .true.
    !Set .true. to generate the checkTrajectory plots for each
    !trajectory tested for each grid
    !(Not recommended for large Ntesttraj or Ngrid_total_cap)
-   logical :: testtrajDetailedRMSD_flag = .false.
+   logical :: testtrajDetailedRMSD_flag = .true.
 
 
        !Various variables if we are tracking the interpolation
@@ -85,8 +85,8 @@ logical,parameter :: testtraj_flag = .true.
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 10, 0 /)
-   integer,dimension(ssm_length) :: ssm2 = (/ 10, 0 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 1, 0 /)
+   integer,dimension(ssm_length) :: ssm2 = (/ 1, 0 /)
 
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD

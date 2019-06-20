@@ -1426,6 +1426,7 @@ end subroutine checkState_new_permute
 subroutine checkState_new_permute_cap(vals,coords,gradient,&
                 min_rmsd,filechannels,&
                 number_of_frames,order,neighbor_check)
+use ls_rmsd_original
 use ANALYSIS
 use VARIABLES
 use PARAMETERS
@@ -1611,6 +1612,41 @@ else
 
     largest_weighted_rmsd = min_rmsd
     largest_weighted_rmsd2 = min_rmsd**2
+    
+!   !!!!!!!!!!!!!
+!   ! TEST START
+!   !!!!!!!!!!!!!
+
+!   new_coords = coordsbuffer1(:,:,1)
+
+!   call rmsd_dp(Natoms,new_coords,var_coords,&
+!                1,new_U,x_center,y_center,&
+!                min_rmsd)
+
+!   do i = 1, 3
+!       new_coords(i,:) = new_coords(i,:) - x_center(i)
+!   end do
+
+!   new_coords = matmul(Ubuffer1(:,:,1),new_coords)
+
+!   do i = 1, 3
+!       new_coords(i,:) = new_coords(i,:) + y_center(i)
+!   end do
+
+!   print *, ""
+!   print *, ""
+!   print *, RMSDbuffer1(1)
+!   print *, min_rmsd
+!   print *, sqrt(sum((new_coords-var_coords)**2)/Natoms)
+!   print *, ""
+!   print *, min_rmsd - sqrt(sum((new_coords-var_coords)**2)/Natoms)
+
+!   min_rmsd = RMSDbuffer1(1)
+
+!   !!!!!!!!!!!!!
+!   ! TEST END
+!   !!!!!!!!!!!!!
+
 end if
 
 candidate_rmsd = RMSDbuffer1(1)
@@ -1764,8 +1800,9 @@ do k = 1, Ngrid_total
     
     !Record the RMSD encountered here for later analysis:
     !particularly, percent-RMSD graphs
-    if (testtraj_flag) write(filechannels(1+k),FMT=FMT6) &
-            RMSDbuffer1(1)
+    if ((testtraj_flag).and.(.not.(&
+         testtrajDetailedRMSD_flag)))&
+         write(filechannels(1+k),FMT=FMT6) RMSDbuffer1(1)
     
 end do
 

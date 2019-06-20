@@ -699,6 +699,15 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         close(filechannel1)
     end if
 
+    !If we are doing a detailed test run then we
+    !have a checkstate file that we can plot
+    if (testtrajDetailedRMSD_flag) then
+
+        !This checks if the energy seems to be conserved
+        call plotCheckstateEnergy("EnergyConservation"//Ntraj_text)
+
+    end if
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       DURING-CREATION TRAJECTORY ANALYSIS
@@ -768,9 +777,12 @@ end if
 !that we want to check
 if (.not.comparison_flag) then
 
-if (testtrajDetailedRMSD_flag) &
+if (testtrajDetailedRMSD_flag) then
     call getRMSDDifferences1(&
     gridpath4//"BinaryRMSDCheck")
+
+    call plotEnergyConservationInformatics()
+end if
 
 if ((testtrajDetailedRMSD_flag).and.&
     (gather_interpolation_flag)) &

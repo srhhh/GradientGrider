@@ -93,8 +93,8 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.true.
 testtrajSAheatmap_flag=.true.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.100000d0
-threshold_rmsd1=.100000d0
+threshold_rmsd=.150000d0
+threshold_rmsd1=.150000d0
 threshold_rmsd2=.100000d0
 threshold_rmsd3=.100000d0
 threshold_rmsd4=.100000d0
@@ -112,20 +112,20 @@ alpha_ratio3="1.0d-2"
 alpha_ratio4="1.0d0"
 alpha_ratio5="1.0d-2"
 force_Permutations=.true.
-interpolation_flag=.true.
-gather_interpolation_flag=.true.
-reject_flag=.true.
+interpolation_flag=.false.
+gather_interpolation_flag=.false.
+reject_flag=.false.
 accept_first=.false.
 accept_worst=.false.
 grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=005
+Ntrajectories=010
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp020
+exp1name=exp_what
 exp2name=exp101
 exp3name=exp312
 exp4name=exp013
@@ -136,9 +136,9 @@ continue_analysis=.true.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.false.
+useoldinitialbonddata_flag=.true.
 #initialbondfolder="001reject.10000"
-initialbondfolder=exp001/
+initialbondfolder=exp051/
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation

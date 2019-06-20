@@ -2598,8 +2598,6 @@ write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//'" u 1:2:3 w pm3d'
 close(gnuplotchannel)
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
-
-
 end subroutine plotInterpolationOccurenceHeatmap
 
 
