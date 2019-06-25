@@ -132,6 +132,12 @@ real(dp),parameter :: mass_hydrogen = (.001d0/Na)*(1.00794d0)/RU_mass           
 !The temperature used to sample vibration and rotation (not the total temperature)
 real(dp), parameter :: temperature = 300.0d0                                       !Kelvin
 
+!These energies, as input by the user, should be in eV originally,
+!so they are converted to ReducedUnits_energy later
+real(dp),parameter :: E_threshold = 1.0d-2 * eV / RU_energy
+real(dp),parameter :: DE_threshold = 2.5d-3 * eV / RU_energy
+integer,parameter :: Nsteps_baseline = 100
+
 !The reduced mass of diatomic hydrogen
 !
 ! reduced_mass = (mass1) (mass2) / (mass1 + mass2)
@@ -579,6 +585,45 @@ real(dp) function HOPotential(coords1,coords2)
 
 end function HOPotential
 
+subroutine getEnergies(Natoms,coords,velocities,U,KE)
+        implicit none
+        integer,intent(in) :: Natoms
+        real(dp),dimension(3,Natoms),intent(in) :: coords,velocities
+        real(dp),intent(out) :: U, KE
+
+        integer :: i, j, n
+        logical :: bond_flag
+
+        !Calculate the potential and kinetic energy
+        U = 0.0d0
+        KE = 0.0d0
+
+        do i = 1, Natoms
+
+            do j = i+1, Natoms
+
+                bond_flag = .false.
+                do n = 1, Nbonds
+                    if ((i == BONDING_DATA(n,1)).and.&
+                        (j == BONDING_DATA(n,2))) then
+                        bond_flag = .true.
+                    end if
+                end do
+
+                if (bond_flag) then
+                    U = U + HOPotential(coords(:,i),&
+                                        coords(:,j))
+                else
+                    U = U + MorsePotential(coords(:,i),&
+                                           coords(:,j))
+                end if
+
+            end do
+
+            KE = KE + KineticEnergy(velocities(:,i))
+        end do
+
+end subroutine getEnergies
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

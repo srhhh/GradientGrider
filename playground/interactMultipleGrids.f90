@@ -161,6 +161,8 @@ real(dp),dimension(3,Natoms) :: var_coords
 real(dp) :: candidate_rmsd
 real(dp),dimension(3,Natoms) :: candidate_gradient
 
+integer :: Naccept
+
 
 
 
@@ -1583,8 +1585,9 @@ do k = 1, Ngrid_total
     
     !Record the RMSD encountered here for later analysis:
     !particularly, percent-RMSD graphs
-    if (testtraj_flag) write(filechannels(1+k),FMT=FMT6) &
-            RMSDbuffer1(1)
+    if (testtraj_flag) &
+         trajRMSDbuffer(k,Naccept+1) = RMSDbuffer1(1)
+!        write(filechannels(1+k),FMT=FMT6) RMSDbuffer1(1)
     
 end do
 
@@ -1802,7 +1805,8 @@ do k = 1, Ngrid_total
     !particularly, percent-RMSD graphs
     if ((testtraj_flag).and.(.not.(&
          testtrajDetailedRMSD_flag)))&
-         write(filechannels(1+k),FMT=FMT6) RMSDbuffer1(1)
+         trajRMSDbuffer(k,Naccept+1) = RMSDbuffer1(1)
+!        write(filechannels(1+k),FMT=FMT6) RMSDbuffer1(1)
     
 end do
 

@@ -637,7 +637,7 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
             Ntraj_text
 
     if (testtrajDetailedRMSD_flag) then
-        call runTestTrajectory(&
+        call runTestTrajectory2(&
                 filechannels(1:1+Ngrid_total),&
                 coords_initial,velocities_initial,&
                 coords_final,velocities_final)
@@ -648,12 +648,12 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
         !Remark: checkMultipleGrids uses
         !filechannel1 to open files in the grid
         if (force_Permutations) then
-            call runTrajectory3(&
+            call runTrajectory_permute_cap(&
                     filechannels(1:1+Ngrid_total),&
                     coords_initial,velocities_initial,&
                     coords_final,velocities_final)
         else
-            call runTrajectory2(&
+            call runTrajectory_cap(&
                     filechannels(1:1+Ngrid_total),&
                     coords_initial,velocities_initial,&
                     coords_final,velocities_final)
