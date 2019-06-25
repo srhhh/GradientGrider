@@ -1453,6 +1453,7 @@ subroutine runTestTrajectory2(filechannels,&
     E_baseline = 0.0d0
     do
         coords = coords + dt * velocities
+        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
         call Acceleration(vals,coords,gradient)
 
         call getEnergies(Natoms,coords,velocities,U,KE)
@@ -1471,7 +1472,15 @@ subroutine runTestTrajectory2(filechannels,&
         velocities = velocities + gradient
 
         steps = steps + 1
-        if (steps > Nsteps_baseline) exit
+        if (steps > Nsteps_baseline) then
+            coords_prior = coords
+            velocities_prior = velocities - gradient
+            gradient_prior = gradient
+
+            E_prior = E
+
+            exit
+        end if
     end do
     E_baseline = E_baseline / Nsteps_baseline
     Naccept = 0
@@ -1959,6 +1968,7 @@ subroutine runTrajectory_cap(filechannels,&
     E_baseline = 0.0d0
     do
         coords = coords + dt * velocities
+        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
         call Acceleration(vals,coords,gradient)
 
         call getEnergies(Natoms,coords,velocities,U,KE)
@@ -1972,7 +1982,15 @@ subroutine runTrajectory_cap(filechannels,&
         velocities = velocities + gradient
 
         steps = steps + 1
-        if (steps > Nsteps_baseline) exit
+        if (steps > Nsteps_baseline) then
+            coords_prior = coords
+            velocities_prior = velocities - gradient
+            gradient_prior = gradient
+
+            E_prior = E
+
+            exit
+        end if
     end do
     E_baseline = E_baseline / Nsteps_baseline
     Naccept = 0
@@ -2333,6 +2351,7 @@ subroutine runTrajectory_permute_cap(filechannels,&
     E_baseline = 0.0d0
     do
         coords = coords + dt * velocities
+        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
         call Acceleration(vals,coords,gradient)
 
         call getEnergies(Natoms,coords,velocities,U,KE)
@@ -2346,7 +2365,15 @@ subroutine runTrajectory_permute_cap(filechannels,&
         velocities = velocities + gradient
 
         steps = steps + 1
-        if (steps > Nsteps_baseline) exit
+        if (steps > Nsteps_baseline) then
+            coords_prior = coords
+            velocities_prior = velocities - gradient
+            gradient_prior = gradient
+
+            E_prior = E
+
+            exit
+        end if
     end do
     E_baseline = E_baseline / Nsteps_baseline
     Naccept = 0
