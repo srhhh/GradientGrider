@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0100
+Ntraj_max=0008
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -90,11 +90,11 @@ trueED_flag=.false.
 testtraj_flag=.true.
 testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
-testtrajSA_flag=.true.
-testtrajSAheatmap_flag=.true.
+testtrajSA_flag=.false.
+testtrajSAheatmap_flag=.false.
 #threshold_rmsd=.200100d0
-threshold_rmsd=.030000d0
-threshold_rmsd1=.030000d0
+threshold_rmsd=.150000d0
+threshold_rmsd1=.150000d0
 threshold_rmsd2=.100000d0
 threshold_rmsd3=.100000d0
 threshold_rmsd4=.100000d0
@@ -112,9 +112,9 @@ alpha_ratio3="1.0d-2"
 alpha_ratio4="1.0d0"
 alpha_ratio5="1.0d-2"
 force_Permutations=.true.
-interpolation_flag=.true.
-gather_interpolation_flag=.false.
-reject_flag=.false.
+interpolation_flag=.false.
+gather_interpolation_flag=.true.
+reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
 grid_addition=0
@@ -126,7 +126,7 @@ Naccept_max=10
 Nthreads=1
 
 #Names of the experiments
-exp1name=new_algorithm_016
+exp1name=new_algorithm_006
 exp2name=exp101
 exp3name=exp312
 exp4name=exp013
@@ -137,9 +137,26 @@ continue_analysis=.true.
 
 #If we want to use a fixed set of initial conditions,
 #specify which experiment they come from here
-useoldinitialbonddata_flag=.true.
+useoldinitialbonddata_flag=.false.
 #initialbondfolder="001reject.10000"
 initialbondfolder=exp051/
+
+#If we are using frames from a trajectory then list this
+#true and read from this file
+readtrajectory_flag=.true.
+readtrajectoryfile="readtrajectories.txt"
+readtrajectoryfolder="traj"
+
+readtrajectoryfile1="readtrajectories_test.txt"
+readtrajectoryfolder1="traj_test"
+readtrajectoryfile2="readtrajectories2.txt"
+readtrajectoryfolder2="traj2"
+readtrajectoryfile3="readtrajectories3.txt"
+readtrajectoryfolder3="traj3"
+readtrajectoryfile4="readtrajectories4.txt"
+readtrajectoryfolder4="traj4"
+readtrajectoryfile5="readtrajectories5.txt"
+readtrajectoryfolder6="traj5"
 
 #If you have special set of parameters you want to compare, list them here
 #These will be compared at each compilation
@@ -183,7 +200,7 @@ initialbondfolder=exp051/
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_May16test"
+newGRID="H2H2_Jun29text"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -328,6 +345,15 @@ cp $currentPATH/make_$(echo "*") $newPATH/
 
 mkdir $gridPATH/startup/
 
+if [ $readtrajectory_flag == ".true." ]
+then
+
+cp $currentPATH/$readtrajectoryfile $gridPATH/startup/readtrajectories.txt
+mkdir $gridPATH/startup/traj/
+cp $currentPATH/$readtrajectoryfolder/* $gridPATH/startup/traj/
+
+fi
+
 #Make changes to the parameters file as specified in the variables above
 #Unless you want to change MORE variables, don't touch this
 sed "s|Ntraj_max = [0-9]*|Ntraj_max = $Ntraj_max| 
@@ -386,6 +412,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = .true./
+     s|readtrajectory_flag = .*|readtrajectory_flag = $readtrajectory_flag|
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
@@ -479,7 +506,7 @@ cp $1 $gridPATH/comparison/
 
 #Change the comparison analysis as specified in the variables above
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
-     s/heatmap_flag = .*/heatmap_flag = .false./
+     s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = .false./
      s/trueED_flag = .*/trueED_flag = .false./
      s/testtraj_flag = .*/testtraj_flag = .false./
@@ -497,6 +524,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s|readtrajectory_flag = .*|readtrajectory_flag = $readtrajectory_flag|
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
@@ -592,6 +620,15 @@ shopt -s extglob
 #rm -r $gridPATH/$exp1name/
 mkdir -p $gridPATH/$exp1name/
 
+if [ $readtrajectory_flag == ".true." ]
+then
+
+cp $currentPATH/$readtrajectoryfile1 $gridPATH/$exp1name/readtrajectories.txt
+mkdir $gridPATH/$exp1name/traj/
+cp $currentPATH/$readtrajectoryfolder1/* $gridPATH/$exp1name/traj/
+
+fi
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
@@ -613,6 +650,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s|readtrajectory_flag = .*|readtrajectory_flag = $readtrajectory_flag|
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
@@ -661,6 +699,15 @@ fi
 #rm -r $gridPATH/$exp2name/
 mkdir -p $gridPATH/$exp2name/
 
+if [ $readtrajectory_flag == ".true." ]
+then
+
+cp $currentPATH/$readtrajectoryfile2 $gridPATH/$exp2name/readtrajectories.txt
+mkdir $gridPATH/$exp2name/traj/
+cp $currentPATH/$readtrajectoryfolder2/* $gridPATH/$exp2name/traj/
+
+fi
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
@@ -682,6 +729,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s|readtrajectory_flag = .*|readtrajectory_flag = $readtrajectory_flag|
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
@@ -728,6 +776,15 @@ fi
 #rm -r $gridPATH/$exp3name/
 mkdir -p $gridPATH/$exp3name/
 
+if [ $readtrajectory_flag == ".true." ]
+then
+
+cp $currentPATH/$readtrajectoryfile3 $gridPATH/$exp3name/readtrajectories.txt
+mkdir $gridPATH/$exp3name/traj/
+cp $currentPATH/$readtrajectoryfolder3/* $gridPATH/$exp3name/traj/
+
+fi
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
@@ -749,6 +806,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s|readtrajectory_flag = .*|readtrajectory_flag = $readtrajectory_flag|
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
@@ -795,6 +853,15 @@ fi
 #rm -r $gridPATH/$exp4name/
 mkdir -p $gridPATH/$exp4name/
 
+if [ $readtrajectory_flag == ".true." ]
+then
+
+cp $currentPATH/$readtrajectoryfile4 $gridPATH/$exp4name/readtrajectories.txt
+mkdir $gridPATH/$exp4name/traj/
+cp $currentPATH/$readtrajectoryfolder4/* $gridPATH/$exp4name/traj/
+
+fi
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
@@ -816,6 +883,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s|readtrajectory_flag = .*|readtrajectory_flag = $readtrajectory_flag|
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/
@@ -862,6 +930,15 @@ fi
 #rm -r $gridPATH/$exp5name/
 mkdir -p $gridPATH/$exp5name/
 
+if [ $readtrajectory_flag == ".true." ]
+then
+
+cp $currentPATH/$readtrajectoryfile5 $gridPATH/$exp5name/readtrajectories.txt
+mkdir $gridPATH/$exp5name/traj/
+cp $currentPATH/$readtrajectoryfolder5/* $gridPATH/$exp5name/traj/
+
+fi
+
 sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/heatmap_flag = .*/heatmap_flag = $heatmap_flag/
      s/trueSA_flag = .*/trueSA_flag = $trueSA_flag/
@@ -883,6 +960,7 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
      s/reject_flag = .*/reject_flag = $reject_flag/
+     s|readtrajectory_flag = .*|readtrajectory_flag = $readtrajectory_flag|
      s/accept_first = .*/accept_first = $accept_first/
      s/accept_worst = .*/accept_worst = $accept_worst/
      s/grid_addition = .*/grid_addition = $grid_addition/

@@ -1379,8 +1379,8 @@ subroutine runTestTrajectory2(filechannels,&
     real(dp),dimension(3,Natoms) :: coords_prior, gradient_prior
     real(dp),dimension(3,Natoms) :: velocities_prior
     real(dp) :: DE, E, E_prior, E_baseline
-    integer :: Nalpha_tries
-    logical :: temp_reject_flag = .true.
+    integer :: Nalpha_tries = 1
+    logical :: temp_reject_flag = .false.
 
     real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
     integer,allocatable :: libNtraj(:)
@@ -1473,11 +1473,11 @@ subroutine runTestTrajectory2(filechannels,&
 
         steps = steps + 1
         if (steps > Nsteps_baseline) then
-            coords_prior = coords
-            velocities_prior = velocities - gradient
-            gradient_prior = gradient
+!           coords_prior = coords
+!           velocities_prior = velocities - gradient
+!           gradient_prior = gradient
 
-            E_prior = E
+!           E_prior = E
 
             exit
         end if
@@ -1494,8 +1494,93 @@ subroutine runTestTrajectory2(filechannels,&
         !Upate the coordinates with the velocities
         coords = coords + dt * velocities
 
+        !Calculate the energies
+        call getEnergies(Natoms,coords,velocities,U,KE)
+        E = U + KE
+
+        if (Naccept == 0) then
+            coords_prior = coords
+            velocities_prior = velocities
+            gradient_prior = gradient
+
+            E_prior = E
+        end if
+
+        if (temp_reject_flag) then
+
+            temp_reject_flag = .false.
+
+            if (Naccept > 0) then
+                DE = abs(E-E_prior)/Naccept
+                if ((abs(E-E_baseline) > E_threshold)&
+                    .or.(DE > DE_threshold)) then
+    
+                    coords = coords_prior
+                    velocities = velocities_prior
+                    gradient = gradient_prior
+
+                    call getEnergies(Natoms,coords,velocities,U,KE)
+                    E = U + KE
+    
+!                   steps = steps - Naccept - 1
+                    steps = steps - Naccept
+
+                    Nalpha_tries = Nalpha_tries + 1
+                    if (Nalpha_tries <= Nalpha_tries_max) then
+                        alpha_ratio = &
+                            alpha_ratio_list(Nalpha_tries)
+                    else
+                        alpha_ratio = &
+                            alpha_ratio_list(1)
+                    end if
+
+                    Naccept = 0
+!                   cycle
+
+!                   if (Nalpha_tries > Nalpha_tries_max) then
+!                       Nalpha_tries = 1
+!                       temp_reject_flag = .true.
+!                   end if
+                else
+                    print *, "dump start"
+                    do j = 1, Naccept
+                    print *, steps - Naccept + j - 1
+                    do i = 1, Ngrid_total
+                        write(filechannels(1+i),FMT=FMT6)&
+                            trajRMSDbuffer(i,j)
+                    end do
+                    end do
+                    print *, "dump end"
+
+!                   do i = 1, Ngrid_total
+!                       trajRMSDbuffer(i,1) =&
+!                           trajRMSDbuffer(i,Naccept+1)
+!                   end do
+                end if
+
+                Naccept = 0
+            else
+                Nalpha_tries = 1
+                alpha_ratio = alpha_ratio_list(1)
+
+                print *, steps
+                do i = 1, Ngrid_total
+                    write(filechannels(1+i),FMT=FMT6)&
+                        default_rmsd
+                end do
+            end if
+        end if
+
         !Always calculate the variables before checking a frame or accelerating
         call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+!       if (Nalpha_tries > 1) then
+!               print *, "step", steps
+!               print *, "Naccept", Naccept
+!               print *, vals
+!       end if
+
+
 
         !Check for a frame in the grid
         !Set the default value beforehand
@@ -1563,9 +1648,6 @@ subroutine runTestTrajectory2(filechannels,&
 
 !       !For the B -> B' test
 !       if (min_rmsd > threshold_rmsd) Ninterpolation = 0
-
-        call getEnergies(Natoms,coords,velocities,U,KE)
-        E = U + KE
     
         !Finally write to the data file all the important data values
         write(filechannel2,FMT=*) number_of_frames,order,neighbor_check,steps,&
@@ -1577,61 +1659,9 @@ subroutine runTestTrajectory2(filechannels,&
         approx_gradient = approx_gradient_prime
 
 
-
-
-        if (temp_reject_flag) then
-            call Acceleration(vals,coords,gradient)
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                call addState_new(vals,&
-                        coords,&
-                        gradient)
-            end if
-
-            temp_reject_flag = .false.
-
-            if (Naccept > 0) then
-                DE = abs(E-E_prior)/Naccept
-                if ((abs(E-E_baseline) > E_threshold)&
-                    .or.(DE > DE_threshold)) then
-    
-                    coords = coords_prior
-                    velocities = velocities_prior
-                    gradient = gradient_prior
-    
-                    steps = steps - Naccept - 1
-
-                    Nalpha_tries = Nalpha_tries + 1
-
-                    if (Nalpha_tries > Nalpha_tries_max) then
-                        Nalpha_tries = 1
-                        temp_reject_flag = .true.
-                    end if
-                else
-                    do i = 1, Ngrid_total
-                    do j = 1, Naccept+1
-                        write(filechannels(1+i),FMT=FMT6)&
-                            trajRMSDbuffer(i,j)
-                    end do
-                    end do
-                end if
-
-                Naccept = 0
-            else
-                Nalpha_tries = 1
-
-                do i = 1, Ngrid_total
-                    write(filechannels(1+i),FMT=FMT6)&
-                        default_rmsd
-                end do
-            end if
-
-            alpha_ratio = alpha_ratio_list(Nalpha_tries)
-        
+            
         !If we are gather interpolation data...
-        else if (gather_interpolation_flag) then
+        if (gather_interpolation_flag) then
  
             !Calculate the true gradient
             call Acceleration(vals,coords,gradient)
@@ -1782,18 +1812,22 @@ subroutine runTestTrajectory2(filechannels,&
                         temp_reject_flag = .true.
                     end if
                 else
-                    do i = 1, Ngrid_total
+                    print *, "dump start"
                     do j = 1, Naccept+1
+                    print *, steps - Naccept + j - 1
+                    do i = 1, Ngrid_total
                         write(filechannels(1+i),FMT=FMT6)&
                             trajRMSDbuffer(i,j)
                     end do
                     end do
+                    print *, "dump end"
                 end if
 
                 Naccept = 0
             else
                 Nalpha_tries = 1
 
+                print *, steps
                 do i = 1, Ngrid_total
                     write(filechannels(1+i),FMT=FMT6)&
                         trajRMSDbuffer(i,1)
@@ -1804,11 +1838,20 @@ subroutine runTestTrajectory2(filechannels,&
 
         !If the approximated frame is good enough then
         !we can use it (after relabelling)!
-        else
+        else if (Nalpha_tries <= Nalpha_tries_max) then
+            print *, "approx", steps
             gradient = approx_gradient
 
             Naccept = Naccept + 1
             if (Naccept == Naccept_max) temp_reject_flag = .true.
+        else
+            print *, steps
+            do i = 1, Ngrid_total
+                write(filechannels(1+i),FMT=FMT6)&
+                    default_rmsd
+            end do
+
+            Nalpha_tries = 1
         end if
 
 !       !!!!!!!!!!!!!
@@ -1828,14 +1871,6 @@ subroutine runTestTrajectory2(filechannels,&
 !       !!!!!!!!!!!!!
 !       ! TEST END
 !       !!!!!!!!!!!!!
-
-        if (Naccept == 0) then
-            coords_prior = coords
-            velocities_prior = velocities
-            gradient_prior = gradient
-
-            E_prior = E
-        end if
 
         !Update the velocities
         velocities = velocities + gradient
@@ -3729,6 +3764,309 @@ end if
     velocities_final = velocities
 
 end subroutine checkMultipleTrajectories
+
+
+
+
+
+
+
+subroutine readTrajectory(filechannel_input,filechannels,&
+                          coords_initial,velocities_initial,&
+                          coords_final,velocities_final)
+    use PHYSICS
+    use PARAMETERS
+    use VARIABLES
+    use ANALYSIS
+    use interactMultipleGrids
+    use ls_rmsd_original
+    use analyzeRMSDThresholdwithMultipleGrids
+    implicit none
+
+    !Coordinates, Velocities, and Variables
+    real(dp),dimension(3,Natoms) :: coords,coords_labelled,velocities
+    real(dp),dimension(3,Natoms) :: gradient,gradient_labelled,approx_gradient
+    real(dp),dimension(3,Natoms),intent(out) :: coords_initial, velocities_initial
+    real(dp),dimension(3,Natoms),intent(out) :: coords_final, velocities_final
+    real(dp),dimension(Nvar) :: vals, vals_previous
+    
+    real(dp),dimension(3,Natoms) :: coords_mean
+    real(dp),dimension(3) :: x_center,y_center
+    real(dp) :: mu,sigma
+
+    !Grid Parameters
+    integer,dimension(1+Ngrid_total),intent(in) :: filechannels
+    integer,intent(in) :: filechannel_input
+    integer :: OMP_GET_THREAD_NUM
+
+    !Various other variables
+    real(dp) :: U, KE
+    real(dp) :: min_rmsd, min_rmsd_prime
+    real(dp) :: error1, error2
+    integer :: number_of_frames,order,neighbor_check
+    integer :: order0, order1
+    integer :: iostate
+
+    real(dp) :: RMSD_prior, error_prior
+    real(dp) :: max_RMSDdelta, max_deltaRMSD
+    real(dp),dimension(3,Natoms) :: coords_prior, gradient_prior
+    real(dp),dimension(3,Natoms) :: velocities_prior
+    real(dp) :: DE, E, E_prior, E_baseline
+    integer :: Nalpha_tries = 1
+    logical :: temp_reject_flag = .false.
+
+    real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
+    real(dp),dimension(3,Natoms) :: coords2,gradient2
+    integer,allocatable :: libNtraj(:)
+
+    !Incremental Integer
+    integer :: i,j,n,m
+
+    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
+
+    !For traversal
+    if (traversal_flag) then
+        traversal0 = 0
+        traversal1 = 0
+    end if
+
+    !Open these files and keep them open if we want this
+    !type of data
+    if (testtrajDetailedRMSD_flag) open(filechannel2,file=&
+            gridpath5//checkstatefile)
+    if (gather_interpolation_flag) open(filechannel3,file=&
+            gridpath5//interpolationfile,position="append")
+
+    !Allocate all buffers; initialize the buffer size to be
+    !the maximum number of frames expected to be seen
+    buffer1_size = 1 + var_overcrowd(1)
+    allocate(valsbuffer1(Nvar,buffer1_size),&
+             coordsbuffer1(3,Natoms,buffer1_size),&
+             gradientbuffer1(3,Natoms,buffer1_size),&
+             Ubuffer1(3,3,buffer1_size),&
+             RMSDbuffer1(buffer1_size),&
+             approximation_index(buffer1_size))
+
+    allocate(CMdiffbuffer1(buffer1_size))
+    allocate(Ntrajbuffer1(buffer1_size))
+
+    allocate(acceptable_frame_mask(buffer1_size),&
+             inputCLS(Ncoords+buffer1_size,buffer1_size))
+
+    read(filechannel_input,iostat=iostate) coords
+    if (iostate /= 0) then
+        print *, "uh oh: bad input"
+        return
+    end if
+    read(filechannel_input) KE, U, E
+    read(filechannel_input) gradient
+
+    !Output the initial coordinates and velocities
+    coords_initial = coords
+    velocities_initial = velocities
+
+    !Always calculate the variables before accelearting
+    call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+    !Start the main loop
+    steps = 2
+    Naccept = 0
+    do
+    
+        read(filechannel_input,iostat=iostate) coords
+        if (iostate /= 0) exit
+        read(filechannel_input) KE, U, E
+        read(filechannel_input) gradient
+
+        !Just for bug-testing
+!       if (modulo(steps,50) == 1) then
+        if (.false.) then
+            open(filechannel1,file=gridpath5//trajectoryfile,position="append")
+            write(filechannel1,'(I6)') Natoms
+            write(filechannel1,*) ""
+            do n = 1, Natoms
+                write(filechannel1,'(A1,3F10.6)') 'H',&
+                              coords(1,n), coords(2,n), coords(3,n)
+            end do
+            close(filechannel1)
+        end if
+
+        !Always calculate the variables before accelearting
+        call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+        !Check for a frame in the grid
+        !Set the default value beforehand
+        if (accept_worst) then
+            min_rmsd = 0.0d0
+        else
+            min_rmsd = default_rmsd
+        end if
+        
+        RMSDbuffer1 = min_rmsd
+        CMdiffbuffer1 = default_CMdiff
+
+        call checkState_new_permute_cap(&
+                vals,coords,&
+                approx_gradient,min_rmsd,&
+                filechannels,number_of_frames,&
+                order,neighbor_check)
+
+        !If we are gather interpolation data...
+        if (gather_interpolation_flag) then
+
+            !If a frame was found, record data on it
+            if (Ninterpolation > 0) then
+                error1 = sqrt(sum((gradient - &
+                        candidate_gradient)**2)/Natoms)
+                error2 = sqrt(sum((gradient - &
+                        approx_gradient)**2)/Natoms)
+ 
+                write(filechannel3,FMT=*) vals(1),vals(2),&
+                        Ninterpolation,largest_weighted_rmsd2,&
+                        largest_weighted_rmsd,candidate_rmsd,&
+                        min_rmsd,CMdiffbuffer1(1),&
+                        interpolated_CMdiff,error1,error2
+            end if
+
+            !If we are adding to a grid, then relabel
+            !the coordinates and gradients, and do so
+            if (grid_addition > 0) then
+                call addState_new(vals,&
+                        coords,gradient)
+            end if
+ 
+            !If the approximated frame is good enough
+            !and we are not rejecting it, then use it
+            if ((min_rmsd .ge. threshold_RMSD) &
+                    .or. (reject_flag)) then
+
+                if (Naccept > 0) then
+                    DE = abs(E-E_prior)/Naccept
+                    if ((abs(E-E_baseline) > E_threshold)&
+                        .or.(DE > DE_threshold)) then
+        
+                        coords = coords_prior
+                        velocities = velocities_prior
+                        gradient = gradient_prior
+        
+                        steps = steps - Naccept - 1
+    
+                        Nalpha_tries = Nalpha_tries + 1
+    
+                        if (Nalpha_tries > Nalpha_tries_max) then
+                            Nalpha_tries = 1
+                            temp_reject_flag = .true.
+                        end if
+                    else
+                        if (testtraj_flag) then
+                        do i = 1, Ngrid_total
+                        do j = 1, Naccept+1
+                            write(filechannels(1+i),FMT=FMT6)&
+                                trajRMSDbuffer(i,j)
+                        end do
+                        end do
+                        end if
+                    end if
+
+                    Naccept = 0
+                else
+                    Nalpha_tries = 1
+
+                    if (testtraj_flag) then
+                    do i = 1, Ngrid_total
+                        write(filechannels(1+i),FMT=FMT6)&
+                            trajRMSDbuffer(i,1)
+                    end do
+                    end if
+                end if
+
+                alpha_ratio = alpha_ratio_list(Nalpha_tries)
+            end if
+ 
+        !If no interpolation data is being gathered, then the
+        !true gradient is not needed
+ 
+        !If the frame is not good enough or we are rejecting
+        !frames, calculate the true gradient
+        else
+ 
+            !If we are adding to a grid, then relabel
+            !the coordinates and gradients, and do so
+            if (grid_addition > 0) then
+                call addState_new(vals,&
+                        coords,&
+                        gradient)
+            end if
+
+            if (Naccept > 0) then
+                DE = abs(E-E_prior)/Naccept
+                if ((abs(E-E_baseline) > E_threshold)&
+                    .or.(DE > DE_threshold)) then
+    
+                    coords = coords_prior
+                    velocities = velocities_prior
+                    gradient = gradient_prior
+    
+                    steps = steps - Naccept - 1
+
+                    Nalpha_tries = Nalpha_tries + 1
+
+                    if (Nalpha_tries > Nalpha_tries_max) then
+                        Nalpha_tries = 1
+                        temp_reject_flag = .true.
+                    end if
+                else
+                    if (testtraj_flag) then
+                    do i = 1, Ngrid_total
+                    do j = 1, Naccept+1
+                        write(filechannels(1+i),FMT=FMT6)&
+                            trajRMSDbuffer(i,j)
+                    end do
+                    end do
+                    end if
+                end if
+
+                Naccept = 0
+            else
+                Nalpha_tries = 1
+
+                if (testtraj_flag) then
+                do i = 1, Ngrid_total
+                    write(filechannels(1+i),FMT=FMT6)&
+                        trajRMSDbuffer(i,1)
+                end do
+                end if
+            end if
+
+            alpha_ratio = alpha_ratio_list(Nalpha_tries)
+        end if
+
+        steps = steps + 1
+        if (steps > Nsteps) exit
+    end do
+    steps = steps - 1
+
+    if (testtrajDetailedRMSD_flag) close(filechannel2)
+    if (gather_interpolation_flag) close(filechannel3)
+
+    !Deallocate the buffers
+    deallocate(valsbuffer1,&
+            coordsbuffer1,gradientbuffer1,&
+            Ubuffer1,RMSDbuffer1,&
+            approximation_index)
+
+    deallocate(Ntrajbuffer1)
+    deallocate(CMdiffbuffer1)
+
+    deallocate(acceptable_frame_mask,inputCLS)
+
+    !Output the final coordinates and velocities
+    coords_final = coords
+    velocities_final = velocities
+
+    deallocate(trajRMSDbuffer)
+
+end subroutine readTrajectory
 
 
 
@@ -9426,7 +9764,8 @@ subroutine plotCheckstateEnergy(PNGname)
         integer :: i1, i2, i3
         integer :: n, m, iostate
 
-        open(filechannel2,file=gridpath5//checkstatefile)
+        open(filechannel2,file=gridpath5//&
+                "truncated"//checkstatefile)
 
         max_absDE = 0.0d0
         avg_absDE = 0.0d0
@@ -9468,7 +9807,8 @@ subroutine plotCheckstateEnergy(PNGname)
 
         if (gather_interpolation_flag) &
                 open(filechannel1,file=gridpath5//interpolationfile)
-        open(filechannel2,file=gridpath5//checkstatefile)
+        open(filechannel2,file=gridpath5//&
+                "truncated"//checkstatefile)
         open(filechannel3,file=gridpath5//temporaryfile2)
 
         min_rmsd_previous = default_rmsd
@@ -9568,6 +9908,27 @@ subroutine plotCheckstateEnergy(PNGname)
         write(gnuplotchannel,*) '     "'//gridpath5//checkstatefile//&
                 '" u (($4)*xscale):((($9)+($10))*yscale) w l lc "black" t "Total",\'
         write(gnuplotchannel,*) '     "'//gridpath5//checkstatefile//&
+                '" u (($4)*xscale):($6>1.0?1/0:((($9)+($10))*yscale)) w p pt 7 ps 1 lc "red" t ""'
+        close(gnuplotchannel)
+
+        call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
+        write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+        write(gnuplotchannel,FMT="(A)") &
+                'set output "'//gridpath4//PNGname//'.png"'
+        write(gnuplotchannel,*) 'set title "Energy Conservation over a Trajectory"'
+        write(gnuplotchannel,*) 'set xlabel "Time (fs)"'
+        write(gnuplotchannel,*) 'xscale = ', dt
+        write(gnuplotchannel,*) 'set ylabel "Energy (eV)"'
+        write(gnuplotchannel,*) 'yscale = ', RU_energy / eV
+        write(gnuplotchannel,*) 'plot "'//gridpath5//"truncated"//checkstatefile//&
+                '" u (($4)*xscale):(($9)*yscale) w l lc "blue" t "U",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//"truncated"//checkstatefile//&
+                '" u (($4)*xscale):(($10)*yscale) w l lc "red" t "KE",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//"truncated"//checkstatefile//&
+                '" u (($4)*xscale):((($9)+($10))*yscale) w l lc "black" t "Total",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//"truncated"//checkstatefile//&
                 '" u (($4)*xscale):($6>1.0?1/0:((($9)+($10))*yscale)) w p pt 7 ps 1 lc "red" t ""'
         close(gnuplotchannel)
 

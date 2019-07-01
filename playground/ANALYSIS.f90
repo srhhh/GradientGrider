@@ -64,7 +64,7 @@ logical,parameter :: testtraj_flag = .true.
    !Set .true. to generate the checkTrajectory plots for each
    !trajectory tested for each grid
    !(Not recommended for large Ntesttraj or Ngrid_total_cap)
-   logical :: testtrajDetailedRMSD_flag = .true.
+   logical :: testtrajDetailedRMSD_flag = .false.
 
 
        !Various variables if we are tracking the interpolation
@@ -85,7 +85,7 @@ logical,parameter :: testtraj_flag = .true.
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 1, 0 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 5, 0 /)
    integer,dimension(ssm_length) :: ssm2 = (/ 16, 0 /)
 
    !Set .true. to generate a frequency plot of the percentage
@@ -104,6 +104,7 @@ logical,parameter :: testtraj_flag = .true.
       !real(dp),parameter :: !threshold_rmsd! = !.200100d0
       real(dp),parameter :: threshold_rmsd = .00100d0
       real(dp),parameter :: default_rmsd = 1.000100d0
+      real(dp),parameter :: default_CMdiff = 10.000100d0
 
       real(dp),parameter :: inner_threshold = 0.0d0
 
@@ -111,6 +112,7 @@ logical,parameter :: testtraj_flag = .true.
       !Otherwise, the program will use the above threshold as a rejection
       !method
       logical :: reject_flag = .true.
+      logical :: readtrajectory_flag = .false.
 
       !If reject_flag is false (and we are accepting frames) then
       !accept_first controls whether we use the first frame accepted

@@ -107,6 +107,10 @@ logical :: return_flag = .false.
 logical :: makeCheckTrajectory_flag = .false.
 logical :: file_exists
 
+integer :: traj_index
+character(6) :: traj_index_text
+integer :: inputchannel = 307
+
 !Timing
 real :: r1, r2, system_clock_rate
 integer :: c1, c2, cr
@@ -418,7 +422,8 @@ if (heatmap_flag) then
     write(6,FMT=FMTnow) now
     print *, "   Making plot: ", "TopLevel_HeatMap"
     print *, ""
-!   call analyzeHeatMaps2()                  !not working right now
+
+    call analyzeTopLevelHeatMaps("TopLevel_HeatMap")
 end if
 
 !!$OMP END SINGLE
@@ -565,6 +570,11 @@ end if
 if (traversal_flag) allocate(traversal0(Ngrid_total,(var_bounds(1))**Nvar),&
                              traversal1(Ngrid_total,(var_bounds(2))**Nvar))
 
+!If we are reading frames from a premade trajectory
+!Open up the file to read the trajectories from
+if (readtrajectory_flag) &
+    open(trajectorieschannel,file=gridpath4//readtrajectoryfile)
+
 !BEFORE going inside the parallel do loop, each thread should
 !instantiate its own filechannels
 allocate(filechannels(1+Ngrid_total))
@@ -636,7 +646,19 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
     print *, " Working on random new trajectory number: ",&
             Ntraj_text
 
-    if (testtrajDetailedRMSD_flag) then
+    if (readtrajectory_flag) then
+        read(trajectorieschannel,FMT=*) traj_index
+        write(traj_index_text,FMT="(I0.6)") traj_index
+        open(inputchannel,file=gridpath4//&
+            readtrajectoryfolder//&
+            traj_index_text,form="unformatted")
+        call readTrajectory(&
+                inputchannel,filechannels(1:1+Ngrid_total),&
+                coords_initial,velocities_initial,&
+                coords_final,velocities_final)
+
+        close(inputchannel)
+    else if (testtrajDetailedRMSD_flag) then
         call runTestTrajectory2(&
                 filechannels(1:1+Ngrid_total),&
                 coords_initial,velocities_initial,&
@@ -703,6 +725,11 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
     !have a checkstate file that we can plot
     if (testtrajDetailedRMSD_flag) then
 
+        !If there are eruptions (time rewinds) this gets
+        !rid of them and puts the new checkstatefile
+        !into truncatedcheckstatefile
+        call processCheckstateFile()
+
         !This checks if the energy seems to be conserved
         call plotCheckstateEnergy("EnergyConservation"//Ntraj_text)
 
@@ -741,6 +768,11 @@ end do
 !$OMP END DO
 print *, ""
 
+if (readtrajectory_flag) close(trajectorieschannel)
+
+deallocate(filechannels)
+
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       TRAJECTORY CREATION FLAG END
@@ -777,6 +809,8 @@ end if
 !that we want to check
 if (.not.comparison_flag) then
 
+        call processCheckstateFile()
+
 if (testtrajDetailedRMSD_flag) then
     call getRMSDDifferences1(&
     gridpath4//"BinaryRMSDCheck")
@@ -792,13 +826,14 @@ if ((testtrajDetailedRMSD_flag).and.&
 !But, note that we only have interpolations
 !to check if we actually interpolated AND
 !gathered data
-if ((gather_interpolation_flag).and.&
-    (interpolation_flag)) then
+if ((gather_interpolation_flag)) then
 
     !First process the raw data; this is
     !required for all the next steps and for
     !future comparisons
     call processInterpolationFile2()
+
+    if (interpolation_flag) then
 
     call itime(now)
     write(6,FMT=FMTnow) now
@@ -827,6 +862,8 @@ if ((gather_interpolation_flag).and.&
     call system('echo "2.990 3.780 -0.55 -0.55" >>'//gridpath0//comparison_file)
     call getRMSDinterpolation2("TDDRED_NonCollision")
 
+    end if
+
     call itime(now)
     write(6,FMT=FMTnow) now
     print *, "   Making plot: ", "InterpolationOccurenceHeatmap"
@@ -841,6 +878,8 @@ end if
 !a comparison (if wanted, you can choose to
 !compare only a single experiment)
 else
+
+call getRMSDErrorPlots("RMSDvsError")
 
 !If this truly is an interpolation analysis then
 !the word "interpolation" should be in the input

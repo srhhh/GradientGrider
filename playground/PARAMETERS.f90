@@ -31,7 +31,11 @@ module PARAMETERS
 
 !All intermediate files are kept in this folder
 character(5) :: intermediatefolder = "data/"
+!All readtrajectory trajectories are kept in this folder
+character(5) :: readtrajectoryfolder = "traj/"
 
+!File that holds all trajectories for readTrajectory
+character(20),parameter :: readtrajectoryfile = "readtrajectories.txt"
 !File that will keep the trajectory folder names
 character(16),parameter :: trajectories = "trajectories.txt"
 !File that writes the progress of the program
@@ -153,8 +157,14 @@ integer, parameter :: SAfiles_text_length = gridpath_length +&
 !The number of atoms in the system
 !Natoms is another variable that must be supplied by the user and is changed
 !on the LOCAL version of a library; this must be changed MANUALLY
-integer,parameter :: Natoms = 4
+integer,parameter :: Natoms = 5
 integer,parameter :: Ncoords = Natoms*3
+
+!The charges and masses of each atom
+real,dimension(Natoms),parameter :: charges = &
+        (/ 1.0e0, 35.0e0, 8.0e0, 6.0e0, 8.0e0 /)
+real,dimension(Natoms),parameter :: masses = &
+        (/ 1.008e0, 79.904e0, 15.999e0, 12.011e0, 15.999e0 /)
 
 !The number of variables in use
 !Right now, we only support a two-variable grid (easier to script and visualize)
@@ -185,10 +195,11 @@ integer,parameter :: Norder_max = 2
 !how many variables we plan to use
 
 real,parameter,dimension(4) :: default_spacing = &
-        (/ 0.0025, 0.0025, 0.0025, 0.0025 /)
-!       (/ 0.01, 0.01, 0.01, 0.01 /)
+        (/ 0.01, 0.01, 0.01, 0.01 /)
+!       (/ 0.0025, 0.0025, 0.0025, 0.0025 /)
 real,parameter,dimension(4) :: default_maxvar = &
-        (/ 10.0, 12.0, 10.0, 10.0 /)
+        (/ 12.0, 12.0, 10.0, 10.0 /)
+!       (/ 10.0, 12.0, 10.0, 10.0 /)
 integer,parameter,dimension(4,4) :: default_scaling = &
         reshape( &
                 (/  4,  4,  4,  4, &

@@ -108,6 +108,7 @@ real(dp),allocatable :: gradientbuffer1(:,:,:)
 real(dp),allocatable :: Ubuffer1(:,:,:)
 real(dp),allocatable :: RMSDbuffer1(:)
 
+real(dp),allocatable :: CMdiffbuffer1(:)
 integer,allocatable :: Ntrajbuffer1(:)
 
 logical, allocatable :: acceptable_frame_mask(:)
@@ -148,6 +149,7 @@ real(dp) :: largest_rmsd
 real(dp) :: largest_weighted_rmsd
 integer  :: largest_rmsd_index
 real(dp) :: largest_weighted_rmsd2
+real(dp) :: interpolated_CMdiff
 
 real(dp), allocatable :: temp_frame_weights(:)
 real(dp), allocatable :: temp_rmsd_weights(:)
@@ -158,6 +160,7 @@ integer :: Totalnumber_of_frames
 integer :: Norder
 integer :: var_filechannel
 real(dp),dimension(3,Natoms) :: var_coords
+real(dp),dimension(Natoms,Natoms) :: var_CM
 real(dp) :: candidate_rmsd
 real(dp),dimension(3,Natoms) :: candidate_gradient
 
@@ -1457,9 +1460,12 @@ integer,dimension(Nvar,Norder_max+1) :: var_index_diff
 
 integer  :: largest_rmsd_error_index
 real(dp) :: largest_rmsd_error
+real(dp),dimension(Natoms,Natoms) :: temp_CM
 
 var_filechannel = filechannels(1)
 var_coords = coords
+
+call getCoulombMatrix(Natoms,var_coords,charges,var_CM)
 
 !We start off with zero frames having been checked
 local_frame_count = 0
@@ -1582,10 +1588,10 @@ do k = 1, Ngrid_total
         end if
     
     end do
-    
+
     !Record the RMSD encountered here for later analysis:
     !particularly, percent-RMSD graphs
-    if (testtraj_flag) &
+!   if (testtraj_flag) &
          trajRMSDbuffer(k,Naccept+1) = RMSDbuffer1(1)
 !        write(filechannels(1+k),FMT=FMT6) RMSDbuffer1(1)
     
@@ -1603,6 +1609,11 @@ end if
 if ((interpolation_flag).and.(Ninterpolation > 1)) then
     call getInterpolatedGradient(new_coords,gradient)
 
+    call getCoulombMatrix(Natoms,var_coords+new_coords,&
+            charges,temp_CM)
+    call getCoulombMatrixDiff(Natoms,temp_CM,var_CM,&
+            interpolated_CMdiff)
+
     !Remark: Ken Dill's code uses a version of the RMSD
     !        that divides by N, not N - 1
 
@@ -1615,6 +1626,8 @@ else
 
     largest_weighted_rmsd = min_rmsd
     largest_weighted_rmsd2 = min_rmsd**2
+
+    interpolated_CMdiff = CMdiffbuffer1(1)
     
 !   !!!!!!!!!!!!!
 !   ! TEST START
@@ -2978,7 +2991,10 @@ real(dp),dimension(3,Natoms) :: current_coords,temp_coords
 real(dp),dimension(3,Natoms) :: current_gradient
 real(dp),dimension(Nvar) :: current_vals
 real(dp),dimension(3,3) :: current_U
+
 integer :: current_Ntraj
+real(dp),dimension(Natoms,Natoms) :: temp_CM
+real(dp) :: current_CMdiff
 
 !Incremental integers and iostate checking
 integer :: n,i,j,k,iostate
@@ -3079,10 +3095,14 @@ do
                  1,current_U,x_center,y_center,&
                  current_rmsd)                               !,.false.,g)
 
+    call getCoulombMatrix(Natoms,temp_coords,charges,temp_CM)
+
+    call getCoulombMatrixDiff(Natoms,temp_CM,var_CM,current_CMdiff)
+
     !If in the "accept best" method
     !and the RMSD is low enough:
     if ((current_rmsd < threshold_rmsd).and.&
-        (current_rmsd > inner_threshold)) then
+        (current_rmsd >= inner_threshold)) then
 
         if (accept_first) iostate = 1
 
@@ -3118,6 +3138,7 @@ do
         valsbuffer1(:,i) = current_vals
         Ubuffer1(:,:,i) = current_U
         RMSDbuffer1(i) = current_rmsd
+        CMdiffbuffer1(i) = current_CMdiff
 
         temp_coords = coordsbuffer1(:,:,i)
 
@@ -3268,7 +3289,7 @@ do
     !If in the "accept best" method
     !and the RMSD is low enough:
     if ((current_rmsd < threshold_rmsd).and.&
-        (current_rmsd > inner_threshold)) then
+        (current_rmsd >= inner_threshold)) then
 
         if (accept_first) iostate = 1
 
@@ -3740,7 +3761,6 @@ end do
 close(filechannel_thread)
 
 end subroutine getRMSD_dp
-
 
 
 end module interactMultipleGrids

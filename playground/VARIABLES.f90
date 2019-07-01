@@ -260,6 +260,46 @@ labelling(4) = 10 - sum(labelling(1:3))
 
 end subroutine getVarsMaxMin
 
+
+subroutine getVarsHBrCO2(coords,Natoms,vals,Nvar,labelling)
+implicit none
+integer,intent(in) :: Natoms, Nvar
+real(dp),dimension(3,Natoms),intent(in) :: coords
+real(dp),dimension(Nvar),intent(out) :: vals
+integer,dimension(Natoms),intent(inout) :: labelling
+real(dp) :: length1,length2
+integer :: i
+
+!Var1 will be the distance between the
+!hydrogen (1) and the carbon (4)
+
+call getDistanceSquared(&
+    coords(:,1),coords(:,4),vals(1))
+
+vals(1) = sqrt(vals(1))
+
+
+!Var2 will be the minimum of the distances
+!between the bromine (2) and the two
+!oxygens (3,5)
+
+call getDistanceSquared(&
+    coords(:,2),coords(:,3),length1)
+call getDistanceSquared(&
+    coords(:,2),coords(:,5),length2)
+
+vals(2) = sqrt(min(length1,length2))
+
+!Who cares about labelling ... am I right?
+
+do i = 1, Natoms
+    labelling(i) = i
+end do
+
+end subroutine getVarsHBrCO2
+
+
+
 !Variable one is the distance between the midpoints of two bonds (ONLY FOR H2 - H2)
 subroutine getVar1(coords,Natoms,var1)
 implicit none

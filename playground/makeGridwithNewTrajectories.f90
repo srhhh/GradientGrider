@@ -74,6 +74,10 @@ character(Ngrid_text_length) :: Ngrid_text
 character(trajectory_text_length) :: Ntraj_text
 character(12) :: prefix_text
 
+integer :: traj_index
+character(6) :: traj_index_text
+integer :: inputchannel = 307
+
 character(15) :: vals_interpolation_text
 
 !Trajectory Variables
@@ -195,7 +199,16 @@ allocate(filechannels(1+Ngrid_max))
 !The grid number will uniquely identify one trajectory
 !Open all these files under filechannels
 filechannels(1) = 1000 !+ OMP_GET_THREAD_NUM()
-filechannels(2) = 1000 + 69
+
+!Our clever way to uniquely make a filechannel
+do m = 1, Ngrid_max
+    filechannels(1+m) = 1000 + 69 * m
+end do
+
+!If we are reading frames from a premade trajectory
+!Open up the file to read the trajectories from
+if (readtrajectory_flag) &
+    open(trajectorieschannel,file=gridpath4//readtrajectoryfile)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -322,48 +335,90 @@ end if
                 !up until this grid
                 Ngrid_total = Ngrid
 
-!                testtrajDetailedRMSD_flag = .true.
-                if (testtrajDetailedRMSD_flag) then
-                     !If we are doing trajectory checking then open the file
-                     open(filechannels(2),file=gridpath0//Ngrid_text//"/"//&
-                                          prefix_text//'_'//Ntraj_text//".dat")
-                else
-                        !Otherwise, keep cell searching to a minimum
-                        !We only check to divyUp
-                        subcellsearch_max = 0
-                end if
+                !If we are doing trajectory checking then open
+                !a filechannel for each grid we are checking
+                do m = 1, Ngrid_total
+                    write(variable_length_text,FMT=FMT5_variable)&
+                            Ngrid_text_length
+                    write(Ngrid_text,FMT="(I0."//&
+                            trim(adjustl(variable_length_text))//")")&
+                            m 
+                    open(filechannels(1+m),file=gridpath5//&
+                            Ngrid_text//"_"//Ntraj_text//".dat")
+                end do
 
                 !We time how much time each trajectory takes, wall-time and CPU time
                 call CPU_time(r1)
                 call system_clock(c1)
-!                call addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
-!               call checkaddTrajectory(filechannels,coords_initial,velocities_initial,coords_final,velocities_final)
 
-                if (.not.(force_NoLabels)) then
-                    call runTrajectory1(filechannels,&
+                !Not much flexibility given to the case where we are
+                !just reading in a trajectory
+                if (readtrajectory_flag) then
+                    read(trajectorieschannel,FMT=*) traj_index
+                    write(traj_index_text,FMT="(I0.6)") traj_index
+                    open(inputchannel,file=gridpath4//&
+                        readtrajectoryfolder//&
+                        traj_index_text,form="unformatted")
+                    call readTrajectory(&
+                            inputchannel,filechannels,&
                             coords_initial,velocities_initial,&
                             coords_final,velocities_final)
-                else if (force_Duplicates) then
-                    call runTrajectory2(filechannels,&
-                            coords_initial,velocities_initial,&
-                            coords_final,velocities_final)
-                else if (force_Permutations) then
-                    call runTrajectory3(filechannels,&
+                    close(inputchannel)
+
+                !Otherwise, we have some options
+                !One option is intense grid checking
+                else if (testtrajDetailedRMSD_flag) then
+
+                    call runTestTrajectory2(&
+                            filechannels(1:1+Ngrid_total),&
                             coords_initial,velocities_initial,&
                             coords_final,velocities_final)
                 else
-                    print *, "error!"
+
+                    !If no grid checking then we keep
+                    !cell searching to a minimum;
+                    !we only check to divyUp
+                    subcellsearch_max = 0
+
+                    if (force_Permutations) then
+                        call runTrajectory_permute_cap(&
+                                filechannels(1:1+Ngrid_total),&
+                                coords_initial,velocities_initial,&
+                                coords_final,velocities_final)
+                    else
+                        call runTrajectory_cap(&
+                                filechannels(1:1+Ngrid_total),&
+                                coords_initial,velocities_initial,&
+                                coords_final,velocities_final)
+                    end if
                 end if
+
+!               !Otherwise, we have some options
+!               else if (.not.(force_NoLabels)) then
+!                   call runTrajectory1(filechannels,&
+!                           coords_initial,velocities_initial,&
+!                           coords_final,velocities_final)
+!               else if (force_Duplicates) then
+!                   call runTrajectory2(filechannels,&
+!                           coords_initial,velocities_initial,&
+!                           coords_final,velocities_final)
+!               else if (force_Permutations) then
+!                   call runTrajectory3(filechannels,&
+!                           coords_initial,velocities_initial,&
+!                           coords_final,velocities_final)
+!               else
+!                   print *, "error!"
+!               end if
 
                 call CPU_time(r2)
                 call system_clock(c2)
                 trajectory_CPU_time = r2 - r1
                 trajectory_wall_time = (c2 -c1) * system_clock_rate
 
-                if (testtrajDetailedRMSD_flag) close(filechannels(2))
-
-!                call makeCheckTrajectoryGraphs()
-!                testtrajDetailedRMSD_flag = .false.
+                !Close the filechannels once more
+                do m = 1, Ngrid_total
+                    close(filechannels(1+m))
+                end do
 
                 !If it is taking too long then we stop
                 if (trajectory_CPU_time > trajectory_CPU_time_max) then
@@ -510,6 +565,10 @@ end if
         !Also, make an initial bond distribution plot
         call getInitialimages(Ngrid_text//"/","InitialBondDistribution_"//Ngrid_text)
 end do
+
+if (readtrajectory_flag) close(trajectorieschannel)
+
+deallocate(filechannels)
 
 print *, ""
 call itime(now)

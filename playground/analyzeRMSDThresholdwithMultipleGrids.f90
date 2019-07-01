@@ -1436,10 +1436,269 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 !
 !call system(path_to_gnuplot//"gnuplot < "//gridpath0//gnuplotfile)
 
-
-
-
 end subroutine getRMSDinterpolation
+
+subroutine getRMSDErrorPlots(PNGfilename)
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+!NUMBER OF FRAMES IN THE DATA
+real(dp),dimension(7) :: min_rmsd_vals, max_rmsd_vals
+
+!FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+character(*), intent(in) :: PNGfilename
+integer, dimension(comparison_number,3) :: counters
+
+!I/O HANDLING
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+call processMultipleInterpolationFiles(counters)
+
+!    read(filechannel2,FMT=*,iostat=iostate) &
+!            vals, Ninterpolation, &
+!!           rsv1, rsv2, &
+!!           rmsd_best, rmsd_interpolated, &
+!!           error_best, error_interpolated
+!            rsv(3), rsv(4), &
+!            rsv(1), rsv(2), &
+!            rsv(5), rsv(6)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_1.png"'
+write(gnuplotchannel,*) 'set title "Error Convergence as Interpolations Get Closer" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set logscale x'
+write(gnuplotchannel,*) 'set logscale y'
+write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Interpolated Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (eV/A) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" .00000001, '//&
+                                         '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set ytics ('//&
+!                                        '"1e-8" .00000001, '//&
+!                                        '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '3:7 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_2.png"'
+write(gnuplotchannel,*) 'set title "Error Convergence as Candidates Get Closer" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set logscale x'
+write(gnuplotchannel,*) 'set logscale y'
+write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Candidate Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (eV/A) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" .00000001, '//&
+                                         '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set ytics ('//&
+!                                        '"1e-8" .00000001, '//&
+!                                        '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '2:6 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_12.png"'
+write(gnuplotchannel,FMT="(A)") 'set multiplot layout 1'//&
+                        ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0,0.1 title '//&
+                        '"Error Convergence as Candidates/Interpolations Get Closer" font ",36" offset 0,9'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set logscale x'
+write(gnuplotchannel,*) 'set logscale y'
+write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Candidate Frame"'//&
+        ' font ",24" offset "0,3"'
+write(gnuplotchannel,*) 'set ylabel "Error (eV/A) Between Target and Candidate/Interpolated Gradient"'//&
+        ' font ",24" offset -3,0'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'set yrange [.001:3.0]'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set ytics ('//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '2:6 w p'
+
+write(gnuplotchannel,*) 'unset ylabel'
+write(gnuplotchannel,*) 'unset ytics'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" .00000001, '//&
+                                          '"1e-7" .0000001, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"1e-1"      .1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Interpolated Frame"'//&
+        ' font ",24" offset "0,3"'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '3:7 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_CM2.png"'
+write(gnuplotchannel,*) 'set title "Error Convergence as Candidates Get Closer" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set logscale x'
+write(gnuplotchannel,*) 'set logscale y'
+write(gnuplotchannel,*) 'set xlabel "Coulomb Matrix Difference (1/A) Between Target and Candidate Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (eV/A) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" .00000001, '//&
+                                         '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set ytics ('//&
+!                                        '"1e-8" .00000001, '//&
+!                                        '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '9:6 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+
+
+
+end subroutine getRMSDErrorPlots
+
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1774,12 +2033,12 @@ character(12) :: short_prefix_text
 
 !VARIABLES IN THE INTERPOLATION FILE
 real(dp),dimension(Nvar) :: vals
-real(dp),dimension(7) :: rsv, min_rsv, max_rsv
+real(dp),dimension(9) :: rsv, min_rsv, max_rsv
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
 integer :: Nswitch
 
 integer :: frames,neginfinity_counter,posinfinity_counter
-character(1+3*10+2*7+2*7*17) :: firstliner
+character(1+3*10+2*7+2*9*17) :: firstliner
 
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
@@ -1817,9 +2076,11 @@ do
             vals, Ninterpolation, &
 !           rsv1, rsv2, &
 !           rmsd_best, rmsd_interpolated, &
+!           min_CMdiff, interpolated_CMdiff, &
 !           error_best, error_interpolated
             rsv(3), rsv(4), &
             rsv(1), rsv(2), &
+            rsv(8), rsv(9), &
             rsv(5), rsv(6)
             
     if (iostate /= 0) exit
@@ -1847,7 +2108,7 @@ do
         max_Ninterpolation = max(max_Ninterpolation,&
                 Ninterpolation)
 
-        do n = 1, 7
+        do n = 1, 9
             max_rsv(n) = max(max_rsv(n),rsv(n))
 
             if (rsv(n) == 0.0d0) then
@@ -1872,7 +2133,7 @@ do
         max_Ninterpolation = max(max_Ninterpolation,&
                 Ninterpolation)
 
-        do n = 1, 7
+        do n = 1, 9
             max_rsv(n) = max(max_rsv(n),rsv(n))
 
             if (rsv(n) == 0.0d0) then
@@ -1895,7 +2156,7 @@ close(filechannel2)
 !total number of frames is recorded in the first
 !line of the file
 write(firstliner,FMT="(A1,3(I9,1x),2(I6,1x),"//&
-        "2(7(E16.6,1x)))") &
+        "2(9(E16.6,1x)))") &
         "#",posinfinity_counter,&
         neginfinity_counter, frames, &
         min_Ninterpolation, max_Ninterpolation,&
@@ -1908,7 +2169,6 @@ call system("sed -i '1i\"//firstliner//"' '"//&
         interpolationfile//"'")
 
 end subroutine processInterpolationFile2
-
 
 
 
@@ -2012,9 +2272,9 @@ character(Ngrid_text_length) :: Ngrid_text
 integer,dimension(comparison_number,3),intent(out) :: counters
 integer,dimension(comparison_number) :: frames_trials
 
-real(dp),dimension(7) :: rsv, min_rsv, max_rsv
-real(dp),dimension(comparison_number,7) :: lower_rsv, upper_rsv
-real(dp),dimension(comparison_number,7) :: arithmetic_mean_rsv,geometric_mean_rsv
+real(dp),dimension(9) :: rsv, min_rsv, max_rsv
+real(dp),dimension(comparison_number,9) :: lower_rsv, upper_rsv
+real(dp),dimension(comparison_number,9) :: arithmetic_mean_rsv,geometric_mean_rsv
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
 integer,dimension(comparison_number) :: lower_Ninterpolation,upper_Ninterpolation
 real(dp),dimension(comparison_number) :: arithmetic_mean_Ninterpolation
@@ -2029,8 +2289,8 @@ integer :: iostate
 !HISTOGRAM VARIABLES
 real(dp) :: Ninterpolation_binwidth
 integer :: Ninterpolation_bin
-real(dp), dimension(7) :: rsv_binwidth
-integer, dimension(7) :: rsv_bin
+real(dp), dimension(9) :: rsv_binwidth
+integer, dimension(9) :: rsv_bin
 integer :: frames, Nbins
 real(dp),allocatable :: Ninterpolation_binning(:,:)
 real(dp),allocatable :: rsv_binning(:,:,:)
@@ -2101,7 +2361,7 @@ do n = 1, comparison_number
     !The first line in the truncated interpolation file
     !has the bounds to the data
     read(filechannel2,FMT="(1x,3(I9,1x),2(I6,1x),"//&
-            "2(7(G16.6,1x)))",iostat=iostate) &
+            "2(9(G16.6,1x)))",iostat=iostate) &
             counters(n,1),counters(n,2),counters(n,3),&
             lower_Ninterpolation(n), upper_Ninterpolation(n),&
             lower_rsv(n,:),&
@@ -2121,7 +2381,7 @@ do n = 1, comparison_number
     max_Ninterpolation = max(max_Ninterpolation,&
             upper_Ninterpolation(n))
     
-    do m = 1, 7
+    do m = 1, 9
         min_rsv(m) = min(min_rsv(m),lower_rsv(n,m))
         max_rsv(m) = max(max_rsv(m),upper_rsv(n,m))
     end do
@@ -2175,7 +2435,7 @@ do n = 1, comparison_number
 
         upper_Ninterpolation(n) = max(upper_Ninterpolation(n),&
                 Ninterpolation)
-        do m = 1, 7
+        do m = 1, 9
             upper_rsv(n,m) = max(upper_rsv(n,m),rsv(m))
         end do
 
@@ -2212,7 +2472,7 @@ close(filechannel3)
 !min_Ninterpolation = minval(lower_Ninterpolation)
 !max_Ninterpolation = maxval(upper_Ninterpolation)
 !
-!do m = 1, 7
+!do m = 1, 9
 !    min_rsv(m) = minval(lower_rsv(:,m))
 !    max_rsv(m) = maxval(upper_rsv(:,m))
 !end do
@@ -2261,7 +2521,7 @@ rsv_binwidth = log10(max_rsv/min_rsv)*1.0d0/Nbins
 !There is a multiplication by three because three
 !subsets of each distribution are differentiated
 allocate(Ninterpolation_binning(3*comparison_number,Nbins),&
-         rsv_binning(7,3*comparison_number,Nbins),&
+         rsv_binning(9,3*comparison_number,Nbins),&
          zero_array(3*comparison_number))
 zero_array = 0.0d0
 Ninterpolation_binning = 0.0d0
@@ -2295,7 +2555,7 @@ do n = 1, comparison_number
         geometric_mean_Ninterpolation(n) = &
             geometric_mean_Ninterpolation(n) + log10(1.0d0*Ninterpolation)
 
-        do l = 1, 7
+        do l = 1, 9
 !            upper_rsv(n,l) = max(upper_rsv(n,l),rsv(l))
             arithmetic_mean_rsv(n,l) = &
                 arithmetic_mean_rsv(n,l) + rsv(l)
@@ -2319,7 +2579,7 @@ do n = 1, comparison_number
         if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
 
         rsv_bin = floor(log10(rsv/min_rsv)/rsv_binwidth) + 1
-        do l = 1, 7
+        do l = 1, 9
             if (rsv_bin(l) < 1) rsv_bin(l) = 1
             if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
         end do
@@ -2331,7 +2591,7 @@ do n = 1, comparison_number
             Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) = &
                     Ninterpolation_binning(3*(n-1)+1,Ninterpolation_bin) + &
                     1.0d0/frames_trials(n)
-            do l = 1, 7
+            do l = 1, 9
                 rsv_binning(l,3*(n-1)+1,rsv_bin(l)) =&
                         rsv_binning(l,3*(n-1)+1,rsv_bin(l)) +&
                         1.0d0/frames_trials(n)
@@ -2346,7 +2606,7 @@ do n = 1, comparison_number
             Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) = &
                     Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) + &
                     1.0d0/frames_trials(n)
-            do l = 1, 7
+            do l = 1, 9
                 rsv_binning(l,3*(n-1)+2,rsv_bin(l)) =&
                         rsv_binning(l,3*(n-1)+2,rsv_bin(l)) +&
                         1.0d0/frames_trials(n)
@@ -2362,7 +2622,7 @@ do n = 1, comparison_number
             Ninterpolation_binning(3*n,Ninterpolation_bin) = &
                     Ninterpolation_binning(3*n,Ninterpolation_bin) + &
                     1.0d0/frames_trials(n)
-            do l = 1, 7
+            do l = 1, 9
                 rsv_binning(l,3*n,rsv_bin(l)) =&
                         rsv_binning(l,3*n,rsv_bin(l)) +&
                         1.0d0/frames_trials(n)
@@ -2420,7 +2680,7 @@ write(filechannel1,FMT=*) min_Ninterpolation + &
         zero_array
 close(filechannel1)
 
-do l = 1, 7
+do l = 1, 9
 
 !Accept Best RMSD Distribution
 if (l == 1) open(filechannel1,file=gridpath5//&
@@ -2443,6 +2703,12 @@ if (l == 6) open(filechannel1,file=gridpath5//&
 !Relative Error Distribution
 if (l == 7) open(filechannel1,file=gridpath5//&
         "InterpolationRED_binning.dat")
+!Accept Best Coulomb Matrix Difference Distribution
+if (l == 8) open(filechannel1,file=gridpath5//&
+        "InterpolationACMDD_binning.dat")
+!Interpolation Coulomb Matrix Difference Distribution
+if (l == 9) open(filechannel1,file=gridpath5//&
+        "InterpolationICMDD_binning.dat")
 
 if (comparison_upperlimit > comparison_lowerlimit) then
     write(filechannel1,FMT="(A1,2(E16.6,1x))") "#",&
@@ -2494,7 +2760,7 @@ real,dimension(Nvar) :: tmpvals,var_minvar
 integer,dimension(Nvar) :: max_val_bin, val_bins
 integer :: max_bin
 
-real(dp),dimension(7) :: rsv, min_rsv, max_rsv
+real(dp),dimension(9) :: rsv, min_rsv, max_rsv
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
 
 character(gridpath_length+expfolder_length) :: gridpath4
@@ -2523,7 +2789,7 @@ heatmap_binning = 0
 open(filechannel1,file=gridpath5//&
         "truncated"//interpolationfile)
 read(filechannel1,FMT="(1x,3(I9,1x),2(I6,1x),"//&
-        "2(7(G16.6,1x)))",iostat=iostate) &
+        "2(9(G16.6,1x)))",iostat=iostate) &
         i, j, n,&
         min_Ninterpolation, max_Ninterpolation,&
         min_rsv,max_rsv
@@ -3061,6 +3327,144 @@ call system(path_to_gnuplot//"gnuplot -c "//&
         ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
 
 end subroutine getInterpolationplot
+
+subroutine processCheckstateFile()
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+!VARIABLES IN THE INTERPOLATION FILE
+real(dp),dimension(Nvar) :: vals
+real(dp) :: min_rmsd, min_rmsd_prime
+real(dp) :: U, KE
+integer :: number_of_frames, order, neighbor_check
+
+integer :: Naccept = 0
+integer :: Nalpha_tries = 1
+integer :: rewind_step = 1
+logical :: Naccept_end_flag = .false.
+
+integer,allocatable :: success_binning(:,:)
+integer,allocatable :: failure_binning(:,:)
+
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+
+!I/O HANDLING
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+allocate(success_binning(Naccept_max,Nalpha_tries_max),&
+         failure_binning(Naccept_max,Nalpha_tries_max))
+success_binning = 0
+failure_binning = 0
+
+call system("rm "//gridpath5//"truncated"//checkstatefile)
+
+open(filechannel1,file=gridpath5//checkstatefile)
+open(filechannel2,file=gridpath5//"truncated"//checkstatefile)
+do
+    read(filechannel1,iostat=iostate,FMT=*)&
+            number_of_frames,order,&
+            neighbor_check,steps,&
+            min_rmsd,min_rmsd_prime,&
+            vals(1),vals(2),U,KE
+    if (iostate /= 0) exit
+
+    if (Naccept_end_flag) then
+        Naccept_end_flag = .false.
+
+        if (steps == rewind_step) then
+            failure_binning(Naccept,Nalpha_tries) =&
+                failure_binning(Naccept,Nalpha_tries) + 1
+
+            Nalpha_tries = Nalpha_tries + 1
+            if (Nalpha_tries == Nalpha_tries_max + 1) then
+                rewind_step = steps + 1
+            end if
+
+            Naccept = 0
+        else if (steps == rewind_step+Naccept+1) then
+            success_binning(Naccept,Nalpha_tries) =&
+                success_binning(Naccept,Nalpha_tries) + 1
+
+            Nalpha_tries = 1
+            Naccept = 0
+
+            close(filechannel2)
+            call system("cat "//gridpath5//temporaryfile1//&
+                    " >> "//gridpath5//"truncated"//checkstatefile)
+            open(filechannel2,&
+                    file=gridpath5//"truncated"//checkstatefile,&
+                    position="append")
+
+            rewind_step = steps
+        else
+            print *, "error at step", steps
+        end if
+    end if
+
+    if (min_rmsd_prime < default_rmsd) then
+        if (steps == rewind_step) then
+            Naccept = 0
+
+            if (Nalpha_tries == Nalpha_tries_max + 1) then
+                Nalpha_tries = 1
+            else
+                open(filechannel3,file=gridpath5//temporaryfile1)
+                write(filechannel3,FMT=*) number_of_frames,order,&
+                        neighbor_check,steps,min_rmsd,min_rmsd_prime,&
+                        vals(1),vals(2),U,KE
+                close(filechannel3)
+            end if
+        else
+            Naccept = Naccept + 1
+            if (Naccept == Naccept_max) then
+                Naccept_end_flag = .true.
+            end if
+
+            open(filechannel3,file=gridpath5//temporaryfile1,&
+                 position="append")
+            write(filechannel3,FMT=*) number_of_frames,order,&
+                    neighbor_check,steps,min_rmsd,min_rmsd_prime,&
+                    vals(1),vals(2),U,KE
+            close(filechannel3)
+
+        end if
+    else
+        if (steps == rewind_step) then
+            rewind_step = steps + 1
+
+            write(filechannel2,FMT=*) number_of_frames,order,&
+                    neighbor_check,steps,min_rmsd,min_rmsd_prime,&
+                    vals(1),vals(2),U,KE
+        else
+            Naccept = Naccept + 1
+            Naccept_end_flag = .true.
+
+            open(filechannel3,file=gridpath5//temporaryfile1,&
+                 position="append")
+            write(filechannel3,FMT=*) number_of_frames,order,&
+                    neighbor_check,steps,min_rmsd,min_rmsd_prime,&
+                    vals(1),vals(2),U,KE
+            close(filechannel3)
+        end if
+    end if
+
+end do
+close(filechannel1)
+close(filechannel2)
+
+deallocate(success_binning,failure_binning)
+
+end subroutine processCheckstateFile
+
 
 
 
