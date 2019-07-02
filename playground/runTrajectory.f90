@@ -1473,6 +1473,8 @@ subroutine runTestTrajectory2(filechannels,&
 
         steps = steps + 1
         if (steps > Nsteps_baseline) then
+            coords = coords + dt * velocities
+
 !           coords_prior = coords
 !           velocities_prior = velocities - gradient
 !           gradient_prior = gradient
@@ -1486,26 +1488,6 @@ subroutine runTestTrajectory2(filechannels,&
     Naccept = 0
      
     do
-        !Check every 500 steps to see if we are out-of-bounds
-        if (modulo(steps,500) == 1) then
-            if (any(vals > var_maxvar)) exit
-        endif
-
-        !Upate the coordinates with the velocities
-        coords = coords + dt * velocities
-
-        !Calculate the energies
-        call getEnergies(Natoms,coords,velocities,U,KE)
-        E = U + KE
-
-        if (Naccept == 0) then
-            coords_prior = coords
-            velocities_prior = velocities
-            gradient_prior = gradient
-
-            E_prior = E
-        end if
-
         if (temp_reject_flag) then
 
             temp_reject_flag = .false.
@@ -1571,6 +1553,18 @@ subroutine runTestTrajectory2(filechannels,&
             end if
         end if
 
+        !Calculate the energies
+        call getEnergies(Natoms,coords,velocities,U,KE)
+        E = U + KE
+
+        if (Naccept == 0) then
+            coords_prior = coords
+            velocities_prior = velocities
+            gradient_prior = gradient
+
+            E_prior = E
+        end if
+
         !Always calculate the variables before checking a frame or accelerating
         call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
@@ -1579,8 +1573,6 @@ subroutine runTestTrajectory2(filechannels,&
 !               print *, "Naccept", Naccept
 !               print *, vals
 !       end if
-
-
 
         !Check for a frame in the grid
         !Set the default value beforehand
@@ -1771,10 +1763,20 @@ subroutine runTestTrajectory2(filechannels,&
 
                 alpha_ratio = alpha_ratio_list(Nalpha_tries)
             else
-                gradient = approx_gradient
+                if (Nalpha_tries > Nalpha_tries_max) then
+                    Nalpha_tries = 1
 
-                Naccept = Naccept + 1
-                if (Naccept == Naccept_max) temp_reject_flag = .true.
+                    do i = 1, Ngrid_total
+                        write(filechannels(1+i),FMT=FMT6)&
+                            trajRMSDbuffer(i,1)
+                    end do
+                else
+                    gradient = approx_gradient
+
+                    Naccept = Naccept + 1
+                    if (Naccept == Naccept_max) &
+                        temp_reject_flag = .true.
+                end if
             end if
  
         !If no interpolation data is being gathered, then the
@@ -1838,20 +1840,22 @@ subroutine runTestTrajectory2(filechannels,&
 
         !If the approximated frame is good enough then
         !we can use it (after relabelling)!
-        else if (Nalpha_tries <= Nalpha_tries_max) then
-            print *, "approx", steps
-            gradient = approx_gradient
-
-            Naccept = Naccept + 1
-            if (Naccept == Naccept_max) temp_reject_flag = .true.
         else
-            print *, steps
-            do i = 1, Ngrid_total
-                write(filechannels(1+i),FMT=FMT6)&
-                    default_rmsd
-            end do
+            if (Nalpha_tries > Nalpha_tries_max) then
+                Nalpha_tries = 1
 
-            Nalpha_tries = 1
+                print *, steps
+                do i = 1, Ngrid_total
+                    write(filechannels(1+i),FMT=FMT6)&
+                        trajRMSDbuffer(i,1)
+                end do
+            else
+                gradient = approx_gradient
+
+                Naccept = Naccept + 1
+                if (Naccept == Naccept_max) &
+                    temp_reject_flag = .true.
+            end if
         end if
 
 !       !!!!!!!!!!!!!
@@ -1875,8 +1879,26 @@ subroutine runTestTrajectory2(filechannels,&
         !Update the velocities
         velocities = velocities + gradient
 
+        !Upate the coordinates with the velocities
+        coords = coords + dt * velocities
+
+        !Update the steps
         steps = steps + 1
-        if (steps > Nsteps) exit
+
+        !If we are not approximating, we may
+        !exit the loop somehow
+        if (Naccept == 0) then
+
+            !Check if we have run out of steps
+            if (steps > Nsteps) then
+                exit
+
+            !Check every 500 steps to see if we are out-of-bounds
+            else if (modulo(steps,500) == 1) then
+                if (any(vals > var_maxvar)) exit
+            else
+            end if
+        end if
     end do
 
     close(filechannel2)
@@ -3881,13 +3903,15 @@ subroutine readTrajectory(filechannel_input,filechannels,&
         !Just for bug-testing
 !       if (modulo(steps,50) == 1) then
         if (.false.) then
+!       if (.true.) then
             open(filechannel1,file=gridpath5//trajectoryfile,position="append")
-            write(filechannel1,'(I6)') Natoms
-            write(filechannel1,*) ""
-            do n = 1, Natoms
-                write(filechannel1,'(A1,3F10.6)') 'H',&
-                              coords(1,n), coords(2,n), coords(3,n)
-            end do
+!           write(filechannel1,'(I6)') Natoms
+!           write(filechannel1,*) ""
+!           do n = 1, Natoms
+!               write(filechannel1,'(A1,3F10.6)') 'H',&
+!                             coords(1,n), coords(2,n), coords(3,n)
+!           end do
+            write(filechannel1,'(2F10.6)') vals
             close(filechannel1)
         end if
 
@@ -3915,18 +3939,37 @@ subroutine readTrajectory(filechannel_input,filechannels,&
         if (gather_interpolation_flag) then
 
             !If a frame was found, record data on it
-            if (Ninterpolation > 0) then
-                error1 = sqrt(sum((gradient - &
-                        candidate_gradient)**2)/Natoms)
-                error2 = sqrt(sum((gradient - &
-                        approx_gradient)**2)/Natoms)
+!           if (Ninterpolation > 0) then
+            do j = Ninterpolation, 1, -1
+!               error1 = sqrt(sum((gradient - &
+!                       candidate_gradient)**2)/Natoms)
+!               error2 = sqrt(sum((gradient - &
+!                       approx_gradient)**2)/Natoms)
+
+                candidate_gradient = matmul(Ubuffer1(:,:,j),&
+                        gradientbuffer1(:,:,j))
+                candidate_rmsd = RMSDbuffer1(j)
+
+                error1 = 0.0d0
+                error2 = 0.0d0
+                do i = 1, Natoms
+                    error1 = error1 + sum(((gradient(:,i)-&
+                            candidate_gradient(:,i))/&
+                            (masses(i)*(0.001/Na)/RU_mass))**2)
+                    error2 = error2 + sum(((gradient(:,i)-&
+                            approx_gradient(:,i))/&
+                            (masses(i)*(0.001/Na)/RU_mass))**2)
+                end do
+                error1 = sqrt(error1)*200*dt*(hartree/bohr)/(RU_energy/RU_length)
+                error2 = sqrt(error2)*200*dt*(hartree/bohr)/(RU_energy/RU_length)
  
                 write(filechannel3,FMT=*) vals(1),vals(2),&
                         Ninterpolation,largest_weighted_rmsd2,&
                         largest_weighted_rmsd,candidate_rmsd,&
-                        min_rmsd,CMdiffbuffer1(1),&
+                        min_rmsd,CMdiffbuffer1(j),&
                         interpolated_CMdiff,error1,error2
-            end if
+!           end if
+            end do
 
             !If we are adding to a grid, then relabel
             !the coordinates and gradients, and do so

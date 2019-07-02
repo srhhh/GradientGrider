@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0008
+Ntraj_max=4000
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -112,7 +112,7 @@ alpha_ratio3="1.0d-2"
 alpha_ratio4="1.0d0"
 alpha_ratio5="1.0d-2"
 force_Permutations=.true.
-interpolation_flag=.false.
+interpolation_flag=.true.
 gather_interpolation_flag=.true.
 reject_flag=.true.
 accept_first=.false.
@@ -121,12 +121,12 @@ grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=001
+Ntrajectories=493
 Naccept_max=10
 Nthreads=1
 
 #Names of the experiments
-exp1name=new_algorithm_006
+exp1name=exp005xxx
 exp2name=exp101
 exp3name=exp312
 exp4name=exp013
@@ -144,11 +144,11 @@ initialbondfolder=exp051/
 #If we are using frames from a trajectory then list this
 #true and read from this file
 readtrajectory_flag=.true.
-readtrajectoryfile="readtrajectories.txt"
-readtrajectoryfolder="traj"
+readtrajectoryfile="readtrajectories_all.txt"
+readtrajectoryfolder="traj_all"
 
-readtrajectoryfile1="readtrajectories_test.txt"
-readtrajectoryfolder1="traj_test"
+readtrajectoryfile1="readtrajectories005.txt"
+readtrajectoryfolder1="traj_005xxx"
 readtrajectoryfile2="readtrajectories2.txt"
 readtrajectoryfolder2="traj2"
 readtrajectoryfile3="readtrajectories3.txt"
@@ -200,7 +200,7 @@ readtrajectoryfolder6="traj5"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="H2H2_Jun29text"
+newGRID="HBrCO2_Jul02"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0

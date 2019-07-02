@@ -75,6 +75,8 @@ real(dp),parameter :: pi2 = pi*2.0d0
 real(dp),parameter :: eV = 1.60218d-19 
 real(dp),parameter :: hbar = 1.05457d-34
 real(dp),parameter :: kcalpermol = (4.184d0)/Na
+real(dp),parameter :: bohr = 5.291772109038d-11
+real(dp),parameter :: hartree = 4.35974465054d-18
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !                     REDUCED UNITS

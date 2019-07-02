@@ -1481,7 +1481,7 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Interpolated Frame" font ",24"'
-write(gnuplotchannel,*) 'set ylabel "Error (eV/A) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
 write(gnuplotchannel,*) 'set xtics font ",16"'
 write(gnuplotchannel,*) 'set ytics font ",16"'
 write(gnuplotchannel,*) 'set xtics ('//&
@@ -1536,7 +1536,7 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Candidate Frame" font ",24"'
-write(gnuplotchannel,*) 'set ylabel "Error (eV/A) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
 write(gnuplotchannel,*) 'set xtics font ",16"'
 write(gnuplotchannel,*) 'set ytics font ",16"'
 write(gnuplotchannel,*) 'set xtics ('//&
@@ -1594,7 +1594,7 @@ write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Candidate Frame"'//&
         ' font ",24" offset "0,3"'
-write(gnuplotchannel,*) 'set ylabel "Error (eV/A) Between Target and Candidate/Interpolated Gradient"'//&
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Candidate/Interpolated Gradient"'//&
         ' font ",24" offset -3,0'
 write(gnuplotchannel,*) 'set xtics font ",16"'
 write(gnuplotchannel,*) 'set ytics font ",16"'
@@ -1646,8 +1646,8 @@ write(gnuplotchannel,*) 'set title "Error Convergence as Candidates Get Closer" 
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
-write(gnuplotchannel,*) 'set xlabel "Coulomb Matrix Difference (1/A) Between Target and Candidate Frame" font ",24"'
-write(gnuplotchannel,*) 'set ylabel "Error (eV/A) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xlabel "Coulomb Matrix Difference Between Target and Candidate Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
 write(gnuplotchannel,*) 'set xtics font ",16"'
 write(gnuplotchannel,*) 'set ytics font ",16"'
 write(gnuplotchannel,*) 'set xtics ('//&
@@ -2085,8 +2085,8 @@ do
             
     if (iostate /= 0) exit
 
-    rsv(5) = rsv(5) * RU_energy / eV
-    rsv(6) = rsv(6) * RU_energy / eV
+!   rsv(5) = rsv(5) * RU_energy / eV
+!   rsv(6) = rsv(6) * RU_energy / eV
 
     !One of the processed variables that this
     !subroutine makes is the ratio between
