@@ -3379,11 +3379,13 @@ integer :: number_of_frames, order, neighbor_check
 
 integer :: Naccept = 0
 integer :: Nalpha_tries = 1
-integer :: rewind_step = 1
-logical :: Naccept_end_flag = .false.
+logical :: isopened
+integer :: steps_previous
 
 integer,allocatable :: success_binning(:,:)
 integer,allocatable :: failure_binning(:,:)
+integer :: Nsaved,Nwasted
+character(37) :: firstliner
 
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
@@ -3402,11 +3404,15 @@ allocate(success_binning(Naccept_max,Nalpha_tries_max),&
 success_binning = 0
 failure_binning = 0
 
+steps = 0
+
 call system("rm "//gridpath5//"truncated"//checkstatefile)
+call system("rm "//gridpath5//temporaryfile1)
 
 open(filechannel1,file=gridpath5//checkstatefile)
 open(filechannel2,file=gridpath5//"truncated"//checkstatefile)
 do
+    steps_previous = steps
     read(filechannel1,iostat=iostate,FMT=*)&
             number_of_frames,order,&
             neighbor_check,steps,&
@@ -3414,25 +3420,36 @@ do
             vals(1),vals(2),U,KE
     if (iostate /= 0) exit
 
-    if (Naccept_end_flag) then
-        Naccept_end_flag = .false.
+    if (steps < steps_previous) then
 
-        if (steps == rewind_step) then
-            failure_binning(Naccept,Nalpha_tries) =&
-                failure_binning(Naccept,Nalpha_tries) + 1
+        failure_binning(Naccept,Nalpha_tries) =&
+            failure_binning(Naccept,Nalpha_tries) + 1
 
-            Nalpha_tries = Nalpha_tries + 1
-            if (Nalpha_tries == Nalpha_tries_max + 1) then
-                rewind_step = steps + 1
-            end if
+        Nalpha_tries = Nalpha_tries + 1
+        Naccept = 0
 
-            Naccept = 0
-        else if (steps == rewind_step+Naccept+1) then
-            success_binning(Naccept,Nalpha_tries) =&
-                success_binning(Naccept,Nalpha_tries) + 1
+        call system("rm "//gridpath5//temporaryfile1)
+
+        if (Nalpha_tries > Nalpha_tries_max) then
+            Nalpha_tries = 1
+
+            write(filechannel2,FMT=*) number_of_frames,order,&
+                    neighbor_check,steps,default_rmsd,default_rmsd,&
+                    vals(1),vals(2),U,KE
+            cycle
+        end if
+    end if
+
+    if (min_rmsd_prime < threshold_rmsd) then
+        Naccept = Naccept + 1
+
+        if (Naccept > Naccept_max) then
+
+            success_binning(Naccept_max,Nalpha_tries) =&
+                success_binning(Naccept_max,Nalpha_tries) + 1
 
             Nalpha_tries = 1
-            Naccept = 0
+            Naccept = 1
 
             close(filechannel2)
             call system("cat "//gridpath5//temporaryfile1//&
@@ -3441,62 +3458,60 @@ do
                     file=gridpath5//"truncated"//checkstatefile,&
                     position="append")
 
-            rewind_step = steps
+            open(filechannel3,file=gridpath5//temporaryfile1)
+            write(filechannel3,FMT=*) number_of_frames,order,&
+                    neighbor_check,steps,min_rmsd,min_rmsd_prime,&
+                    vals(1),vals(2),U,KE
+            close(filechannel3)
         else
-            print *, "error at step", steps
-        end if
-    end if
-
-    if (min_rmsd_prime < default_rmsd) then
-        if (steps == rewind_step) then
-            Naccept = 0
-
-            if (Nalpha_tries == Nalpha_tries_max + 1) then
-                Nalpha_tries = 1
-            else
-                open(filechannel3,file=gridpath5//temporaryfile1)
-                write(filechannel3,FMT=*) number_of_frames,order,&
-                        neighbor_check,steps,min_rmsd,min_rmsd_prime,&
-                        vals(1),vals(2),U,KE
-                close(filechannel3)
-            end if
-        else
-            Naccept = Naccept + 1
-            if (Naccept == Naccept_max) then
-                Naccept_end_flag = .true.
-            end if
-
             open(filechannel3,file=gridpath5//temporaryfile1,&
                  position="append")
             write(filechannel3,FMT=*) number_of_frames,order,&
                     neighbor_check,steps,min_rmsd,min_rmsd_prime,&
                     vals(1),vals(2),U,KE
             close(filechannel3)
-
         end if
     else
-        if (steps == rewind_step) then
-            rewind_step = steps + 1
+        if (Naccept > 0) then
 
-            write(filechannel2,FMT=*) number_of_frames,order,&
-                    neighbor_check,steps,min_rmsd,min_rmsd_prime,&
-                    vals(1),vals(2),U,KE
-        else
-            Naccept = Naccept + 1
-            Naccept_end_flag = .true.
-
-            open(filechannel3,file=gridpath5//temporaryfile1,&
-                 position="append")
-            write(filechannel3,FMT=*) number_of_frames,order,&
-                    neighbor_check,steps,min_rmsd,min_rmsd_prime,&
-                    vals(1),vals(2),U,KE
-            close(filechannel3)
+            success_binning(Naccept,Nalpha_tries) =&
+                success_binning(Naccept,Nalpha_tries) + 1
+    
+            Nalpha_tries = 0
+            Naccept = 0
+    
+            close(filechannel2)
+            call system("cat "//gridpath5//temporaryfile1//&
+                    " >> "//gridpath5//"truncated"//checkstatefile)
+            open(filechannel2,&
+                    file=gridpath5//"truncated"//checkstatefile,&
+                    position="append")
         end if
-    end if
 
+        write(filechannel2,FMT=*) number_of_frames,order,&
+                neighbor_check,steps,default_rmsd,default_rmsd,&
+                vals(1),vals(2),U,KE
+    end if
 end do
 close(filechannel1)
 close(filechannel2)
+
+Nsaved = 0
+Nwasted = 0
+do Naccept = 1, Naccept_max
+    Nwasted = Nwasted + Naccept * &
+        sum(failure_binning(Naccept,:))
+    Nsaved = Nsaved + Naccept * &
+        sum(success_binning(Naccept,:))
+end do
+
+write(firstliner,FMT="(A1,4(I0.8,1x))") &
+        "#",Nsaved,Nwasted,steps_previous,&
+        sum(failure_binning(:,Nalpha_tries_max))
+
+call system("sed -i '1i\"//firstliner//"' '"//&
+        gridpath5//"truncated"//&
+        checkstatefile//"'")
 
 deallocate(success_binning,failure_binning)
 
