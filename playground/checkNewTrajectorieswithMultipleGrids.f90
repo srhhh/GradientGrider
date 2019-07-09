@@ -639,6 +639,14 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                 Ngrid_text//"_"//Ntraj_text//".dat")
     end do
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! TESTING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!do m = 1, 40
+!    call errorCheck2(filechannels)
+!end do
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     !Start timing to see how long each
     !trajectory takes to complete
     call system_clock(c1)
@@ -809,7 +817,17 @@ end if
 !that we want to check
 if (.not.comparison_flag) then
 
-        call processCheckstateFile()
+    print *, ""
+    call itime(now)
+    write(6,FMT=FMTnow) now
+    print *, "Processing the Checkstate File..."
+    print *, ""
+
+    call processCheckstateFile()
+
+    call plotCheckstateEnergy("EnergyConservation001")
+
+
 
 if (testtrajDetailedRMSD_flag) then
     call getRMSDDifferences1(&
