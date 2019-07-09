@@ -1834,6 +1834,16 @@ subroutine runTestTrajectory2(filechannels,&
                     write(filechannels(1+i),FMT=FMT6)&
                         trajRMSDbuffer(i,1)
                 end do
+
+                !Check if we have run out of steps
+                if (steps > Nsteps) then
+                    exit
+    
+                !Check every 500 steps to see if we are out-of-bounds
+                else if (modulo(steps,500) == 1) then
+                    if (any(vals > var_maxvar)) exit
+                else
+                end if
             end if
 
             alpha_ratio = alpha_ratio_list(Nalpha_tries)
@@ -1842,6 +1852,7 @@ subroutine runTestTrajectory2(filechannels,&
         !we can use it (after relabelling)!
         else
             if (Nalpha_tries > Nalpha_tries_max) then
+                call Acceleration(vals,coords,gradient)
                 Nalpha_tries = 1
 
                 print *, steps
@@ -1849,6 +1860,16 @@ subroutine runTestTrajectory2(filechannels,&
                     write(filechannels(1+i),FMT=FMT6)&
                         trajRMSDbuffer(i,1)
                 end do
+
+                !Check if we have run out of steps
+                if (steps > Nsteps) then
+                    exit
+    
+                !Check every 500 steps to see if we are out-of-bounds
+                else if (modulo(steps,500) == 1) then
+                    if (any(vals > var_maxvar)) exit
+                else
+                end if
             else
                 gradient = approx_gradient
 
@@ -1885,20 +1906,6 @@ subroutine runTestTrajectory2(filechannels,&
         !Update the steps
         steps = steps + 1
 
-        !If we are not approximating, we may
-        !exit the loop somehow
-        if (Naccept == 0) then
-
-            !Check if we have run out of steps
-            if (steps > Nsteps) then
-                exit
-
-            !Check every 500 steps to see if we are out-of-bounds
-            else if (modulo(steps,500) == 1) then
-                if (any(vals > var_maxvar)) exit
-            else
-            end if
-        end if
     end do
 
     close(filechannel2)
@@ -3840,6 +3847,7 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
     real(dp),dimension(3,Natoms) :: coords2,gradient2
     integer,allocatable :: libNtraj(:)
+    integer,dimension(Nalpha) :: alpha_flagging
 
     !Incremental Integer
     integer :: i,j,n,m
@@ -3902,8 +3910,8 @@ subroutine readTrajectory(filechannel_input,filechannels,&
 
         !Just for bug-testing
 !       if (modulo(steps,50) == 1) then
-        if (.false.) then
-!       if (.true.) then
+!       if (.false.) then
+        if (.true.) then
             open(filechannel1,file=gridpath5//trajectoryfile,position="append")
 !           write(filechannel1,'(I6)') Natoms
 !           write(filechannel1,*) ""
@@ -3941,27 +3949,29 @@ subroutine readTrajectory(filechannel_input,filechannels,&
             !If a frame was found, record data on it
 !           if (Ninterpolation > 0) then
             do j = Ninterpolation, 1, -1
-!               error1 = sqrt(sum((gradient - &
-!                       candidate_gradient)**2)/Natoms)
-!               error2 = sqrt(sum((gradient - &
-!                       approx_gradient)**2)/Natoms)
+!           do j = min(Ninterpolation,1), 1, -1
 
                 candidate_gradient = matmul(Ubuffer1(:,:,j),&
                         gradientbuffer1(:,:,j))
                 candidate_rmsd = RMSDbuffer1(j)
 
-                error1 = 0.0d0
-                error2 = 0.0d0
-                do i = 1, Natoms
-                    error1 = error1 + sum(((gradient(:,i)-&
-                            candidate_gradient(:,i))/&
-                            (masses(i)*(0.001/Na)/RU_mass))**2)
-                    error2 = error2 + sum(((gradient(:,i)-&
-                            approx_gradient(:,i))/&
-                            (masses(i)*(0.001/Na)/RU_mass))**2)
-                end do
-                error1 = sqrt(error1)*200*dt*(hartree/bohr)/(RU_energy/RU_length)
-                error2 = sqrt(error2)*200*dt*(hartree/bohr)/(RU_energy/RU_length)
+                error1 = sqrt(sum((gradient - &
+                        candidate_gradient)**2)/Natoms)
+                error2 = sqrt(sum((gradient - &
+                        approx_gradient)**2)/Natoms)
+
+!               error1 = 0.0d0
+!               error2 = 0.0d0
+!               do i = 1, Natoms
+!                   error1 = error1 + sum(((gradient(:,i)-&
+!                           candidate_gradient(:,i))/&
+!                           (masses(i)*(0.001/Na)/RU_mass))**2)
+!                   error2 = error2 + sum(((gradient(:,i)-&
+!                           approx_gradient(:,i))/&
+!                           (masses(i)*(0.001/Na)/RU_mass))**2)
+!               end do
+!               error1 = sqrt(error1)*20*dt*(hartree/bohr)/(RU_energy/RU_length)
+!               error2 = sqrt(error2)*20*dt*(hartree/bohr)/(RU_energy/RU_length)
  
                 write(filechannel3,FMT=*) vals(1),vals(2),&
                         Ninterpolation,largest_weighted_rmsd2,&
@@ -3970,6 +3980,36 @@ subroutine readTrajectory(filechannel_input,filechannels,&
                         interpolated_CMdiff,error1,error2
 !           end if
             end do
+
+            !!!!!!!!!!!!!!!!!!!!!!
+            ! alpha testing start
+            !!!!!!!!!!!!!!!!!!!!!!
+!           if (Ninterpolation > 0 ) then
+
+!               ! Just to be reasonable:
+!               Ninterpolation = min(Ninterpolation,20)
+
+!               allocate(libcoords(Ninterpolation,3,Natoms),&
+!                        libgradients(Ninterpolation,3,Natoms))
+
+!               do n = 1, Ninterpolation
+!                   libcoords(n,:,:) =&
+!                           coordsbuffer1(:,:,n)
+!                   libgradients(n,:,:) =&
+!                           gradientbuffer1(:,:,n)
+!               end do
+
+!               call errorCheck8(filechannels,&
+!                       coords,gradient,&
+!                       Ninterpolation,&
+!                       libcoords,libgradients,&
+!                       alpha_flagging)
+
+!               deallocate(libcoords,libgradients)
+!           end if
+            !!!!!!!!!!!!!!!!!!!!!!
+            ! alpha testing end
+            !!!!!!!!!!!!!!!!!!!!!!
 
             !If we are adding to a grid, then relabel
             !the coordinates and gradients, and do so
@@ -8222,9 +8262,13 @@ subroutine errorCheck8(filechannels,coords1,gradient1,&
     real(dp),dimension(3,3) :: U
     real(dp),dimension(3,3) :: candidate_U
 
+    character(6) :: steps_text
+
     !Incremental Integer
     integer :: i,n,iostate
     integer :: step
+
+    write(steps_text,FMT="(I0.6)") steps
 
 !   print *, ""
 !   print *, "Started Error Check 8!"
@@ -8283,7 +8327,7 @@ subroutine errorCheck8(filechannels,coords1,gradient1,&
     max_error1 = 0.0d0
     min_error1 = 1.0d9
 
-    open(6667,file=gridpath5//"tmp_A.dat")
+    open(6667,file=gridpath5//steps_text//"A.dat")
     do n = 1, Nalpha
 
         do step = 1, Ninterpolation
@@ -8319,7 +8363,8 @@ subroutine errorCheck8(filechannels,coords1,gradient1,&
         max_error1 = max(max_error1,error1)
 
         write(6667,FMT=*) alpha_array(n), &
-                 error1 * RU_energy / eV, iostate
+                 error1, iostate
+!                error1 * RU_energy / eV, iostate
 
         if (error1 > best_error) alpha_flagging(n) =&
                 alpha_flagging(n) + 1
@@ -8331,14 +8376,19 @@ subroutine errorCheck8(filechannels,coords1,gradient1,&
     !      Second Graph
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    open(6667,file=gridpath5//"tmp_B.dat")
+    ! reset the bounds for readability
+    max_error1 = 0.0d0
+    min_error1 = 1.0d9
+
+    open(6667,file=gridpath5//steps_text//"B.dat")
     do step = 1, Ninterpolation
 
         error1 = sqrt(sum((gradient1-gradient_steps(:,:,step))**2)/Natoms)
         min_error1 = min(min_error1,error1)
         max_error1 = max(max_error1,error1)
 
-        write(6667,FMT=*) n, min_rmsd(step), error1 * RU_energy / eV
+!       write(6667,FMT=*) n, min_rmsd(step), error1 * RU_energy / eV
+        write(6667,FMT=*) n, min_rmsd(step), error1
 
     end do
     close(6667)
@@ -8347,16 +8397,16 @@ subroutine errorCheck8(filechannels,coords1,gradient1,&
     !      Plotting
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    min_error1 = min_error1 * RU_energy / eV
-    max_error1 = max_error1 * RU_energy / eV
+!   min_error1 = min_error1 * RU_energy / eV
+!   max_error1 = max_error1 * RU_energy / eV
 
     call getVarsMaxMin(coords1,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
     open(gnuplotchannel,file=gridpath5//gnuplotfile)
     write(gnuplotchannel,*) "set term pngcairo enhanced size 2400,1800"
     write(gnuplotchannel,*) 'set encoding utf8'
-    write(gnuplotchannel,FMT="(A,2F7.4,A,I0.5,A)") &
-            'set output "'//gridpath4, vals,'.png"'
+    write(gnuplotchannel,FMT="(A,2F7.4,A)") &
+            'set output "'//gridpath4//steps_text//"_", vals,'.png"'
     write(gnuplotchannel,*) 'set tmargin 0'
     write(gnuplotchannel,*) 'set bmargin 0'
     write(gnuplotchannel,*) 'set lmargin 1'
@@ -8370,10 +8420,14 @@ subroutine errorCheck8(filechannels,coords1,gradient1,&
     write(gnuplotchannel,*) 'set ytics font ",16" nomirror'
     write(gnuplotchannel,*) 'set xtics font ",16"'
     write(gnuplotchannel,*) 'set autoscale y'
+!   write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+!           'set yrange [',&
+!           (min_error1 - (max_error1-min_error1)/Nalpha),&
+!           (max_error1 + (max_error1-min_error1)/Nalpha),']'
+    ! reset the bounds for readability
+    write(gnuplotchannel,*) 'maxE = ', (max_error1 + (max_error1-min_error1)/Nalpha)
     write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
-            'set yrange [',&
-            (min_error1 - (max_error1-min_error1)/Nalpha),&
-            (max_error1 + (max_error1-min_error1)/Nalpha),']'
+            'set yrange [0:maxE]'
     if (logarithmic_alpha_flag) then
         write(gnuplotchannel,*) 'set logscale x'
         write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
@@ -8387,14 +8441,18 @@ subroutine errorCheck8(filechannels,coords1,gradient1,&
                 (alpha_end + (alpha_end-alpha_start)/Nalpha),']'
     end if
     write(gnuplotchannel,*) 'set xlabel "Alpha Ratio" font ",24"'
-    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_A.dat" u 1:($3==0?$2:1/0) w points ps 3 pt 7 lc "black" t "",\'
-    write(gnuplotchannel,*) '     "'//gridpath5//'tmp_A.dat" u 1:($3==1?$2:1/0) w points ps 3 pt 7 lc "red" t ""'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//steps_text//'A.dat" u 1:($3==0?$2:1/0) w points ps 3 pt 7 lc "black" t "",\'
+    write(gnuplotchannel,*) '     "'//gridpath5//steps_text//'A.dat" u 1:($2>maxE?maxE:1/0) w points ps 3 pt 7 lc "purple" t "",\'
+    write(gnuplotchannel,*) '     "'//gridpath5//steps_text//'A.dat" u 1:($3==1?$2:1/0) w points ps 3 pt 7 lc "red" t ""'
 
     write(gnuplotchannel,*) 'unset ytics'
+!   write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
+!           'set yrange [',&
+!           (min_error1 - (max_error1-min_error1)/Nalpha),&
+!           (max_error1 + (max_error1-min_error1)/Nalpha),']'
+    ! reset the bounds for readability
     write(gnuplotchannel,FMT="(A,E16.6,':',E16.6,A)") &
-            'set yrange [',&
-            (min_error1 - (max_error1-min_error1)/Nalpha),&
-            (max_error1 + (max_error1-min_error1)/Nalpha),']'
+            'set yrange [0:maxE]'
     write(gnuplotchannel,*) 'set format y ""'
     write(gnuplotchannel,*) 'unset ylabel'
     if (logarithmic_alpha_flag) write(gnuplotchannel,*) 'unset logscale x'
@@ -8404,7 +8462,7 @@ subroutine errorCheck8(filechannels,coords1,gradient1,&
             (minval(min_rmsd) - (maxval(min_rmsd)-minval(min_rmsd))/Nalpha),&
             (maxval(min_rmsd) + (maxval(min_rmsd)-minval(min_rmsd))/Nalpha),']'
     write(gnuplotchannel,*) 'set xlabel "RMSD(A) Between Current and Target Frame" font ",24"'
-    write(gnuplotchannel,*) 'plot "'//gridpath5//'tmp_B.dat" u 2:3 w points ps 3 pt 7 t ""'
+    write(gnuplotchannel,*) 'plot "'//gridpath5//steps_text//'B.dat" u 2:3 w points ps 3 pt 7 t ""'
     close(gnuplotchannel)
 
     call system("gnuplot < "//gridpath5//gnuplotfile)
