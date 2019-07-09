@@ -3125,6 +3125,7 @@ do
             gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
             Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
             RMSDbuffer1(j) = RMSDbuffer1(j-1)
+            CMdiffbuffer1(j) = CMdiffbuffer1(j-1)
             inputCLS(:,j) = inputCLS(:,j-1)
         end do
 

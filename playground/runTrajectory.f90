@@ -3941,27 +3941,29 @@ subroutine readTrajectory(filechannel_input,filechannels,&
             !If a frame was found, record data on it
 !           if (Ninterpolation > 0) then
             do j = Ninterpolation, 1, -1
-!               error1 = sqrt(sum((gradient - &
-!                       candidate_gradient)**2)/Natoms)
-!               error2 = sqrt(sum((gradient - &
-!                       approx_gradient)**2)/Natoms)
+!           do j = min(Ninterpolation,1), 1, -1
 
                 candidate_gradient = matmul(Ubuffer1(:,:,j),&
                         gradientbuffer1(:,:,j))
                 candidate_rmsd = RMSDbuffer1(j)
 
-                error1 = 0.0d0
-                error2 = 0.0d0
-                do i = 1, Natoms
-                    error1 = error1 + sum(((gradient(:,i)-&
-                            candidate_gradient(:,i))/&
-                            (masses(i)*(0.001/Na)/RU_mass))**2)
-                    error2 = error2 + sum(((gradient(:,i)-&
-                            approx_gradient(:,i))/&
-                            (masses(i)*(0.001/Na)/RU_mass))**2)
-                end do
-                error1 = sqrt(error1)*200*dt*(hartree/bohr)/(RU_energy/RU_length)
-                error2 = sqrt(error2)*200*dt*(hartree/bohr)/(RU_energy/RU_length)
+                error1 = sqrt(sum((gradient - &
+                        candidate_gradient)**2)/Natoms)
+                error2 = sqrt(sum((gradient - &
+                        approx_gradient)**2)/Natoms)
+
+!               error1 = 0.0d0
+!               error2 = 0.0d0
+!               do i = 1, Natoms
+!                   error1 = error1 + sum(((gradient(:,i)-&
+!                           candidate_gradient(:,i))/&
+!                           (masses(i)*(0.001/Na)/RU_mass))**2)
+!                   error2 = error2 + sum(((gradient(:,i)-&
+!                           approx_gradient(:,i))/&
+!                           (masses(i)*(0.001/Na)/RU_mass))**2)
+!               end do
+!               error1 = sqrt(error1)*200*dt*(hartree/bohr)/(RU_energy/RU_length)
+!               error2 = sqrt(error2)*200*dt*(hartree/bohr)/(RU_energy/RU_length)
  
                 write(filechannel3,FMT=*) vals(1),vals(2),&
                         Ninterpolation,largest_weighted_rmsd2,&

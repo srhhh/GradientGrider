@@ -1585,6 +1585,21 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_2_linear.png"'
+write(gnuplotchannel,*) 'set title "Error Convergence as Candidates Get Closer" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Candidate Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '2:6 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
 write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_12.png"'
 write(gnuplotchannel,FMT="(A)") 'set multiplot layout 1'//&
                         ',2 columnsfirst margins 0.1,0.95,.1,.9 spacing 0,0.1 title '//&
@@ -1693,6 +1708,22 @@ write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_CM2_linear.png"'
+write(gnuplotchannel,*) 'set title "Error Convergence as Candidates Get Closer" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "Coulomb Matrix Difference Between Target and Candidate Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '9:6 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
 
 
 
@@ -2601,8 +2632,8 @@ do n = 1, comparison_number
         !The second portion of the data is that
         !which has this quality (can be
         !arbitrarily picked)
-!       if (rsv(7) < 1.0d1) then
-        if (rsv(6) <= upper_rsv(n,5)) then
+        if (rsv(7) < 1.0d1) then
+!       if (rsv(6) <= upper_rsv(n,5)) then
             Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) = &
                     Ninterpolation_binning(3*(n-1)+2,Ninterpolation_bin) + &
                     1.0d0/frames_trials(n)
@@ -2617,8 +2648,8 @@ do n = 1, comparison_number
         !which has this quality (can be
         !arbitrarily picked); this will be in
         !the front of all other data
-!       if (rsv(7) <= 1.0d0) then
-        if (rsv(6) <= 0.5d0 * upper_rsv(n,5)) then
+        if (rsv(7) <= 1.0d0) then
+!       if (rsv(6) <= 0.5d0 * upper_rsv(n,5)) then
             Ninterpolation_binning(3*n,Ninterpolation_bin) = &
                     Ninterpolation_binning(3*n,Ninterpolation_bin) + &
                     1.0d0/frames_trials(n)
@@ -2759,6 +2790,7 @@ implicit none
 real,dimension(Nvar) :: tmpvals,var_minvar
 integer,dimension(Nvar) :: max_val_bin, val_bins
 integer :: max_bin
+logical :: cycle_flag
 
 real(dp),dimension(9) :: rsv, min_rsv, max_rsv
 integer :: min_Ninterpolation,max_Ninterpolation,Ninterpolation
@@ -2804,11 +2836,15 @@ do
 
     val_bins = floor((tmpvals-var_minvar)/var_spacing)
 
+    cycle_flag = .false.
     do n = 1, Nvar
-        if (val_bins(n) == 0) val_bins(n) = 1
-        if (val_bins(n) > max_val_bin(n)) &
-                val_bins(n) = max_val_bin(n)
+        if (val_bins(n) <= 0)&
+            cycle_flag = .true.
+        if (val_bins(n) > max_val_bin(n))&
+            cycle_flag = .true.
     end do
+
+    if (cycle_flag) cycle
 
     heatmap_binning(val_bins(1),val_bins(2)) = &
         heatmap_binning(val_bins(1),val_bins(2)) + 1

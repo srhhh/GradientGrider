@@ -81,7 +81,9 @@ do Ngrid = 1, Ngrid_max
     
         POPheatmap(i,j) = population
         population_max = max(population,population_max)
-        write(filechannel2,FMT="(F5.2,1x,F5.2,1x,I8)")&
+!       write(filechannel2,FMT="(F5.2,1x,F5.2,1x,I8)")&
+        write(filechannel2,FMT="("//var_singleFMT(1:singleFMT_length)//&
+                            ",1x,"//var_singleFMT(1:singleFMT_length)//",1x,I8)")&
                 (var_index - (/ 0.5, 0.5 /))*multiplier(:,0+1), population
     end do
     
