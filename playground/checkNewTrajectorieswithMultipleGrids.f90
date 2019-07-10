@@ -672,22 +672,27 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                 coords_initial,velocities_initial,&
                 coords_final,velocities_final)
     else
-
         !Then write the outputted RMSDS of
         !each trajectory onto those filechannels
         !Remark: checkMultipleGrids uses
         !filechannel1 to open files in the grid
-        if (force_Permutations) then
-            call runTrajectory_permute_cap(&
-                    filechannels(1:1+Ngrid_total),&
-                    coords_initial,velocities_initial,&
-                    coords_final,velocities_final)
-        else
-            call runTrajectory_cap(&
-                    filechannels(1:1+Ngrid_total),&
-                    coords_initial,velocities_initial,&
-                    coords_final,velocities_final)
-        end if
+
+        call runTrajectoryRewind1(&
+                filechannels(1:1+Ngrid_total),&
+                coords_initial,velocities_initial,&
+                coords_final,velocities_final)
+
+!       if (force_Permutations) then
+!           call runTrajectory_permute_cap(&
+!                   filechannels(1:1+Ngrid_total),&
+!                   coords_initial,velocities_initial,&
+!                   coords_final,velocities_final)
+!       else
+!           call runTrajectory_cap(&
+!                   filechannels(1:1+Ngrid_total),&
+!                   coords_initial,velocities_initial,&
+!                   coords_final,velocities_final)
+!       end if
 !   call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
 !                              coords_initial,velocities_initial,&
 !                              coords_final,velocities_final)
@@ -817,15 +822,15 @@ end if
 !that we want to check
 if (.not.comparison_flag) then
 
-    print *, ""
-    call itime(now)
-    write(6,FMT=FMTnow) now
-    print *, "Processing the Checkstate File..."
-    print *, ""
+!   print *, ""
+!   call itime(now)
+!   write(6,FMT=FMTnow) now
+!   print *, "Processing the Checkstate File..."
+!   print *, ""
 
-    call processCheckstateFile()
+!   call processCheckstateFile()
 
-    call plotCheckstateEnergy("EnergyConservation001")
+!   call plotCheckstateEnergy("EnergyConservation001")
 
 
 
