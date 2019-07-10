@@ -1656,6 +1656,22 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_2_linear.png"'
+write(gnuplotchannel,*) 'set title "Error Convergence as Candidates Get Closer" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "RMSD (A) Between Target and Candidate Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xrange [0:]'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '2:6 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
 write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_CM2.png"'
 write(gnuplotchannel,*) 'set title "Error Convergence as Candidates Get Closer" font ",32"'
 write(gnuplotchannel,*) 'unset key'
@@ -2843,6 +2859,8 @@ do
         if (val_bins(n) > max_val_bin(n))&
             cycle_flag = .true.
     end do
+    
+    if (cycle_flag) cycle
 
     if (cycle_flag) cycle
 
