@@ -111,6 +111,24 @@ real(dp),allocatable :: RMSDbuffer1(:)
 
 real(dp),allocatable :: CMdiffbuffer1(:)
 integer,allocatable :: Ntrajbuffer1(:)
+integer,allocatable :: varindexbuffer1(:)
+
+!For the memory buffer
+
+integer,dimension(Nvar) :: previous_var_index
+integer,allocatable :: vals_hash(:,:)
+
+integer,allocatable :: populationbuffer2(:)
+real(dp),allocatable :: valsbuffer2(:,:,:)
+real(dp),allocatable :: coordsbuffer2(:,:,:,:)
+real(dp),allocatable :: gradientbuffer2(:,:,:,:)
+
+integer,allocatable :: temppopulationbuffer2(:)
+real(dp),allocatable :: tempvalsbuffer2(:,:,:)
+real(dp),allocatable :: tempcoordsbuffer2(:,:,:,:)
+real(dp),allocatable :: tempgradientbuffer2(:,:,:,:)
+
+!Arrays for interpolation
 
 logical, allocatable :: acceptable_frame_mask(:)
 real(dp),allocatable :: inputCLS(:,:)
@@ -119,6 +137,7 @@ real(dp),allocatable :: inputCLS(:,:)
 !the buffer gets, and increase it if it gets too large
 
 integer :: buffer1_size
+integer :: buffer2_size
 
 !It is useful to estimate how many cells we may be
 !looking at at one time
@@ -1859,6 +1878,208 @@ return
 end subroutine checkState_new_cap
 
 
+subroutine checkState_PCM(vals,coords,gradient,&
+                min_rmsd,filechannels,&
+                number_of_frames,order,neighbor_check)
+use ls_rmsd_original
+use ANALYSIS
+use VARIABLES
+use PARAMETERS
+use FUNCTIONS
+implicit none
+integer :: i,j,k,l
+integer,intent(out),optional :: order,number_of_frames,neighbor_check
+integer :: population
+integer :: chosen_index
+integer :: OMP_GET_THREAD_NUM
+logical :: stop_flag
+real(dp), dimension(Nvar), intent(in) :: vals
+real(dp), dimension(3,Natoms), intent(in) :: coords
+real(dp), dimension(3,Natoms) :: new_coords
+real(dp), dimension(3,Natoms), intent(out) :: gradient
+real(dp), intent(inout) :: min_rmsd
+integer, dimension(1+Ngrid_total),intent(in) :: filechannels
+character(Ngrid_text_length) :: Ngrid_text
+character(5) :: variable_length_text
+real(dp), dimension(3) :: x_center, y_center
+real(dp), allocatable :: g(:,:)
+real(dp), dimension(3,3) :: new_U
+
+real(dp),dimension(Nvar) :: var_cell
+integer,dimension(Nvar,Norder_max+1) :: var_index
+integer,dimension(Nvar,Norder_max+1) :: var_index_diff
+
+integer  :: largest_rmsd_error_index
+real(dp) :: largest_rmsd_error
+real(dp),dimension(Natoms,Natoms) :: temp_CM
+
+var_filechannel = filechannels(1)
+var_coords = coords
+
+call getCoulombMatrix(Natoms,var_coords,charges,var_CM)
+
+!We start off with zero frames having been checked
+local_frame_count = 0
+Totalnumber_of_frames = 0
+order = 0
+number_of_cells = 0
+neighbor_check = 0
+Ninterpolation = 0
+stop_flag = .false.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!                 SUBCELL TARGETING
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!Retrieve the index of each variable with
+!respect to the grid and the real number
+!(rounded) that represents that index
+do i = 1, Nvar
+    !Repeat this for however many orders of cells deep
+    !we have been instructed to go
+    do j = 1, Norder_max + 1
+        var_index(i,j) = int(vals(i) * divisor(i,j))
+    end do
+end do
+
+call shiftMemory((var_index(:,Norder_order(1)+1) -&
+                 previous_var_index))
+previous_var_index = var_index(:,Norder_order(1)+1)
+
+!Now, we start iterating over the grids
+do k = 1, Ngrid_total
+    
+    !Streamline the process by storing the
+    !path to the grid in a string gridpath3
+    write(variable_length_text,FMT=FMT5_variable)&
+            Ngrid_text_length
+    write(Ngrid_text,FMT="(I0."//&
+            trim(adjustl(variable_length_text))//&
+            ")") k
+    gridpath3 = gridpath0//Ngrid_text//"/grid/"
+    
+    !The way we check, we check by order first
+    do l = 1, Norder_max+1
+    
+        !The user can specify in what order to
+        !check the orders through this array
+        Norder = Norder_order(l)
+        
+        !Read the frames in the cells and
+        !process their RMSDs
+
+        !If 
+        if (k == grid_addition) then
+            if ((l==1) .or. &
+                (Totalnumber_of_frames == 0)) then
+                call getRMSD_1_PCM(&
+                        var_index(:,Norder+1),&
+                        population)
+            else
+                call getRMSD_2(&
+                        var_index(:,Norder+1),&
+                        population)
+            end if
+            local_frame_count(Norder+1) = &
+                    population
+        else
+            if ((l==1) .or. &
+                (Totalnumber_of_frames == 0)) then
+                call getRMSD_1_PCM(&
+                        var_index(:,Norder+1),&
+                        population)
+            else
+            end if
+        end if
+        
+        if (population >= var_overcrowd(Norder+1)) then
+            if (Norder < Norder_max) cycle
+        else
+            Totalnumber_of_frames = &
+                Totalnumber_of_frames + population
+        end if
+        
+        !If the cell is unpopulated or a certain flag is true,
+        !then we go ahead and look at the neighbors of this cell
+        if ((force_Neighbors) .or. (population == 0)) then
+        
+            !Integer i keeps track of how far away from the original
+            !subcell we are; we look at cells on the 'diamond' surrounding
+            !the original subcell
+            do i = 1, subcellsearch_max(Norder+1)
+        
+                var_index_diff = 0
+        
+                call getRelativeIndex_PCM(1,var_index(:,Norder+1),i,&
+                                      var_index_diff,stop_flag)
+                
+                if ((stop_flag) .and. (.not. force_Neighbors)) exit
+            end do
+        end if
+        
+
+        !If we found a non-empty cell then our search has
+        !been over this particular order and does not need
+        !to go over other orders
+!       if (population > 0) then
+        if (Totalnumber_of_frames > 0) then
+                order = order + Norder
+                exit
+        end if
+    
+    end do
+
+    !Record the RMSD encountered here for later analysis:
+    !particularly, percent-RMSD graphs
+!   if (testtraj_flag) &
+         trajRMSDbuffer(k,Naccept+1) = RMSDbuffer1(1)
+!        write(filechannels(1+k),FMT=FMT6) RMSDbuffer1(1)
+    
+end do
+
+number_of_frames = Totalnumber_of_frames
+neighbor_check = number_of_cells
+Norder_total(1+order/Ngrid_total) = Norder_total(1+order/Ngrid_total) + 1
+
+if (Ninterpolation == 0) then
+    candidate_rmsd = min_rmsd
+    return
+end if
+
+if ((interpolation_flag).and.(Ninterpolation > 1)) then
+    call getInterpolatedGradient(new_coords,gradient)
+
+    call getCoulombMatrix(Natoms,var_coords+new_coords,&
+            charges,temp_CM)
+    call getCoulombMatrixDiff(Natoms,temp_CM,var_CM,&
+            interpolated_CMdiff)
+
+    !Remark: Ken Dill's code uses a version of the RMSD
+    !        that divides by N, not N - 1
+
+    min_rmsd = sqrt(sum((new_coords)**2)/(Natoms))
+else
+    gradient = matmul(Ubuffer1(:,:,1),&
+                      gradientbuffer1(:,:,1))
+
+    min_rmsd = RMSDbuffer1(1)
+
+    largest_weighted_rmsd = min_rmsd
+    largest_weighted_rmsd2 = min_rmsd**2
+
+    interpolated_CMdiff = CMdiffbuffer1(1)
+    
+end if
+
+candidate_rmsd = RMSDbuffer1(1)
+candidate_gradient = matmul(Ubuffer1(:,:,1),&
+        gradientbuffer1(:,:,1))
+
+return
+
+end subroutine checkState_PCM
+
+
 
 recursive subroutine getRelativeIndex(currentVar,var_index,&
                                       N,var_index_diff,stop_flag)
@@ -2081,6 +2302,81 @@ else
 end if
 
 end subroutine getRelativeIndex_permute_cap
+
+recursive subroutine getRelativeIndex_PCM(currentVar,var_index,&
+                                      N,var_index_diff,stop_flag)
+use ANALYSIS
+use PARAMETERS
+implicit none
+
+integer,intent(in) :: currentVar
+integer,dimension(Nvar),intent(in) :: var_index
+integer,intent(in) :: N
+
+integer :: nextVar
+integer :: j, k
+integer :: population
+
+integer,dimension(Nvar),intent(inout) :: var_index_diff
+logical,intent(inout) :: stop_flag
+
+if (currentVar == 1) then
+!      stop_flag = .false.
+       var_index_diff = 0
+       k = 0
+else
+       k = sum(abs(var_index_diff(1:currentVar-1)))
+end if
+
+if (k == N) then
+        do nextVar = currentVar, Nvar
+                var_index_diff(nextVar) = 0
+        end do
+
+        call getRMSD_1_PCM(var_index + var_index_diff,population)
+
+        if (population > 0) then
+                Totalnumber_of_frames = &
+                Totalnumber_of_frames + population
+
+                stop_flag = .true.
+        end if
+
+else if (currentVar == Nvar) then
+
+        var_index_diff(currentVar) = N - k
+
+        call getRMSD_1_PCM(var_index + var_index_diff,population)
+
+        if (population > 0) then
+                Totalnumber_of_frames = &
+                Totalnumber_of_frames + population
+
+                stop_flag = .true.
+        end if
+
+        var_index_diff(currentVar) = -N + k
+
+        call getRMSD_1_PCM(var_index + var_index_diff,population)
+
+        if (population > 0) then
+                Totalnumber_of_frames = &
+                Totalnumber_of_frames + population
+
+                stop_flag = .true.
+        end if
+
+else
+        do j = -N + k, N - k
+                var_index_diff(currentVar) = j
+                nextVar = currentVar + 1
+                call getRelativeIndex_PCM(nextVar,var_index,&
+                                      N,var_index_diff,stop_flag)
+        end do
+end if
+
+end subroutine getRelativeIndex_PCM
+
 
 
 
@@ -3355,6 +3651,509 @@ close(var_filechannel)
 
 end subroutine getRMSD_1_cap
 
+subroutine getRMSD_1_PCM(var_index,population)
+use ls_rmsd_original
+use PARAMETERS
+use PHYSICS
+use ANALYSIS
+use FUNCTIONS
+implicit none
+
+!Inputs for file reading
+!character(*),intent(in) :: subcell
+integer,dimension(Nvar),intent(in) :: var_index
+integer :: single_index
+
+character(50) :: var_filename
+character(150) :: subcell
+logical :: subcell_existence
+logical :: stop_flag
+
+!Variables used in RMSD calculations
+real(dp), dimension(3) :: x_center, y_center
+real(dp), allocatable :: g(:,:)
+
+!Outputs from file reading
+integer,intent(out) :: population
+
+!Stores values temporarily
+real(dp),dimension(Nvar) :: current_vals
+real(dp) :: temp_rmsd
+real(dp),dimension(3,Natoms) :: temp_coords
+real(dp),dimension(3,Natoms) :: current_coords,current_gradient
+real(dp),dimension(3,3) :: temp_U
+
+real(dp),dimension(Natoms,Natoms) :: temp_CM
+real(dp) :: temp_CMdiff
+
+!Incremental integers and iostate checking
+integer :: n,i,j,k,iostate
+integer :: endpoint
+
+call getFlattened(Nvar,&
+        (var_index-previous_var_index),&
+        single_index)
+
+population = populationbuffer2(single_index)
+
+if (population < 0) then
+
+    write(var_filename,FMT=var_multipleFMT&
+          (1+Norder*multipleFMT_length:(Norder+1)*multipleFMT_length) )&
+            var_index * multiplier(:,Norder+1)
+    
+    !Construct the subcell filename
+    subcell = gridpath3//trim(var_filename)
+    
+    !See whether this subcell exists
+    inquire(file=trim(subcell),exist=subcell_existence)
+    
+    if (.not. subcell_existence) then
+        population = 0
+        populationbuffer2(single_index) = 0
+        return
+    else
+        number_of_cells = number_of_cells + 1
+    end if
+
+    !Open the file corresponding to the cell
+    if (unreadable_flag) then
+        open(var_filechannel,action="read",form="unformatted",&
+             file=trim(subcell))
+    else
+        open(var_filechannel,action="read",&
+             file=trim(subcell))
+    end if
+    
+    !Initialize a variable
+    population = 0
+    stop_flag = .true.
+    do
+    
+        !Read the candidate frame
+        if (unreadable_flag) then
+    
+            !In unformatted files, the first line are the variables
+            !which do not need to be stored
+            read(var_filechannel,iostat=iostate) &
+                    (current_vals(i),i=1,Nvar)
+ 
+            !If there are no more lines, stop; the population of the cell should be
+            !one less the number of times that this portion of the loop was called
+            if (iostate /= 0) exit
+
+            population = population + 1
+
+            valsbuffer2(:,population,single_index) = current_vals
+
+            !The next line is the coordinates
+            read(var_filechannel) &
+                   ((coordsbuffer2(i,j,population,single_index),i=1,3),j=1,Natoms)
+    
+            !In unformatted files, the last line is the gradient
+            read(var_filechannel) &
+                    ((gradientbuffer2(i,j,population,single_index),i=1,3),j=1,Natoms)
+        else
+    
+            !In formatted files, everything (variables, coordinates, and gradient)
+            !are stored in one line; FMT1 reads the variables
+            read(var_filechannel,FMT=FMT1,advance="no",iostat=iostate) &
+                    (current_vals(i),i=1,Nvar)
+
+            !If there are no more lines, stop; the population of the cell should be
+            !one less the number of times that this portion of the loop was called
+            if (iostate /= 0) exit
+
+            population = population + 1
+
+            valsbuffer2(:,population,single_index) = current_vals
+    
+            !In formatted files, FMT3 reads the coordinates
+            read(var_filechannel,FMT=FMT7,advance="no") &
+                   ((coordsbuffer2(i,j,population,single_index),i=1,3),j=1,Natoms)
+    
+            !In formatted files, FMT3 reads the gradient as well
+            read(var_filechannel,FMT=FMT3) &
+                    ((gradientbuffer2(i,j,population,single_index),i=1,3),j=1,Natoms)
+        end if
+ 
+        do n = 1, Nindistinguishables
+    
+            BOND_LABELLING_DATA = INDISTINGUISHABLES(n,:)
+        
+            do j = 1, Natoms
+                 temp_coords(:,j) = &
+                     coordsbuffer2(:,BOND_LABELLING_DATA(j),population,single_index)
+            end do
+ 
+            !Calculate the RMSD between this frame and the incoming frame
+            call rmsd_dp(Natoms,temp_coords,var_coords,&
+                         1,temp_U,x_center,y_center,&
+                         temp_rmsd)                               !,.false.,g)
+
+            call getCoulombMatrix(Natoms,temp_coords,charges,temp_CM)
+        
+            call getCoulombMatrixDiff(Natoms,temp_CM,var_CM,temp_CMdiff)
+
+!           do i = 1, 3
+!               temp_U(i,:) = 0.0d0
+!               x_center(i) = 0.0d0
+!               y_center(i) = 0.0d0
+!           end do
+!           temp_rmsd = rand() * threshold_rmsd * 4
+!           temp_CMdiff = 0.0d0
+        
+            !If in the "accept best" method
+            !and the RMSD is low enough:
+            if ((temp_rmsd < threshold_rmsd).and.&
+                (temp_rmsd >= inner_threshold)) then
+        
+                if (accept_first) iostate = 1
+        
+                if (accept_worst) then
+                    do i = 1, Ninterpolation+1
+                        if (temp_rmsd > RMSDbuffer1(i)) exit
+                    end do
+                else
+!                   do i = 1, Ninterpolation+1
+!                       if (temp_rmsd < RMSDbuffer1(i)) exit
+!                   end do
+                    do i = 1, Ninterpolation+1
+                        if (temp_CMdiff < CMdiffbuffer1(i)) exit
+                    end do
+                end if
+        
+                if (Ninterpolation < Ninterpolation_max) &
+                    Ninterpolation = Ninterpolation + 1
+        
+                do j = Ninterpolation, i+1, -1
+                    valsbuffer1(:,j) = valsbuffer1(:,j-1)
+                    coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
+                    gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
+                    Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
+                    RMSDbuffer1(j) = RMSDbuffer1(j-1)
+                    CMdiffbuffer1(j) = CMdiffbuffer1(j-1)
+                    inputCLS(:,j) = inputCLS(:,j-1)
+                end do
+        
+                do j = 1, Natoms
+                    coordsbuffer1(:,j,i) = &
+                        coordsbuffer2(:,BOND_LABELLING_DATA(j),population,single_index)
+                    gradientbuffer1(:,j,i) = &
+                        gradientbuffer2(:,BOND_LABELLING_DATA(j),population,single_index)
+                end do
+        
+                valsbuffer1(:,i) = valsbuffer2(:,population,single_index)
+                Ubuffer1(:,:,i) = temp_U
+                RMSDbuffer1(i) = temp_rmsd
+                CMdiffbuffer1(i) = temp_CMdiff
+        
+                temp_coords = coordsbuffer1(:,:,i)
+        
+                do j = 1, 3
+                    temp_coords(j,:) = &
+                    temp_coords(j,:) - x_center(j)
+                end do
+        
+                temp_coords(:,:) = matmul(&
+                        Ubuffer1(:,:,i),&
+                        temp_coords(:,:))
+        
+                do j = 1, 3
+                    temp_coords(j,:) = &
+                    temp_coords(j,:) + y_center(j)
+                end do
+        
+                inputCLS(1:Ncoords,i) =&
+                           reshape(temp_coords(:,:) - &
+                           var_coords,(/Ncoords/))
+            end if
+    
+        end do
+    
+        if (population == buffer2_size) then
+            stop_flag = .false.
+            exit
+        end if
+    
+    end do
+
+    populationbuffer2(single_index) = population
+
+    if (stop_flag) then
+        close(var_filechannel)
+        return
+    end if
+
+else if (population == 0) then
+    return
+
+else if (population < buffer2_size) then
+
+    do k = 1, population
+    
+        do n = 1, Nindistinguishables
+    
+            BOND_LABELLING_DATA = INDISTINGUISHABLES(n,:)
+        
+            do j = 1, Natoms
+                 temp_coords(:,j) = &
+                     coordsbuffer2(:,BOND_LABELLING_DATA(j),k,single_index)
+            end do
+        
+            !Calculate the RMSD between this frame and the incoming frame
+            call rmsd_dp(Natoms,temp_coords,var_coords,&
+                         1,temp_U,x_center,y_center,&
+                         temp_rmsd)                               !,.false.,g)
+
+            call getCoulombMatrix(Natoms,temp_coords,charges,temp_CM)
+        
+            call getCoulombMatrixDiff(Natoms,temp_CM,var_CM,temp_CMdiff)
+
+!           do i = 1, 3
+!               temp_U(i,:) = 0.0d0
+!               x_center(i) = 0.0d0
+!               y_center(i) = 0.0d0
+!           end do
+!           temp_rmsd = rand() * threshold_rmsd * 4
+!           temp_CMdiff = 0.0d0
+        
+            !If in the "accept best" method
+            !and the RMSD is low enough:
+            if ((temp_rmsd < threshold_rmsd).and.&
+                (temp_rmsd >= inner_threshold)) then
+        
+                if (accept_first) iostate = 1
+        
+                if (accept_worst) then
+                    do i = 1, Ninterpolation+1
+                        if (temp_rmsd > RMSDbuffer1(i)) exit
+                    end do
+                else
+!                   do i = 1, Ninterpolation+1
+!                       if (temp_rmsd < RMSDbuffer1(i)) exit
+!                   end do
+                    do i = 1, Ninterpolation+1
+                        if (temp_CMdiff < CMdiffbuffer1(i)) exit
+                    end do
+                end if
+        
+                if (Ninterpolation < Ninterpolation_max) &
+                    Ninterpolation = Ninterpolation + 1
+        
+                do j = Ninterpolation, i+1, -1
+                    valsbuffer1(:,j) = valsbuffer1(:,j-1)
+                    coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
+                    gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
+                    Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
+                    RMSDbuffer1(j) = RMSDbuffer1(j-1)
+                    CMdiffbuffer1(j) = CMdiffbuffer1(j-1)
+                    inputCLS(:,j) = inputCLS(:,j-1)
+                end do
+        
+                do j = 1, Natoms
+                    coordsbuffer1(:,j,i) = &
+                        coordsbuffer2(:,BOND_LABELLING_DATA(j),k,single_index)
+                    gradientbuffer1(:,j,i) = &
+                        gradientbuffer2(:,BOND_LABELLING_DATA(j),k,single_index)
+                end do
+        
+                valsbuffer1(:,i) = valsbuffer2(:,k,single_index)
+                Ubuffer1(:,:,i) = temp_U
+                RMSDbuffer1(i) = temp_rmsd
+                CMdiffbuffer1(i) = temp_CMdiff
+        
+                temp_coords = coordsbuffer1(:,:,i)
+        
+                do j = 1, 3
+                    temp_coords(j,:) = &
+                    temp_coords(j,:) - x_center(j)
+                end do
+        
+                temp_coords(:,:) = matmul(&
+                        Ubuffer1(:,:,i),&
+                        temp_coords(:,:))
+        
+                do j = 1, 3
+                    temp_coords(j,:) = &
+                    temp_coords(j,:) + y_center(j)
+                end do
+        
+                inputCLS(1:Ncoords,i) =&
+                           reshape(temp_coords(:,:) - &
+                           var_coords,(/Ncoords/))
+            end if
+    
+        end do
+    
+    end do
+
+    number_of_cells = number_of_cells + 1
+else
+    write(var_filename,FMT=var_multipleFMT&
+          (1+Norder*multipleFMT_length:(Norder+1)*multipleFMT_length) )&
+            var_index * multiplier(:,Norder+1)
+    
+    subcell = gridpath3//trim(var_filename)
+
+    number_of_cells = number_of_cells + 1
+    population = 0
+
+    !Open the file corresponding to the cell
+    if (unreadable_flag) then
+        open(var_filechannel,action="read",form="unformatted",&
+             file=trim(subcell))
+    else
+        open(var_filechannel,action="read",&
+             file=trim(subcell))
+    end if
+end if
+
+do
+
+    !Read the candidate frame
+    if (unreadable_flag) then
+
+        !In unformatted files, the first line are the variables
+        !which do not need to be stored
+        read(var_filechannel,iostat=iostate) &
+                (current_vals(i),i=1,Nvar)
+ 
+        !If there are no more lines, stop; the population of the cell should be
+        !one less the number of times that this portion of the loop was called
+        if (iostate /= 0) exit
+
+        population = population + 1
+
+        !The next line is the coordinates
+        read(var_filechannel) &
+               ((current_coords(i,j),i=1,3),j=1,Natoms)
+
+        !In unformatted files, the last line is the gradient
+        read(var_filechannel) &
+                ((current_gradient(i,j),i=1,3),j=1,Natoms)
+    else
+
+        !In formatted files, everything (variables, coordinates, and gradient)
+        !are stored in one line; FMT1 reads the variables
+        read(var_filechannel,FMT=FMT1,advance="no",iostat=iostate) &
+                (current_vals(i),i=1,Nvar)
+
+        !If there are no more lines, stop; the population of the cell should be
+        !one less the number of times that this portion of the loop was called
+        if (iostate /= 0) exit
+
+        population = population + 1
+
+        !In formatted files, FMT3 reads the coordinates
+        read(var_filechannel,FMT=FMT7,advance="no") &
+               ((current_coords(i,j),i=1,3),j=1,Natoms)
+
+        !In formatted files, FMT3 reads the gradient as well
+        read(var_filechannel,FMT=FMT3) &
+                ((current_gradient(i,j),i=1,3),j=1,Natoms)
+
+    end if
+
+    do n = 1, Nindistinguishables
+
+        BOND_LABELLING_DATA = INDISTINGUISHABLES(n,:)
+    
+        do j = 1, Natoms
+             temp_coords(:,j) = &
+                 current_coords(:,BOND_LABELLING_DATA(j))
+        end do
+    
+        !Calculate the RMSD between this frame and the incoming frame
+        call rmsd_dp(Natoms,temp_coords,var_coords,&
+                     1,temp_U,x_center,y_center,&
+                     temp_rmsd)                               !,.false.,g)
+
+        call getCoulombMatrix(Natoms,temp_coords,charges,temp_CM)
+    
+        call getCoulombMatrixDiff(Natoms,temp_CM,var_CM,temp_CMdiff)
+
+!       do i = 1, 3
+!           temp_U(i,:) = 0.0d0
+!           x_center(i) = 0.0d0
+!           y_center(i) = 0.0d0
+!       end do
+!       temp_rmsd = rand() * threshold_rmsd * 4
+!       temp_CMdiff = 0.0d0
+    
+        !If in the "accept best" method
+        !and the RMSD is low enough:
+        if ((temp_rmsd < threshold_rmsd).and.&
+            (temp_rmsd >= inner_threshold)) then
+    
+            if (accept_first) iostate = 1
+    
+            if (accept_worst) then
+                do i = 1, Ninterpolation+1
+                    if (temp_rmsd > RMSDbuffer1(i)) exit
+                end do
+            else
+!               do i = 1, Ninterpolation+1
+!                   if (temp_rmsd < RMSDbuffer1(i)) exit
+!               end do
+                do i = 1, Ninterpolation+1
+                    if (temp_CMdiff < CMdiffbuffer1(i)) exit
+                end do
+            end if
+    
+            if (Ninterpolation < Ninterpolation_max) &
+                Ninterpolation = Ninterpolation + 1
+    
+            do j = Ninterpolation, i+1, -1
+                valsbuffer1(:,j) = valsbuffer1(:,j-1)
+                coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
+                gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
+                Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
+                RMSDbuffer1(j) = RMSDbuffer1(j-1)
+                CMdiffbuffer1(j) = CMdiffbuffer1(j-1)
+                inputCLS(:,j) = inputCLS(:,j-1)
+            end do
+    
+            do j = 1, Natoms
+                coordsbuffer1(:,j,i) = &
+                    current_coords(:,BOND_LABELLING_DATA(j))
+                gradientbuffer1(:,j,i) = &
+                    current_gradient(:,BOND_LABELLING_DATA(j))
+            end do
+    
+            valsbuffer1(:,i) = current_vals
+            Ubuffer1(:,:,i) = temp_U
+            RMSDbuffer1(i) = temp_rmsd
+            CMdiffbuffer1(i) = temp_CMdiff
+    
+            temp_coords = coordsbuffer1(:,:,i)
+    
+            do j = 1, 3
+                temp_coords(j,:) = &
+                temp_coords(j,:) - x_center(j)
+            end do
+    
+            temp_coords(:,:) = matmul(&
+                    Ubuffer1(:,:,i),&
+                    temp_coords(:,:))
+    
+            do j = 1, 3
+                temp_coords(j,:) = &
+                temp_coords(j,:) + y_center(j)
+            end do
+    
+            inputCLS(1:Ncoords,i) =&
+                       reshape(temp_coords(:,:) - &
+                       var_coords,(/Ncoords/))
+        end if
+
+    end do
+
+end do
+close(var_filechannel)
+
+end subroutine getRMSD_1_PCM
+
 
 
 
@@ -3396,6 +4195,7 @@ if (.not. subcell_existence) then
         population = 0
         return
 else
+    number_of_cells = number_of_cells + 1
 end if
 
 !Open the file corresponding to the cell
@@ -3466,6 +4266,118 @@ end do
 close(var_filechannel)
 
 end subroutine getRMSD_2
+!end subroutine getRMSD_1_PCM
+!
+!subroutine getRMSD_2(var_index,population)
+!use ls_rmsd_original
+!use ANALYSIS
+!use PARAMETERS
+!implicit none
+!
+!!Inputs for file reading
+!!character(*),intent(in) :: subcell
+!integer,dimension(Nvar),intent(in) :: var_index
+!
+!character(50) :: var_filename
+!character(150) :: subcell
+!logical :: subcell_existence
+!
+!!Outputs from file reading
+!integer,intent(out) :: population
+!
+!real(dp),dimension(Nvar) :: dummy_vals
+!real(dp),dimension(3,Natoms) :: dummy_coords
+!
+!!Incremental integers and iostate checking
+!integer :: i,j,k,iostate
+!integer :: endpoint
+!
+!write(var_filename,FMT=var_multipleFMT&
+!      (1+Norder*multipleFMT_length:(Norder+1)*multipleFMT_length) )&
+!        var_index * multiplier(:,Norder+1)
+!
+!!Construct the subcell filename
+!subcell = gridpath3//trim(var_filename)
+!
+!!See whether this subcell exists
+!inquire(file=trim(subcell),exist=subcell_existence)
+!
+!if (.not. subcell_existence) then
+!        population = 0
+!        return
+!else
+!    number_of_cells = number_of_cells + 1
+!end if
+!
+!!Open the file corresponding to the cell
+!if (unreadable_flag) then
+!        open(var_filechannel,action="read",form="unformatted",&
+!             file=trim(subcell))
+!else
+!        open(var_filechannel,action="read",&
+!             file=trim(subcell))
+!end if
+!
+!!Initialize a variable
+!population = 1
+!
+!!Because the buffer may not be large enough to hold all the frames
+!!and, theoretically, we don't know how many times we need to
+!!increase the buffer, we need an overarching do loop that is capable
+!!of increasing the buffer without bounds
+!do
+!        !Read the candidate frame
+!        if (unreadable_flag) then
+!
+!                !In unformatted files, the first line are the variables
+!                !which do not need to be stored
+!                read(var_filechannel,iostat=iostate) &
+!                        (dummy_vals(i),i=1,Nvar)
+!
+!                !If there are no more lines, stop; the population of the cell should be
+!                !one less the number of times that this portion of the loop was called
+!	        if (iostate /= 0) then
+!                        population = population - 1
+!                        exit
+!                end if
+!
+!                !The next line is the coordinates
+!                read(var_filechannel) &
+!                       ((dummy_coords(i,j),i=1,3),j=1,Natoms)
+!
+!                !In unformatted files, the last line is the gradient
+!                read(var_filechannel) &
+!                        ((dummy_coords(i,j),i=1,3),j=1,Natoms)
+!        else
+!
+!                !In formatted files, everything (variables, coordinates, and gradient)
+!                !are stored in one line; FMT1 reads the variables
+!                read(var_filechannel,FMT=FMT1,advance="no",iostat=iostate) &
+!                        (dummy_vals(i),i=1,Nvar)
+!
+!                !If there are no more lines, stop; the population of the cell should be
+!                !one less the number of times that this portion of the loop was called
+!	        if (iostate /= 0) then
+!                        population = population - 1
+!                        exit
+!                end if
+!
+!                !In formatted files, FMT3 reads the coordinates
+!                read(var_filechannel,FMT=FMT7,advance="no") &
+!                       ((dummy_coords(i,j),i=1,3),j=1,Natoms)
+!
+!                !In formatted files, FMT3 reads the gradient as well
+!                read(var_filechannel,FMT=FMT3) &
+!                        ((dummy_coords(i,j),i=1,3),j=1,Natoms)
+!        end if
+!
+!        !Increment the number of frames visited
+!        population = population + 1
+!end do
+!close(var_filechannel)
+!
+!end subroutine getRMSD_2
+
 
 
 
@@ -3763,6 +4675,139 @@ end do
 close(filechannel_thread)
 
 end subroutine getRMSD_dp
+
+
+
+subroutine setAllocations()
+    use PARAMETERS
+    use ANALYSIS
+    implicit none
+
+    allocate(valsbuffer1(Nvar,buffer1_size),&
+             coordsbuffer1(3,Natoms,buffer1_size),&
+             gradientbuffer1(3,Natoms,buffer1_size),&
+             Ubuffer1(3,3,buffer1_size),&
+             RMSDbuffer1(buffer1_size))
+
+    allocate(CMdiffbuffer1(buffer1_size),&
+             Ntrajbuffer1(buffer1_size),&
+             varindexbuffer1(buffer1_size))
+
+    allocate(acceptable_frame_mask(buffer1_size),&
+             inputCLS(Ncoords+buffer1_size,buffer1_size))
+
+    if (memory_flag) then
+        allocate(vals_hash(single_index_max,Nvar))
+
+        allocate(populationbuffer2(&
+                    single_index_max),&
+                 valsbuffer2(Nvar,&
+                    buffer2_size,&
+                    single_index_max),&
+                 coordsbuffer2(3,Natoms,&
+                    buffer2_size,&
+                    single_index_max),&
+                 gradientbuffer2(3,Natoms,&
+                    buffer2_size,&
+                    single_index_max))
+
+        allocate(temppopulationbuffer2(&
+                    single_index_max),&
+                 tempvalsbuffer2(Nvar,&
+                    buffer2_size,&
+                    single_index_max),&
+                 tempcoordsbuffer2(3,Natoms,&
+                    buffer2_size,&
+                    single_index_max),&
+                 tempgradientbuffer2(3,Natoms,&
+                    buffer2_size,&
+                    single_index_max))
+    end if
+
+    return
+
+end subroutine setAllocations
+
+subroutine unsetAllocations()
+    use PARAMETERS
+    use ANALYSIS
+    implicit none
+
+    deallocate(valsbuffer1,&
+               coordsbuffer1,&
+               gradientbuffer1,&
+               Ubuffer1,&
+               RMSDbuffer1)
+
+    deallocate(CMdiffbuffer1,&
+               Ntrajbuffer1,&
+               varindexbuffer1)
+
+    deallocate(acceptable_frame_mask,&
+               inputCLS)
+
+    if (memory_flag) then
+        deallocate(vals_hash)
+
+        deallocate(populationbuffer2,&
+                   valsbuffer2,&
+                   coordsbuffer2,&
+                   gradientbuffer2)
+
+        deallocate(temppopulationbuffer2,&
+                   tempvalsbuffer2,&
+                   tempcoordsbuffer2,&
+                   tempgradientbuffer2)
+    end if
+
+    return
+
+end subroutine unsetAllocations
+
+subroutine shiftMemory(delta_var_index)
+    use PARAMETERS
+    use ANALYSIS
+    use FUNCTIONS
+    implicit none
+    integer,dimension(Nvar),intent(in) :: delta_var_index
+    integer :: population
+    integer :: single_index,xflattened
+    integer,dimension(Nvar) :: xexpanded
+
+    if (all(delta_var_index == 0)) return
+
+    temppopulationbuffer2 = populationbuffer2
+    tempvalsbuffer2 = valsbuffer2
+    tempcoordsbuffer2 = coordsbuffer2
+    tempgradientbuffer2 = gradientbuffer2
+
+    populationbuffer2 = -1
+
+    do single_index = 1, single_index_max
+
+        population = temppopulationbuffer2(single_index)
+        if (population == -1) cycle
+
+        call getExpanded(Nvar,single_index,xexpanded)
+        call getFlattened(Nvar,xexpanded-delta_var_index,xflattened)
+
+        if (xflattened <= single_index_max) then
+            populationbuffer2(xflattened) = population
+            valsbuffer2(:,1:population,xflattened) = &
+                tempvalsbuffer2(:,1:population,single_index)
+            coordsbuffer2(:,:,1:population,xflattened) = &
+                tempcoordsbuffer2(:,:,1:population,single_index)
+            gradientbuffer2(:,:,1:population,xflattened) = &
+                tempgradientbuffer2(:,:,1:population,single_index)
+        end if
+
+    end do
+
+!   populationbuffer2 = -1
+
+    return
+
+end subroutine shiftMemory
 
 
 end module interactMultipleGrids

@@ -1578,7 +1578,6 @@ subroutine runTestTrajectory2(filechannels,&
             if (((min_rmsd_prime .ge. threshold_RMSD) &
                     .or. (reject_flag)).and.&
                  (Naccept == 0)) then
-print *, steps
 
                 call Acceleration(vals,coords,gradient)
 
@@ -1627,15 +1626,12 @@ print *, steps
                         end if
 
                     else
-                        print *, "dump start"
                         do i = 1, Ngrid_total
                         do j = 1, Naccept
-print *, steps - Naccept + j - 1
                             write(filechannels(1+i),FMT=FMT6)&
                                 trajRMSDbuffer(i,j)
                         end do
                         end do
-                        print *, "dump end"
  
                         Nalpha_tries = 1
                         alpha_ratio = alpha_ratio_list(Nalpha_tries)
@@ -1661,7 +1657,7 @@ print *, steps - Naccept + j - 1
                 cycle
 
             else if (Nalpha_tries > Nalpha_tries_max) then
-print *, steps
+
                 call Acceleration(vals,coords,gradient)
 
                 do i = 1, Ngrid_total
@@ -1881,6 +1877,11 @@ subroutine runTrajectoryRewind1(filechannels,&
     !Incremental Integer
     integer :: i,j,n,m
 
+    open(filechannel2,file=gridpath5//checkstatefile)
+
+
+
+
     !Initialize the scene
     call InitialSetup3(coords,velocities)
     Norder1 = 0
@@ -1924,17 +1925,21 @@ subroutine runTrajectoryRewind1(filechannels,&
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
     buffer1_size = 2 + Ninterpolation_max
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
+    buffer2_size = 30
+!   allocate(valsbuffer1(Nvar,buffer1_size),&
+!            coordsbuffer1(3,Natoms,buffer1_size),&
+!            gradientbuffer1(3,Natoms,buffer1_size),&
+!            Ubuffer1(3,3,buffer1_size),&
+!            RMSDbuffer1(buffer1_size),&
+!            inputCLS(Ncoords+buffer1_size,buffer1_size))
 
-    allocate(CMdiffbuffer1(buffer1_size))
-    allocate(Ntrajbuffer1(buffer1_size))
+!   allocate(CMdiffbuffer1(buffer1_size))
+!   allocate(Ntrajbuffer1(buffer1_size))
+
+    call setAllocations()
 
     RMSDbuffer1 = default_rmsd
+    CMdiffbuffer1 = default_CMdiff
 
     steps = 1
     E_baseline = 0.0d0
@@ -1960,6 +1965,9 @@ subroutine runTrajectoryRewind1(filechannels,&
 
         steps = steps + 1
         if (steps == Nsteps_baseline) then
+            call getVarsMaxMin(coords,Natoms,vals,&
+                    Nvar,BOND_LABELLING_DATA)
+
             coords = coords + dt * velocities
             velocities = velocities + gradient
 
@@ -1978,6 +1986,11 @@ subroutine runTrajectoryRewind1(filechannels,&
     Naccept = 0
     Nalpha_tries = 1
     alpha_ratio = alpha_ratio_list(1)
+
+    populationbuffer2 = -1
+    do i = 1, Nvar
+        previous_var_index(i) = int(vals(i)*divisor(i,j))
+    end do
      
     do
         !Always calculate the variables before checking a frame or accelerating
@@ -1992,12 +2005,17 @@ subroutine runTrajectoryRewind1(filechannels,&
         end if
         
         RMSDbuffer1 = min_rmsd
+        CMdiffbuffer1 = default_CMdiff
 
         subcellsearch_max = subcellsearch_max1
  
-        call checkState_new_permute_cap(vals,coords,&
+        call checkState_PCM(vals,coords,&
                 approx_gradient,min_rmsd,&
                 filechannels,number_of_frames,order,neighbor_check)
+!       print *, ""
+!       print *, "step", steps
+!       if (Ninterpolation > 0) &
+!       print *, RMSDbuffer1(1:Ninterpolation)
 
         !If the approximated frame is good enough
         !and we are not rejecting it, then use it
@@ -2108,6 +2126,20 @@ subroutine runTrajectoryRewind1(filechannels,&
         !Update the steps
         steps = steps + 1
 
+        !!!!!!!!!!!!!!!!!!!!
+        ! TEST START
+        !!!!!!!!!!!!!!!!!!!!
+        call getEnergies(Natoms,coords,velocities,U,KE)
+        E = U + KE
+
+        !Finally write to the data file all the important data values
+        write(filechannel2,FMT=*) number_of_frames,order,neighbor_check,steps,&
+                                  min_rmsd,candidate_rmsd,vals(1),vals(2),U,KE
+        !!!!!!!!!!!!!!!!!!!!
+        ! TEST END
+        !!!!!!!!!!!!!!!!!!!!
+
+
         if (Naccept == 0) then
             call getEnergies(Natoms,coords,velocities,U,KE)
             E = U + KE
@@ -2133,19 +2165,27 @@ subroutine runTrajectoryRewind1(filechannels,&
     if (gather_interpolation_flag) close(filechannel3)
 
     !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            inputCLS)
+!   deallocate(valsbuffer1,&
+!           coordsbuffer1,gradientbuffer1,&
+!           Ubuffer1,RMSDbuffer1,&
+!           inputCLS)
+
+!   deallocate(trajRMSDbuffer)
+
+!   deallocate(CMdiffbuffer1)
+!   deallocate(Ntrajbuffer1)
+
+    call unsetAllocations()
 
     deallocate(trajRMSDbuffer)
-
-    deallocate(CMdiffbuffer1)
-    deallocate(Ntrajbuffer1)
 
     !Output the final coordinates and velocities
     coords_final = coords
     velocities_final = velocities
+
+
+
+    close(filechannel2)
 
 end subroutine runTrajectoryRewind1
 
@@ -4098,18 +4138,21 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
     buffer1_size = 1 + var_overcrowd(1)
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             approximation_index(buffer1_size))
+    buffer2_size = 30
 
-    allocate(CMdiffbuffer1(buffer1_size))
-    allocate(Ntrajbuffer1(buffer1_size))
+    call setAllocations()
+!   allocate(valsbuffer1(Nvar,buffer1_size),&
+!            coordsbuffer1(3,Natoms,buffer1_size),&
+!            gradientbuffer1(3,Natoms,buffer1_size),&
+!            Ubuffer1(3,3,buffer1_size),&
+!            RMSDbuffer1(buffer1_size),&
+!            approximation_index(buffer1_size))
 
-    allocate(acceptable_frame_mask(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
+!   allocate(CMdiffbuffer1(buffer1_size))
+!   allocate(Ntrajbuffer1(buffer1_size))
+
+!   allocate(acceptable_frame_mask(buffer1_size),&
+!            inputCLS(Ncoords+buffer1_size,buffer1_size))
 
     read(filechannel_input,iostat=iostate) coords
     if (iostate /= 0) then
@@ -4165,7 +4208,13 @@ subroutine readTrajectory(filechannel_input,filechannels,&
         RMSDbuffer1 = min_rmsd
         CMdiffbuffer1 = default_CMdiff
 
-        call checkState_new_permute_cap(&
+!       call checkState_new_permute_cap(&
+!               vals,coords,&
+!               approx_gradient,min_rmsd,&
+!               filechannels,number_of_frames,&
+!               order,neighbor_check)
+
+        call checkState_PCM(&
                 vals,coords,&
                 approx_gradient,min_rmsd,&
                 filechannels,number_of_frames,&
@@ -4361,15 +4410,17 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     if (gather_interpolation_flag) close(filechannel3)
 
     !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            approximation_index)
+!   deallocate(valsbuffer1,&
+!           coordsbuffer1,gradientbuffer1,&
+!           Ubuffer1,RMSDbuffer1,&
+!           approximation_index)
 
-    deallocate(Ntrajbuffer1)
-    deallocate(CMdiffbuffer1)
+!   deallocate(Ntrajbuffer1)
+!   deallocate(CMdiffbuffer1)
 
-    deallocate(acceptable_frame_mask,inputCLS)
+!   deallocate(acceptable_frame_mask,inputCLS)
+
+    call unsetAllocations()
 
     !Output the final coordinates and velocities
     coords_final = coords
@@ -4912,15 +4963,49 @@ end subroutine Acceleration
 subroutine setSubcellSearchMax()
 use PARAMETERS
 use ANALYSIS
+use FUNCTIONS
 implicit none
 
-integer :: i
+integer :: i,j
+integer :: single_index
+integer,dimension(Nvar) :: var_index
 
 do i = 1, min(Norder_max+1,ssm_length)
     subcellsearch_max(i) = ssm1(i)
     subcellsearch_max1(i) = ssm1(i)
     subcellsearch_max2(i) = ssm2(i)
 end do
+
+if (memory_flag) then
+    
+    !Initialize the memory buffer assuming
+    !only subcellsearch_max1 and the first
+    !order search are used
+    j = subcellsearch_max(&
+            Norder_order(1)+1)
+    single_index_max = 0
+    
+    do i = 1, Nvar
+    
+        var_index = 0
+    
+        var_index(i) = j
+        call getFlattened(Nvar,var_index,&
+                single_index)
+        single_index_max = max(single_index,&
+                single_index_max)
+    
+        var_index(i) = -j
+        call getFlattened(Nvar,var_index,&
+                single_index)
+        single_index_max = max(single_index,&
+                single_index_max)
+    
+    end do
+
+end if
+
+return
 
 end subroutine setSubcellSearchMax
 
