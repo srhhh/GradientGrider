@@ -378,19 +378,24 @@ end if
                     !If no grid checking then we keep
                     !cell searching to a minimum;
                     !we only check to divyUp
-                    subcellsearch_max = 0
+                    subcellsearch_max1 = 0
 
-                    if (force_Permutations) then
-                        call runTrajectory_permute_cap(&
+                    call runTrajectoryRewind1(&
                                 filechannels(1:1+Ngrid_total),&
                                 coords_initial,velocities_initial,&
                                 coords_final,velocities_final)
-                    else
-                        call runTrajectory_cap(&
-                                filechannels(1:1+Ngrid_total),&
-                                coords_initial,velocities_initial,&
-                                coords_final,velocities_final)
-                    end if
+
+!                   if (force_Permutations) then
+!                       call runTrajectory_permute_cap(&
+!                               filechannels(1:1+Ngrid_total),&
+!                               coords_initial,velocities_initial,&
+!                               coords_final,velocities_final)
+!                   else
+!                       call runTrajectory_cap(&
+!                               filechannels(1:1+Ngrid_total),&
+!                               coords_initial,velocities_initial,&
+!                               coords_final,velocities_final)
+!                   end if
                 end if
 
 !               !Otherwise, we have some options
@@ -419,12 +424,6 @@ end if
                 do m = 1, Ngrid_total
                     close(filechannels(1+m))
                 end do
-
-                !If it is taking too long then we stop
-                if (trajectory_CPU_time > trajectory_CPU_time_max) then
-                        Ntraj_allowed = min(Ntraj_allowed,Ntraj)
-                        exit
-                end if
 
                 Ntraj = Ntraj + 1
 
@@ -500,6 +499,12 @@ end if
 
                         force_Neighbors = .false.
                         testtrajDetailedRMSD_flag = .false.
+                end if
+
+                !If it is taking too long then we stop
+                if (trajectory_CPU_time > trajectory_CPU_time_max) then
+                        Ntraj_allowed = min(Ntraj_allowed,Ntraj)
+                        exit
                 end if
 
         end do

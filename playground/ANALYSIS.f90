@@ -81,12 +81,15 @@ logical,parameter :: testtraj_flag = .true.
 
    logical :: force_Permutations = .false.
 
+   logical :: memory_flag = .true.
+   integer :: single_index_max
+
    !The point at which checkState stops checking neighbors
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 5, 0 /)
-   integer,dimension(ssm_length) :: ssm2 = (/ 16, 0 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 16, 00 /)
+   integer,dimension(ssm_length) :: ssm2 = (/ 08, 00 /)
 
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD
@@ -162,15 +165,15 @@ logical,parameter :: testtraj_flag = .true.
 
             real(dp) :: alpha_ratio = 1.0d0
 
-            integer,parameter :: Ninterpolation_max = 50
-            integer,parameter :: Ninterpolation_cap = 30
+            integer,parameter :: Ninterpolation_max = 10
+            integer,parameter :: Ninterpolation_cap = 10
 
             integer,parameter :: Naccept_max = 20
             real(dp),allocatable :: trajRMSDbuffer(:,:)
 
             integer,parameter :: Nalpha_tries_max = 3
             real(dp),dimension(Nalpha_tries_max),parameter :: alpha_ratio_list = &
-                    (/ 10.0d-4, 10.0d-2, 10.0d0 /)
+                    (/ 10.0d-2, 10.0d-1, 10.0d0 /)
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

@@ -1173,5 +1173,135 @@ subroutine ForwardSubstitute(A,m,n,x,b)
 
 end subroutine ForwardSubstitute
 
+
+
+subroutine getFlooredSqrt(i1,i2)
+    implicit none
+    integer,intent(in) :: i1
+    integer,intent(out) :: i2
+
+    if (i1 < 2) then
+        i2 = i1
+        return
+    end if
+
+    do i2 = 2, i1
+        if (i2*i2 > i1) exit
+    end do
+    
+    i2 = i2 - 1
+    return
+
+end subroutine getFlooredSqrt
+
+subroutine ZtoN(z,n)
+    implicit none
+    integer,intent(in) :: z
+    integer,intent(out) :: n
+
+    if (z <= 0) then
+        n = 2 * abs(z)
+    else
+        n = 2*z - 1
+    end if
+
+    return
+
+end subroutine ZtoN
+
+subroutine NNtoN(n1,n2,n)
+    implicit none
+    integer,intent(in) :: n1,n2
+    integer,intent(out) :: n
+    integer :: tempn
+
+    tempn = n1 + n2
+    
+    n = n1 + ((tempn)*(tempn+1))/2
+
+    return
+
+end subroutine NNtoN
+
+subroutine NtoZ(n,z)
+    implicit none
+    integer,intent(in) :: n
+    integer,intent(out) :: z
+
+    if (modulo(n,2)==0) then
+        z = - n / 2
+    else
+        z = (n + 1) / 2
+    end if
+
+    return
+
+end subroutine NtoZ
+
+subroutine NtoNN(n,n1,n2)
+    implicit none
+    integer,intent(in) :: n
+    integer,intent(out) :: n1,n2
+    integer :: tempn
+
+    call getFlooredSqrt(8*n+1,tempn)
+    tempn = (tempn - 1)/2
+    
+    n1 = n - ((tempn)*(tempn+1))/2
+    n2 = ((tempn)*(tempn+3))/2 - n
+
+    return
+
+end subroutine NtoNN
+
+
+subroutine getFlattened(Nvar,x,xflat)
+    implicit none
+    integer,intent(in) :: Nvar
+    integer,dimension(Nvar),intent(in) :: x
+    integer,dimension(Nvar) :: xPOS
+    integer :: tempx,i
+    integer,intent(out) :: xflat
+
+    do i = 1, Nvar
+        call ZtoN(x(i),xPOS(i))
+    end do
+
+    tempx = xPOS(1)
+
+    do i = 2, Nvar
+        call NNtoN(tempx,xPOS(i),xflat)
+        tempx = xflat
+    end do
+
+    xflat = xflat + 1
+
+    return
+
+end subroutine getFlattened
+
+subroutine getExpanded(Nvar,x,xexpanded)
+    implicit none
+    integer,intent(in) :: Nvar, x
+    integer :: tempx1,tempx2,i
+    integer,dimension(Nvar),intent(out) :: xexpanded
+
+    tempx1 = x - 1
+    do i = Nvar, 2, -1
+        call NtoNN(tempx1,tempx2,xexpanded(i))
+        tempx1 = tempx2
+    end do
+
+    xexpanded(1) = tempx1
+
+    do i = 1, Nvar
+        tempx1 = xexpanded(i)
+        call NtoZ(tempx1,xexpanded(i))
+    end do
+
+    return
+
+end subroutine getExpanded
+
 end module FUNCTIONS
 
