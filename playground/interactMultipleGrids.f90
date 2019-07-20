@@ -115,6 +115,7 @@ integer,allocatable :: varindexbuffer1(:)
 
 !For the memory buffer
 
+logical :: memory_available
 integer,dimension(Nvar) :: previous_var_index
 integer,allocatable :: vals_hash(:,:)
 
@@ -3690,11 +3691,14 @@ real(dp) :: temp_CMdiff
 integer :: n,i,j,k,iostate
 integer :: endpoint
 
-call getFlattened(Nvar,&
-        (var_index-previous_var_index),&
-        single_index)
-
-population = populationbuffer2(single_index)
+if (Norder == Norder_order(1)) then
+    call getFlattened(Nvar,&
+            (var_index-previous_var_index),&
+            single_index)
+    population = populationbuffer2(single_index)
+else
+    population = buffer2_size
+end if
 
 if (population < 0) then
 

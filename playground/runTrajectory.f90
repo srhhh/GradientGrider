@@ -1989,7 +1989,7 @@ subroutine runTrajectoryRewind1(filechannels,&
 
     populationbuffer2 = -1
     do i = 1, Nvar
-        previous_var_index(i) = int(vals(i)*divisor(i,j))
+        previous_var_index(i) = int(vals(i)*divisor(i,Norder_order(1)+1))
     end do
      
     do
@@ -4137,7 +4137,7 @@ subroutine readTrajectory(filechannel_input,filechannels,&
 
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
-    buffer1_size = 1 + var_overcrowd(1)
+    buffer1_size = 2 + Ninterpolation_max
     buffer2_size = 30
 
     call setAllocations()
@@ -4168,6 +4168,11 @@ subroutine readTrajectory(filechannel_input,filechannels,&
 
     !Always calculate the variables before accelearting
     call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+
+    populationbuffer2 = -1
+    do i = 1, Nvar
+        previous_var_index(i) = int(vals(i)*divisor(i,Norder_order(1)+1))
+    end do 
 
     !Start the main loop
     steps = 2
