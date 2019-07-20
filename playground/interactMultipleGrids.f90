@@ -3697,7 +3697,8 @@ if (Norder == Norder_order(1)) then
             single_index)
     population = populationbuffer2(single_index)
 else
-    population = buffer2_size
+    single_index = single_index_max + 1
+    population = -1
 end if
 
 if (population < 0) then
@@ -4704,28 +4705,28 @@ subroutine setAllocations()
         allocate(vals_hash(single_index_max,Nvar))
 
         allocate(populationbuffer2(&
-                    single_index_max),&
+                    single_index_max+1),&
                  valsbuffer2(Nvar,&
                     buffer2_size,&
-                    single_index_max),&
+                    single_index_max+1),&
                  coordsbuffer2(3,Natoms,&
                     buffer2_size,&
-                    single_index_max),&
+                    single_index_max+1),&
                  gradientbuffer2(3,Natoms,&
                     buffer2_size,&
-                    single_index_max))
+                    single_index_max+1))
 
         allocate(temppopulationbuffer2(&
-                    single_index_max),&
+                    single_index_max+1),&
                  tempvalsbuffer2(Nvar,&
                     buffer2_size,&
-                    single_index_max),&
+                    single_index_max+1),&
                  tempcoordsbuffer2(3,Natoms,&
                     buffer2_size,&
-                    single_index_max),&
+                    single_index_max+1),&
                  tempgradientbuffer2(3,Natoms,&
                     buffer2_size,&
-                    single_index_max))
+                    single_index_max+1))
     end if
 
     return
