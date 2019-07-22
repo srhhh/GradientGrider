@@ -681,21 +681,6 @@ do n_testtraj = initial_n_testtraj, Ntesttraj
                 filechannels(1:1+Ngrid_total),&
                 coords_initial,velocities_initial,&
                 coords_final,velocities_final)
-
-!       if (force_Permutations) then
-!           call runTrajectory_permute_cap(&
-!                   filechannels(1:1+Ngrid_total),&
-!                   coords_initial,velocities_initial,&
-!                   coords_final,velocities_final)
-!       else
-!           call runTrajectory_cap(&
-!                   filechannels(1:1+Ngrid_total),&
-!                   coords_initial,velocities_initial,&
-!                   coords_final,velocities_final)
-!       end if
-!   call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
-!                              coords_initial,velocities_initial,&
-!                              coords_final,velocities_final)
     end if
 
     call system_clock(c2)
@@ -1275,6 +1260,7 @@ use FUNCTIONS
 use VARIABLES
 use ANALYSIS
 use PHYSICS
+use SIMILARITY
 use analyzeScatteringAngleswithMultipleGrids
 use analyzeHeatMapswithMultipleGrids
 implicit none
@@ -1337,9 +1323,9 @@ reject_text = prefix_text(1:6)
 
 !Next, run the trajectory
 call system_clock(trajectory_t0)
-call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
-                               coords_initial,velocities_initial,&
-                               coords_final,velocities_final)
+call runTestTrajectory2(filechannels(1:1+Ngrid_total),&
+                        coords_initial,velocities_initial,&
+                        coords_final,velocities_final)
 call system_clock(trajectory_t1)
 checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
 
@@ -1459,7 +1445,7 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set format x'
 write(gnuplotchannel,*) 'set xlabel "Timesteps (Thousands)"'
 
-write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_rmsd,']'
+write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_SIs(1),']'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set ylabel "Timestep\nRMSD (A)"'
 write(gnuplotchannel,*) 'set ytics ("5e-1" .5, "5e-2" .05, "5e-3" .005,'//&
@@ -1480,9 +1466,9 @@ reject_text = prefix_text(1:6)
 
 !Next, run the trajectory
 call system_clock(trajectory_t0)
-call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
-                               coords_initial,velocities_initial,&
-                               coords_final,velocities_final)
+call runTestTrajectory2(filechannels(1:1+Ngrid_total),&
+                        coords_initial,velocities_initial,&
+                        coords_final,velocities_final)
 call system_clock(trajectory_t1)
 checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
 
@@ -1602,7 +1588,7 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set format x'
 write(gnuplotchannel,*) 'set xlabel "Timesteps (Thousands)"'
 
-write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_rmsd,']'
+write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_SIs(1),']'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set ylabel "Timestep\nRMSD (A)"'
 write(gnuplotchannel,*) 'set ytics ("5e-1" .5, "5e-2" .05, "5e-3" .005,'//&

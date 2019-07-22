@@ -92,13 +92,13 @@ testtrajRMSD_flag=.false.
 percentthreshold_flag=.true.
 testtrajSA_flag=.false.
 testtrajSAheatmap_flag=.false.
-#threshold_rmsd=.200100d0
-threshold_rmsd=.150000d0
-threshold_rmsd1=.150000d0
-threshold_rmsd2=.100000d0
-threshold_rmsd3=.100000d0
-threshold_rmsd4=.100000d0
-threshold_rmsd5=.050000d0
+Nsort=3
+outer_threshold=.250000d2
+outer_threshold1=.250000d2
+outer_threshold2=.100000d0
+outer_threshold3=.100000d0
+outer_threshold4=.100000d0
+outer_threshold5=.050000d0
 inner_threshold="0.00000d0"
 inner_threshold1="0.00000d0"
 inner_threshold2="0.00000d0"
@@ -121,12 +121,12 @@ grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=493
-Naccept_max=10
+Ntrajectories=010
+Naccept_max=05
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp005xxx
+exp1name=SI3sort_test1
 exp2name=exp101
 exp3name=exp312
 exp4name=exp013
@@ -144,11 +144,11 @@ initialbondfolder=exp051/
 #If we are using frames from a trajectory then list this
 #true and read from this file
 readtrajectory_flag=.true.
-readtrajectoryfile="readtrajectories_all.txt"
-readtrajectoryfolder="traj_all"
+readtrajectoryfile="readtrajectories_allPT.txt"
+readtrajectoryfolder="processed_traj"
 
-readtrajectoryfile1="readtrajectories005.txt"
-readtrajectoryfolder1="traj_005xxx"
+readtrajectoryfile1="readtrajectories_somePT.txt"
+readtrajectoryfolder1="some_processed_traj"
 readtrajectoryfile2="readtrajectories2.txt"
 readtrajectoryfolder2="traj2"
 readtrajectoryfile3="readtrajectories3.txt"
@@ -200,7 +200,7 @@ readtrajectoryfolder6="traj5"
 
 #The name of the new library (folder)
 #newGRID=HH_${scaling1_0}_${scaling2_0}_${overcrowd0}_${Ntraj_max}_1
-newGRID="HBrCO2_Jul02"
+newGRID="HBrCO2_Jul18"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
 newGRID_flag=0
@@ -208,7 +208,7 @@ newGRID_flag=0
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
 #Just set this to a very large number if no progress checks are wanted
-newGRID_check_min=1000
+newGRID_check_min=10000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
@@ -405,8 +405,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/comparison_flag = .*/comparison_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
-     s/inner_threshold = .*/inner_threshold = $inner_threshold/
+     s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold/
+     s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold/
+     s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
@@ -518,8 +519,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/Naccept_max = .*/Naccept_max = $Naccept_max/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = .false./
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd/
-     s/inner_threshold = .*/inner_threshold = $inner_threshold/
+     s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold/
+     s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold/
+     s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
      s/gather_interpolation_flag = .*/gather_interpolation_flag = $gather_interpolation_flag/
@@ -643,8 +645,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd1/
-     s/inner_threshold = .*/inner_threshold = $inner_threshold1/
+     s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold1/
+     s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold1/
+     s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio1/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
@@ -722,8 +725,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd2/
-     s/inner_threshold = .*/inner_threshold = $inner_threshold2/
+     s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold2/
+     s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold2/
+     s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio2/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
@@ -799,8 +803,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd3/
-     s/inner_threshold = .*/inner_threshold = $inner_threshold3/
+     s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold3/
+     s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold3/
+     s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio3/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
@@ -876,8 +881,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd4/
-     s/inner_threshold = .*/inner_threshold = $inner_threshold4/
+     s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold4/
+     s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold4/
+     s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio4/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
@@ -953,8 +959,9 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/Nthreads = [0-9]*/Nthreads = $Nthreads/
      s/testtrajRMSD_flag = .*/testtrajRMSD_flag = $testtrajRMSD_flag/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
-     s/threshold_rmsd = .*/threshold_rmsd = $threshold_rmsd5/
-     s/inner_threshold = .*/inner_threshold = $inner_threshold5/
+     s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold5/
+     s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold5/
+     s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio5/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/

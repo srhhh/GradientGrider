@@ -96,1254 +96,7 @@ character(gridpath_length+expfolder_length+5) :: gridpath5
 
 contains
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	SUBROUTINE
-!		addTrajectory
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	PURPOSE
-!		This subroutine simulates an MD collision by calculating the gradient
-!		at every step with classical mechanics and parameters in PHYSICS
-!
-!		Every frame is added to the current grid through interactSingleGrid
-!
-!		The initial and final velocity of the incoming H/H2 is output to
-!		gather scattering angle data
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	INPUT				KIND				DESCRIPTION
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	OUTPUT				KIND				DESCRIPTION
-!
-!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
-!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
-!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
-!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	IMPORTANT VARIABLES		KIND				DESCRIPTION
-!
-!		vals				REAL(DP),DIM(Nvar)		The variables associated with a frame
-!
-!		coords				REAL(DP),DIM(3,Natoms)		The coordinates defining a frame
-!		velocities			REAL(DP),DIM(3,Natoms)		The velocities of a frame
-!		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
-!
-!		Norder1				INTEGER				The number of times a frame enters an order1 cell
-!		steps				INTEGER				The number of timesteps advanced
-!		header_max_flag			LOGICAL				The flag indicating whether counter1 is full or not
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       FILES	                          FILETYPE			DESCRIPTION
-!
-!		gridpath0//trajectory		XYZ				Coordinates to view the trajectory over time;
-!										currently just for bug-testing (set to false)
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!subroutine addTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
-!	use VARIABLES
-!	use PHYSICS
-!	use PARAMETERS
-!	use interactSingleGrid
-!        implicit none
-!
-!	!Coordinates, Velocities, and Variables
-!	real(dp), dimension(3,Natoms) :: coords,gradient,velocities
-!	real(dp), dimension(Nvar) :: vals
-!	real(dp),dimension(3,Natoms),intent(out) :: coords_initial,velocities_initial
-!	real(dp),dimension(3,Natoms),intent(out) :: coords_final,velocities_final
-!	integer :: bond_index1, bond_index2
-!
-!	!Incremental Integer
-!	integer :: n
-!
-!        !Initialize the scene
-!        call InitialSetup3(coords,velocities)
-!	Norder1 = 0
-!
-!	coords_initial = coords
-!	velocities_initial = velocities
-!
-!	!Always calculate the variables before accelerating
-!	!because we can reuse these calculations
-!	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-!
-!        !Accelerate the velcocities for a half step (verlet)
-!        call Acceleration(vals,coords,gradient)
-!	call addState(vals,coords,gradient)
-!
-!	!Update the velocities
-!	velocities = velocities + 0.5d0 * gradient
-!
-!	!To randomize the periods of the bond, I let the scene go on
-!	!for a small period of time (need to standardize this later)
-!	do n = 1, Nbonds
-!		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-!			coords = coords + dt * velocities
-!			call Acceleration(vals,coords,gradient)
-!			velocities = velocities + gradient
-!		end do
-!
-!		!And then reset the bond
-!		coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-!		coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-!		velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-!		velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-!	end do
-!
-!	!Now we go into the mainloop
-!	!We have a hard cap of Nsteps timesteps
-!        do steps = 1, Nsteps
-!
-!		!Just for bug-testing
-!                if (.false.) then !(modulo(steps,50) == 0) then
-!                        open(filechannel1,file=gridpath0//trajectoryfile,position="append")
-!                        write(filechannel1,'(I6)') Natoms
-!                        write(filechannel1,*) ""
-!			do n = 1, Natoms
-!                        write(filechannel1,'(A1,3F10.6)') 'H',&
-!                                coords(1,n), coords(2,n), coords(3,n)
-!			end do
-!			close(filechannel1)
-!                end if
-! 
-!                !Check every 500 steps if we are out-of-bounds
-!                if (modulo(steps,500) == 1) then      
-! 			if ((vals(1)>max_var1) .or. (vals(2)>max_var2)) then
-! 				exit
-! 			end if
-!                endif
-!
-!                !Update the coordinates with the velocities
-!		coords = coords + dt * velocities
-!
-!		!Always calculate the variables before adding a frame or accelerating
-!		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-!
-!                !Accelerate and update gradients
-!                call Acceleration(vals,coords,gradient)
-!
-!		!Add the frame to the grid
-!        	call addState(vals,coords,gradient)
-!
-!		!If there are too many subdivisions and counter0 will get out-of-bounds
-!		!we would have to call this to exit
-!                if (header_max_flag) exit
-!
-!		!Update the velocities
-!		velocities = velocities + gradient
-!        end do
-!
-!	coords_final = coords
-!	velocities_final = velocities
-!
-!end subroutine addTrajectory
-!
 
-
-subroutine runTrajectory1(filechannels,&
-                          coords_initial,velocities_initial,&
-                          coords_final,velocities_final)
-    use PARAMETERS
-    use PHYSICS
-    use VARIABLES
-    use ANALYSIS
-    use interactMultipleGrids
-    use analyzeRMSDThresholdwithMultipleGrids
-    implicit none
-
-    !Coordinates, Velocities, and Variables
-    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
-    real(dp), dimension(3,Natoms) :: gradient,gradient_labelled
-    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
-    real(dp), dimension(Nvar) :: vals
-    real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
-    real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
-    integer,dimension(1+Ngrid_max) :: filechannels
-
-    !Various other variables
-    real(dp) :: error1,error2
-    real(dp) :: min_rmsd
-    integer :: number_of_frames,order,neighbor_check
-
-    !Incremental Integer
-    integer :: n
-
-    !Initialize the scene
-    call InitialSetup3(coords,velocities)
-    Norder1 = 0
-    Norder_total = 0
-
-    coords_initial = coords
-    velocities_initial = velocities
-
-    !Always calculate the variables before accelerating
-    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-    !Accelerate the velcocities for a half step (verlet)
-    call Acceleration(vals,coords,gradient)
-
-    !Update the velocities
-    velocities = velocities + 0.5d0 * gradient
-
-    !To randomize the periods of the bond, I let the scene go on
-    !for a small period of time (need to standardize this later)
-    do n = 1, Nbonds
-        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-            coords = coords + dt * velocities
-            call Acceleration(vals,coords,gradient)
-            velocities = velocities + gradient
-        end do
-
-        !And then reset the bond
-        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-    end do
-
-    !We keep this file open for the whole trajectory (instead of
-    !continually opening and closing) to keep data of each frame
-    if (gather_interpolation_flag) open(filechannel3,file=&
-            gridpath5//interpolationfile,position="append")
-
-    !Allocate all buffers; initialize the buffer size to be
-    !the maximum number of frames expected to be seen
-    buffer1_size = 1 + var_overcrowd(1)
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             approximation_index(buffer1_size))
-
-    allocate(Ntrajbuffer1(buffer1_size))
-
-    !These buffers need not be allocated if interpolation
-    !is not occuring
-    allocate(acceptable_frame_mask(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    do steps = 1, Nsteps
-
-        !Check every 500 steps to see if we are out-of-bounds
-        if (modulo(steps,500) == 1) then
-            if (any(vals > var_maxvar)) exit
-        endif
-
-        !Upate the coordinates with the velocities
-        coords = coords + dt * velocities
-
-        !Always calculate the variables before checking a frame or accelerating
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-        !We need to input the frame using the labeling scheme
-        do n = 1, Natoms
-            coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-        end do
-
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
- 
-        !Check the library to get an
-        !approximated gradient
-        call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd,&
-                 filechannels,number_of_frames,order,neighbor_check)
-
-        !Accept worst has not found an acceptable frame
-        !if min_rmsd is zero
-        !(deprecated)
-        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-            call Acceleration(vals,coords,gradient)
-        
-        !If we are gather interpolation data...
-        else if (gather_interpolation_flag) then
- 
-            !Save the approx_gradient with the
-            !correct labelling
-            do n = 1, Natoms
-                 gradient(:,BOND_LABELLING_DATA(n)) = &
-                     approx_gradient(:,n)
-            end do
-            approx_gradient = gradient
- 
-            !Save the candidate_gradient with the
-            !correct labelling
-            do n = 1, Natoms
-                 gradient(:,BOND_LABELLING_DATA(n)) = &
-                     candidate_gradient(:,n)
-            end do
-            candidate_gradient = gradient
- 
-            !Calculate the true gradient
-            call Acceleration(vals,coords,gradient)
- 
-            !If a frame was found, record data on it
-            if (Ninterpolation > 0) then
-                error1 = sqrt(sum((gradient - &
-                        candidate_gradient)**2)/Natoms)
-                error2 = sqrt(sum((gradient - &
-                        approx_gradient)**2)/Natoms)
- 
-                write(filechannel3,FMT=*) vals(1),vals(2),&
-                        Ninterpolation,largest_weighted_rmsd2,&
-                        largest_weighted_rmsd,candidate_rmsd,&
-                        min_rmsd,error1,error2
-            end if
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                do n = 1, Natoms
-                     gradient_labelled(:,n) = &
-                         gradient(:,BOND_LABELLING_DATA(n))
-                     coords_labelled(:,n) = &
-                         coords(:,BOND_LABELLING_DATA(n))
-                end do
-                call addState_new(vals,&
-                        coords_labelled,&
-                        gradient_labelled)
-            end if
- 
-            !If the approximated frame is good enough
-            !and we are not rejecting it, then use it
-            if ((min_rmsd .ge. threshold_RMSD) &
-                    .or. (reject_flag)) then
-            else
-                    gradient = approx_gradient
-            end if
- 
-        !If no interpolation data is being gathered, then the
-        !true gradient is not needed
- 
-        !If the frame is not good enough or we are rejecting
-        !frames, calculate the true gradient
-        else if ((min_rmsd .ge. threshold_RMSD) &
-                .or. (reject_flag)) then
-            call Acceleration(vals,coords,gradient)
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                do n = 1, Natoms
-                     gradient_labelled(:,n) = &
-                         gradient(:,BOND_LABELLING_DATA(n))
-                     coords_labelled(:,n) = &
-                         coords(:,BOND_LABELLING_DATA(n))
-                end do
-                call addState_new(vals,&
-                        coords_labelled,&
-                        gradient_labelled)
-            end if
- 
-        !If the approximated frame is good enough then
-        !we can use it (after relabelling)!
-        else
-            do n = 1, Natoms
-                 gradient(:,BOND_LABELLING_DATA(n)) = &
-                     approx_gradient(:,n)
-            end do
-        end if
-
-        !Update the velocities
-        velocities = velocities + gradient
-    end do
-
-    if (gather_interpolation_flag) close(filechannel3)
-
-    !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            approximation_index)
-
-    deallocate(Ntrajbuffer1)
-
-    deallocate(acceptable_frame_mask,inputCLS)
-
-    !Output the final coordinates and velocities
-    coords_final = coords
-    velocities_final = velocities
-
-end subroutine runTrajectory1
-
-subroutine runTrajectory2(filechannels,&
-                          coords_initial,velocities_initial,&
-                          coords_final,velocities_final)
-    use PARAMETERS
-    use PHYSICS
-    use VARIABLES
-    use ANALYSIS
-    use interactMultipleGrids
-    use analyzeRMSDThresholdwithMultipleGrids
-    implicit none
-
-    !Coordinates, Velocities, and Variables
-    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
-    real(dp), dimension(3,Natoms) :: gradient,gradient_labelled
-    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
-    real(dp), dimension(Nvar) :: vals
-    real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
-    real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
-    integer,dimension(1+Ngrid_max) :: filechannels
-
-    !Various other variables
-    real(dp) :: error1,error2
-    real(dp) :: min_rmsd
-    integer :: number_of_frames,order,neighbor_check
-
-    !Incremental Integer
-    integer :: i,n
-
-    !Initialize the scene
-    call InitialSetup3(coords,velocities)
-    Norder1 = 0
-    Norder_total = 0
-
-    coords_initial = coords
-    velocities_initial = velocities
-
-    !Always calculate the variables before accelerating
-    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-    !Accelerate the velcocities for a half step (verlet)
-    call Acceleration(vals,coords,gradient)
-
-    !Update the velocities
-    velocities = velocities + 0.5d0 * gradient
-
-    !To randomize the periods of the bond, I let the scene go on
-    !for a small period of time (need to standardize this later)
-    do n = 1, Nbonds
-        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-            coords = coords + dt * velocities
-            call Acceleration(vals,coords,gradient)
-            velocities = velocities + gradient
-        end do
-
-        !And then reset the bond
-        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-    end do
-
-    !We keep this file open for the whole trajectory (instead of
-    !continually opening and closing) to keep data of each frame
-    if (gather_interpolation_flag) open(filechannel3,file=&
-            gridpath5//interpolationfile,position="append")
-
-    !Allocate all buffers; initialize the buffer size to be
-    !the maximum number of frames expected to be seen
-    buffer1_size = 2 + Ninterpolation_max
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             approximation_index(buffer1_size))
-
-    allocate(Ntrajbuffer1(buffer1_size))
-
-    !These buffers need not be allocated if interpolation
-    !is not occuring
-    allocate(acceptable_frame_mask(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    do steps = 1, Nsteps
-
-        !Check every 500 steps to see if we are out-of-bounds
-        if (modulo(steps,500) == 1) then
-            if (any(vals > var_maxvar)) exit
-        endif
-
-        !Upate the coordinates with the velocities
-        coords = coords + dt * velocities
-
-        !Always calculate the variables before checking a frame or accelerating
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
-
-        RMSDbuffer1 = min_rmsd
- 
-        !Check the library to get an
-        !approximated gradient
-        call checkState_new_cap(vals,coords,approx_gradient,min_rmsd,&
-                 filechannels,number_of_frames,order,neighbor_check)
-
-        !Accept worst has not found an acceptable frame
-        !if min_rmsd is zero
-        !(deprecated)
-        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-            call Acceleration(vals,coords,gradient)
-        
-        !If we are gather interpolation data...
-        else if (gather_interpolation_flag) then
- 
-            !Calculate the true gradient
-            call Acceleration(vals,coords,gradient)
- 
-            !If a frame was found, record data on it
-            if (Ninterpolation > 0) then
-                error1 = sqrt(sum((gradient - &
-                        candidate_gradient)**2)/Natoms)
-                error2 = sqrt(sum((gradient - &
-                        approx_gradient)**2)/Natoms)
- 
-                write(filechannel3,FMT=*) vals(1),vals(2),&
-                        Ninterpolation,largest_weighted_rmsd2,&
-                        largest_weighted_rmsd,candidate_rmsd,&
-                        min_rmsd,error1,error2
-            end if
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                do i = 1, Nindistinguishables
-                    BOND_LABELLING_DATA = &
-                        INDISTINGUISHABLES(i,:)
-                    do n = 1, Natoms
-                         gradient_labelled(:,n) = &
-                             gradient(:,BOND_LABELLING_DATA(n))
-                         coords_labelled(:,n) = &
-                             coords(:,BOND_LABELLING_DATA(n))
-                    end do
-                    call addState_new(vals,&
-                            coords_labelled,&
-                            gradient_labelled)
-                end do
-            end if
- 
-            !If the approximated frame is good enough
-            !and we are not rejecting it, then use it
-            if ((min_rmsd .ge. threshold_RMSD) &
-                    .or. (reject_flag)) then
-            else
-                    gradient = approx_gradient
-            end if
- 
-        !If no interpolation data is being gathered, then the
-        !true gradient is not needed
- 
-        !If the frame is not good enough or we are rejecting
-        !frames, calculate the true gradient
-        else if ((min_rmsd .ge. threshold_RMSD) &
-                .or. (reject_flag)) then
-            call Acceleration(vals,coords,gradient)
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                do i = 1, Nindistinguishables
-                    BOND_LABELLING_DATA = &
-                        INDISTINGUISHABLES(i,:)
-                    do n = 1, Natoms
-                         gradient_labelled(:,n) = &
-                             gradient(:,BOND_LABELLING_DATA(n))
-                         coords_labelled(:,n) = &
-                             coords(:,BOND_LABELLING_DATA(n))
-                    end do
-                    call addState_new(vals,&
-                            coords_labelled,&
-                            gradient_labelled)
-                end do
-            end if
- 
-        !If the approximated frame is good enough then
-        !we can use it (after relabelling)!
-        else
-            gradient = approx_gradient
-        end if
-
-        !Update the velocities
-        velocities = velocities + gradient
-    end do
-
-    if (gather_interpolation_flag) close(filechannel3)
-
-    !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            approximation_index)
-
-    deallocate(Ntrajbuffer1)
-
-    deallocate(acceptable_frame_mask,inputCLS)
-
-    !Output the final coordinates and velocities
-    coords_final = coords
-    velocities_final = velocities
-
-end subroutine runTrajectory2
-
-subroutine runTrajectory3(filechannels,&
-                          coords_initial,velocities_initial,&
-                          coords_final,velocities_final)
-    use PARAMETERS
-    use ls_rmsd_original
-    use PHYSICS
-    use VARIABLES
-    use ANALYSIS
-    use interactMultipleGrids
-    use analyzeRMSDThresholdwithMultipleGrids
-    implicit none
-
-    !Coordinates, Velocities, and Variables
-    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
-    real(dp), dimension(3,Natoms) :: gradient,gradient_labelled
-    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
-    real(dp), dimension(Nvar) :: vals
-    real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
-    real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
-    integer,dimension(1+Ngrid_max) :: filechannels
-
-    !Various other variables
-    real(dp) :: error1,error2
-    real(dp),dimension(3) :: x_center, y_center
-    real(dp) :: min_rmsd
-    integer :: number_of_frames,order,neighbor_check
-
-    real(dp) :: RMSD_prior
-    real(dp) :: max_RMSDdelta, max_deltaRMSD
-    real(dp),dimension(3,Natoms) :: coords_prior
-
-    real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
-    integer,allocatable :: libNtraj(:)
-
-    !Incremental Integer
-    integer :: i,n,m
-
-    max_RMSDdelta = 0.0d0
-    max_deltaRMSD = 0.0d0
-
-    !Initialize the scene
-    call InitialSetup3(coords,velocities)
-    Norder1 = 0
-    Norder_total = 0
-
-    coords_initial = coords
-    velocities_initial = velocities
-
-    !Always calculate the variables before accelerating
-    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-    !Accelerate the velcocities for a half step (verlet)
-    call Acceleration(vals,coords,gradient)
-
-    !Update the velocities
-    velocities = velocities + 0.5d0 * gradient
-
-    !To randomize the periods of the bond, I let the scene go on
-    !for a small period of time (need to standardize this later)
-    do n = 1, Nbonds
-        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-            coords = coords + dt * velocities
-            call Acceleration(vals,coords,gradient)
-            velocities = velocities + gradient
-        end do
-
-        !And then reset the bond
-        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-    end do
-
-    !We keep this file open for the whole trajectory (instead of
-    !continually opening and closing) to keep data of each frame
-    if (gather_interpolation_flag) open(filechannel3,file=&
-            gridpath5//interpolationfile,position="append")
-
-    !Allocate all buffers; initialize the buffer size to be
-    !the maximum number of frames expected to be seen
-    buffer1_size = 2 + Ninterpolation_max
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    RMSDbuffer1 = default_rmsd
-     
-!   allocate(acceptable_frame_mask(buffer1_size),&
-!            approximation_index(buffer1_size))
-
-!   allocate(Ntrajbuffer1(buffer1_size))
-
-    do steps = 1, Nsteps
-
-        !Check every 500 steps to see if we are out-of-bounds
-        if (modulo(steps,500) == 1) then
-            if (any(vals > var_maxvar)) exit
-        endif
-
-        !Upate the coordinates with the velocities
-        coords = coords + dt * velocities
-
-        !Always calculate the variables before checking a frame or accelerating
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
-
-        RMSDbuffer1 = min_rmsd
- 
-        !Check the library to get an
-        !approximated gradient
-        call checkState_new_permute_cap(vals,coords,approx_gradient,min_rmsd,&
-                 filechannels,number_of_frames,order,neighbor_check)
-
-!       error2 = 1.0d9
-!       do i = 1, Nindistinguishables
-
-!           BOND_LABELLING_DATA = INDISTINGUISHABLES(i,:)
-    
-!           !We need to input the frame using the labeling scheme
-!           do n = 1, Natoms
-!               coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-!           end do
-    
-!           call rmsd_dp(Natoms,coords_labelled,&
-!                   coords_initial,1,Ubuffer1(:,:,1),&
-!                   x_center,y_center,error1)
-
-!           if (error1 < error2) error2 = error1
-!       end do
-
-!       print *, ""
-!       print *, steps
-!       print *, vals
-!       print *, error2
-
-!       if (steps > 1) then
-!           call rmsd_dp(Natoms,coords,&
-!                   coords_initial,1,Ubuffer1(:,:,1),&
-!                   x_center,y_center,error1)
-
-!           if (abs(error1 - RMSD_prior) > max_deltaRMSD) &
-!                   max_deltaRMSD = abs(error1 - RMSD_prior)
-!           RMSD_prior = error1
-
-!           call rmsd_dp(Natoms,coords,&
-!                   coords_prior,1,Ubuffer1(:,:,1),&
-!                   x_center,y_center,error1)
-
-!           if (error1 > max_RMSDdelta) &
-!                   max_RMSDdelta = error1
-!           coords_prior = coords
-!       else
-!           call rmsd_dp(Natoms,coords,&
-!                   coords_initial,1,Ubuffer1(:,:,1),&
-!                   x_center,y_center,error1)
-
-!           RMSD_prior = error1
-!           coords_prior = coords
-!       end if
-
-        !Accept worst has not found an acceptable frame
-        !if min_rmsd is zero
-        !(deprecated)
-        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-            call Acceleration(vals,coords,gradient)
-        
-        !If we are gather interpolation data...
-        else if (gather_interpolation_flag) then
- 
-            !Calculate the true gradient
-            call Acceleration(vals,coords,gradient)
-
-            !If a frame was found, record data on it
-            if (Ninterpolation > 0) then
-                error1 = sqrt(sum((gradient - &
-                        candidate_gradient)**2)/Natoms)
-                error2 = sqrt(sum((gradient - &
-                        approx_gradient)**2)/Natoms)
- 
-                write(filechannel3,FMT=*) vals(1),vals(2),&
-                        Ninterpolation,largest_weighted_rmsd2,&
-                        largest_weighted_rmsd,candidate_rmsd,&
-                        min_rmsd,error1,error2
-
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!              if ((Ninterpolation > 10).and.(error1 < error2)) then
-!              if ((Ninterpolation > 10)) then
-!                  allocate(libcoords(Ninterpolation,3,Natoms),&
-!                           libgradients(Ninterpolation,3,Natoms),&
-!                           libNtraj(Ninterpolation))
-!                  m = 0
-!                  do n = 1, Ninterpolation
-!                      do
-!                      m = m + 1
-!                      if (acceptable_frame_mask(m)) then
-!                          libcoords(n,:,:) =&
-!                                  coordsbuffer1(:,:,m)
-!                          libgradients(n,:,:) =&
-!                                  gradientbuffer1(:,:,m)
-!                         !libNtraj(n) =&
-!                         !        Ntrajbuffer1(m)
-!                          exit
-!                      else
-!                      end if
-!                      end do
-!                  end do
-
-!                  libNtraj = 0
-
-!                  call errorCheck5(filechannels,&
-!                          coords,gradient,&
-!                          Ninterpolation,&
-!                          libcoords,libgradients,&
-!                          libNtraj)
-
-!                  deallocate(libcoords,libgradients,libNtraj)
-!              end if
-
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-            end if
-
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                call addState_new(vals,&
-                        coords,&
-                        gradient)
-            end if
- 
-            !If the approximated frame is good enough
-            !and we are not rejecting it, then use it
-            if ((min_rmsd .ge. threshold_RMSD) &
-                    .or. (reject_flag)) then
-            else
-                    gradient = approx_gradient
-            end if
- 
-        !If no interpolation data is being gathered, then the
-        !true gradient is not needed
- 
-        !If the frame is not good enough or we are rejecting
-        !frames, calculate the true gradient
-        else if ((min_rmsd .ge. threshold_RMSD) &
-                .or. (reject_flag)) then
-            call Acceleration(vals,coords,gradient)
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                call addState_new(vals,&
-                        coords,&
-                        gradient)
-            end if
- 
-        !If the approximated frame is good enough then
-        !we can use it (after relabelling)!
-        else
-            gradient = approx_gradient
-        end if
-
-        !Update the velocities
-        velocities = velocities + gradient
-    end do
-
-    if (gather_interpolation_flag) close(filechannel3)
-
-    !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            inputCLS)
-
-!   deallocate(Ntrajbuffer1)
-
-!   deallocate(acceptable_frame_mask,approximation_index)
-
-    !Output the final coordinates and velocities
-    coords_final = coords
-    velocities_final = velocities
-
-!   print *, "max_RMSDdelta"
-!   print *, max_RMSDdelta
-!   print *, "max_deltaRMSD"
-!   print *, max_deltaRMSD
-
-end subroutine runTrajectory3
-
-subroutine runTestTrajectory(filechannels,&
-                             coords_initial,velocities_initial,&
-                             coords_final,velocities_final)
-    use PARAMETERS
-    use ls_rmsd_original
-    use PHYSICS
-    use VARIABLES
-    use ANALYSIS
-    use interactMultipleGrids
-    use analyzeRMSDThresholdwithMultipleGrids
-    implicit none
-
-    !Coordinates, Velocities, and Variables
-    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
-    real(dp), dimension(3,Natoms) :: gradient,gradient_labelled
-    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
-    real(dp), dimension(Nvar) :: vals
-    real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
-    real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
-    integer,dimension(1+Ngrid_max) :: filechannels
-
-    !Various other variables
-    real(dp) :: error1,error2
-    real(dp),dimension(3) :: x_center, y_center
-    real(dp),dimension(3,3) ::  U_prior
-    real(dp) :: min_rmsd,min_rmsd_prime
-    integer :: number_of_frames,order,neighbor_check
-    real(dp) :: U, KE
-
-    real(dp) :: RMSD_prior, error_prior
-    real(dp) :: max_RMSDdelta, max_deltaRMSD
-    real(dp),dimension(3,Natoms) :: coords_prior, gradient_prior
-    real(dp) :: E, E_prior
-
-    real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
-    integer,allocatable :: libNtraj(:)
-
-    integer,dimension(Nalpha) :: alpha_flagging
-
-    !Incremental Integer
-    integer :: i,j,n,m
-
-    !Initialize the scene
-    call InitialSetup3(coords,velocities)
-    Norder1 = 0
-    Norder_total = 0
-
-    coords_initial = coords
-    velocities_initial = velocities
-
-    !Always calculate the variables before accelerating
-    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-    !Accelerate the velcocities for a half step (verlet)
-    call Acceleration(vals,coords,gradient)
-
-    !Update the velocities
-    velocities = velocities + 0.5d0 * gradient
-
-    !To randomize the periods of the bond, I let the scene go on
-    !for a small period of time (need to standardize this later)
-    do n = 1, Nbonds
-        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-            coords = coords + dt * velocities
-            call Acceleration(vals,coords,gradient)
-            velocities = velocities + gradient
-        end do
-
-        !And then reset the bond
-        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-    end do
-
-    !We keep this file open for the whole trajectory (instead of
-    !continually opening and closing) to keep data of each frame
-    if (gather_interpolation_flag) then
-        open(filechannel2,file=&
-            gridpath5//checkstatefile,position="append")
-        open(filechannel3,file=&
-            gridpath5//interpolationfile,position="append")
-!       open(filechannel2,file=&
-!           gridpath5//checkstatefile)
-!       open(filechannel3,file=&
-!           gridpath5//interpolationfile)
-        open(6666,file=&
-            gridpath5//alphafile,position="append")
-    else
-        open(filechannel2,file=gridpath5//checkstatefile)
-    end if
-
-    !Allocate all buffers; initialize the buffer size to be
-    !the maximum number of frames expected to be seen
-    buffer1_size = 2 + Ninterpolation_max
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    RMSDbuffer1 = default_rmsd
-     
-    do steps = 1, Nsteps
-
-        !Check every 500 steps to see if we are out-of-bounds
-        if (modulo(steps,500) == 1) then
-            if (any(vals > var_maxvar)) exit
-        endif
-
-        !Upate the coordinates with the velocities
-        coords = coords + dt * velocities
-
-        !Always calculate the variables before checking a frame or accelerating
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
-        
-        order = 0
-
-        RMSDbuffer1 = min_rmsd
-
-        subcellsearch_max = subcellsearch_max1
- 
-        !Check the library to get an
-        !approximated gradient
-        call checkState_new_cap(vals,coords,approx_gradient,min_rmsd,&
-                 filechannels,number_of_frames,m,neighbor_check)
-        order = order + m
-
-       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!      if ((Ninterpolation > 10)) then
-!          allocate(libcoords(Ninterpolation,3,Natoms),&
-!                   libgradients(Ninterpolation,3,Natoms))
-!          do n = 1, Ninterpolation
-!              libcoords(n,:,:) =&
-!                      coordsbuffer1(:,:,n)
-!              libgradients(n,:,:) =&
-!                      gradientbuffer1(:,:,n)
-!          end do
-
-!          call errorCheck8(filechannels,&
-!                  coords,gradient,&
-!                  Ninterpolation,&
-!                  libcoords,libgradients)
-
-!          deallocate(libcoords,libgradients)
-!      end if
-
-       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        min_rmsd = candidate_rmsd
-
-        !Set a separate default value
-        if (accept_worst) then
-            min_rmsd_prime = 0.0d0
-        else
-            min_rmsd_prime = default_rmsd
-        end if
-
-        RMSDbuffer1 = min_rmsd_prime
-    
-        !The second search uses interpolation as it
-        !usually is a wider search
-        subcellsearch_max = subcellsearch_max2
-
-        call checkState_new_permute_cap(vals,coords,&
-                approx_gradient_prime,min_rmsd_prime,&
-                filechannels,number_of_frames,m,neighbor_check)
-        order = order + m
-
-!       !For the B -> B' test
-!       if (min_rmsd > threshold_rmsd) Ninterpolation = 0
-
-        call getEnergies(Natoms,coords,velocities,U,KE)
-        E = U + KE
-    
-        !Finally write to the data file all the important data values
-        write(filechannel2,FMT=*) number_of_frames,order,neighbor_check,steps,&
-                                  min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
-
-        !The better frame is usually found with second search
-        !so this will be used for further data handling
-        min_rmsd = min_rmsd_prime
-        approx_gradient = approx_gradient_prime
-
-
-
-
-        !Accept worst has not found an acceptable frame
-        !if min_rmsd is zero
-        !(deprecated)
-        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-            call Acceleration(vals,coords,gradient)
-        
-        !If we are gather interpolation data...
-        else if (gather_interpolation_flag) then
- 
-            !Calculate the true gradient
-            call Acceleration(vals,coords,gradient)
-
-!           !!!!!!!!!!!!!
-!           ! TEST START
-!           !!!!!!!!!!!!!
-
-!           if (steps > 1) then
-!               RMSD_prior = sqrt(sum((coords-coords_prior)**2)/Natoms)
-!               error_prior = sqrt(sum((gradient-gradient_prior)**2)/Natoms)
-
-!               print *, ""
-!               print *, steps
-!               print *, RMSD_prior
-!               print *, error_prior
-!           end if
-!           coords_prior = coords
-!           gradient_prior = gradient
-
-!           !!!!!!!!!!!!!
-!           ! TEST END
-!           !!!!!!!!!!!!!
-
-            !If a frame was found, record data on it
-            if (Ninterpolation > 0) then
-                error1 = sqrt(sum((gradient - &
-                        candidate_gradient)**2)/Natoms)
-                error2 = sqrt(sum((gradient - &
-                        approx_gradient)**2)/Natoms)
- 
-                if ((steps > 1).and.(abs(E-E_prior) > E_threshold)) then
-                    allocate(libcoords(Ninterpolation,3,Natoms),&
-                             libgradients(Ninterpolation,3,Natoms))
-
-                    do n = 1, Ninterpolation
-                        libcoords(n,:,:) =&
-                                coordsbuffer1(:,:,n)
-                        libgradients(n,:,:) =&
-                                gradientbuffer1(:,:,n)
-                    end do
-
-                    call errorCheck8(filechannels,&
-                            coords,gradient,&
-                            Ninterpolation,&
-                            libcoords,libgradients,&
-                            alpha_flagging)
-
-                    deallocate(libcoords,libgradients)
-
-!                   write(6666,FMT=*) alpha_flagging
-                end if
- 
-                write(filechannel3,FMT=*) vals(1),vals(2),&
-                        Ninterpolation,largest_weighted_rmsd2,&
-                        largest_weighted_rmsd,candidate_rmsd,&
-                        min_rmsd,error1,error2
-            end if
-
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                call addState_new(vals,&
-                        coords,&
-                        gradient)
-            end if
- 
-            !If the approximated frame is good enough
-            !and we are not rejecting it, then use it
-            if ((min_rmsd .ge. threshold_RMSD) &
-                    .or. (reject_flag)) then
-            else
-                    gradient = approx_gradient
-            end if
- 
-        !If no interpolation data is being gathered, then the
-        !true gradient is not needed
- 
-        !If the frame is not good enough or we are rejecting
-        !frames, calculate the true gradient
-        else if ((min_rmsd .ge. threshold_RMSD) &
-                .or. (reject_flag)) then
-            call Acceleration(vals,coords,gradient)
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                call addState_new(vals,&
-                        coords,&
-                        gradient)
-            end if
- 
-        !If the approximated frame is good enough then
-        !we can use it (after relabelling)!
-        else
-            gradient = approx_gradient
-        end if
-
-!       !!!!!!!!!!!!!
-!       ! TEST START
-!       !!!!!!!!!!!!!
-
-!       if ((reject_flag).and.(modulo(steps,2)==0)) then
-!           call rmsd_dp(Natoms,coords,coords_prior,&
-!                   1,U_prior,x_center,y_center,RMSD_prior)
-!           gradient = matmul(U_prior,gradient_prior)
-!!          gradient = gradient_prior
-!       else
-!           coords_prior = coords
-!           gradient_prior = gradient
-!       end if
-
-!       !!!!!!!!!!!!!
-!       ! TEST END
-!       !!!!!!!!!!!!!
-
-        !Update the velocities
-        velocities = velocities + gradient
-    end do
-
-    close(filechannel2)
-
-    if (gather_interpolation_flag) then
-        close(filechannel3)
-        close(6666)
-    end if
-
-    !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            inputCLS)
-
-    !Output the final coordinates and velocities
-    coords_final = coords
-    velocities_final = velocities
-
-end subroutine runTestTrajectory
 
 subroutine runTestTrajectory2(filechannels,&
                               coords_initial,velocities_initial,&
@@ -1353,6 +106,7 @@ subroutine runTestTrajectory2(filechannels,&
     use PHYSICS
     use VARIABLES
     use ANALYSIS
+    use SIMILARITY
     use interactMultipleGrids
     use analyzeRMSDThresholdwithMultipleGrids
     implicit none
@@ -1394,7 +148,6 @@ subroutine runTestTrajectory2(filechannels,&
     call InitialSetup3(coords,velocities)
     Norder1 = 0
     Norder_total = 0
-    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
 
     coords_initial = coords
     velocities_initial = velocities
@@ -1440,17 +193,9 @@ subroutine runTestTrajectory2(filechannels,&
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
     buffer1_size = 2 + Ninterpolation_max
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    allocate(CMdiffbuffer1(buffer1_size))
-    allocate(Ntrajbuffer1(buffer1_size))
-
-    RMSDbuffer1 = default_rmsd
+    buffer2_size = 30
+    call setAllocations()
+    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
 
     steps = 1
     E_baseline = 0.0d0
@@ -1464,12 +209,12 @@ subroutine runTestTrajectory2(filechannels,&
 
         !Finally write to the data file all the important data values
         write(filechannel2,FMT=*) 0,0,0,steps,&
-                                  default_rmsd,default_rmsd,&
+                                  default_SIs(1),default_SIs(1),&
                                   vals(1),vals(2),U,KE
 
         do i = 1, Ngrid_total
             write(filechannels(1+i),FMT=FMT6)&
-                default_rmsd
+                default_SIs(Nsort)
         end do
 
         velocities = velocities + gradient
@@ -1500,29 +245,13 @@ subroutine runTestTrajectory2(filechannels,&
         !Always calculate the variables before checking a frame or accelerating
         call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
-!       if (Nalpha_tries > 1) then
-!               print *, "step", steps
-!               print *, "Naccept", Naccept
-!               print *, vals
-!       end if
-
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
-        
         order = 0
-
-        RMSDbuffer1 = min_rmsd
 
         subcellsearch_max = subcellsearch_max1
  
         !Check the library to get an
         !approximated gradient
-        call checkState_new_cap(vals,coords,approx_gradient,min_rmsd,&
+        call checkState_PCM(vals,coords,approx_gradient,min_rmsd,&
                  filechannels,number_of_frames,m,neighbor_check)
         order = order + m
 
@@ -1552,20 +281,11 @@ subroutine runTestTrajectory2(filechannels,&
 
         min_rmsd = candidate_rmsd
 
-        !Set a separate default value
-        if (accept_worst) then
-            min_rmsd_prime = 0.0d0
-        else
-            min_rmsd_prime = default_rmsd
-        end if
-
-        RMSDbuffer1 = min_rmsd_prime
-    
         !The second search uses interpolation as it
         !usually is a wider search
         subcellsearch_max = subcellsearch_max2
 
-        call checkState_new_permute_cap(vals,coords,&
+        call checkState_PCM(vals,coords,&
                 approx_gradient_prime,min_rmsd_prime,&
                 filechannels,number_of_frames,m,neighbor_check)
         order = order + m
@@ -1573,119 +293,89 @@ subroutine runTestTrajectory2(filechannels,&
 !       !For the B -> B' test
 !       if (min_rmsd > threshold_rmsd) Ninterpolation = 0
     
-            !If the approximated frame is good enough
-            !and we are not rejecting it, then use it
-            if (((min_rmsd_prime .ge. threshold_RMSD) &
-                    .or. (reject_flag)).and.&
-                 (Naccept == 0)) then
+        !If the approximated frame is good enough
+        !and we are not rejecting it, then use it
+        if (((min_rmsd_prime .ge. outer_threshold_SI) &
+                .or. (reject_flag)).and.&
+             (Naccept == 0)) then
 
-                call Acceleration(vals,coords,gradient)
+            call Acceleration(vals,coords,gradient)
 
-                do i = 1, Ngrid_total
-                    write(filechannels(1+i),FMT=FMT6)&
-                        trajRMSDbuffer(i,1)
-                end do
+            do i = 1, Ngrid_total
+                write(filechannels(1+i),FMT=FMT6)&
+                    trajRMSDbuffer(i,1)
+            end do
 
-!               coords_prior = coords
-!               velocities_prior = velocities
-!               E_prior = E
-!   
-!               !If we are adding to a grid, then relabel
-!               !the coordinates and gradients, and do so
-!               if (grid_addition > 0) then
-!                   call addState_new(vals,&
-!                           coords,&
-!                           gradient)
-!               end if
+        !If the approximated frame is good enough
+        !and we are not rejecting it, then use it
+        else if ((min_rmsd_prime .ge. outer_threshold_SI) &
+                .or. (reject_flag).or.&
+                 (Naccept == Naccept_max)) then
 
-!               if ((any(vals > var_maxvar)).or.&
-!                   (steps > Nsteps)) exit
- 
-            !If the approximated frame is good enough
-            !and we are not rejecting it, then use it
-            else if ((min_rmsd_prime .ge. threshold_RMSD) &
-                    .or. (reject_flag).or.&
-                     (Naccept == Naccept_max)) then
+            call getEnergies(Natoms,coords,velocities,U,KE)
+            E = U + KE
 
-                call getEnergies(Natoms,coords,velocities,U,KE)
-                E = U + KE
-
-                    DE = abs(E-E_prior)/Naccept
-                    if ((abs(E-E_baseline) > E_threshold)&
-                        .or.(DE > DE_threshold)) then
-        
-                        coords = coords_prior
-                        velocities = velocities_prior
-                        steps = steps - Naccept
+                DE = abs(E-E_prior)/Naccept
+                if ((abs(E-E_baseline) > E_threshold)&
+                    .or.(DE > DE_threshold)) then
     
-                        Nalpha_tries = Nalpha_tries + 1
-                        if (Nalpha_tries > Nalpha_tries_max) then
-                            alpha_ratio = alpha_ratio_list(1)
-                        else
-                            alpha_ratio = alpha_ratio_list(Nalpha_tries)
-                        end if
+                    coords = coords_prior
+                    velocities = velocities_prior
+                    steps = steps - Naccept
 
+                    Nalpha_tries = Nalpha_tries + 1
+                    if (Nalpha_tries > Nalpha_tries_max) then
+                        alpha_ratio = alpha_ratio_list(1)
                     else
-                        do i = 1, Ngrid_total
-                        do j = 1, Naccept
-                            write(filechannels(1+i),FMT=FMT6)&
-                                trajRMSDbuffer(i,j)
-                        end do
-                        end do
- 
-                        Nalpha_tries = 1
                         alpha_ratio = alpha_ratio_list(Nalpha_tries)
-
-                        coords_prior = coords
-                        velocities_prior = velocities
-                        E_prior = E
-            
-                        !If we are adding to a grid, then relabel
-                        !the coordinates and gradients, and do so
-                        if (grid_addition > 0) then
-                            call addState_new(vals,&
-                                    coords,&
-                                    gradient)
-                        end if
-        
-                        if ((any(vals > var_maxvar)).or.&
-                            (steps > Nsteps)) exit
- 
                     end if
 
-                Naccept = 0
-                cycle
-
-            else if (Nalpha_tries > Nalpha_tries_max) then
-
-                call Acceleration(vals,coords,gradient)
-
-                do i = 1, Ngrid_total
-                    write(filechannels(1+i),FMT=FMT6)&
-                        default_rmsd
-                end do
-
-                Nalpha_tries = 1
-
-!               coords_prior = coords
-!               velocities_prior = velocities
-!               E_prior = E
-!   
-!               !If we are adding to a grid, then relabel
-!               !the coordinates and gradients, and do so
-!               if (grid_addition > 0) then
-!                   call addState_new(vals,&
-!                           coords,&
-!                           gradient)
-!               end if
-
-!               if ((any(vals > var_maxvar)).or.&
-!                   (steps > Nsteps)) exit
+                else
+                    do i = 1, Ngrid_total
+                    do j = 1, Naccept
+                        write(filechannels(1+i),FMT=FMT6)&
+                            trajRMSDbuffer(i,j)
+                    end do
+                    end do
  
-            else
-                gradient = approx_gradient
-                Naccept = Naccept + 1
-            end if
+                    Nalpha_tries = 1
+                    alpha_ratio = alpha_ratio_list(Nalpha_tries)
+
+                    coords_prior = coords
+                    velocities_prior = velocities
+                    E_prior = E
+        
+                    !If we are adding to a grid, then relabel
+                    !the coordinates and gradients, and do so
+                    if (grid_addition > 0) then
+                        call addState_new(vals,&
+                                coords,&
+                                gradient)
+                    end if
+    
+                    if ((any(vals > var_maxvar)).or.&
+                        (steps > Nsteps)) exit
+ 
+                end if
+
+            Naccept = 0
+            cycle
+
+        else if (Nalpha_tries > Nalpha_tries_max) then
+
+            call Acceleration(vals,coords,gradient)
+
+            do i = 1, Ngrid_total
+                write(filechannels(1+i),FMT=FMT6)&
+                    default_SIs(Nsort)
+            end do
+
+            Nalpha_tries = 1
+
+        else
+            gradient = approx_gradient
+            Naccept = Naccept + 1
+        end if
  
 !       !!!!!!!!!!!!!
 !       ! TEST START
@@ -1813,15 +503,8 @@ subroutine runTestTrajectory2(filechannels,&
     end if
 
     !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            inputCLS)
-
+    call unsetAllocations()
     deallocate(trajRMSDbuffer)
-
-    deallocate(CMdiffbuffer1)
-    deallocate(Ntrajbuffer1)
 
     !Output the final coordinates and velocities
     coords_final = coords
@@ -1841,6 +524,7 @@ subroutine runTrajectoryRewind1(filechannels,&
     use PHYSICS
     use VARIABLES
     use ANALYSIS
+    use SIMILARITY
     use interactMultipleGrids
     use analyzeRMSDThresholdwithMultipleGrids
     implicit none
@@ -1877,17 +561,10 @@ subroutine runTrajectoryRewind1(filechannels,&
     !Incremental Integer
     integer :: i,j,n,m
 
-    open(filechannel2,file=gridpath5//checkstatefile)
-
-
-
-
     !Initialize the scene
     call InitialSetup3(coords,velocities)
     Norder1 = 0
     Norder_total = 0
-    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
-
     coords_initial = coords
     velocities_initial = velocities
 
@@ -1916,6 +593,8 @@ subroutine runTrajectoryRewind1(filechannels,&
         velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
     end do
 
+    open(filechannel2,file=gridpath5//checkstatefile)
+
     !We keep this file open for the whole trajectory (instead of
     !continually opening and closing) to keep data of each frame
     if (gather_interpolation_flag) &
@@ -1926,20 +605,8 @@ subroutine runTrajectoryRewind1(filechannels,&
     !the maximum number of frames expected to be seen
     buffer1_size = 2 + Ninterpolation_max
     buffer2_size = 30
-!   allocate(valsbuffer1(Nvar,buffer1_size),&
-!            coordsbuffer1(3,Natoms,buffer1_size),&
-!            gradientbuffer1(3,Natoms,buffer1_size),&
-!            Ubuffer1(3,3,buffer1_size),&
-!            RMSDbuffer1(buffer1_size),&
-!            inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-!   allocate(CMdiffbuffer1(buffer1_size))
-!   allocate(Ntrajbuffer1(buffer1_size))
-
     call setAllocations()
-
-    RMSDbuffer1 = default_rmsd
-    CMdiffbuffer1 = default_CMdiff
+    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
 
     steps = 1
     E_baseline = 0.0d0
@@ -1953,12 +620,12 @@ subroutine runTrajectoryRewind1(filechannels,&
 
         !Finally write to the data file all the important data values
         write(filechannel2,FMT=*) 0,0,0,steps,&
-                                  default_rmsd,default_rmsd,&
+                                  default_SIs(1),default_SIs(1),&
                                   vals(1),vals(2),U,KE
 
         do i = 1, Ngrid_total
             write(filechannels(1+i),FMT=FMT6)&
-                default_rmsd
+                default_SIs(Nsort)
         end do
 
         velocities = velocities + gradient
@@ -1996,30 +663,16 @@ subroutine runTrajectoryRewind1(filechannels,&
         !Always calculate the variables before checking a frame or accelerating
         call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
-        
-        RMSDbuffer1 = min_rmsd
-        CMdiffbuffer1 = default_CMdiff
-
         subcellsearch_max = subcellsearch_max1
  
         call checkState_PCM(vals,coords,&
                 approx_gradient,min_rmsd,&
-                filechannels,number_of_frames,order,neighbor_check)
-!       print *, ""
-!       print *, "step", steps
-!       if (Ninterpolation > 0) &
-!       print *, RMSDbuffer1(1:Ninterpolation)
+                filechannels,number_of_frames,&
+                order,neighbor_check)
 
         !If the approximated frame is good enough
         !and we are not rejecting it, then use it
-        if (((min_rmsd .ge. threshold_RMSD) &
+        if (((min_rmsd .ge. outer_threshold_SI) &
                 .or. (reject_flag)).and.&
              (Naccept == 0)) then
 
@@ -2032,7 +685,7 @@ subroutine runTrajectoryRewind1(filechannels,&
  
         !If the approximated frame is good enough
         !and we are not rejecting it, then use it
-        else if ((min_rmsd .ge. threshold_RMSD) &
+        else if ((min_rmsd .ge. outer_threshold_SI) &
                 .or. (reject_flag).or.&
                  (Naccept == Naccept_max)) then
 
@@ -2090,7 +743,7 @@ subroutine runTrajectoryRewind1(filechannels,&
 
             do i = 1, Ngrid_total
                 write(filechannels(1+i),FMT=FMT6)&
-                    default_rmsd
+                    default_SIs(Nsort)
             end do
 
             Nalpha_tries = 1
@@ -2164,421 +817,19 @@ subroutine runTrajectoryRewind1(filechannels,&
 
     if (gather_interpolation_flag) close(filechannel3)
 
+    close(filechannel2)
+
     !Deallocate the buffers
-!   deallocate(valsbuffer1,&
-!           coordsbuffer1,gradientbuffer1,&
-!           Ubuffer1,RMSDbuffer1,&
-!           inputCLS)
-
-!   deallocate(trajRMSDbuffer)
-
-!   deallocate(CMdiffbuffer1)
-!   deallocate(Ntrajbuffer1)
-
     call unsetAllocations()
-
     deallocate(trajRMSDbuffer)
 
     !Output the final coordinates and velocities
     coords_final = coords
     velocities_final = velocities
-
-
-
-    close(filechannel2)
 
 end subroutine runTrajectoryRewind1
 
 
-
-
-
-
-
-
-
-subroutine runTrajectory_cap(filechannels,&
-                             coords_initial,velocities_initial,&
-                             coords_final,velocities_final)
-    use PARAMETERS
-    use ls_rmsd_original
-    use PHYSICS
-    use VARIABLES
-    use ANALYSIS
-    use interactMultipleGrids
-    use analyzeRMSDThresholdwithMultipleGrids
-    implicit none
-
-    !Coordinates, Velocities, and Variables
-    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
-    real(dp), dimension(3,Natoms) :: gradient,gradient_labelled
-    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
-    real(dp), dimension(Nvar) :: vals
-    real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
-    real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
-    integer,dimension(1+Ngrid_max) :: filechannels
-
-    !Various other variables
-    real(dp) :: error1,error2
-    real(dp),dimension(3) :: x_center, y_center
-    real(dp),dimension(3,3) ::  U_prior
-    real(dp) :: min_rmsd,min_rmsd_prime
-    integer :: number_of_frames,order,neighbor_check
-    real(dp) :: U, KE
-
-    real(dp) :: RMSD_prior, error_prior
-    real(dp) :: max_RMSDdelta, max_deltaRMSD
-    real(dp),dimension(3,Natoms) :: coords_prior, gradient_prior
-    real(dp),dimension(3,Natoms) :: velocities_prior
-    real(dp) :: DE, E, E_prior, E_baseline
-    integer :: Nalpha_tries
-    logical :: temp_reject_flag = .true.
-
-    real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
-    integer,allocatable :: libNtraj(:)
-
-    integer,dimension(Nalpha) :: alpha_flagging
-
-    !Incremental Integer
-    integer :: i,j,n,m
-
-    !Initialize the scene
-    call InitialSetup3(coords,velocities)
-    Norder1 = 0
-    Norder_total = 0
-    subcellsearch_max = subcellsearch_max1
-    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
-
-    coords_initial = coords
-    velocities_initial = velocities
-
-    !Always calculate the variables before accelerating
-    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-    !Accelerate the velcocities for a half step (verlet)
-    call Acceleration(vals,coords,gradient)
-
-    !Update the velocities
-    velocities = velocities + 0.5d0 * gradient
-
-    !To randomize the periods of the bond, I let the scene go on
-    !for a small period of time (need to standardize this later)
-    do n = 1, Nbonds
-        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-            coords = coords + dt * velocities
-            call Acceleration(vals,coords,gradient)
-            velocities = velocities + gradient
-        end do
-
-        !And then reset the bond
-        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-    end do
-
-    !We keep this file open for the whole trajectory (instead of
-    !continually opening and closing) to keep data of each frame
-    if (gather_interpolation_flag) then
-        open(filechannel3,file=&
-            gridpath5//interpolationfile,position="append")
-    end if
-
-    !Allocate all buffers; initialize the buffer size to be
-    !the maximum number of frames expected to be seen
-    buffer1_size = 2 + Ninterpolation_max
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    RMSDbuffer1 = default_rmsd
-
-    steps = 1
-    E_baseline = 0.0d0
-    do
-        coords = coords + dt * velocities
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-        call Acceleration(vals,coords,gradient)
-
-        call getEnergies(Natoms,coords,velocities,U,KE)
-        E_baseline = E_baseline + U + KE
-
-        do i = 1, Ngrid_total
-            write(filechannels(1+i),FMT=FMT6)&
-                default_rmsd
-        end do
-
-        velocities = velocities + gradient
-
-        steps = steps + 1
-        if (steps > Nsteps_baseline) then
-            coords_prior = coords
-            velocities_prior = velocities - gradient
-            gradient_prior = gradient
-
-            E_prior = E
-
-            exit
-        end if
-    end do
-    E_baseline = E_baseline / Nsteps_baseline
-    Naccept = 0
-     
-    do
-        !Check every 500 steps to see if we are out-of-bounds
-        if (modulo(steps,500) == 1) then
-            if (any(vals > var_maxvar)) exit
-        endif
-
-        !Upate the coordinates with the velocities
-        coords = coords + dt * velocities
-
-        !Always calculate the variables before checking a frame or accelerating
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
-        
-        RMSDbuffer1 = min_rmsd
-
-        call checkState_new_cap(vals,coords,&
-                approx_gradient,min_rmsd,&
-                filechannels,number_of_frames,&
-                order,neighbor_check)
-
-        call getEnergies(Natoms,coords,velocities,U,KE)
-        E = U + KE
-
-        if (temp_reject_flag) then
-            call Acceleration(vals,coords,gradient)
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                call addState_new(vals,&
-                        coords,&
-                        gradient)
-            end if
-
-            temp_reject_flag = .false.
-
-            if (Naccept > 0) then
-                DE = abs(E-E_prior)/Naccept
-                if ((abs(E-E_baseline) > E_threshold)&
-                    .or.(DE > DE_threshold)) then
-    
-                    coords = coords_prior
-                    velocities = velocities_prior
-                    gradient = gradient_prior
-    
-                    steps = steps - Naccept - 1
-
-                    Nalpha_tries = Nalpha_tries + 1
-
-                    if (Nalpha_tries > Nalpha_tries_max) then
-                        Nalpha_tries = 1
-                        temp_reject_flag = .true.
-                    end if
-                else
-                    do i = 1, Ngrid_total
-                    do j = 1, Naccept+1
-                        write(filechannels(1+i),FMT=FMT6)&
-                            trajRMSDbuffer(i,j)
-                    end do
-                    end do
-                end if
-
-                Naccept = 0
-            else
-                Nalpha_tries = 1
-
-                do i = 1, Ngrid_total
-                    write(filechannels(1+i),FMT=FMT6)&
-                        default_rmsd
-                end do
-            end if
-
-            alpha_ratio = alpha_ratio_list(Nalpha_tries)
-        
-        !If we are gather interpolation data...
-        else if (gather_interpolation_flag) then
- 
-            !Calculate the true gradient
-            call Acceleration(vals,coords,gradient)
-
-            !If a frame was found, record data on it
-            if (Ninterpolation > 0) then
-                error1 = sqrt(sum((gradient - &
-                        candidate_gradient)**2)/Natoms)
-                error2 = sqrt(sum((gradient - &
-                        approx_gradient)**2)/Natoms)
- 
-                write(filechannel3,FMT=*) vals(1),vals(2),&
-                        Ninterpolation,largest_weighted_rmsd2,&
-                        largest_weighted_rmsd,candidate_rmsd,&
-                        min_rmsd,error1,error2
-            end if
-
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                call addState_new(vals,&
-                        coords,gradient)
-            end if
- 
-            !If the approximated frame is good enough
-            !and we are not rejecting it, then use it
-            if ((min_rmsd .ge. threshold_RMSD) &
-                    .or. (reject_flag)) then
-
-                if (Naccept > 0) then
-                    DE = abs(E-E_prior)/Naccept
-                    if ((abs(E-E_baseline) > E_threshold)&
-                        .or.(DE > DE_threshold)) then
-        
-                        coords = coords_prior
-                        velocities = velocities_prior
-                        gradient = gradient_prior
-        
-                        steps = steps - Naccept - 1
-    
-                        Nalpha_tries = Nalpha_tries + 1
-    
-                        if (Nalpha_tries > Nalpha_tries_max) then
-                            Nalpha_tries = 1
-                            temp_reject_flag = .true.
-                        end if
-                    else
-                        do i = 1, Ngrid_total
-                        do j = 1, Naccept+1
-                            write(filechannels(1+i),FMT=FMT6)&
-                                trajRMSDbuffer(i,j)
-                        end do
-                        end do
-                    end if
-
-                    Naccept = 0
-                else
-                    Nalpha_tries = 1
-
-                    do i = 1, Ngrid_total
-                        write(filechannels(1+i),FMT=FMT6)&
-                            trajRMSDbuffer(i,1)
-                    end do
-                end if
-
-                alpha_ratio = alpha_ratio_list(Nalpha_tries)
-            else
-                gradient = approx_gradient
-
-                Naccept = Naccept + 1
-                if (Naccept == Naccept_max) temp_reject_flag = .true.
-            end if
- 
-        !If no interpolation data is being gathered, then the
-        !true gradient is not needed
- 
-        !If the frame is not good enough or we are rejecting
-        !frames, calculate the true gradient
-        else if ((min_rmsd .ge. threshold_RMSD) &
-                .or. (reject_flag)) then
-            call Acceleration(vals,coords,gradient)
- 
-            !If we are adding to a grid, then relabel
-            !the coordinates and gradients, and do so
-            if (grid_addition > 0) then
-                call addState_new(vals,&
-                        coords,&
-                        gradient)
-            end if
-
-            if (Naccept > 0) then
-                DE = abs(E-E_prior)/Naccept
-                if ((abs(E-E_baseline) > E_threshold)&
-                    .or.(DE > DE_threshold)) then
-    
-                    coords = coords_prior
-                    velocities = velocities_prior
-                    gradient = gradient_prior
-    
-                    steps = steps - Naccept - 1
-
-                    Nalpha_tries = Nalpha_tries + 1
-
-                    if (Nalpha_tries > Nalpha_tries_max) then
-                        Nalpha_tries = 1
-                        temp_reject_flag = .true.
-                    end if
-                else
-                    do i = 1, Ngrid_total
-                    do j = 1, Naccept+1
-                        write(filechannels(1+i),FMT=FMT6)&
-                            trajRMSDbuffer(i,j)
-                    end do
-                    end do
-                end if
-
-                Naccept = 0
-            else
-                Nalpha_tries = 1
-
-                do i = 1, Ngrid_total
-                    write(filechannels(1+i),FMT=FMT6)&
-                        trajRMSDbuffer(i,1)
-                end do
-            end if
-
-            alpha_ratio = alpha_ratio_list(Nalpha_tries)
-
-        !If the approximated frame is good enough then
-        !we can use it (after relabelling)!
-        else
-            gradient = approx_gradient
-
-            Naccept = Naccept + 1
-            if (Naccept == Naccept_max) temp_reject_flag = .true.
-        end if
-
-        if (Naccept == 0) then
-            coords_prior = coords
-            velocities_prior = velocities
-            gradient_prior = gradient
-
-            E_prior = E
-        end if
-
-        !Update the velocities
-        velocities = velocities + gradient
-
-        steps = steps + 1
-        if (steps > Nsteps) exit
-    end do
-
-    if (gather_interpolation_flag) then
-        close(filechannel3)
-    end if
-
-    !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            inputCLS)
-
-    deallocate(trajRMSDbuffer)
-
-    !Output the final coordinates and velocities
-    coords_final = coords
-    velocities_final = velocities
-
-end subroutine runTrajectory_cap
 
 subroutine runTrajectory_permute_cap(filechannels,&
                                      coords_initial,velocities_initial,&
@@ -2588,6 +839,7 @@ subroutine runTrajectory_permute_cap(filechannels,&
     use PHYSICS
     use VARIABLES
     use ANALYSIS
+    use SIMILARITY
     use interactMultipleGrids
     use analyzeRMSDThresholdwithMultipleGrids
     implicit none
@@ -2630,7 +882,6 @@ subroutine runTrajectory_permute_cap(filechannels,&
     Norder1 = 0
     Norder_total = 0
     subcellsearch_max = subcellsearch_max1
-    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
 
     coords_initial = coords
     velocities_initial = velocities
@@ -2670,14 +921,9 @@ subroutine runTrajectory_permute_cap(filechannels,&
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
     buffer1_size = 2 + Ninterpolation_max
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    RMSDbuffer1 = default_rmsd
+    buffer2_size = 30
+    call setAllocations()
+    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
 
     steps = 1
     E_baseline = 0.0d0
@@ -2691,7 +937,7 @@ subroutine runTrajectory_permute_cap(filechannels,&
 
         do i = 1, Ngrid_total
             write(filechannels(1+i),FMT=FMT6)&
-                default_rmsd
+                default_SIs(Nsort)
         end do
 
         velocities = velocities + gradient
@@ -2722,17 +968,7 @@ subroutine runTrajectory_permute_cap(filechannels,&
         !Always calculate the variables before checking a frame or accelerating
         call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
-        
-        RMSDbuffer1 = min_rmsd
-
-        call checkState_new_permute_cap(vals,coords,&
+        call checkState_PCM(vals,coords,&
                 approx_gradient,min_rmsd,&
                 filechannels,number_of_frames,&
                 order,neighbor_check)
@@ -2785,7 +1021,7 @@ subroutine runTrajectory_permute_cap(filechannels,&
 
                 do i = 1, Ngrid_total
                     write(filechannels(1+i),FMT=FMT6)&
-                        default_rmsd
+                        default_SIs(Nsort)
                 end do
             end if
 
@@ -2819,7 +1055,7 @@ subroutine runTrajectory_permute_cap(filechannels,&
  
             !If the approximated frame is good enough
             !and we are not rejecting it, then use it
-            if ((min_rmsd .ge. threshold_RMSD) &
+            if ((min_rmsd .ge. outer_threshold_SI) &
                     .or. (reject_flag)) then
 
                 if (Naccept > 0) then
@@ -2871,7 +1107,7 @@ subroutine runTrajectory_permute_cap(filechannels,&
  
         !If the frame is not good enough or we are rejecting
         !frames, calculate the true gradient
-        else if ((min_rmsd .ge. threshold_RMSD) &
+        else if ((min_rmsd .ge. outer_threshold_SI) &
                 .or. (reject_flag)) then
             call Acceleration(vals,coords,gradient)
  
@@ -2950,11 +1186,7 @@ subroutine runTrajectory_permute_cap(filechannels,&
     end if
 
     !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            inputCLS)
-
+    call unsetAllocations()
     deallocate(trajRMSDbuffer)
 
     !Output the final coordinates and velocities
@@ -2964,1110 +1196,6 @@ subroutine runTrajectory_permute_cap(filechannels,&
 end subroutine runTrajectory_permute_cap
 
 
-
-
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	SUBROUTINE
-!		checkaddTrajectory
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	PURPOSE
-!		This subroutine simulates an MD collision by calculating the gradient
-!		at every step with classical mechanics and parameters in PHYSICS
-!
-!		Every frame is checked with the current grid through interactMultipleGrids
-!
-!		The initial and final velocity of the incoming H/H2 is output to
-!		gather scattering angle data
-!
-!               Every interpolated frame is output to gather interpolation data
-!               according to ANALYSIS
-!
-!               Every frame whose gradient is calculated may be added to the library
-!               according to PARAMETERS and grid_addition in ANALYSIS
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	INPUT				KIND				DESCRIPTION
-!
-!		filechannels			INTEGER,DIM(Ngrid_max+1)	These filechannels were opened beforehand to the
-!										trajectory files that we output rmsd data to;
-!										all that's left to do is to write to them every frame.
-!                                                                               However, filechannel(1) is NOT opened beforehand
-!                                                                               and is available for any random purpose
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	OUTPUT				KIND				DESCRIPTION
-!
-!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
-!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
-!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
-!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	IMPORTANT VARIABLES		KIND				DESCRIPTION
-!
-!		vals				REAL(DP),DIM(Nvar)		The variables associated with a frame
-!
-!		coords				REAL(DP),DIM(3,Natoms)		The coordinates defining a frame
-!		velocities			REAL(DP),DIM(3,Natoms)		The velocities of a frame
-!		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
-!		approx_gradient			REAL(DP),DIM(3,Natoms)		The gradient recovered for a frame from the grid
-!
-!               buffer1_size                    INTEGER                         The size of the buffer for coordinates and
-!                                                                               gradients to be interpolated; the buffer
-!                                                                               size is dynamically increased
-!
-!		number_of_frames		INTEGER				The total amount of frames checked for a frame
-!		order				INTEGER				The order of the cell checked for a frame
-!		neighbor_check			INTEGER				Signifies whether neighbor cells were check
-!										or not for a frame(0 or 1)
-!
-!		min_rmsd			REAL(DP)			The minimum rmsd recovered for a frame from the grid
-!		min_rmsd_prime			REAL(DP)			The minimum rmsd recovered for a frame from the grid
-!										after a forced neighbor check (may not apply)
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       FILES	                          FILETYPE			DESCRIPTION
-!
-!		gridpath1//trajectory		XYZ				Coordinates to view the trajectory over time;
-!										currently it is written every 10 timesteps
-!		gridpath1//checkstatefile	DAT				The DAT file containing information about the
-!										trajectory over time
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-subroutine checkaddTrajectory(filechannels,&
-                              coords_initial,velocities_initial,&
-                              coords_final,velocities_final)
-    use PARAMETERS
-    use PHYSICS
-    use VARIABLES
-    use ANALYSIS
-    use interactMultipleGrids
-    use analyzeRMSDThresholdwithMultipleGrids
-    implicit none
-
-    !Coordinates, Velocities, and Variables
-    real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
-    real(dp), dimension(3,Natoms) :: gradient,gradient_labelled
-    real(dp), dimension(3,Natoms) :: approx_gradient,approx_gradient_prime
-    real(dp), dimension(Nvar) :: vals
-	real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
-	real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
-    integer,dimension(1+Ngrid_max) :: filechannels
-    integer :: bond_index1, bond_index2
-
-    !Various other variables
-    real(dp) :: U, KE
-    real(dp) :: min_rmsd,min_rmsd_prime
-    integer :: number_of_frames,order,neighbor_check
-    character(9) :: vals_interpolation_text
-
-    !Incremental Integer
-    integer :: n
-
-    !Initialize the scene
-    call InitialSetup3(coords,velocities)
-    Norder1 = 0
-    Norder_total = 0
-
-    coords_initial = coords
-    velocities_initial = velocities
-
-    !Always calculate the variables before accelerating
-    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-    !Accelerate the velcocities for a half step (verlet)
-    call Acceleration(vals,coords,gradient)
-
-    !Update the velocities
-    velocities = velocities + 0.5d0 * gradient
-
-    !To randomize the periods of the bond, I let the scene go on
-    !for a small period of time (need to standardize this later)
-    do n = 1, Nbonds
-        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-            coords = coords + dt * velocities
-            call Acceleration(vals,coords,gradient)
-            velocities = velocities + gradient
-        end do
-
-        !And then reset the bond
-        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-    end do
-
-    !We keep this file open for the whole trajectory (instead of
-    !continually opening and closing) to keep data of each frame
-    if (testtrajDetailedRMSD_flag) open(filechannel2,file=&
-            gridpath5//checkstatefile)
-    if (gather_interpolation_flag) open(filechannel3,file=&
-            gridpath5//interpolationfile,position="append")
-
-    !Allocate all buffers; initialize the buffer size to be
-    !the maximum number of frames expected to be seen
-    buffer1_size = 1 + var_overcrowd(1)
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             approximation_index(buffer1_size))
-
-    allocate(Ntrajbuffer1(buffer1_size))
-
-    !These buffers need not be allocated if interpolation
-    !is not occuring
-    allocate(acceptable_frame_mask(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    do steps = 1, Nsteps
-
-        !Check every 500 steps to see if we are out-of-bounds
-        if (modulo(steps,500) == 1) then
-            if (any(vals > var_maxvar)) exit
-        endif
-
-        !Upate the coordinates with the velocities
-        coords = coords + dt * velocities
-
-        !Always calculate the variables before checking a frame or accelerating
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-        !If the library forced no special labeling or duplicate additions, then
-        !that means we don't do any special label switching when using the
-        !approximated gradient and inputing the frame
-        !(deprecated)
-        if ((force_Duplicates) .or. (force_NoLabels)) then
-
-            if (accept_worst) then
-                min_rmsd = 0.0d0
-            else
-                min_rmsd = default_rmsd
-            end if
-
-            call checkState_new(vals,coords,approx_gradient,min_rmsd,&
-                     filechannels,number_of_frames,order,neighbor_check)
-
-            if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)&
-                .or.((accept_worst).and.(min_rmsd == 0.0d0))) then
-                call Acceleration(vals,coords,gradient)
-                if (grid_addition > 0) &
-                        call addState_new(vals,coords,gradient)
-            else
-                gradient = approx_gradient
-            end if
-
-        !Otherwise, we need to do the label switching
-        else
-
-            !We need to input the frame using the labeling scheme
-            do n = 1, Natoms
-                coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-            end do
-
-            !Check for a frame in the grid
-            !Set the default value beforehand
-            if (accept_worst) then
-                min_rmsd = 0.0d0
-            else
-                min_rmsd = default_rmsd
-            end if
- 
-            !If we want detailed RMSD output then we
-            !search the library twice; the first time
-            !with no interpolation
-            if (testtrajDetailedRMSD_flag) then
-                subcellsearch_max = subcellsearch_max1
-                if (gather_interpolation_flag) then 
-                    interpolation_flag = .false.
-                end if
-            end if
-
-            !Check the library to get an
-            !approximated gradient
-            call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd,&
-                     filechannels,number_of_frames,order,neighbor_check)
-
-!Here is the second search; not done otherwise
-if (testtrajDetailedRMSD_flag) then
-
-    !Set a separate default value
-    if (accept_worst) then
-        min_rmsd_prime = 0.0d0
-    else
-        min_rmsd_prime = default_rmsd
-    end if
-
-    !The second search uses interpolation as it
-    !usually is a wider search
-    subcellsearch_max = subcellsearch_max2
-    if (gather_interpolation_flag) interpolation_flag = .true.
-    call checkState_new(vals,coords_labelled,approx_gradient_prime,min_rmsd_prime,&
-            filechannels,number_of_frames,order,neighbor_check)
-
-    !Calculate the potential and kinetic energy
-    !(yes, making this nicer is next on the to-do list)
-    !Right now, it is not generic (we only take into account 3 atoms)
-    U = MorsePotential(coords(:,1),coords(:,2))
-    U = U + MorsePotential(coords(:,1),coords(:,3))
-    U = U + HOPotential(coords(:,2),coords(:,3))
-    KE = KineticEnergy(velocities(:,1))
-    KE = KE + KineticEnergy(velocities(:,2))
-    KE = KE + KineticEnergy(velocities(:,3))
-
-    !Finally write to the data file all the important data values
-    write(filechannel2,FMT=*) number_of_frames,order,neighbor_check,steps,&
-                              min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
-
-    !The better frame is usually found with second search
-    !so this will be used for further data handling
-    min_rmsd = min_rmsd_prime
-else
-    !A deault value is set to approx_gradient_prime for
-    !further data handling
-    approx_gradient_prime = approx_gradient
-end if
-           !Accept worst has not found an acceptable frame
-           !if min_rmsd is zero
-           !(deprecated)
-           if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-               call Acceleration(vals,coords,gradient)
-           
-           !If we are gather interpolation data...
-           else if (gather_interpolation_flag) then
-
-               !Save the approx_gradient with the
-               !correct labelling
-               do n = 1, Natoms
-                    gradient(:,BOND_LABELLING_DATA(n)) = &
-                            approx_gradient(:,n)
-               end do
-               approx_gradient = gradient
-
-               !Save the approx_gradient_prime
-               !with the correct labelling
-               do n = 1, Natoms
-                    gradient(:,BOND_LABELLING_DATA(n)) = &
-                            approx_gradient_prime(:,n)
-               end do
-               approx_gradient_prime = gradient
-
-               !Always calculate the true gradient
-               call Acceleration(vals,coords,gradient)
-
-               !If a frame was found, record data on it
-               if (Ninterpolation > 0) then
-               write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
-                           largest_weighted_rmsd2, largest_weighted_rmsd,&
-                           min_rmsd,&
-                           sqrt(sum((gradient-approx_gradient)**2)/Natoms),&
-                           min_rmsd_prime,&
-                           sqrt(sum((gradient-approx_gradient_prime)**2)/Natoms)
-               end if
-
-               !If we are adding to a grid, then relabel
-               !the coordinates and gradients, and do so
-               if (grid_addition > 0) then
-                   do n = 1, Natoms
-                        gradient_labelled(:,n) = &
-                                gradient(:,BOND_LABELLING_DATA(n))
-                        coords_labelled(:,n) = &
-                                coords(:,BOND_LABELLING_DATA(n))
-                   end do
-                   call addState_new(vals,&
-                           coords_labelled,&
-                           gradient_labelled)
-               end if
-
-               !If the approximated frame is good enough
-               !and we are not rejecting it, then use it
-               if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-               else
-                       gradient = approx_gradient
-               end if
-
-           !If no interpolation data is being gathered, then the
-           !true gradient is not needed
-
-           !If the frame is not good enough or we are rejecting
-           !frames, calculate the true gradient
-           else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-               call Acceleration(vals,coords,gradient)
-
-               !If we are adding to a grid, then relabel
-               !the coordinates and gradients, and do so
-               if (grid_addition > 0) then
-                   do n = 1, Natoms
-                        gradient_labelled(:,n) = &
-                                gradient(:,BOND_LABELLING_DATA(n))
-                        coords_labelled(:,n) = &
-                                coords(:,BOND_LABELLING_DATA(n))
-                   end do
-                   call addState_new(vals,&
-                           coords_labelled,&
-                           gradient_labelled)
-               end if
-
-           !If the approximated frame is good enough then
-           !we can use it (after relabelling)!
-           else
-               do n = 1, Natoms
-                    gradient(:,BOND_LABELLING_DATA(n)) = &
-                            approx_gradient(:,n)
-               end do
-           end if
-        end if
-
-        !Update the velocities
-        velocities = velocities + gradient
-    end do
-
-    if (testtrajDetailedRMSD_flag) close(filechannel2)
-    if (gather_interpolation_flag) close(filechannel3)
-
-    !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            approximation_index)
-
-    deallocate(Ntrajbuffer1)
-
-    deallocate(acceptable_frame_mask,inputCLS)
-
-    !Output the final coordinates and velocities
-    coords_final = coords
-    velocities_final = velocities
-
-end subroutine checkaddTrajectory
-
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	SUBROUTINE
-!		checkTrajectory
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	PURPOSE
-!		This subroutine simulates an MD collision by calculating the gradient
-!		at every step with classical mechanics and parameters in PHYSICS
-!
-!		Every frame is checked with the current grid through interactSingleGrid
-!
-!		The initial and final velocity of the incoming H/H2 is output to
-!		gather scattering angle data
-!
-!		Data is output every frame to gather information on how the trajectory
-!		interacts with the grid and whether it is accurate, realistic, etc.
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	INPUT				KIND				DESCRIPTION
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	OUTPUT				KIND				DESCRIPTION
-!
-!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
-!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
-!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
-!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	IMPORTANT VARIABLES		KIND				DESCRIPTION
-!
-!		vals				REAL(DP),DIM(Nvar)		The variables associated with a frame
-!
-!		coords				REAL(DP),DIM(3,Natoms)		The coordinates defining a frame
-!		velocities			REAL(DP),DIM(3,Natoms)		The velocities of a frame
-!		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
-!		approx_gradient			REAL(DP),DIM(3,Natoms)		The gradient recovered for a frame from the grid
-!
-!		number_of_frames		INTEGER				The total amount of frames checked for a frame
-!		order				INTEGER				The order of the cell checked for a frame
-!		neighbor_check			INTEGER				Signifies whether neighbor cells were check
-!										or not for a frame(0 or 1)
-!
-!		min_rmsd			REAL(DP)			The minimum rmsd recovered for a frame from the grid
-!		min_rmsd_prime			REAL(DP)			The minimum rmsd recovered for a frame from the grid
-!										after a forced neighbor check (may not apply)
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       FILES	                          FILETYPE			DESCRIPTION
-!
-!		gridpath1//trajectory		XYZ				Coordinates to view the trajectory over time;
-!										currently it is written every 10 timesteps
-!		gridpath1//checkstatefile	DAT				The DAT file containing information about the
-!										trajectory over time
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!
-!subroutine checkTrajectory(coords_initial,velocities_initial,coords_final,velocities_final)
-!        use PARAMETERS
-!        use PHYSICS
-!        use VARIABLES
-!        use ANALYSIS
-!        use interactSingleGrid
-!        implicit none
-!
-!        !Coordinates, Velocities, and Variables
-!        real(dp), dimension(3,Natoms) :: coords,coords_labelled,velocities
-!        real(dp), dimension(3,Natoms) :: gradient, approx_gradient
-!        real(dp), dimension(Nvar) :: vals
-!	real(dp), dimension(3,Natoms), intent(out) :: coords_initial, velocities_initial 
-!	real(dp), dimension(3,Natoms), intent(out) :: coords_final, velocities_final 
-!	integer :: bond_index1, bond_index2
-!
-!        !Various other variables
-!        real(dp) :: U, KE
-!        real(dp) :: min_rmsd,min_rmsd_prime
-!        integer :: number_of_frames,order,neighbor_check
-!
-!	!Incremental Integer
-!	integer :: n
-!
-!        !Initialize the scene
-!        call InitialSetup3(coords,velocities)
-!
-!	coords_initial = coords
-!	velocities_initial = velocities
-!
-!	!Always calculate the variables before accelerating
-!	call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-!
-!        !Accelerate the velcocities for a half step (verlet)
-!        call Acceleration(vals,coords,gradient)
-!
-!	!Update the velocities
-!        velocities = velocities + 0.5d0 * gradient
-!
-!	!To randomize the periods of the bond, I let the scene go on
-!	!for a small period of time (need to standardize this later)
-!	do n = 1, Nbonds
-!		do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-!			coords = coords + dt * velocities
-!			call Acceleration(vals,coords,gradient)
-!			velocities = velocities + gradient
-!		end do
-!
-!		!And then reset the bond
-!		coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-!		coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-!		velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-!		velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-!	end do
-!
-!	!Get the trajectory file open for trajectory visualization
-!        open(filechannel1,file=gridpath1//trajectoryfile)
-!        write(filechannel1,'(I6)') Natoms
-!        write(filechannel1,*) ""
-!	do n = 1, Natoms
-!        	write(filechannel1,'(A1,3F10.6)') 'H',&
-!              		coords(1,n), coords(2,n), coords(3,n)
-!        end do
-!        close(filechannel1)
-!
-!	!We keep this file open for the whole trajectory (instead of
-!	!continually opening and closing) to keep data of each frame
-!	open(filechannel2,file=gridpath1//checkstatefile)
-!        do steps = 1, Nsteps
-!
-!                !Every 10 frames, print to an xyz file for visualization
-!                 if (modulo(steps,10) == 0) then
-!                        open(filechannel1,file=gridpath1//trajectoryfile,position="append")
-!                        write(filechannel1,'(I6)') Natoms
-!                        write(filechannel1,*) ""
-!			do n = 1, Natoms
-!                        	write(filechannel1,'(A1,3F10.6)') 'H',&
-!                              		coords(1,n), coords(2,n), coords(3,n)
-!                        end do
-!                        close(filechannel1)
-!                 end if
-!
-!                !Check every 500 steps to see if we are out-of-bounds
-!                if (modulo(steps,500) == 1) then
-!                        if ((vals(1)>max_var1) .or.&
-!                            (vals(2)>max_var2)) then
-!                                exit
-!                        end if
-!                endif
-!
-!                !Upate the coordinates with the velocities
-!                coords = coords + dt * velocities
-!
-!                !Always calculate the variables before checking a frame or accelerating
-!		call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-!
-!                !If the library forced no special labeling or duplicate additions, then
-!                !that means we don't do any special label switching when using the
-!                !approximated gradient and inputing the frame
-!                if ((force_Duplicates) .or. (force_NoLabels)) then
-!                        if (accept_worst) then
-!                                min_rmsd = 0.0d0
-!                        else
-!                                min_rmsd = default_rmsd
-!                        end if
-!                        call checkState(vals,coords,approx_gradient,min_rmsd,&
-!                                 number_of_frames,order,neighbor_check)
-!
-!                        if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-!                                call Acceleration(vals,coords,gradient)
-!                        else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-!                                call Acceleration(vals,coords,gradient)
-!                        else
-!				gradient = approx_gradient
-!                        end if
-!
-!                !Otherwise, then we need to do the label switching
-!                else
-!                        !We need to input the frame using the labeling scheme
-!                        do n = 1, Natoms
-!                                coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-!                        end do
-!
-!                       !Check for a frame in the grid
-!                       !Set the default value beforehand though
-!                       if (accept_worst) then
-!                               min_rmsd = 0.0d0
-!                       else
-!                               min_rmsd = default_rmsd
-!                       end if
-!                       call checkState(vals,coords_labelled,approx_gradient,min_rmsd,&
-!                                number_of_frames,order,neighbor_check)
-!
-!                       !Update the gradient with either the approximation or by acclerating
-!                       !This is dependent on the threshold and the rejection method
-!                       if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-!                                call Acceleration(vals,coords,gradient)
-!                       else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-!                                call Acceleration(vals,coords,gradient)
-!                       else
-!                                !And we need to use the approximation after "unlabeling"
-!                                do n = 1, Natoms
-!                                        gradient(:,BOND_LABELLING_DATA(n)) = approx_gradient(:,n)
-!                                end do
-!                       end if
-!                end if
-!
-!		!Calculate the potential and kinetic energy
-!		!(yes, making this nicer is next on the to-do list)
-!		!Right now, it is not generic (we only take into account 3 atoms)
-!	        U = MorsePotential(coords(:,1),coords(:,2))
-!	        U = U + MorsePotential(coords(:,1),coords(:,3))
-!	        U = U + HOPotential(coords(:,2),coords(:,3))
-!	        KE = KineticEnergy(velocities(:,1))
-!	        KE = KE + KineticEnergy(velocities(:,2))
-!	        KE = KE + KineticEnergy(velocities(:,3))
-!
-!		!Finally write to the data file all the important data values
-!		write(filechannel2,FMT=*) number_of_frames,order,neighbor_check,steps,&
-!                                          min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
-!
-!                !Update the velocities
-!                velocities = velocities + gradient
-!
-!        end do
-!	close(filechannel2)
-!
-!	coords_final = coords
-!	velocities_final = velocities
-!
-!end subroutine checkTrajectory
-!
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	SUBROUTINE
-!		checkMultipleTrajectories
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	PURPOSE
-!		This subroutine simulates an MD collision by calculating the gradient
-!		at every step with classical mechanics and parameters in PHYSICS
-!
-!		Every frame is checked with the current grid through interactMultipleGrids
-!
-!		The initial and final velocity of the incoming H/H2 is output to
-!		gather scattering angle data
-!
-!               Every interpolated frame is output to gather interpolation data
-!               according to ANALYSIS
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	INPUT				KIND				DESCRIPTION
-!
-!		filechannels			INTEGER,DIM(Ngrid_total+1)	These filechannels were opened beforehand to the
-!										trajectory files that we output rmsd data to;
-!										all that's left to do is to write to them every frame.
-!                                                                               However, filechannel(1) is NOT opened beforehand
-!                                                                               and is available for any random purpose
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	OUTPUT				KIND				DESCRIPTION
-!
-!               coords_initial                  REAL(DP),DIM(3,Natoms)          The coordinates of the initial frame
-!               velocities_initial              REAL(DP),DIM(3,Natoms)          The velocities of the initial frame
-!               coords_final                    REAL(DP),DIM(3,Natoms)          The coordinates of the final frame
-!               velocities_final                REAL(DP),DIM(3,Natoms)          The velocities of the final frame
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!	IMPORTANT VARIABLES		KIND				DESCRIPTION
-!
-!		vals				REAL(DP),DIM(Nvar)		The variables associated with a frame
-!
-!		coords				REAL(DP),DIM(3,Natoms)		The coordinates defining a frame
-!		velocities			REAL(DP),DIM(3,Natoms)		The velocities of a frame
-!		gradient			REAL(DP),DIM(3,Natoms)		The gradient associated with a frame
-!		approx_gradient			REAL(DP),DIM(3,Natoms)		The gradient recovered for a frame from the grid
-!
-!		number_of_frames		INTEGER				The total amount of frames checked over all cells
-!		order				INTEGER				The order of the cell checked for a frame
-!		neighbor_check			INTEGER				Signifies whether neighbor cells were check or not (0 or 1)
-!
-!		min_rmsd			REAL(DP)			The minimum rmsd recovered for a frame from the grid
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       FILES	                          FILETYPE			DESCRIPTION
-!
-!		gridpath0//trajectory		XYZ				Coordinates to view the trajectory over time;
-!										currently just for bug-testing (set to false)
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-subroutine checkMultipleTrajectories(filechannels,&
-                                                  coords_initial,velocities_initial,&
-                                                  coords_final,velocities_final)
-    use PHYSICS
-    use PARAMETERS
-    use VARIABLES
-    use ANALYSIS
-    use interactMultipleGrids
-    use ls_rmsd_original
-    use analyzeRMSDThresholdwithMultipleGrids
-    implicit none
-
-    !Coordinates, Velocities, and Variables
-    real(dp),dimension(3,Natoms) :: coords,coords_labelled,velocities
-    real(dp),dimension(3,Natoms) :: gradient,gradient_labelled,approx_gradient
-    real(dp),dimension(3,Natoms),intent(out) :: coords_initial, velocities_initial
-    real(dp),dimension(3,Natoms),intent(out) :: coords_final, velocities_final
-    real(dp),dimension(Nvar) :: vals
-    
-    real(dp),dimension(3,Natoms) :: coords_mean
-    real(dp),dimension(3) :: x_center,y_center
-    real(dp) :: mu,sigma
-
-    !Grid Parameters
-    integer,dimension(1+Ngrid_total),intent(in) :: filechannels
-    integer :: OMP_GET_THREAD_NUM
-
-    !Various other variables
-    real(dp) :: U, KE
-    real(dp) :: min_rmsd, min_rmsd_prime
-    real(dp) :: error1, error2
-    integer :: number_of_frames,order,neighbor_check
-    integer :: order0, order1
-
-    real(dp),allocatable :: libcoords(:,:,:), libgradients(:,:,:)
-    real(dp),dimension(3,Natoms) :: coords2,gradient2
-    integer,allocatable :: libNtraj(:)
-
-    !Incremental Integer
-    integer :: n,m
-
-    !Initialize the scene
-    call InitialSetup3(coords,velocities)
-
-    !For traversal
-    if (traversal_flag) then
-        traversal0 = 0
-        traversal1 = 0
-    end if
-
-    !Open these files and keep them open if we want this
-    !type of data
-    if (testtrajDetailedRMSD_flag) open(filechannel2,file=&
-            gridpath5//checkstatefile)
-    if (gather_interpolation_flag) open(filechannel3,file=&
-            gridpath5//interpolationfile,position="append")
-
-    !Allocate all buffers; initialize the buffer size to be
-    !the maximum number of frames expected to be seen
-    buffer1_size = 1 + var_overcrowd(1)
-    allocate(valsbuffer1(Nvar,buffer1_size),&
-             coordsbuffer1(3,Natoms,buffer1_size),&
-             gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
-             approximation_index(buffer1_size))
-
-    allocate(Ntrajbuffer1(buffer1_size))
-
-    allocate(acceptable_frame_mask(buffer1_size),&
-             inputCLS(Ncoords+buffer1_size,buffer1_size))
-
-    !Output the initial coordinates and velocities
-    coords_initial = coords
-    velocities_initial = velocities
-
-    !Always calculate the variables before accelearting
-    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-    do n = 1, Natoms
-        coords2(:,n) = coords(:,BOND_LABELLING_DATA(n))
-    end do
-    
-!   print *, ""
-!   print *, 0
-!   print *, vals
-!   print *, BOND_LABELLING_DATA
-!   print *, 0.0d0
-
-    !Accelerate the velcocities for a half step (verlet)
-    call Acceleration(vals,coords,gradient)
-
-    !Update the velocities
-    velocities = velocities + 0.5d0 * gradient
-
-    !To randomize the periods of the bond, I let the scene go on
-    !for a small period of time (need to standardize this later)
-    do n = 1, Nbonds
-        do steps = 1, int(INITIAL_BOND_DATA(6,n)*vib_period)
-            coords = coords + dt * velocities
-            call Acceleration(vals,coords,gradient)
-            velocities = velocities + gradient
-        end do
-
-        !And then reset the bond
-        coords(:,BONDING_DATA(n,1)) = coords_initial(:,BONDING_DATA(n,1))
-        coords(:,BONDING_DATA(n,2)) = coords_initial(:,BONDING_DATA(n,2))
-        velocities(:,BONDING_DATA(n,1)) = velocities_initial(:,BONDING_DATA(n,1))
-        velocities(:,BONDING_DATA(n,2)) = velocities_initial(:,BONDING_DATA(n,2))
-    end do
-
-    !Start the main loop
-    do steps = 1, Nsteps
-
-        !Just for bug-testing
-!       if (modulo(steps,50) == 1) then
-        if (.false.) then
-            open(filechannel1,file=gridpath5//trajectoryfile,position="append")
-            write(filechannel1,'(I6)') Natoms
-            write(filechannel1,*) ""
-            do n = 1, Natoms
-                write(filechannel1,'(A1,3F10.6)') 'H',&
-                              coords(1,n), coords(2,n), coords(3,n)
-            end do
-            close(filechannel1)
-        end if
-
-        !Check every 500 steps if we are out-of-bounds
-        if (modulo(steps,500) == 1) then
-                if (any(vals > var_maxvar)) exit
-        endif
-
-        !Upate the coordinates with the velocities
-        coords = coords + dt * velocities
-
-        !Always calculate the variables before checking a frame or accelerating
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-
-        !If the library forced no special labeling or duplicate additions, then
-        !that means we don't do any special label switching when using the
-        !approximated gradient and inputing the frame
-        !(deprecated)
-        if ((force_Duplicates) .or. (force_NoLabels)) then
-            if (accept_worst) then
-                min_rmsd = 0.0d0
-            else
-                min_rmsd = default_rmsd
-            end if
-            call checkState_new(vals,coords,approx_gradient,min_rmsd,&
-                     filechannels,number_of_frames,order,neighbor_check)
-
-            if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-                call Acceleration(vals,coords,gradient)
-            else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-                call Acceleration(vals,coords,gradient)
-            else
-                gradient = approx_gradient
-            end if
-
-        !Otherwise, then we do the label switching
-        else
-            !We need to input the frame using the labeling scheme
-            do n = 1, Natoms
-                coords_labelled(:,n) = coords(:,BOND_LABELLING_DATA(n))
-            end do
-
-            call rmsd_dp(Natoms,coords_labelled,coords2,&
-                 1,Ubuffer1(:,:,1),x_center,y_center,&
-                 min_rmsd)
-
-            print *, ""
-            print *, steps
-            print *, vals
-            print *, BOND_LABELLING_DATA
-            print *, min_rmsd
-
-            !Check for a frame in the grid
-            !Set the default value beforehand
-            if (accept_worst) then
-                min_rmsd = 0.0d0
-            else
-                min_rmsd = default_rmsd
-            end if
-
-            !If we want detailed RMSD output then we
-            !search the library twice; the first time
-            !with no interpolation
-            if (testtrajDetailedRMSD_flag) then
-                subcellsearch_max = subcellsearch_max1
-                if (gather_interpolation_flag) then 
-                    interpolation_flag = .false.
-                end if
-            end if
-
-            !Check the library to get an
-            !approximated gradient
-            call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd,&
-                     filechannels,number_of_frames,order0,neighbor_check)
-
-if (testtrajDetailedRMSD_flag) then
-
-    if (accept_worst) then
-        min_rmsd_prime = 0.0d0
-    else
-        min_rmsd_prime = default_rmsd
-    end if
-
-    subcellsearch_max = subcellsearch_max2
-    if (gather_interpolation_flag) interpolation_flag = .true.
-
-    call checkState_new(vals,coords_labelled,approx_gradient,min_rmsd_prime,&
-            filechannels,number_of_frames,order1,neighbor_check)
-
-    !Calculate the potential and kinetic energy
-    !(yes, making this nicer is next on the to-do list)
-    !Right now, it is not generic (we only take into account 3 atoms)
-    U = MorsePotential(coords(:,1),coords(:,2))
-    U = U + MorsePotential(coords(:,1),coords(:,3))
-    U = U + HOPotential(coords(:,2),coords(:,3))
-    KE = KineticEnergy(velocities(:,1))
-    KE = KE + KineticEnergy(velocities(:,2))
-    KE = KE + KineticEnergy(velocities(:,3))
-
-    !Finally write to the data file all the important data values
-    write(filechannel2,FMT=*) number_of_frames,order0+order1,neighbor_check,steps,&
-                              min_rmsd,min_rmsd_prime,vals(1),vals(2),U,KE
-
-    min_rmsd = min_rmsd_prime
-end if
-
-           !Accept worst has not found an acceptable frame
-           !if min_rmsd is zero
-           !(deprecated)
-           if ((accept_worst) .and. (min_rmsd == 0.0d0)) then
-               call Acceleration(vals,coords,gradient)
-
-           !If we are gather interpolation data...
-           else if (gather_interpolation_flag) then
-
-               !Save the approx_gradient with the
-               !correct labelling
-               do n = 1, Natoms
-                    gradient(:,BOND_LABELLING_DATA(n)) = &
-                            approx_gradient(:,n)
-               end do
-               approx_gradient = gradient
-
-               !Save the candidate_gradient with the
-               !correct labelling
-               do n = 1, Natoms
-                    gradient(:,BOND_LABELLING_DATA(n)) = &
-                            candidate_gradient(:,n)
-               end do
-               candidate_gradient = gradient
-
-               !Calculate the true gradient
-               call Acceleration(vals,coords,gradient)
-
-               !If a frame was found, record data on it
-               if (Ninterpolation > 0) then
-
-               error1 = sqrt(sum((gradient-candidate_gradient)**2)/Natoms)
-               error2 = sqrt(sum((gradient-approx_gradient)**2)/Natoms)
-
-               write(filechannel3,FMT=*) vals(1), vals(2), Ninterpolation,&
-                           largest_weighted_rmsd2, largest_weighted_rmsd,&
-                           candidate_rmsd,min_rmsd,error1,error2
-
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               if ((Ninterpolation > 10).and.(error1 < error2)) then
-                   allocate(libcoords(Ninterpolation,3,Natoms),&
-                            libgradients(Ninterpolation,3,Natoms),&
-                            libNtraj(Ninterpolation))
-                   m = 0
-!                  coords_mean = 0.0d0
-                   do n = 1, Ninterpolation
-                       do
-                       m = m + 1
-                       if (acceptable_frame_mask(m)) then
-                           libcoords(n,:,:) =&
-                                   coordsbuffer1(:,:,m)
-                           libgradients(n,:,:) =&
-                                   gradientbuffer1(:,:,m)
-                           libNtraj(n) =&
-                                   Ntrajbuffer1(m)
-
-!                          coords_mean = coords_mean + &
-!                                  libcoords(n,:,:)
-                           exit
-                       else
-                       end if
-                       end do
-                   end do
-
-!                  coords_mean = coords_mean / &
-!                          Ninterpolation
-!                  mu = sqrt(sum(coords_mean**2)/Natoms)
-!                  
-!                  sigma = 0.0d0
-!                  do n = 1, Ninterpolation
-!                      sigma = sigma + &
-!                          sum((coords_mean-libcoords(n,:,:))**2)
-!                  end do
-!                  sigma = sqrt(sigma/Ninterpolation)
-
-!                  do n = 1, Natoms
-!                       gradient_labelled(:,n) = &
-!                               gradient(:,BOND_LABELLING_DATA(n))
-!                  end do
-
-!   open(6666,file=gridpath5//"tmp_A.dat",&
-!   position="append")
-!   write(6666,FMT=*) vals(1), vals(2), mu, sigma, &
-!                     coords_labelled, coords_mean
-!   write(6666,FMT=*) mu, sigma, &
-!                     coords_labelled, coords_mean
-!   close(6666)
-               
-                   !errorCheck3 requires LABELLED data
-!                  call errorCheck3(filechannels,&
-!                          coords_labelled,&
-!                          gradient_labelled,&
-!                          Ninterpolation,&
-!                          libcoords,libgradients)
-!
-!                   coords2 = coords + dt * &
-!                           (velocities + gradient)
-!                   call Acceleration(vals,coords2,gradient2)
-!
-!                   !errorCheck4 requires UNLABELLED data
-!                   call errorCheck4(filechannels,&
-!                           coords,gradient,&
-!                           coords2,gradient2,&
-!                           Ninterpolation/2,&
-!                           Ninterpolation,&
-!                           libcoords,libgradients)
-!
-                   !errorCheck5 requires UNLABELLED data
-                   call errorCheck5(filechannels,&
-                           coords,gradient,&
-                           Ninterpolation,&
-                           libcoords,libgradients,&
-                           libNtraj)
-
-                   deallocate(libcoords,libgradients,libNtraj)
-               end if
-
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-               end if
-
-               !If the approximated frame is good enough
-               !and we are not rejecting it, then use it
-               if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-               else
-                   gradient = approx_gradient
-               end if
-
-           !If no interpolation data is being gathered, then the
-           !true gradient is not needed
-
-           !If the frame is not good enough or we are rejecting
-           !frames, calculate the true gradient
-           else if ((min_rmsd .ge. threshold_RMSD).or.(reject_flag)) then
-               call Acceleration(vals,coords,gradient)
-
-           !If the approximated frame is good enough then
-           !we can use it (after relabelling)!
-           else
-               do n = 1, Natoms
-                    gradient(:,BOND_LABELLING_DATA(n)) = &
-                            approx_gradient(:,n)
-               end do
-           end if
-        end if
-
-        !Update the velocities
-        velocities = velocities + gradient
-
-    end do
-
-    if (testtrajDetailedRMSD_flag) close(filechannel2)
-    if (gather_interpolation_flag) close(filechannel3)
-
-    !Deallocate the buffers
-    deallocate(valsbuffer1,&
-            coordsbuffer1,gradientbuffer1,&
-            Ubuffer1,RMSDbuffer1,&
-            approximation_index)
-
-    deallocate(Ntrajbuffer1)
-
-    deallocate(acceptable_frame_mask,inputCLS)
-
-    !Output the final coordinates and velocities
-    coords_final = coords
-    velocities_final = velocities
-
-end subroutine checkMultipleTrajectories
-
-
-
-
-
-
-
 subroutine readTrajectory(filechannel_input,filechannels,&
                           coords_initial,velocities_initial,&
                           coords_final,velocities_final)
@@ -4075,6 +1203,7 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     use PARAMETERS
     use VARIABLES
     use ANALYSIS
+    use SIMILARITY
     use interactMultipleGrids
     use ls_rmsd_original
     use analyzeRMSDThresholdwithMultipleGrids
@@ -4120,8 +1249,6 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     !Incremental Integer
     integer :: i,j,n,m
 
-    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
-
     !For traversal
     if (traversal_flag) then
         traversal0 = 0
@@ -4138,21 +1265,9 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     !Allocate all buffers; initialize the buffer size to be
     !the maximum number of frames expected to be seen
     buffer1_size = 2 + Ninterpolation_max
-    buffer2_size = 30
-
+    buffer2_size = 100
     call setAllocations()
-!   allocate(valsbuffer1(Nvar,buffer1_size),&
-!            coordsbuffer1(3,Natoms,buffer1_size),&
-!            gradientbuffer1(3,Natoms,buffer1_size),&
-!            Ubuffer1(3,3,buffer1_size),&
-!            RMSDbuffer1(buffer1_size),&
-!            approximation_index(buffer1_size))
-
-!   allocate(CMdiffbuffer1(buffer1_size))
-!   allocate(Ntrajbuffer1(buffer1_size))
-
-!   allocate(acceptable_frame_mask(buffer1_size),&
-!            inputCLS(Ncoords+buffer1_size,buffer1_size))
+    allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
 
     read(filechannel_input,iostat=iostate) coords
     if (iostate /= 0) then
@@ -4202,23 +1317,6 @@ subroutine readTrajectory(filechannel_input,filechannels,&
         !Always calculate the variables before accelearting
         call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
-        !Check for a frame in the grid
-        !Set the default value beforehand
-        if (accept_worst) then
-            min_rmsd = 0.0d0
-        else
-            min_rmsd = default_rmsd
-        end if
-        
-        RMSDbuffer1 = min_rmsd
-        CMdiffbuffer1 = default_CMdiff
-
-!       call checkState_new_permute_cap(&
-!               vals,coords,&
-!               approx_gradient,min_rmsd,&
-!               filechannels,number_of_frames,&
-!               order,neighbor_check)
-
         call checkState_PCM(&
                 vals,coords,&
                 approx_gradient,min_rmsd,&
@@ -4235,7 +1333,7 @@ subroutine readTrajectory(filechannel_input,filechannels,&
 
                 candidate_gradient = matmul(Ubuffer1(:,:,j),&
                         gradientbuffer1(:,:,j))
-                candidate_rmsd = RMSDbuffer1(j)
+                candidate_rmsd = SIbuffer1(1,j)
 
                 error1 = sqrt(sum((gradient - &
                         candidate_gradient)**2)/Natoms)
@@ -4258,7 +1356,7 @@ subroutine readTrajectory(filechannel_input,filechannels,&
                 write(filechannel3,FMT=*) vals(1),vals(2),&
                         Ninterpolation,largest_weighted_rmsd2,&
                         largest_weighted_rmsd,candidate_rmsd,&
-                        min_rmsd,CMdiffbuffer1(j),&
+                        min_rmsd,SIbuffer1(2,1),&
                         interpolated_CMdiff,error1,error2
 !           end if
             end do
@@ -4302,7 +1400,7 @@ subroutine readTrajectory(filechannel_input,filechannels,&
  
             !If the approximated frame is good enough
             !and we are not rejecting it, then use it
-            if ((min_rmsd .ge. threshold_RMSD) &
+            if ((min_rmsd .ge. outer_threshold_SI) &
                     .or. (reject_flag)) then
 
                 if (Naccept > 0) then
@@ -4415,23 +1513,12 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     if (gather_interpolation_flag) close(filechannel3)
 
     !Deallocate the buffers
-!   deallocate(valsbuffer1,&
-!           coordsbuffer1,gradientbuffer1,&
-!           Ubuffer1,RMSDbuffer1,&
-!           approximation_index)
-
-!   deallocate(Ntrajbuffer1)
-!   deallocate(CMdiffbuffer1)
-
-!   deallocate(acceptable_frame_mask,inputCLS)
-
     call unsetAllocations()
+    deallocate(trajRMSDbuffer)
 
     !Output the final coordinates and velocities
     coords_final = coords
     velocities_final = velocities
-
-    deallocate(trajRMSDbuffer)
 
 end subroutine readTrajectory
 
@@ -5021,6 +2108,7 @@ subroutine errorCheck1(filechannels)
     use PHYSICS
     use VARIABLES
     use ANALYSIS
+    use SIMILARITY
     use ls_rmsd_original
     use interactMultipleGrids
     use analyzeRMSDThresholdwithMultipleGrids
@@ -5103,7 +2191,6 @@ subroutine errorCheck1(filechannels)
              coordsbuffer1(3,Natoms,buffer1_size),&
              gradientbuffer1(3,Natoms,buffer1_size),&
              Ubuffer1(3,3,buffer1_size),&
-             RMSDbuffer1(buffer1_size),&
              approximation_index(buffer1_size))
 
     if (interpolation_flag) then
@@ -5157,7 +2244,7 @@ subroutine errorCheck1(filechannels)
 
     print *, "Starting sampling:", Nsample
     call system("rm "//gridpath2//"*.dat")
-    handicap_rmsd = threshold_rmsd* 0.1d0
+    handicap_rmsd = outer_threshold_SI* 0.1d0
 
     !Let's find one good point
     do
@@ -5172,7 +2259,7 @@ subroutine errorCheck1(filechannels)
             if (delta_length == 0.0d0) cycle
 
             coords = coords_final + delta_coords * (handicap_rmsd + &
-                    (threshold_rmsd - handicap_rmsd)*rand()) / delta_length
+                    (outer_threshold_SI - handicap_rmsd)*rand()) / delta_length
 
             call rmsd_dp(Natoms,coords_final,coords,1,candidate_U,x_center,y_center,min_rmsd)
 
@@ -5218,12 +2305,12 @@ subroutine errorCheck1(filechannels)
             if (delta_length == 0.0d0) cycle
 
             coords = coords_final + delta_coords * &
-                    (min_rmsd + (threshold_rmsd - min_rmsd)*rand())
+                    (min_rmsd + (outer_threshold_SI - min_rmsd)*rand())
 
             call rmsd_dp(Natoms,coords_final,coords,1,&
                          candidate_U,x_center,y_center,min_rmsd)
 
-            if (min_rmsd >= threshold_rmsd) cycle
+            if (min_rmsd >= outer_threshold_SI) cycle
 
             call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
             call Acceleration(vals,coords,gradient_var)
@@ -5240,15 +2327,15 @@ subroutine errorCheck1(filechannels)
         rmsd_x(steps,Nsample) = min_rmsd
 
         interpolation_flag = .true.
-        call checkState_new(vals,coords,approx_gradient,min_rmsd,&
+        call checkState_PCM(vals,coords,approx_gradient,min_rmsd,&
                         filechannels,number_of_frames,order,neighbor_check)
         call addState_new(vals,coords,gradient_var)
 
         interpolation_flag = .true.
-        min_rmsd = default_rmsd
+        min_rmsd = default_SIs(1)
         temp_frame_weights = 0.0d0
         temp_rmsd_weights = 0.0d0
-        call checkState_new(vals,coords_final,approx_gradient,min_rmsd,&
+        call checkState_PCM(vals,coords_final,approx_gradient,min_rmsd,&
                         filechannels,number_of_frames,order,neighbor_check)
 
         rmsd_x_interpolated(steps,Nsample) = min_rmsd
@@ -5361,7 +2448,7 @@ subroutine errorCheck1(filechannels)
 
     end do
 
-    deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,RMSDbuffer1,&
+    deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,&
                approximation_index)
     if (interpolation_flag)&
             deallocate(acceptable_frame_mask,inputCLS)
@@ -5546,7 +2633,7 @@ print *, coords
 
     do Nsample = 1, Nsamples
 
-    handicap_rmsd = threshold_rmsd* 0.90d0
+    handicap_rmsd = outer_threshold_SI * 0.90d0
 
     !Let's find one good point
     do
@@ -5561,7 +2648,7 @@ print *, coords
         if (delta_length == 0.0d0) cycle
 
         coords = coords_final + delta_coords * (handicap_rmsd + &
-                (threshold_rmsd - handicap_rmsd)*rand()) / delta_length
+                (outer_threshold_SI - handicap_rmsd)*rand()) / delta_length
 
         call rmsd_dp(Natoms,coords,coords_final,1,candidate_U,x_center,y_center,min_rmsd)
 
@@ -5622,12 +2709,12 @@ print *, coords
             if (delta_length == 0.0d0) cycle
 
             coords = coords_final + delta_coords * &
-                    (5*(threshold_rmsd)*rand()) / delta_length
+                    (5*(outer_threshold_SI)*rand()) / delta_length
 
             call rmsd_dp(Natoms,coords,coords_final,1,&
                          candidate_U,x_center,y_center,min_rmsd)
 
-            if (min_rmsd >= threshold_rmsd) cycle
+            if (min_rmsd >= outer_threshold_SI) cycle
             if (min_rmsd <= 1.0d-6) cycle
 
             call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
@@ -5659,12 +2746,12 @@ print *, coords
             if (delta_length == 0.0d0) cycle
 
             coords = coords_final + delta_coords * &
-                    (handicap_rmsd + 10*(threshold_rmsd - handicap_rmsd)*rand()) / delta_length
+                    (handicap_rmsd + 10*(outer_threshold_SI - handicap_rmsd)*rand()) / delta_length
 
             call rmsd_dp(Natoms,coords,coords_final,1,&
                          candidate_U,x_center,y_center,min_rmsd)
 
-            if (min_rmsd >= threshold_rmsd) cycle
+            if (min_rmsd >= outer_threshold_SI) cycle
 
             call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
             call Acceleration(vals,coords,gradient_var)
@@ -6279,12 +3366,12 @@ subroutine errorCheck3(filechannels,coords_final,gradient_final,&
 !           coords = coords_final + delta_coords * &
 !                   (min_rmsd + (threshold_rmsd - min_rmsd)*rand())
             coords = coords_final + delta_coords * &
-                    (0.0d0 + (threshold_rmsd - 0.0d0)*rand())
+                    (0.0d0 + (outer_threshold_SI - 0.0d0)*rand())
 
             call rmsd_dp(Natoms,coords,coords_final,1,&
                          candidate_U,x_center,y_center,min_rmsd)
 
-            if (min_rmsd >= threshold_rmsd) cycle
+            if (min_rmsd >= outer_threshold_SI) cycle
 
 !           call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 !           call Acceleration(vals,coords,gradient_var)
@@ -6820,12 +3907,12 @@ subroutine errorCheck4(filechannels,coords1,gradient1,&
             if (delta_length == 0.0d0) cycle
 
             coords = coords1 + delta_coords * &
-                    (0.0d0 + (threshold_rmsd - 0.0d0)*rand())
+                    (0.0d0 + (outer_threshold_SI - 0.0d0)*rand())
 
             call rmsd_dp(Natoms,coords,coords1,1,&
                          candidate_U,x_center,y_center,min_rmsd)
 
-            if (min_rmsd >= threshold_rmsd) cycle
+            if (min_rmsd >= outer_threshold_SI) cycle
             randcoords(steps,:,:) = coords
     
             if (min_rmsd < min_rmsd_prime) then
@@ -6905,12 +3992,12 @@ subroutine errorCheck4(filechannels,coords1,gradient1,&
                 if (delta_length == 0.0d0) cycle
     
                 coords = coords2 + delta_coords * &
-                        (0.0d0 + (threshold_rmsd - 0.0d0)*rand())
+                        (0.0d0 + (outer_threshold_SI - 0.0d0)*rand())
     
                 call rmsd_dp(Natoms,coords,coords2,1,&
                              candidate_U,x_center,y_center,min_rmsd)
     
-                if (min_rmsd >= threshold_rmsd) cycle
+                if (min_rmsd >= outer_threshold_SI) cycle
             else
                 coords = randcoords(steps,:,:)
 
@@ -7188,7 +4275,7 @@ subroutine errorCheck4(filechannels,coords1,gradient1,&
     write(gnuplotchannel,*) 'set ylabel "RMSD Between Interpolated and Target Gradient"'
     write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ',1, '" at screen 0.1,0.925'
     write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-    write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
+    write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
     write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
     write(gnuplotchannel,*) 'xmax = ', Ninterpolation2
     write(gnuplotchannel,*) 'set xrange [1:xmax]'
@@ -7382,7 +4469,7 @@ subroutine errorCheck5(filechannels,coords1,gradient1,&
 !           if (delta_length == 0.0d0) cycle
 
 !           coords = coords1 + delta_coords * &
-!                   (0.0d0 + (threshold_rmsd - 0.0d0)*rand())
+!                   (0.0d0 + (outer_threshold_SI - 0.0d0)*rand())
 
         coords = libcoords(step,:,:)
         gradient_var = libgradients(step,:,:)
@@ -7455,7 +4542,7 @@ subroutine errorCheck5(filechannels,coords1,gradient1,&
     !Linear binning!
     Nbins = 20
 !   min_rmsd_binwidth = (max_rmsd_prime - min_rmsd_prime)/Nbins
-    min_rmsd_binwidth = (threshold_rmsd)/Nbins
+    min_rmsd_binwidth = (outer_threshold_SI)/Nbins
     allocate(min_rmsd_binning(Nbins))
 
     min_rmsd_binning = 0
@@ -7911,7 +4998,7 @@ write(gnuplotchannel,*) 'unset xlabel'
 !   write(gnuplotchannel,*) 'set ylabel "RMSD Between Interpolated and Target Gradient"'
     write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ',1, '" at screen 0.1,0.925'
     write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-    write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
+    write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
 !   write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
     write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.8,0.925'
     write(gnuplotchannel,*) 'xmax = ', Ninterpolation
@@ -7962,7 +5049,7 @@ write(gnuplotchannel,*) 'set xtics'
     write(gnuplotchannel,*) 'unset logscale y'
     write(gnuplotchannel,*) 'unset logscale y2'
     write(gnuplotchannel,*) 'set autoscale x'
-    write(gnuplotchannel,*) 'set xrange [0:', threshold_rmsd, ']'
+    write(gnuplotchannel,*) 'set xrange [0:', outer_threshold_SI, ']'
 write(gnuplotchannel,*) 'unset y2label'
 write(gnuplotchannel,*) 'set ylabel "Weighting" font ",24"'
     write(gnuplotchannel,*) 'unset xlabel'
@@ -8052,7 +5139,7 @@ write(gnuplotchannel,*) 'unset ylabel'
 write(gnuplotchannel,*) 'unset ytics'
     write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ',1, '" at screen 0.1,0.925'
     write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-    write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
+    write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, ' A" at screen 0.5,0.925'
 !   write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
     write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.8,0.925'
     write(gnuplotchannel,*) 'xmax = ', Ninterpolation
@@ -8076,7 +5163,7 @@ write(gnuplotchannel,*) 'set xlabel "Error (eV/A)"'
     write(gnuplotchannel,*) 'set multiplot next'
     write(gnuplotchannel,*) 'unset logscale x'
     write(gnuplotchannel,*) 'set autoscale x'
-    write(gnuplotchannel,*) 'set xrange [0:', threshold_rmsd, ']'
+    write(gnuplotchannel,*) 'set xrange [0:', outer_threshold_SI, ']'
 write(gnuplotchannel,*) 'set ylabel "Weighting" font ",24"'
     write(gnuplotchannel,*) 'unset xlabel'
     write(gnuplotchannel,*) 'unset xtics'
@@ -8282,7 +5369,7 @@ subroutine errorCheck6(filechannels,coords1,gradient1,&
 
     !Linear binning!
     Nbins = 20
-    min_rmsd_binwidth = (threshold_rmsd)/Nbins
+    min_rmsd_binwidth = (outer_threshold_SI)/Nbins
     allocate(min_rmsd_binning(Nbins))
 
     min_rmsd_binning = 0
@@ -8857,6 +5944,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         use PHYSICS
         use VARIABLES
         use ANALYSIS
+        use SIMILARITY
         implicit none
 
         real(dp), dimension(Nvar), intent(in) :: vals
@@ -8887,7 +5975,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         character(3) :: ntext
 
         max_rmsd = 0.0d0
-        min_rmsd = default_rmsd
+        min_rmsd = default_SIs(1)
         Ninterpolation = 0
 
         open(filechannel2,file=gridpath5//errorcheckfile)
@@ -8917,7 +6005,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         write(gnuplotchannel,*) 'set ylabel "RMSD Between Interpolated and Target Gradient"'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.1,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
         write(gnuplotchannel,FMT='(A,F7.2,A,F7.4,A)') &
                 'set label 4 "log(Convergence) = ',convergence_mean,&
                              '     Dropoff = ',dropoff_mean,'" at screen 0.1,0.900'
@@ -8997,7 +6085,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         write(gnuplotchannel,*) 'set ylabel "Relative RMSD Between Interpolated and Target Gradient"'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.1,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
         write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 4 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.895'
         write(gnuplotchannel,*) 'ymax = ', max_rmsd
         write(gnuplotchannel,*) 'ymin = ', min_rmsd
@@ -9086,7 +6174,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         write(gnuplotchannel,*) 'set ylabel "Absolute Value of Weight"'
         write(gnuplotchannel,*) 'set cblabel "RMSD Between Gradient of Frame and Target"'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 1 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 2 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 2 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
         write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
         write(gnuplotchannel,*) 'cbmax = ', max_rmsd
         write(gnuplotchannel,*) 'cbmin = ', min_rmsd
@@ -9221,8 +6309,8 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         write(gnuplotchannel,*) 'set ylabel "Error Between Nearby and Target Gradient"'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.1,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
-        write(gnuplotchannel,*) 'set xrange [:', threshold_rmsd, ']'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
+        write(gnuplotchannel,*) 'set xrange [:', outer_threshold_SI, ']'
         write(gnuplotchannel,*) 'set logscale xy'
         write(gnuplotchannel,*) 'set xtics ('//&
                                      '"1e-11" .00000000001, '//&
@@ -9310,7 +6398,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.1,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
         write(gnuplotchannel,*) 'min_x = ', min_rmsd1
         write(gnuplotchannel,*) 'max_x = ', max_rmsd1
         write(gnuplotchannel,*) 'min_y = ', min_rmsd3
@@ -9630,7 +6718,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.05,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.1,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.25,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.25,0.925'
         write(gnuplotchannel,*) 'xmin = ', log10(min_rmsd1)
         write(gnuplotchannel,*) 'xmax = ', log10(max_rmsd1)
         write(gnuplotchannel,*) 'ymin = ', log10(min_rmsd2)
@@ -9777,7 +6865,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.055,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.1,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.25,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.25,0.925'
         write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 4 "AlphaRatio = ',alpha_ratio, '" at screen 0.25,0.900'
         write(gnuplotchannel,*) 'xmin = ', log10(min_rmsd1)
         write(gnuplotchannel,*) 'xmax = ', log10(max_rmsd1)
@@ -10042,7 +7130,7 @@ subroutine plotErrorCheck1(vals,Ntrials,Nsamples,&
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.1,0.925'
         write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',threshold_rmsd, ' A" at screen 0.5,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
         write(gnuplotchannel,*) 'set style fill transparent solid 0.5'
         write(gnuplotchannel,*) 'set ylabel "Frequency"'
         write(gnuplotchannel,*) 'set yrange [0:]'
@@ -10151,8 +7239,8 @@ subroutine plotFinalErrorCheck1(Nsamples)
         write(gnuplotchannel,*) 'set title "Local Error Convergence over a Trajectory"'
         write(gnuplotchannel,*) 'unset key'
         write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', Nsamples, '" at screen 0.05,0.925'
-        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 2 "Threshhold = ',threshold_rmsd, &
-                ' A" at screen 0.15,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 2 "Threshhold = ',outer_threshold_SI, &
+                '" at screen 0.15,0.925'
         write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 3 "AlphaRatio = ',alpha_ratio, &
                 '" at screen 0.35,0.925'
         write(gnuplotchannel,*) 'xmin = ', floor(min_var(1))
@@ -10216,6 +7304,7 @@ subroutine plotCheckstateEnergy(PNGname)
         use PHYSICS
         use VARIABLES
         use ANALYSIS
+        use SIMILARITY
         implicit none
 
         character(*),intent(in) :: PNGname
@@ -10291,7 +7380,7 @@ subroutine plotCheckstateEnergy(PNGname)
 
         open(filechannel3,file=gridpath5//temporaryfile2)
 
-        min_rmsd_previous = default_rmsd
+        min_rmsd_previous = default_SIs(1)
         sd_absDE = 0.0d0
         do
             read(filechannel2,iostat=iostate,FMT=*) &
@@ -10301,7 +7390,7 @@ subroutine plotCheckstateEnergy(PNGname)
             if (iostate /= 0) exit
 
             if (step == 1) then
-                if (min_rmsd_previous < default_rmsd*0.9) then
+                if (min_rmsd_previous < default_SIs(1)*0.9) then
                     if (gather_interpolation_flag) then
                         read(filechannel1,FMT=*) vals, i1, rsv
                     end if
@@ -10321,7 +7410,7 @@ subroutine plotCheckstateEnergy(PNGname)
             if (DE_bin == 0) DE_bin = 1
             if (DE_bin > Nbins) DE_bin = Nbins
 
-            if (min_rmsd_previous < default_rmsd*0.9) then
+            if (min_rmsd_previous < default_SIs(1)*0.9) then
                 DE_binning1(DE_bin) = DE_binning1(DE_bin) + 1
 
 !               write(filechannel3,FMT=*) vals(1),vals(2),&
@@ -10457,8 +7546,8 @@ subroutine plotCheckstateEnergy(PNGname)
         write(gnuplotchannel,*) 'set ylabel "RMSD (A)" font ",24"'
         write(gnuplotchannel,FMT='(A,E16.6,":",E16.6,A)') &
                 'set yrange [',&
-                inner_threshold,&
-                threshold_rmsd,&
+                inner_threshold_SI,&
+                outer_threshold_SI,&
                 ']'
         write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile2//&
                 '" u 1:2 w points pt 1 ps 1 t "Accept Best"'

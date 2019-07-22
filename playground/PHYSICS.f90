@@ -1143,48 +1143,6 @@ subroutine BondedForce(coords1,coords2,gradient1,gradient2,r)
 end subroutine BondedForce
 
 
-subroutine getCoulombMatrix(Natoms,coords,charges,CM)
-    implicit none
-    integer,intent(in) :: Natoms
-    real(dp),dimension(3,Natoms),intent(in) :: coords
-    real,dimension(Natoms) :: charges
-    real(dp),dimension(Natoms,Natoms) :: CM
-
-    integer :: i, j
-
-    CM = 0.0d0
-    do i = 1, Natoms
-    do j = 1, Natoms
-        if (i < j) then
-            cycle
-        else if (i == j) then
-            CM(i,j) = 0.5d0*charges(i)**(2.4)
-        else
-            CM(i,j) = charges(i) * charges(j) / &
-                sqrt(sum((coords(:,i)-coords(:,j))**2))
-        end if
-
-    end do
-    end do
-
-    return
-
-end subroutine getCoulombMatrix
-
-subroutine getCoulombMatrixDiff(Natoms,CM1,CM2,CMdiff)
-    implicit none
-    integer,intent(in) :: Natoms
-    real(dp),dimension(Natoms,Natoms),intent(in) :: CM1, CM2
-    real(dp),intent(out) :: CMdiff
-
-    CMdiff = sqrt(sum((CM1 - CM2)**2)/Natoms)
-
-    return
-
-end subroutine getCoulombMatrixDiff
-
-
-
 end module PHYSICS
 
 

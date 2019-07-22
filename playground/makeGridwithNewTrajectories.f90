@@ -384,36 +384,7 @@ end if
                                 filechannels(1:1+Ngrid_total),&
                                 coords_initial,velocities_initial,&
                                 coords_final,velocities_final)
-
-!                   if (force_Permutations) then
-!                       call runTrajectory_permute_cap(&
-!                               filechannels(1:1+Ngrid_total),&
-!                               coords_initial,velocities_initial,&
-!                               coords_final,velocities_final)
-!                   else
-!                       call runTrajectory_cap(&
-!                               filechannels(1:1+Ngrid_total),&
-!                               coords_initial,velocities_initial,&
-!                               coords_final,velocities_final)
-!                   end if
                 end if
-
-!               !Otherwise, we have some options
-!               else if (.not.(force_NoLabels)) then
-!                   call runTrajectory1(filechannels,&
-!                           coords_initial,velocities_initial,&
-!                           coords_final,velocities_final)
-!               else if (force_Duplicates) then
-!                   call runTrajectory2(filechannels,&
-!                           coords_initial,velocities_initial,&
-!                           coords_final,velocities_final)
-!               else if (force_Permutations) then
-!                   call runTrajectory3(filechannels,&
-!                           coords_initial,velocities_initial,&
-!                           coords_final,velocities_final)
-!               else
-!                   print *, "error!"
-!               end if
 
                 call CPU_time(r2)
                 call system_clock(c2)

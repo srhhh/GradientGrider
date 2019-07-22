@@ -195,7 +195,7 @@ integer,parameter :: Norder_max = 2
 !how many variables we plan to use
 
 real,parameter,dimension(4) :: default_spacing = &
-        (/ 0.01, 0.01, 0.01, 0.01 /)
+        (/ 0.005, 0.005, 0.005, 0.005 /)
 !       (/ 0.0025, 0.0025, 0.0025, 0.0025 /)
 real,parameter,dimension(4) :: default_maxvar = &
         (/ 12.0, 12.0, 10.0, 10.0 /)

@@ -88,7 +88,7 @@ logical,parameter :: testtraj_flag = .true.
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 16, 00 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 00, 00 /)
    integer,dimension(ssm_length) :: ssm2 = (/ 08, 00 /)
 
    !Set .true. to generate a frequency plot of the percentage
@@ -105,11 +105,9 @@ logical,parameter :: testtraj_flag = .true.
 
       !Set the threshold RMSD to be used for any rejection method
       !real(dp),parameter :: !threshold_rmsd! = !.200100d0
-      real(dp),parameter :: threshold_rmsd = .00100d0
-      real(dp),parameter :: default_rmsd = 1.000100d0
-      real(dp),parameter :: default_CMdiff = 10.000100d0
-
-      real(dp),parameter :: inner_threshold = 0.0d0
+      real(dp),parameter :: outer_threshold_SI = .00100d0
+      real(dp),parameter :: inner_threshold_SI = 0.0d0
+      integer,parameter :: Nsort = 1
 
       !Set .true. to generate trajectories using md-calculated gradients
       !Otherwise, the program will use the above threshold as a rejection
@@ -165,8 +163,8 @@ logical,parameter :: testtraj_flag = .true.
 
             real(dp) :: alpha_ratio = 1.0d0
 
-            integer,parameter :: Ninterpolation_max = 10
-            integer,parameter :: Ninterpolation_cap = 10
+            integer,parameter :: Ninterpolation_max = 30
+            integer,parameter :: Ninterpolation_cap = 30
 
             integer,parameter :: Naccept_max = 20
             real(dp),allocatable :: trajRMSDbuffer(:,:)
@@ -266,7 +264,7 @@ character(6) :: reject_text
 character(6) :: Nthreshold_text
 character(12),intent(out) :: prefix_text
 
-write(Nthreshold_text,FMT=FMT6_pos_real0) threshold_rmsd
+write(Nthreshold_text,FMT=FMT6_pos_real0) outer_threshold_SI
 if (reject_flag) then
         reject_text = "reject"
 else

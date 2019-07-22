@@ -111,6 +111,7 @@ contains
 subroutine getRMSDThresholds1(prefix_filename,JPGfilename,selection)
 use PARAMETERS
 use ANALYSIS
+use SIMILARITY
 implicit none
 
 !NUMBER OF TRAJECTORIES CHECKED
@@ -228,7 +229,7 @@ do n_testtraj = 1, Ntesttraj
         !And if the RMSD is below the threshhold we
         !tally that separately
         if (.not.(accept_worst) .and. &
-                 (min_rmsd < threshold_RMSD))&
+                 (min_rmsd < outer_threshold_SI))&
                  total_threshold_rmsd = &
                  total_threshold_rmsd + 1
         if ((accept_worst) .and. &
@@ -579,6 +580,7 @@ end subroutine getRMSDThresholds1
 subroutine getRMSDDifferences1(PNGfilename)
 use PARAMETERS
 use ANALYSIS
+use SIMILARITY
 implicit none
 
 !NUMBER OF FRAMES IN THE TRAJECTORY
@@ -617,7 +619,7 @@ gridpath5 = gridpath4//intermediatefolder
 
 frames = 0
 number_of_frames_accepted = 0
-min_min_rmsd = default_rmsd
+min_min_rmsd = default_SIs(1)
 
 open(filechannel2,file=gridpath5//checkstatefile)
 !read(filechannel1) number_of_frames,order,i&
@@ -633,7 +635,7 @@ do
 
     min_min_rmsd = min(min_min_rmsd,&
             min_rmsd,min_rmsd_prime)
-    if (min_rmsd_prime < threshold_rmsd) &
+    if (min_rmsd_prime < outer_threshold_SI) &
         number_of_frames_accepted =&
         number_of_frames_accepted + 1
     frames = frames + 1
@@ -642,7 +644,7 @@ close(filechannel2)
 
 
 Nbins = 50
-bin_width = 2 * log10(default_rmsd/&
+bin_width = 2 * log10(default_SIs(1)/&
         min_min_rmsd) / Nbins
 
 write(variable_length_text,"(I5)")&
@@ -669,9 +671,9 @@ do
             "F9.6,1x,I8,1x,I8,1x,I8)") &
             i4, min_rmsd, min_rmsd_prime, i2, &
             nint(log10((min_rmsd_prime)/&
-            (min_min_rmsd/default_rmsd)) / (0.5*bin_width)),&
+            (min_min_rmsd/default_SIs(1))) / (0.5*bin_width)),&
             nint(log10((min_rmsd/min_rmsd_prime)/&
-            (min_min_rmsd/default_rmsd)) / bin_width)
+            (min_min_rmsd/default_SIs(1))) / bin_width)
 end do
 close(filechannel2)
 close(filechannel1)
@@ -686,8 +688,8 @@ write(gnuplotchannel,*) 'set key left top'
 write(gnuplotchannel,*) 'set logscale x'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'min_min_rmsd = ', min_min_rmsd
-write(gnuplotchannel,*) 'set xrange [min_min_rmsd:',default_rmsd,']'
-write(gnuplotchannel,*) 'set yrange [min_min_rmsd:',default_rmsd,']'
+write(gnuplotchannel,*) 'set xrange [min_min_rmsd:',default_SIs(1),']'
+write(gnuplotchannel,*) 'set yrange [min_min_rmsd:',default_SIs(1),']'
 write(gnuplotchannel,*) 'set xlabel "RMSD (A) Encountered for the First Check"'
 write(gnuplotchannel,*) 'set ylabel "RMSD (A) Encountered for the Second Check"'
 write(gnuplotchannel,*) 'plot "'//gridpath5//"percent_rmsd"//Ngrid_text//'.dat" u '//&
@@ -706,8 +708,8 @@ write(gnuplotchannel,*) 'set output "'//PNGfilename//'_1.png"'
 write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered in Binary Check"'
 write(gnuplotchannel,*) 'set key left top'
 write(gnuplotchannel,*) 'scaling = ', frames
-write(gnuplotchannel,*) 'xmin = ', min_min_rmsd / default_rmsd
-write(gnuplotchannel,*) 'xmax = ', default_rmsd / min_min_rmsd
+write(gnuplotchannel,*) 'xmin = ', min_min_rmsd / default_SIs(1)
+write(gnuplotchannel,*) 'xmax = ', default_SIs(1) / min_min_rmsd
 write(gnuplotchannel,*) 'set xlabel "RMSD (first check) / RMSD (second check)"'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
 
@@ -752,7 +754,7 @@ write(gnuplotchannel,*) 'set title "Ratio of RMSD Encountered for Binary Check"'
 write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'scaling = ', frames
 write(gnuplotchannel,*) 'xmin = ', min_min_rmsd
-write(gnuplotchannel,*) 'xmax = ', default_rmsd
+write(gnuplotchannel,*) 'xmax = ', default_SIs(1)
 write(gnuplotchannel,*) 'set xlabel "RMSD (A) Encountered After the Second Check"'
 write(gnuplotchannel,*) 'set ylabel "Occurence"'
 
@@ -3386,6 +3388,7 @@ subroutine processCheckstateFile()
 use PARAMETERS
 use FUNCTIONS
 use ANALYSIS
+use SIMILARITY
 implicit none
 
 !VARIABLES IN THE INTERPOLATION FILE
@@ -3451,13 +3454,14 @@ do
             Nalpha_tries = 1
 
             write(filechannel2,FMT=*) number_of_frames,order,&
-                    neighbor_check,steps,default_rmsd,default_rmsd,&
+                    neighbor_check,steps,&
+                    default_SIs(1),default_SIs(1),&
                     vals(1),vals(2),U,KE
             cycle
         end if
     end if
 
-    if (min_rmsd_prime < threshold_rmsd) then
+    if (min_rmsd_prime < outer_threshold_SI) then
         Naccept = Naccept + 1
 
         if (Naccept > Naccept_max) then
@@ -3506,7 +3510,8 @@ do
         end if
 
         write(filechannel2,FMT=*) number_of_frames,order,&
-                neighbor_check,steps,default_rmsd,default_rmsd,&
+                neighbor_check,steps,&
+                default_SIs(1),default_SIs(1),&
                 vals(1),vals(2),U,KE
     end if
 end do
