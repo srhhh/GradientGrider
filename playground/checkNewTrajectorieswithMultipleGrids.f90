@@ -1055,6 +1055,11 @@ if (comparison_flag .or. trueSA_flag .or.&
             call system("cp "//gridpath0//Ngrid_text//"/"//SATRVfile//" "//trim(adjustl(old_filename)))
         end if
 
+        !Just to simply things:
+        min_absenergychange = 0.0d0
+        min_relenergychange = 0.0d0
+        min_rotenergychange = 0.0d0
+
         !Then bin the data
         Ntraj = Ngrid*Ntraj_max
         call getScatteringAngles1(&
