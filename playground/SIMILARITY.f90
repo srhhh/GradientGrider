@@ -61,7 +61,7 @@ integer,parameter :: NSIs = 3
 integer,parameter :: Ntransform = 1
 
 real(dp),dimension(3,Natoms) :: coords_target
-real(dp),dimension(3,Natoms*Natoms) :: CM_target
+real(dp),dimension(Natoms,Natoms) :: CM_target
 
 real(dp),dimension(3,Natoms,NSIs) :: coords_transformed
 real(dp),dimension(3,3,NSIs) :: U_transformed
@@ -70,9 +70,11 @@ real(dp),dimension(NSIs) :: SIs
 real(dp),dimension(NSIs) :: default_SIs
 real(dp),allocatable :: SIbuffer1(:,:)
 
-
-
-
+real(dp),dimension(NSIs) :: min_SIs
+real(dp),dimension(NSIs) :: largest_SIs
+real(dp),dimension(NSIs) :: largest_weighted_SIs
+real(dp),dimension(NSIs) :: largest_weighted_SIs2
+real(dp),dimension(NSIs) :: interpolated_SIs
 
 
 contains
@@ -103,7 +105,7 @@ subroutine setTarget(coords_in)
     use ANALYSIS
     implicit none
     real(dp),dimension(3,Natoms),intent(in) :: coords_in
-    integer :: i
+    integer :: i,j
 
     default_SIs(1) = 01.000100d0
     default_SIs(2) = 20.000100d0
@@ -146,7 +148,6 @@ subroutine getCoulombMatrix(coords_in,CM)
             CM(i,j) = 1.0d0 / &
                 sqrt(sum((coords_in(:,i)-coords_in(:,j))**2))
         end if
-
     end do
     end do
 

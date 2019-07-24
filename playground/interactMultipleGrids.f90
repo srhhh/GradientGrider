@@ -122,11 +122,13 @@ integer,allocatable :: vals_hash(:,:)
 
 integer,allocatable :: populationbuffer2(:)
 real(dp),allocatable :: valsbuffer2(:,:,:)
+integer,allocatable :: Ntrajbuffer2(:,:)
 real(dp),allocatable :: coordsbuffer2(:,:,:,:)
 real(dp),allocatable :: gradientbuffer2(:,:,:,:)
 
 integer,allocatable :: temppopulationbuffer2(:)
 real(dp),allocatable :: tempvalsbuffer2(:,:,:)
+integer,allocatable :: tempNtrajbuffer2(:,:)
 real(dp),allocatable :: tempcoordsbuffer2(:,:,:,:)
 real(dp),allocatable :: tempgradientbuffer2(:,:,:,:)
 
@@ -167,14 +169,14 @@ integer,allocatable :: approximation_index(:)
 !Variables related to interpolation
 
 integer :: Ninterpolation
-real(dp) :: largest_rmsd
-real(dp) :: largest_weighted_rmsd
-integer  :: largest_rmsd_index
-real(dp) :: largest_weighted_rmsd2
-real(dp) :: interpolated_CMdiff
+!real(dp) :: largest_rmsd
+!real(dp) :: largest_weighted_rmsd
+!integer  :: largest_rmsd_index
+!real(dp) :: largest_weighted_rmsd2
+!real(dp) :: interpolated_CMdiff
 
-real(dp), allocatable :: temp_frame_weights(:)
-real(dp), allocatable :: temp_rmsd_weights(:)
+!real(dp), allocatable :: temp_frame_weights(:)
+!real(dp), allocatable :: temp_rmsd_weights(:)
 
 !Other global variables to clean things up
 
@@ -366,23 +368,30 @@ if ((interpolation_flag).and.(Ninterpolation > 1)) then
     call getSIs(coords+new_coords,&
                 new_coords,new_U,new_SI)
 
-    min_rmsd = new_SI(1)
+    min_SIs = SIbuffer1(:,1)
+    interpolated_SIs = new_SI
 
 else
     gradient = matmul(Ubuffer1(:,:,1),&
                       gradientbuffer1(:,:,1))
 
-    min_rmsd = SIbuffer1(1,1)
+!   largest_weighted_rmsd = min_rmsd
+!   largest_weighted_rmsd2 = min_rmsd**2
 
-    largest_weighted_rmsd = min_rmsd
-    largest_weighted_rmsd2 = min_rmsd**2
+!   interpolated_CMdiff = SIbuffer1(2,1)
 
-    interpolated_CMdiff = SIbuffer1(2,1)
+    min_SIs = SIbuffer1(:,1)
+    interpolated_SIs = SIbuffer1(:,1)
+    largest_weighted_SIs = SIbuffer1(:,1)
+    largest_weighted_SIs2 = SIbuffer1(:,1)**2
     
 end if
 
-candidate_rmsd = SIbuffer1(1,1)
-candidate_gradient = matmul(Ubuffer1(:,:,1),&
+min_rmsd = interpolated_SIs(Nsort)
+
+candidate_rmsd = min_SIs(Nsort)
+candidate_gradient = &
+        matmul(Ubuffer1(:,:,1),&
         gradientbuffer1(:,:,1))
 
 return
@@ -549,36 +558,55 @@ end if
 weighted_coords = 0.0d0
 weighted_gradient = 0.0d0
 total_weight = 0.0d0
-largest_rmsd = 0.0d0
-largest_weighted_rmsd = 0.0d0
 
-minimized_differences2 = &
-        matmul(inputCLS(Ncoords+1:&
-                 Ncoords+Ninterpolation,1:&
-                 Ninterpolation),&
-               reshape(frame_weights,&
-                       (/Ninterpolation,1/)))
-largest_weighted_rmsd2 = &
-        sqrt(sum((minimized_differences2)**2)/Natoms)/alpha_ratio
+!largest_rmsd = 0.0d0
+!largest_weighted_rmsd = 0.0d0
+
+!minimized_differences2 = &
+!        matmul(inputCLS(Ncoords+1:&
+!                 Ncoords+Ninterpolation,1:&
+!                 Ninterpolation),&
+!               reshape(frame_weights,&
+!                       (/Ninterpolation,1/)))
+!largest_weighted_rmsd2 = &
+!        sqrt(sum((minimized_differences2)**2)/Natoms)/alpha_ratio
+
+largest_SIs = 0.0d0
+largest_weighted_SIs = 0.0d0
+largest_weighted_SIs2 = 0.0d0
 
 do i = 1, Ninterpolation
 
-        weight = frame_weights(i)
+    weight = frame_weights(i)
+    total_weight = total_weight + weight
 
-        total_weight = total_weight + weight
-        largest_rmsd = max(largest_rmsd,SIbuffer1(1,i))
-        largest_weighted_rmsd = &
-                max(largest_weighted_rmsd,&
-                    abs(weight)*SIbuffer1(1,i))
+!   largest_rmsd = max(largest_rmsd,SIbuffer1(1,i))
+!   largest_weighted_rmsd = &
+!           max(largest_weighted_rmsd,&
+!               abs(weight)*SIbuffer1(1,i))
 
-        weighted_coords = weighted_coords + &
-                          weight * reshape(inputCLS(1:Ncoords,i),&
-                                           (/3,Natoms/))
-        
-        weighted_gradient = weighted_gradient + &
-                            weight * matmul(Ubuffer1(:,:,i),&
-                                     gradientbuffer1(:,:,i))
+    do j = 1, NSIs
+        largest_SIs(j) = max(largest_SIs(j),&
+                             SIbuffer1(j,i))
+        largest_weighted_SIs(j) = max(&
+                largest_weighted_SIs(j),&
+                abs(weight)*SIbuffer1(j,i))
+        largest_weighted_SIs2(j) = &
+                largest_weighted_SIs2(j) +&
+                (weight*(SIbuffer1(j,i)**2))**2
+    end do
+
+    weighted_coords = weighted_coords + &
+             weight * reshape(inputCLS(1:Ncoords,i),&
+                                       (/3,Natoms/))
+    
+    weighted_gradient = weighted_gradient + &
+             weight * matmul(Ubuffer1(:,:,i),&
+                             gradientbuffer1(:,:,i))
 end do
+
+largest_weighted_SIs2 = &
+        sqrt(largest_weighted_SIs2 / Natoms)
 
 deallocate(frame_weights,outputCLS,&
            restraints,restraint_values,&
@@ -612,6 +640,7 @@ integer,intent(out) :: population
 
 !Stores values temporarily
 real(dp),dimension(Nvar) :: current_vals
+integer :: current_Ntraj
 real(dp),dimension(3,Natoms) :: temp_coords
 real(dp),dimension(3,Natoms) :: current_coords,current_gradient
 
@@ -684,6 +713,10 @@ if (population < 0) then
 
             valsbuffer2(:,population,single_index) = current_vals
 
+            !The next line is trajectory number
+            read(var_filechannel) &
+                   Ntrajbuffer2(population,single_index)
+
             !The next line is the coordinates
             read(var_filechannel) &
                    ((coordsbuffer2(i,j,population,single_index),i=1,3),j=1,Natoms)
@@ -748,6 +781,7 @@ if (population < 0) then
         
                 do j = Ninterpolation, i+1, -1
                     valsbuffer1(:,j) = valsbuffer1(:,j-1)
+                    Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
                     coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
                     gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
                     Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
@@ -763,6 +797,7 @@ if (population < 0) then
                 end do
         
                 valsbuffer1(:,i) = valsbuffer2(:,population,single_index)
+                Ntrajbuffer1(i) = Ntrajbuffer2(population,single_index)
                 Ubuffer1(:,:,i) = new_U
                 SIbuffer1(:,i) = new_SI
         
@@ -827,6 +862,7 @@ else if (population < buffer2_size) then
         
                 do j = Ninterpolation, i+1, -1
                     valsbuffer1(:,j) = valsbuffer1(:,j-1)
+                    Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
                     coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
                     gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
                     Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
@@ -842,6 +878,7 @@ else if (population < buffer2_size) then
                 end do
         
                 valsbuffer1(:,i) = valsbuffer2(:,k,single_index)
+                Ntrajbuffer1(i) = Ntrajbuffer2(k,single_index)
                 Ubuffer1(:,:,i) = new_U
                 SIbuffer1(:,i) = new_SI
         
@@ -890,6 +927,10 @@ do
         if (iostate /= 0) exit
 
         population = population + 1
+
+        !The next line is trajectory number
+        read(var_filechannel) &
+               current_Ntraj
 
         !The next line is the coordinates
         read(var_filechannel) &
@@ -954,6 +995,7 @@ do
     
             do j = Ninterpolation, i+1, -1
                 valsbuffer1(:,j) = valsbuffer1(:,j-1)
+                Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
                 coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
                 gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
                 Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
@@ -969,6 +1011,7 @@ do
             end do
     
             valsbuffer1(:,i) = current_vals
+            Ntrajbuffer1(i) = current_Ntraj
             Ubuffer1(:,:,i) = new_U
             SIbuffer1(:,i) = new_SI
     
@@ -1005,6 +1048,7 @@ integer,intent(out) :: population
 
 real(dp),dimension(Nvar) :: dummy_vals
 real(dp),dimension(3,Natoms) :: dummy_coords
+integer :: dummy_Ntraj
 
 !Incremental integers and iostate checking
 integer :: i,j,k,iostate
@@ -1058,6 +1102,10 @@ do
             population = population - 1
             exit
         end if
+
+        !The next line is the trajectory number
+        read(var_filechannel) &
+               dummy_Ntraj
 
         !The next line is the coordinates
         read(var_filechannel) &
@@ -1322,12 +1370,12 @@ if (unreadable_flag) then
     open(filechannel1,file=gridpath2//trim(var_filename),position="append",form="unformatted")
     if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
         write(filechannel1) (vals(j),j=1,Nvar)
-!       write(filechannel1) Ntraj
+        write(filechannel1) Ntraj
         write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
         write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
     else
         write(filechannel1) (vals(j),j=1,Nvar)
-!       write(filechannel1) Ntraj
+        write(filechannel1) Ntraj
         write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
         write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
     end if
@@ -1409,6 +1457,9 @@ subroutine setAllocations()
                  valsbuffer2(Nvar,&
                     buffer2_size,&
                     single_index_max+1),&
+                 Ntrajbuffer2(&
+                    buffer2_size,&
+                    single_index_max+1),&
                  coordsbuffer2(3,Natoms,&
                     buffer2_size,&
                     single_index_max+1),&
@@ -1419,6 +1470,9 @@ subroutine setAllocations()
         allocate(temppopulationbuffer2(&
                     single_index_max+1),&
                  tempvalsbuffer2(Nvar,&
+                    buffer2_size,&
+                    single_index_max+1),&
+                 tempNtrajbuffer2(&
                     buffer2_size,&
                     single_index_max+1),&
                  tempcoordsbuffer2(3,Natoms,&
@@ -1456,11 +1510,13 @@ subroutine unsetAllocations()
 
         deallocate(populationbuffer2,&
                    valsbuffer2,&
+                   Ntrajbuffer2,&
                    coordsbuffer2,&
                    gradientbuffer2)
 
         deallocate(temppopulationbuffer2,&
                    tempvalsbuffer2,&
+                   tempNtrajbuffer2,&
                    tempcoordsbuffer2,&
                    tempgradientbuffer2)
     end if
@@ -1483,6 +1539,7 @@ subroutine shiftMemory(delta_var_index)
 
     temppopulationbuffer2 = populationbuffer2
     tempvalsbuffer2 = valsbuffer2
+    tempNtrajbuffer2 = Ntrajbuffer2
     tempcoordsbuffer2 = coordsbuffer2
     tempgradientbuffer2 = gradientbuffer2
 
@@ -1500,6 +1557,8 @@ subroutine shiftMemory(delta_var_index)
             populationbuffer2(xflattened) = population
             valsbuffer2(:,1:population,xflattened) = &
                 tempvalsbuffer2(:,1:population,single_index)
+            Ntrajbuffer2(1:population,xflattened) = &
+                tempNtrajbuffer2(1:population,single_index)
             coordsbuffer2(:,:,1:population,xflattened) = &
                 tempcoordsbuffer2(:,:,1:population,single_index)
             gradientbuffer2(:,:,1:population,xflattened) = &
@@ -1508,7 +1567,7 @@ subroutine shiftMemory(delta_var_index)
 
     end do
 
-!   populationbuffer2 = -1
+    populationbuffer2 = -1
 
     return
 

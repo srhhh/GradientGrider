@@ -606,6 +606,7 @@ use FUNCTIONS
 use VARIABLES
 use ANALYSIS
 use PHYSICS
+use SIMILARITY
 use analyzeScatteringAngleswithMultipleGrids
 use analyzeHeatMapswithMultipleGrids
 implicit none
@@ -673,9 +674,9 @@ call getPrefixText(prefix_text)
 
 !Next, run the trajectory
 call system_clock(trajectory_t0)
-call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
-                               coords_initial,velocities_initial,&
-                               coords_final,velocities_final)
+call runTrajectoryRewind1(filechannels(1:1+Ngrid_total),&
+                          coords_initial,velocities_initial,&
+                          coords_final,velocities_final)
 call system_clock(trajectory_t1)
 checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
 
@@ -810,7 +811,7 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set format x'
 write(gnuplotchannel,*) 'set xlabel "Timesteps (Thousands)"'
 
-write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_rmsd,']'
+write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_SIs(1),']'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set ylabel "Timestep\nRMSD (A)"'
 !write(gnuplotchannel,*) 'set ytics (".1" .1, ".05" .05, ".01" .01, ".001" .001, ".0001" .0001)'
@@ -831,9 +832,9 @@ call getPrefixText(prefix_text)
 
 !Next, run the trajectory
 call system_clock(trajectory_t0)
-call checkMultipleTrajectories(filechannels(1:1+Ngrid_total),&
-                               coords_initial,velocities_initial,&
-                               coords_final,velocities_final)
+call runTrajectoryRewind1(filechannels(1:1+Ngrid_total),&
+                          coords_initial,velocities_initial,&
+                          coords_final,velocities_final)
 call system_clock(trajectory_t1)
 checktrajectory_wall_time = (trajectory_t1-trajectory_t0)*system_clock_rate
 
@@ -968,7 +969,7 @@ write(gnuplotchannel,*) 'unset key'
 write(gnuplotchannel,*) 'set format x'
 write(gnuplotchannel,*) 'set xlabel "Timesteps (Thousands)"'
 
-write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_rmsd,']'
+write(gnuplotchannel,*) 'set yrange [min_rmsd*0.9:',default_SIs(1),']'
 write(gnuplotchannel,*) 'set logscale y'
 write(gnuplotchannel,*) 'set ylabel "Timestep\nRMSD (A)"'
 !write(gnuplotchannel,*) 'set ytics (".1" .1, ".05" .05, ".01" .01, ".001" .001, ".0001" .0001)'

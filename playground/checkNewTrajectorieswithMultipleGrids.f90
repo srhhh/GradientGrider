@@ -887,7 +887,7 @@ end if
 !compare only a single experiment)
 else
 
-call getRMSDErrorPlots("RMSDvsError")
+!call getRMSDErrorPlots("RMSDvsError")
 
 !If this truly is an interpolation analysis then
 !the word "interpolation" should be in the input
@@ -901,6 +901,8 @@ if ((i > 13).and.(&
     (trim(adjustl(comparison_SATRVname(i:)))=="IRD").or.&
     (trim(adjustl(comparison_SATRVname(i:)))=="RSV1D").or.&
     (trim(adjustl(comparison_SATRVname(i:)))=="RSV2D").or.&
+    (trim(adjustl(comparison_SATRVname(i:)))=="ACMDD").or.&
+    (trim(adjustl(comparison_SATRVname(i:)))=="ICMDD").or.&
     (trim(adjustl(comparison_SATRVname(i:)))=="AED").or.&
     (trim(adjustl(comparison_SATRVname(i:)))=="IED").or.&
     (trim(adjustl(comparison_SATRVname(i:)))=="RED")&
