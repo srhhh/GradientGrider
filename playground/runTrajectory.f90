@@ -1307,8 +1307,8 @@ subroutine readTrajectory(filechannel_input,filechannels,&
 
         !Just for bug-testing
 !       if (modulo(steps,50) == 1) then
-!       if (.false.) then
-        if (.true.) then
+        if (.false.) then
+!       if (.true.) then
             open(filechannel1,file=gridpath5//trajectoryfile,position="append")
 !           write(filechannel1,'(I6)') Natoms
 !           write(filechannel1,*) ""
@@ -1334,8 +1334,8 @@ subroutine readTrajectory(filechannel_input,filechannels,&
 
             !If a frame was found, record data on it
 !           if (Ninterpolation > 0) then
-            do j = Ninterpolation, 1, -1
-!           do j = min(Ninterpolation,1), 1, -1
+!           do j = Ninterpolation, 1, -1
+            do j = min(Ninterpolation,1), 1, -1
 
                 candidate_gradient = matmul(Ubuffer1(:,:,j),&
                         gradientbuffer1(:,:,j))
@@ -1375,31 +1375,31 @@ subroutine readTrajectory(filechannel_input,filechannels,&
             !!!!!!!!!!!!!!!!!!!!!!
             ! alpha testing start
             !!!!!!!!!!!!!!!!!!!!!!
-            if (Ninterpolation > 0 ) then
+!           if (Ninterpolation > 9 ) then
 
-                ! Just to be reasonable:
-                Ninterpolation = min(Ninterpolation,20)
+!               ! Just to be reasonable:
+!               Ninterpolation = min(Ninterpolation,20)
 
-                allocate(libcoords(Ninterpolation,3,Natoms),&
-                         libgradients(Ninterpolation,3,Natoms),&
-                         libNtraj(Ninterpolation))
+!               allocate(libcoords(Ninterpolation,3,Natoms),&
+!                        libgradients(Ninterpolation,3,Natoms),&
+!                        libNtraj(Ninterpolation))
 
-                do n = 1, Ninterpolation
-                    libcoords(n,:,:) =&
-                            coordsbuffer1(:,:,n)
-                    libgradients(n,:,:) =&
-                            gradientbuffer1(:,:,n)
-                    libNtraj(n) = Ntrajbuffer1(n)
-                end do
+!               do n = 1, Ninterpolation
+!                   libcoords(n,:,:) =&
+!                           coordsbuffer1(:,:,n)
+!                   libgradients(n,:,:) =&
+!                           gradientbuffer1(:,:,n)
+!                   libNtraj(n) = Ntrajbuffer1(n)
+!               end do
 
-                call errorCheck5(filechannels,&
-                        coords,gradient,&
-                        Ninterpolation,&
-                        libcoords,libgradients,&
-                        libNtraj)
+!               call errorCheck5(filechannels,&
+!                       coords,gradient,&
+!                       Ninterpolation,&
+!                       libcoords,libgradients,&
+!                       libNtraj)
 
-                deallocate(libcoords,libgradients,libNtraj)
-            end if
+!               deallocate(libcoords,libgradients,libNtraj)
+!           end if
             !!!!!!!!!!!!!!!!!!!!!!
             ! alpha testing end
             !!!!!!!!!!!!!!!!!!!!!!
@@ -2262,43 +2262,43 @@ subroutine errorCheck1(filechannels)
 
     !Let's find one good point
     do
-            do n = 1, Natoms
-            do i = 1, 3
-                    delta_coords(i,n) = rand() - 0.5d0
-            end do
-            end do
+        do n = 1, Natoms
+        do i = 1, 3
+            delta_coords(i,n) = rand() - 0.5d0
+        end do
+        end do
 
-            delta_length = sqrt(sum(delta_coords**2))
+        delta_length = sqrt(sum(delta_coords**2))
 
-            if (delta_length == 0.0d0) cycle
+        if (delta_length == 0.0d0) cycle
 
-            coords = coords_final + delta_coords * (handicap_rmsd + &
-                    (outer_threshold_SI - handicap_rmsd)*rand()) / delta_length
+        coords = coords_final + delta_coords * (handicap_rmsd + &
+                (outer_threshold_SI - handicap_rmsd)*rand()) / delta_length
 
-            call rmsd_dp(Natoms,coords_final,coords,1,candidate_U,x_center,y_center,min_rmsd)
+        call rmsd_dp(Natoms,coords_final,coords,1,candidate_U,x_center,y_center,min_rmsd)
 
-            if (min_rmsd > handicap_rmsd) cycle
-            
-            handicap_rmsd = min_rmsd
+        if (min_rmsd > handicap_rmsd) cycle
+        
+        handicap_rmsd = min_rmsd
 
-            call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-            call Acceleration(vals,coords,gradient_var)
+        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+        call Acceleration(vals,coords,gradient_var)
 
-            gridpath3 = gridpath2
-            local_frame_count = 0
-            call addState_new(vals,coords,gradient_var)
+        gridpath3 = gridpath2
+        local_frame_count = 0
+        call addState_new(vals,coords,gradient_var)
 
-            gradient_var = matmul(candidate_U,gradient_var)
+        gradient_var = matmul(candidate_U,gradient_var)
 
-            rmsd_x(1,Nsample) = min_rmsd
-            rmsd_x_interpolated(1,Nsample) = min_rmsd
-            rmsd_fx_interpolated(1,Nsample) = &
-                    sqrt(sum((gradient - gradient_var)**2)/Natoms)
-            rmsd_fx(1,Nsample) = rmsd_fx_interpolated(1,Nsample)
-            rmsd_weights(1,1,Nsample) = 1.0d0
+        rmsd_x(1,Nsample) = min_rmsd
+        rmsd_x_interpolated(1,Nsample) = min_rmsd
+        rmsd_fx_interpolated(1,Nsample) = &
+                sqrt(sum((gradient - gradient_var)**2)/Natoms)
+        rmsd_fx(1,Nsample) = rmsd_fx_interpolated(1,Nsample)
+        rmsd_weights(1,1,Nsample) = 1.0d0
 
-            write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,rmsd_fx(1,Nsample)
-            exit
+        write(filechannel2,FMT="(F15.11,1x,F15.11)") min_rmsd,rmsd_fx(1,Nsample)
+        exit
     end do
 
     !Now lets add lots of bad points (but still in threshold)
@@ -3121,6 +3121,663 @@ print *, coords
 
 end subroutine errorCheck2
 
+subroutine errorCheck2_readonly(filechannel_input)
+    use FUNCTIONS
+    use PARAMETERS
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    use ls_rmsd_original
+    implicit none
+
+    !Coordinates, Velocities, and Variables
+    real(dp), dimension(3,Natoms) :: coords, gradient
+    real(dp), dimension(3,Natoms) :: coords_final, delta_coords
+    real(dp) :: KE, U, E
+    real(dp), dimension(Nvar) :: vals
+    character(50) :: XYZname
+    integer :: iostate
+
+    real(dp) :: handicap_rmsd, min_rmsd
+    real(dp) :: delta_length
+    integer :: Ntest,Nsamples,Nsample,Ntrials
+
+    integer,intent(in) :: filechannel_input
+    real(dp), dimension(3) :: x_center, y_center
+    real(dp), allocatable :: g(:,:)
+    real(dp),dimension(3,3) :: candidate_U
+
+    !Incremental Integer
+    integer :: i,n
+
+    print *, ""
+    print *, "Started Error Check 2!"
+    print *, ""
+
+    Ntest = 50
+    Nsamples = 10
+    Ntrials = 0
+
+    !We can choose to start recording later in our
+    !trajectory
+    if (.false.) then
+    do steps = 1, 300
+        read(filechannel_input,iostat=iostate) coords
+        if (iostate /= 0) exit
+        read(filechannel_input) KE, U, E
+        read(filechannel_input) gradient
+    end do
+    end if
+
+    !Start of the "trajectory"
+    do
+        !We can choose not to move forward in the trajectory
+        !if we are focused on only one point
+        if (.true.) then
+            do steps = 1, 100
+                read(filechannel_input,iostat=iostate) coords_final
+                if (iostate /= 0) exit
+                read(filechannel_input) KE, U, E
+                read(filechannel_input) gradient
+                print *, steps
+            end do
+
+            if (iostate /= 0) exit
+    
+        !In this case, we need a counter
+        else
+            Ntrials = Ntrials + 1
+        end if
+
+        call getVarsHBrCO2(coords_final,Natoms,&
+                vals,Nvar,BOND_LABELLING_DATA)
+    
+        do Nsample = 1, Nsamples
+        
+            write(XYZname,FMT="(I0.2,'_',"//&
+                    var_multipleFMT(1:multipleFMT_length)//&
+                    ")") Nsample,vals
+            open(filechannel2,file=gridpath5//&
+                    trim(adjustl(XYZname)))
+
+            write(filechannel2,FMT="(I1)") 5
+            write(filechannel2,FMT="(A)") ""
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "H ", coords_final(:,1)
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "Br", coords_final(:,2)
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "O ", coords_final(:,3)
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "C ", coords_final(:,4)
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "O ", coords_final(:,5)
+        
+            !Let's find one good point
+            handicap_rmsd = outer_threshold_SI * 0.80d0
+            do
+                do n = 1, Natoms
+                do i = 1, 3
+                    delta_coords(i,n) = rand() - 0.5d0
+                end do
+                end do
+        
+                delta_length = sqrt(sum(delta_coords**2))
+        
+                if (delta_length == 0.0d0) cycle
+        
+                coords = coords_final + delta_coords * (handicap_rmsd + &
+                        (outer_threshold_SI - handicap_rmsd)*rand()) / delta_length
+        
+                call rmsd_dp(Natoms,coords,coords_final,&
+                        1,candidate_U,x_center,y_center,min_rmsd)
+        
+                if (min_rmsd > handicap_rmsd) cycle
+                
+                handicap_rmsd = min_rmsd
+        
+                do i = 1, 3
+                    coords(i,:) = &
+                    coords(i,:) - x_center(i)
+                end do
+        
+                coords = matmul(candidate_U,coords)
+        
+                do i = 1, 3
+                    coords(i,:) = &
+                    coords(i,:) + y_center(i)
+                end do
+        
+                exit
+            end do
+
+            write(filechannel2,FMT="(I1)") 5
+            write(filechannel2,FMT="(A)") ""
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "H ", coords(:,1)
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "Br", coords(:,2)
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "O ", coords(:,3)
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "C ", coords(:,4)
+            write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                    "O ", coords(:,5)
+        
+            !Now lets add lots of bad points (but still in threshold)
+            do steps = 2, Ntest
+                do
+                    do n = 1, Natoms
+                    do i = 1, 3
+                        delta_coords(i,n) = rand() - 0.5d0
+                    end do
+                    end do
+            
+                    delta_length = sqrt(sum(delta_coords**2))
+            
+                    if (delta_length == 0.0d0) cycle
+        
+                    coords = coords_final + delta_coords * &
+                            (handicap_rmsd + 10*(outer_threshold_SI - handicap_rmsd)*rand()) / delta_length
+        
+                    call rmsd_dp(Natoms,coords,coords_final,1,&
+                                 candidate_U,x_center,y_center,min_rmsd)
+        
+                    if (min_rmsd >= outer_threshold_SI) cycle
+        
+                    if (min_rmsd <= handicap_rmsd) cycle
+        
+                    exit
+                end do
+        
+                do i = 1, 3
+                    coords(i,:) = &
+                    coords(i,:) - x_center(i)
+                end do
+        
+                coords = matmul(candidate_U,coords)
+        
+                do i = 1, 3
+                    coords(i,:) = &
+                    coords(i,:) + y_center(i)
+                end do
+
+                write(filechannel2,FMT="(I1)") 5
+                write(filechannel2,FMT="(A)") ""
+                write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                        "H ", coords(:,1)
+                write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                        "Br", coords(:,2)
+                write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                        "O ", coords(:,3)
+                write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                        "C ", coords(:,4)
+                write(filechannel2,FMT="(A,1x,3(F15.9))") &
+                        "O ", coords(:,5)
+        
+            end do
+    
+        close(filechannel2)
+        end do
+    
+        !We can end the trajectory after a certain number of
+        !trials if the trajectory is going too slow (or is
+        !not moving at all!)
+        if (Ntrials == 100) exit
+
+    end do
+
+    print *, ""
+    print *, "Finished Error Check 2!"
+    print *, ""
+
+end subroutine errorCheck2_readonly
+
+subroutine errorCheck2_processedread()
+    use FUNCTIONS
+    use PARAMETERS
+    use PHYSICS
+    use VARIABLES
+    use ANALYSIS
+    use SIMILARITY
+    use ls_rmsd_original
+    implicit none
+
+    !Coordinates, Velocities, and Variables
+    real(dp), dimension(3,Natoms) :: coords, gradient,gradient_final
+    real(dp), dimension(3,Natoms) :: coords_final, delta_coords
+    real(dp), dimension(3,Natoms) :: approx_coords, approx_gradient
+    real(dp) :: U, approx_U, U_final
+    real(dp) :: max_U, min_U, final_max_U, final_min_U
+    real(dp), dimension(Nvar) :: vals
+    character(50) :: XYZname
+    integer :: iostate
+
+    character(9) :: DropoffDir = "dropoffs/"
+    character(50) :: dropofffile
+
+    real(dp) :: handicap_rmsd, min_rmsd
+    real(dp) :: delta_length
+    integer :: Ntest,Nsamples,Nsample,Ntrials
+
+    real(dp) :: error1, error2
+    real(dp) :: first_error, first_error_sd
+    real(dp) :: min_error, max_error
+    real(dp) :: final_min_error, final_max_error
+
+    real(dp), dimension(3) :: x_center, y_center
+    real(dp), allocatable :: g(:,:)
+    real(dp),dimension(3,3) :: candidate_U
+
+    real(dp),dimension(Ncoords+50,50) :: inputCLS
+    real(dp),dimension(3,Natoms,50) :: gradient_steps
+    real(dp),dimension(50) :: U_steps
+    real(dp),allocatable :: frame_weights(:)
+    real(dp),allocatable :: outputCLS(:)
+    real(dp),allocatable :: restraints(:,:),restraint_values(:)
+
+    !Incremental Integer
+    integer :: i,n
+
+    print *, ""
+    print *, "Started Error Check 2!"
+    print *, ""
+
+    final_min_error = 1.0d9
+    final_max_error = 0.0d0
+    final_min_U = 1.0d9
+    final_max_U = -1.0d9
+
+    call system("ls "//gridpath0//DropoffDir//&
+                " > "//gridpath5//temporaryfile1)
+    open(filechannel1,file=gridpath5//temporaryfile1)
+
+    !Start of the "trajectory"
+    do
+        read(filechannel1,FMT="(A)",iostat=iostate) dropofffile
+        if (iostate /= 0) exit
+
+        open(filechannel2,file=gridpath0//DropoffDir//&
+                trim(adjustl(dropofffile)),&
+                form="unformatted")
+
+        read(filechannel2) coords_final
+        read(filechannel2) U_final
+        read(filechannel2) gradient_final
+
+        call getVarsHBrCO2(coords_final,Natoms,&
+                vals,Nvar,BOND_LABELLING_DATA)
+
+        min_error = 1.0d9
+        max_error = 0.0d0
+        min_U = 1.0d9
+        max_U = -1.0d9
+    
+        open(filechannel3,file=gridpath5//&
+                errorcheckfile)
+        steps = 0
+        do
+            read(filechannel2,iostat=iostate) coords
+            if (iostate /= 0) exit
+            read(filechannel2) U
+            read(filechannel2) gradient
+
+            steps = steps + 1
+
+            call rmsd_dp(Natoms,coords,coords_final,1,&
+                         candidate_U,x_center,y_center,min_rmsd)
+
+            do i = 1, 3
+                coords(i,:) = &
+                coords(i,:) - x_center(i)
+            end do
+
+            coords = matmul(candidate_U,coords)
+
+            do i = 1, 3
+                coords(i,:) = &
+                coords(i,:) + y_center(i)
+            end do
+
+            inputCLS(1:Ncoords,steps) = reshape(coords - coords_final,(/Ncoords/))
+            gradient_steps(:,:,steps) = gradient
+            U_steps(steps) = U
+
+            allocate(frame_weights(steps),&
+                     outputCLS(Ncoords+steps),&
+                     restraints(1,steps),&
+                     restraint_values(1))
+            
+            inputCLS(Ncoords+steps,:) = 0.0d0
+            inputCLS(Ncoords+steps,steps) = alpha_ratio * &
+                    sum(inputCLS(1:Ncoords,steps)**2)/Natoms
+            
+            restraints = 1.0d0
+            restraint_values = 1.0d0
+            outputCLS(1:Ncoords) = 0.0d0
+            outputCLS(Ncoords+1:Ncoords+steps) = 0.0d0
+            
+            call CLS2(inputCLS(1:Ncoords+steps,&
+                      1:steps),Ncoords+steps,steps,&
+                      restraints,1,restraint_values,&
+                      outputCLS,frame_weights(1:steps))
+
+            approx_gradient = 0.0d0
+            approx_U = 0.0d0
+            approx_coords = 0.0d0
+            do n = 1, steps
+                approx_gradient = approx_gradient + frame_weights(n) *&
+                        gradient_steps(:,:,n)
+                approx_U = approx_U + frame_weights(n) * U_steps(n)
+                approx_coords = approx_coords + reshape((&
+                        frame_weights(n)*inputCLS(1:Ncoords,n)),&
+                        (/3,Natoms/))
+            end do
+
+            deallocate(frame_weights,outputCLS,&
+                       restraints,restraint_values)
+
+            error1 = sqrt(sum((approx_gradient-gradient_final)**2)/Natoms)
+            error2 = sqrt(sum((gradient-gradient_final)**2)/Natoms)
+
+            if (steps == 1) then
+                first_error = error1
+                first_error_sd = 0.0d0
+            end if
+
+            min_error = min(min_error, error1, error2)
+            max_error = max(max_error, error1, error2)
+            min_U = min(min_U, U, approx_U)
+            max_U = max(max_U, U, approx_U)
+
+            final_min_error = min(final_min_error, min_error)
+            final_max_error = max(final_max_error, max_error)
+            final_min_U = min(final_min_U, U)
+            final_max_U = max(final_max_U, U)
+
+            write(filechannel3,FMT="(I3,8(1x,F15.11),2(ES15.7))") steps,&
+                sqrt(sum(approx_coords**2)/Natoms),&
+                sqrt(sum((coords-coords_final)**2)/Natoms),&
+                error1, error2, 0.0d0, 0.0d0, 0.0d0, 0.0d0, &
+                approx_U, U
+        end do
+        close(filechannel3)
+        close(filechannel2)
+
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
+        write(gnuplotchannel,*) "set term pngcairo size 2400,1200"
+        write(gnuplotchannel,FMT="(A,2F7.4,A,I0.5,A)") &
+                'set output "'//gridpath4, vals, '_', 10, '.png"'
+        write(gnuplotchannel,*) 'set tmargin 0'
+        write(gnuplotchannel,*) 'set bmargin 0'
+        write(gnuplotchannel,*) 'set lmargin 1'
+        write(gnuplotchannel,*) 'set rmargin 1'
+        write(gnuplotchannel,*) 'set multiplot layout 1,2 '//&
+                'margins screen 0.1,0.9,0.1,0.95 spacing 0,0.1 '//&
+                'title "Error Convergence As More Points Interpolate" '//&
+                'font ",32" offset 0,-3'
+        write(gnuplotchannel,*) 'set xlabel "Ninterpolation"'
+        write(gnuplotchannel,*) 'set ylabel "Error Compared with the Target Gradient (Hartree/Bohr)"'
+        write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', 1, '" at screen 0.1,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
+        write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
+        write(gnuplotchannel,*) 'y0 = ', first_error
+        write(gnuplotchannel,*) 'y0_err = ', first_error_sd
+        write(gnuplotchannel,*) 'ymax = ', max_error
+        write(gnuplotchannel,*) 'ymin = ', min_error
+        write(gnuplotchannel,*) 'ydelta = log10(ymax/ymin)/8'
+        write(gnuplotchannel,*) 'set yrange [ymin*10**(-ydelta):ymax*10**(ydelta)]'
+        write(gnuplotchannel,*) 'xmax = ', steps
+        write(gnuplotchannel,*) 'set xrange [1:xmax]'
+        write(gnuplotchannel,*) 'set logscale y'
+        write(gnuplotchannel,*) 'set ytics ('//&
+                                     '"1e-11" .00000000001, '//&
+                                     '"5e-11" .00000000005, '//&
+                                      '"1e-10" .0000000001, '//&
+                                      '"5e-10" .0000000005, '//&
+                                        '"1e-9" .000000001, '//&
+                                        '"5e-9" .000000005, '//&
+                                         '"1e-8" .00000001, '//&
+                                         '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1.0"       1, '//&
+                                   ')'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//errorcheckfile//'" u 1:4:8 w yerr lc "green" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:4 w lines lc "green" t "Interpolation",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:5:9 w yerr lc "red" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:5 w lines lc "red" t "Accept Current",\'
+!       write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0):(y0_err) w yerr lc "blue" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0+y0_err) w lines lc "blue" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0-y0_err) w lines lc "blue" t "Accept Best"'
+
+        write(gnuplotchannel,*) 'unset ytics'
+        write(gnuplotchannel,*) 'unset ylabel'
+        write(gnuplotchannel,*) 'set xlabel "Energy (Hartree)"'
+        write(gnuplotchannel,*) 'xmax = ', max_U
+        write(gnuplotchannel,*) 'xmin = ', min_U
+        write(gnuplotchannel,*) 'xdelta = (xmax-xmin)/8'
+        write(gnuplotchannel,FMT="(A,E15.7,A,E15.7,A)")&
+                        'set arrow from ', U_final,&
+                        ',graph 0 to ', U_final, ', graph 1 nohead front '//&
+                        'lw 2 lc rgb "black"'
+        write(gnuplotchannel,*) 'set xrange [xmin-xdelta:xmax+xdelta]'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//errorcheckfile//'" u 10:4 w p ps 2 pt 7 lc "green" t "Interpolation",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 11:5 w p ps 2 pt 5 lc "red" t "Input"'
+        close(gnuplotchannel)
+
+        call system("gnuplot < "//gridpath5//gnuplotfile)
+
+    end do
+    close(filechannel1)
+
+    call system("ls "//gridpath0//DropoffDir//&
+                " > "//gridpath5//temporaryfile1)
+    open(filechannel1,file=gridpath5//temporaryfile1)
+
+    !Start of the "trajectory"
+    do
+        read(filechannel1,FMT="(A)",iostat=iostate) dropofffile
+        if (iostate /= 0) exit
+
+        open(filechannel2,file=gridpath0//DropoffDir//&
+                trim(adjustl(dropofffile)),&
+                form="unformatted")
+
+        read(filechannel2) coords_final
+        read(filechannel2) U_final
+        read(filechannel2) gradient_final
+
+        call getVarsHBrCO2(coords_final,Natoms,&
+                vals,Nvar,BOND_LABELLING_DATA)
+
+        min_error = 1.0d9
+        max_error = 0.0d0
+        min_U = 1.0d9
+        max_U = -1.0d9
+    
+        open(filechannel3,file=gridpath5//&
+                errorcheckfile)
+        steps = 0
+        do
+            read(filechannel2,iostat=iostate) coords
+            if (iostate /= 0) exit
+            read(filechannel2) U
+            read(filechannel2) gradient
+
+            steps = steps + 1
+
+            call rmsd_dp(Natoms,coords,coords_final,1,&
+                         candidate_U,x_center,y_center,min_rmsd)
+
+            do i = 1, 3
+                coords(i,:) = &
+                coords(i,:) - x_center(i)
+            end do
+
+            coords = matmul(candidate_U,coords)
+
+            do i = 1, 3
+                coords(i,:) = &
+                coords(i,:) + y_center(i)
+            end do
+
+            inputCLS(1:Ncoords,steps) = reshape(coords - coords_final,(/Ncoords/))
+            gradient_steps(:,:,steps) = gradient
+            U_steps(steps) = U
+
+            allocate(frame_weights(steps),&
+                     outputCLS(Ncoords+steps),&
+                     restraints(1,steps),&
+                     restraint_values(1))
+            
+            inputCLS(Ncoords+steps,:) = 0.0d0
+            inputCLS(Ncoords+steps,steps) = alpha_ratio * &
+                    sum(inputCLS(1:Ncoords,steps)**2)/Natoms
+            
+            restraints = 1.0d0
+            restraint_values = 1.0d0
+            outputCLS(1:Ncoords) = 0.0d0
+            outputCLS(Ncoords+1:Ncoords+steps) = 0.0d0
+            
+            call CLS2(inputCLS(1:Ncoords+steps,&
+                      1:steps),Ncoords+steps,steps,&
+                      restraints,1,restraint_values,&
+                      outputCLS,frame_weights(1:steps))
+
+            approx_gradient = 0.0d0
+            approx_U = 0.0d0
+            approx_coords = 0.0d0
+            do n = 1, steps
+                approx_gradient = approx_gradient + frame_weights(n) *&
+                        gradient_steps(:,:,n)
+                approx_U = approx_U + frame_weights(n) * U_steps(n)
+                approx_coords = approx_coords + reshape((&
+                        frame_weights(n)*inputCLS(1:Ncoords,n)),&
+                        (/3,Natoms/))
+            end do
+
+            deallocate(frame_weights,outputCLS,&
+                       restraints,restraint_values)
+
+            error1 = sqrt(sum((approx_gradient-gradient_final)**2)/Natoms)
+            error2 = sqrt(sum((gradient-gradient_final)**2)/Natoms)
+
+            if (steps == 1) then
+                first_error = error1
+                first_error_sd = 0.0d0
+            end if
+
+            write(filechannel3,FMT="(I3,8(1x,F15.11),2(ES15.7))") steps,&
+                sqrt(sum(approx_coords**2)/Natoms),&
+                sqrt(sum((coords-coords_final)**2)/Natoms),&
+                error1, error2, 0.0d0, 0.0d0, 0.0d0, 0.0d0, &
+                approx_U, U
+        end do
+        close(filechannel3)
+        close(filechannel2)
+
+        open(gnuplotchannel,file=gridpath5//gnuplotfile)
+        write(gnuplotchannel,*) "set term pngcairo size 2400,1200"
+        write(gnuplotchannel,FMT="(A,2F7.4,A,I0.5,A)") &
+                'set output "'//gridpath4//"FINAL", vals, '_', 10, '.png"'
+        write(gnuplotchannel,*) 'set tmargin 0'
+        write(gnuplotchannel,*) 'set bmargin 0'
+        write(gnuplotchannel,*) 'set lmargin 1'
+        write(gnuplotchannel,*) 'set rmargin 1'
+        write(gnuplotchannel,*) 'set multiplot layout 1,2 '//&
+                'margins screen 0.1,0.9,0.1,0.95 spacing 0,0.1 '//&
+                'title "Error Convergence As More Points Interpolate" '//&
+                'font ",32" offset 0,-3'
+        write(gnuplotchannel,*) 'set xlabel "Ninterpolation"'
+        write(gnuplotchannel,*) 'set ylabel "Error Compared with the Target Gradient (Hartree/Bohr)"'
+        write(gnuplotchannel,FMT="(A,I5,A)") 'set label 1 "N = ', 1, '" at screen 0.1,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,",",F7.4,A)') 'set label 2 "(var1,var2) = ',vals, '" at screen 0.2,0.925'
+        write(gnuplotchannel,FMT='(A,F7.4,A)') 'set label 3 "Threshhold = ',outer_threshold_SI, '" at screen 0.5,0.925'
+        write(gnuplotchannel,FMT='(A,E16.8,A)') 'set label 5 "AlphaRatio = ',alpha_ratio, '" at screen 0.50,0.900'
+        write(gnuplotchannel,*) 'y0 = ', first_error
+        write(gnuplotchannel,*) 'y0_err = ', first_error_sd
+        write(gnuplotchannel,*) 'ymax = ', final_max_error
+        write(gnuplotchannel,*) 'ymin = ', final_min_error
+        write(gnuplotchannel,*) 'ydelta = log10(ymax/ymin)/8'
+        write(gnuplotchannel,*) 'set yrange [ymin*10**(-ydelta):ymax*10**(ydelta)]'
+        write(gnuplotchannel,*) 'xmax = ', steps
+        write(gnuplotchannel,*) 'set xrange [1:xmax]'
+        write(gnuplotchannel,*) 'set logscale y'
+        write(gnuplotchannel,*) 'set ytics ('//&
+                                     '"1e-11" .00000000001, '//&
+                                     '"5e-11" .00000000005, '//&
+                                      '"1e-10" .0000000001, '//&
+                                      '"5e-10" .0000000005, '//&
+                                        '"1e-9" .000000001, '//&
+                                        '"5e-9" .000000005, '//&
+                                         '"1e-8" .00000001, '//&
+                                         '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1.0"       1, '//&
+                                   ')'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//errorcheckfile//'" u 1:4:8 w yerr lc "green" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:4 w lines lc "green" t "Interpolation",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:5:9 w yerr lc "red" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:5 w lines lc "red" t "Accept Current",\'
+!       write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0):(y0_err) w yerr lc "blue" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0+y0_err) w lines lc "blue" notitle,\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 1:(y0-y0_err) w lines lc "blue" t "Accept Best"'
+
+        write(gnuplotchannel,*) 'unset ytics'
+        write(gnuplotchannel,*) 'unset ylabel'
+        write(gnuplotchannel,*) 'set xlabel "Energy (Hartree)"'
+        write(gnuplotchannel,*) 'xmax = ', final_max_U
+        write(gnuplotchannel,*) 'xmin = ', final_min_U
+        write(gnuplotchannel,*) 'xdelta = (xmax-xmin)/8'
+        write(gnuplotchannel,FMT="(A,E15.7,A,E15.7,A)")&
+                        'set arrow from ', U_final,&
+                        ',graph 0 to ', U_final, ', graph 1 nohead front '//&
+                        'lw 2 lc rgb "black"'
+        write(gnuplotchannel,*) 'set xrange [xmin-xdelta:xmax+xdelta]'
+        write(gnuplotchannel,*) 'plot "'//gridpath5//errorcheckfile//'" u 10:4 w p ps 2 pt 7 lc "green" t "Interpolation",\'
+        write(gnuplotchannel,*) '     "'//gridpath5//errorcheckfile//'" u 11:5 w p ps 2 pt 5 lc "red" t "Input"'
+        close(gnuplotchannel)
+
+        call system("gnuplot < "//gridpath5//gnuplotfile)
+
+    end do
+    close(filechannel1)
+
+
+
+    print *, ""
+    print *, "Finished Error Check 2!"
+    print *, ""
+
+end subroutine errorCheck2_processedread
+
 subroutine errorCheck3(filechannels,coords_final,gradient_final,&
                        Ninterpolation,libcoords,libgradients)
     use FUNCTIONS
@@ -3835,16 +4492,11 @@ subroutine errorCheck4(filechannels,coords1,gradient1,&
     real(dp), dimension(3,Natoms) :: coords,gradient
     integer :: bond_index1, bond_index2
 
-!   real(dp), allocatable :: rmsd_x(:,:),rmsd_x_interpolated(:,:)
-!   real(dp), allocatable :: rmsd_fx(:,:),rmsd_fx_interpolated(:,:)
-!   real(dp), allocatable :: rmsd_weights(:,:,:)
-!   real(dp),dimension(4) :: selected_means,selected_SDs
     real(dp) :: delta_length
     real(dp),dimension(Ninterpolation2,3,Natoms) :: randcoords
     integer :: Ntest,Nsamples,Nsample
     integer :: Nanomaly,Nanomaly_index
     character(3) :: Nanomaly_text
-!   real(dp), allocatable :: mean_weights(:),mean_rmsd_fxs(:)
     real(dp), allocatable :: outputCLS(:)
     real(dp), dimension(3,Natoms,Ninterpolation2) :: gradient_steps
     real(dp), dimension(Ncoords+Ninterpolation2,Ninterpolation2) :: inputCLS2
@@ -3852,10 +4504,6 @@ subroutine errorCheck4(filechannels,coords1,gradient1,&
     real(dp), allocatable :: restraints(:,:),restraint_values(:)
     real(dp), allocatable :: minimized_differences2(:,:)
     real(dp) :: error1,error2,error3
-!   real(dp), allocatable :: rmsd_x2_interpolated(:,:)
-!   real(dp) :: LSn,LSx,LSy,LSx2,LSxy,LSdet
-!   real(dp), allocatable :: LSa1(:),LSa2(:),LSerror(:),convergence(:)
-!   integer, allocatable :: dropoff(:)
     real(dp) :: dropoff_cutoff,dropoff_mean,dropoff_SD
     real(dp) :: convergence_mean,convergence_SD
 

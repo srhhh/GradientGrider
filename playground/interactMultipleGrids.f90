@@ -231,6 +231,7 @@ integer  :: largest_rmsd_error_index
 real(dp) :: largest_rmsd_error
 real(dp),dimension(Natoms,Natoms) :: temp_CM
 
+Ntrajbuffer1 = 0
 var_filechannel = filechannels(1)
 !var_coords = coords
 !call getCoulombMatrix(Natoms,var_coords,charges,var_CM)
@@ -628,7 +629,7 @@ implicit none
 !Inputs for file reading
 !character(*),intent(in) :: subcell
 integer,dimension(Nvar),intent(in) :: var_index
-integer :: single_index
+integer :: single_index, index_switch
 
 character(50) :: var_filename
 character(150) :: subcell
@@ -643,6 +644,7 @@ real(dp),dimension(Nvar) :: current_vals
 integer :: current_Ntraj
 real(dp),dimension(3,Natoms) :: temp_coords
 real(dp),dimension(3,Natoms) :: current_coords,current_gradient
+logical :: rejectNtraj_flag
 
 !Outputs from the similarity identifier
 real(dp),dimension(3,Natoms) :: new_coords
@@ -747,7 +749,16 @@ if (population < 0) then
             read(var_filechannel,FMT=FMT3) &
                     ((gradientbuffer2(i,j,population,single_index),i=1,3),j=1,Natoms)
         end if
- 
+
+        !For diversity, accept first
+!       rejectNtraj_flag = .false.
+!       do i = 1, Ninterpolation
+!           if (Ntrajbuffer2(population,single_index) == Ntrajbuffer1(i)) then
+!               rejectNtraj_flag = .true.
+!           end if
+!       end do
+!       if (rejectNtraj_flag) cycle
+
         do n = 1, Nindistinguishables
     
             BOND_LABELLING_DATA = INDISTINGUISHABLES(n,:)
@@ -758,20 +769,42 @@ if (population < 0) then
             end do
 
             call getSIs(temp_coords,new_coords,new_U,new_SI)
- 
+
             !If in the "accept best" method
             !and the RMSD is low enough:
             if ((new_SI(Nsort) < outer_threshold_SI).and.&
                 (new_SI(Nsort) >= inner_threshold_SI)) then
+
+            !For diversity, accept best
+            rejectNtraj_flag = .false.
+            index_switch = 1
+            do
+                if (index_switch > Ninterpolation) exit
+                if (Ntrajbuffer2(population,single_index) == Ntrajbuffer1(index_switch)) then
+                    if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
+                        rejectNtraj_flag = .true.
+                    else
+                        Ninterpolation = Ninterpolation - 1
+                    end if
+    
+!                   index_switch = index_switch + 1
+                    exit
+                end if
+                index_switch = index_switch + 1
+            end do
+            if (rejectNtraj_flag) cycle
+!           index_switch = index_switch - 1
         
                 if (accept_first) iostate = 1
         
                 if (accept_worst) then
-                    do i = 1, Ninterpolation+1
+!                   do i = 1, index_switch+1
+                    do i = 1, index_switch
                         if (new_SI(Nsort) > SIbuffer1(Nsort,i)) exit
                     end do
                 else
-                    do i = 1, Ninterpolation+1
+!                   do i = 1, index_switch+1
+                    do i = 1, index_switch
                         if (new_SI(Nsort) < SIbuffer1(Nsort,i)) exit
                     end do
                 end if
@@ -779,7 +812,7 @@ if (population < 0) then
                 if (Ninterpolation < Ninterpolation_max) &
                     Ninterpolation = Ninterpolation + 1
         
-                do j = Ninterpolation, i+1, -1
+                do j = index_switch, i+1, -1
                     valsbuffer1(:,j) = valsbuffer1(:,j-1)
                     Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
                     coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
@@ -828,6 +861,15 @@ else if (population == 0) then
 else if (population < buffer2_size) then
 
     do k = 1, population
+
+        !For diversity, accept first
+!       rejectNtraj_flag = .false.
+!       do i = 1, Ninterpolation
+!           if (Ntrajbuffer2(k,single_index) == Ntrajbuffer1(i)) then
+!               rejectNtraj_flag = .true.
+!           end if
+!       end do
+!       if (rejectNtraj_flag) cycle
     
         do n = 1, Nindistinguishables
     
@@ -839,20 +881,42 @@ else if (population < buffer2_size) then
             end do
 
             call getSIs(temp_coords,new_coords,new_U,new_SI)
-        
+
             !If in the "accept best" method
             !and the RMSD is low enough:
             if ((new_SI(Nsort) < outer_threshold_SI).and.&
                 (new_SI(Nsort) >= inner_threshold_SI)) then
+
+            !For diversity, accept best
+            rejectNtraj_flag = .false.
+            index_switch = 1
+            do
+                if (index_switch > Ninterpolation) exit
+                if (Ntrajbuffer2(k,single_index) == Ntrajbuffer1(index_switch)) then
+                    if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
+                        rejectNtraj_flag = .true.
+                    else
+                        Ninterpolation = Ninterpolation - 1
+                    end if
+    
+!                   index_switch = index_switch + 1
+                    exit
+                end if
+                index_switch = index_switch + 1
+            end do
+            if (rejectNtraj_flag) cycle
+!           index_switch = index_switch - 1
         
                 if (accept_first) iostate = 1
         
                 if (accept_worst) then
-                    do i = 1, Ninterpolation+1
+!                   do i = 1, index_switch+1
+                    do i = 1, index_switch
                         if (new_SI(Nsort) > SIbuffer1(Nsort,i)) exit
                     end do
                 else
-                    do i = 1, Ninterpolation+1
+!                   do i = 1, index_switch+1
+                    do i = 1, index_switch
                         if (new_SI(Nsort) < SIbuffer1(Nsort,i)) exit
                     end do
                 end if
@@ -860,7 +924,7 @@ else if (population < buffer2_size) then
                 if (Ninterpolation < Ninterpolation_max) &
                     Ninterpolation = Ninterpolation + 1
         
-                do j = Ninterpolation, i+1, -1
+                do j = index_switch, i+1, -1
                     valsbuffer1(:,j) = valsbuffer1(:,j-1)
                     Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
                     coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
@@ -962,6 +1026,15 @@ do
 
     end if
 
+    !For diversity, accept first
+!   rejectNtraj_flag = .false.
+!   do i = 1, Ninterpolation
+!       if (current_Ntraj == Ntrajbuffer1(i)) then
+!           rejectNtraj_flag = .true.
+!       end if
+!   end do
+!   if (rejectNtraj_flag) cycle
+
     do n = 1, Nindistinguishables
 
         BOND_LABELLING_DATA = INDISTINGUISHABLES(n,:)
@@ -972,20 +1045,42 @@ do
         end do
     
         call getSIs(temp_coords,new_coords,new_U,new_SI)
-    
+
         !If in the "accept best" method
         !and the RMSD is low enough:
         if ((new_SI(Nsort) < outer_threshold_SI).and.&
             (new_SI(Nsort) >= inner_threshold_SI)) then
+
+        !For diversity, accept best
+        rejectNtraj_flag = .false.
+        index_switch = 1
+        do
+            if (index_switch > Ninterpolation) exit
+            if (current_Ntraj == Ntrajbuffer1(index_switch)) then
+                if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
+                    rejectNtraj_flag = .true.
+                else
+                    Ninterpolation = Ninterpolation - 1
+                end if
+
+!               index_switch = index_switch + 1
+                exit
+            end if
+            index_switch = index_switch + 1
+        end do
+        if (rejectNtraj_flag) cycle
+!       index_switch = index_switch - 1
     
             if (accept_first) iostate = 1
     
             if (accept_worst) then
-                do i = 1, Ninterpolation+1
+!               do i = 1, index_switch+1
+                do i = 1, index_switch
                     if (new_SI(Nsort) > SIbuffer1(Nsort,i)) exit
                 end do
             else
-                do i = 1, Ninterpolation+1
+!               do i = 1, index_switch+1
+                do i = 1, index_switch
                     if (new_SI(Nsort) < SIbuffer1(Nsort,i)) exit
                 end do
             end if
@@ -993,7 +1088,7 @@ do
             if (Ninterpolation < Ninterpolation_max) &
                 Ninterpolation = Ninterpolation + 1
     
-            do j = Ninterpolation, i+1, -1
+            do j = index_switch, i+1, -1
                 valsbuffer1(:,j) = valsbuffer1(:,j-1)
                 Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
                 coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)

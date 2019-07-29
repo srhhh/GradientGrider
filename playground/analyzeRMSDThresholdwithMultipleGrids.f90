@@ -1447,13 +1447,20 @@ use ANALYSIS
 implicit none
 
 !NUMBER OF FRAMES IN THE DATA
-real(dp),dimension(7) :: min_rmsd_vals, max_rmsd_vals
+real(dp),dimension(9) :: rsv
 
 !FORMAT OF PNG FILES TO BE MADE
 character(gridpath_length+expfolder_length) :: gridpath4
 character(gridpath_length+expfolder_length+5) :: gridpath5
 character(*), intent(in) :: PNGfilename
 integer, dimension(comparison_number,3) :: counters
+
+integer,allocatable :: RMSDvsError_heatmap(:,:)
+integer,allocatable :: CMDvsError_heatmap(:,:)
+integer :: maxRMSDvsError_heatmap, maxCMDvsError_heatmap
+integer :: RMSDbins, CMDbins, Errorbins
+integer :: RMSDbin, CMDbin, Errorbin
+real(dp) :: RMSDbinwidth, CMDbinwidth, Errorbinwidth
 
 !I/O HANDLING
 integer :: iostate
@@ -1470,10 +1477,14 @@ call processMultipleInterpolationFiles(counters)
 !            vals, Ninterpolation, &
 !!           rsv1, rsv2, &
 !!           rmsd_best, rmsd_interpolated, &
+!!           min_CMdiff, interpolated_CMdiff, &
 !!           error_best, error_interpolated
 !            rsv(3), rsv(4), &
 !            rsv(1), rsv(2), &
+!            rsv(8), rsv(9), &
 !            rsv(5), rsv(6)
+
+!    tmp file: Ninterpolation, rsv
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
@@ -1744,7 +1755,124 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 
 
+!Now let's make a good old fashioned heatmap
+RMSDbins = 30
+CMDbins = 30
+Errorbins = 30
 
+RMSDbinwidth = 0.05d0 / RMSDbins
+CMDbinwidth = 0.08d0 / CMDbins
+Errorbinwidth = 0.1d0 / Errorbins
+
+allocate(RMSDvsError_heatmap(RMSDbins,Errorbins),&
+          CMDvsError_heatmap(CMDbins,Errorbins))
+
+open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
+do
+    read(filechannel1,iostat=iostate,FMT=*) n, rsv
+    if (iostate /= 0) exit
+
+    RMSDbin = floor(rsv(1) / RMSDbinwidth) + 1
+    CMDbin = floor(rsv(8) / CMDbinwidth) + 1
+    Errorbin = floor(rsv(5) / Errorbinwidth) + 1
+
+    if (RMSDbin < 1) RMSDbin = 1
+    if (CMDbin < 1) CMDbin = 1
+    if (Errorbin < 1) Errorbin = 1
+
+    if (Errorbin > Errorbins) cycle
+
+    if (RMSDbin <= RMSDbins) &
+        RMSDvsError_heatmap(RMSDbin,Errorbin) = &
+        RMSDvsError_heatmap(RMSDbin,Errorbin) + 1
+    if (CMDbin <= CMDbins) &
+        CMDvsError_heatmap(CMDbin,Errorbin) = &
+        CMDvsError_heatmap(CMDbin,Errorbin) + 1
+end do
+close(filechannel1)
+
+maxRMSDvsError_heatmap = 0
+open(filechannel1,file=gridpath5//temporaryfile1)
+do RMSDbin = 1, RMSDbins
+    do Errorbin = 1, Errorbins
+        write(filechannel1,FMT=*) &
+            RMSDbinwidth * RMSDbin,&
+            Errorbinwidth * Errorbin,&
+            RMSDvsError_heatmap(RMSDbin,Errorbin)
+        maxRMSDvsError_heatmap = max(&
+            maxRMSDvsError_heatmap,&
+            RMSDvsError_heatmap(RMSDbin,Errorbin))
+    end do
+    write(filechannel1,FMT=*) ""
+end do
+close(filechannel1)
+
+maxCMDvsError_heatmap = 0
+open(filechannel1,file=gridpath5//temporaryfile2)
+do CMDbin = 1, CMDbins
+    do Errorbin = 1, Errorbins
+        write(filechannel1,FMT=*) &
+            CMDbinwidth * CMDbin,&
+            Errorbinwidth * Errorbin,&
+            CMDvsError_heatmap(CMDbin,Errorbin)
+        maxCMDvsError_heatmap = max(&
+            maxCMDvsError_heatmap,&
+            CMDvsError_heatmap(CMDbin,Errorbin))
+    end do
+    write(filechannel1,FMT=*) ""
+end do
+close(filechannel1)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_linear_heatmap.png"'
+write(gnuplotchannel,*) 'set tmargin 0'
+write(gnuplotchannel,*) 'set bmargin 0'
+write(gnuplotchannel,*) 'set lmargin 1'
+write(gnuplotchannel,*) 'set rmargin 1'
+write(gnuplotchannel,*) 'set multiplot layout 1,2 '//&
+        'margins screen 0.1,0.9,0.1,0.95 spacing 0,0.1 '//&
+        'title "Error Convergence As Candidates Get Closer" '//&
+        'font ",32" offset 0,-3'
+write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+
+write(gnuplotchannel,*) 'set colorbox user origin screen 0, screen 0.05 '//&
+        'size screen 0.1, screen 0.9'
+write(gnuplotchannel,*) 'population_max = ', &
+        max(maxRMSDvsError_heatmap,maxCMDvsError_heatmap)
+write(gnuplotchannel,*) 'set palette defined ('//&
+         '0 "white",'//&
+         '0.5 "white",'//&
+         '0.5 "yellow",'//&
+         'population_max/2 "orange",'//&
+         'population_max "red")'
+write(gnuplotchannel,*) 'set cbrange [0:population_max]'
+write(gnuplotchannel,*) 'set cblabel "Number of Candidate Frames"'
+
+write(gnuplotchannel,*) 'set ylabel "Error Between Candidate '//&
+        'and Target Gradient (Hartree/Bohr)" font ",32"'
+write(gnuplotchannel,*) 'ymax = ', 0.1d0
+write(gnuplotchannel,*) 'set yrange [0:ymax]'
+
+write(gnuplotchannel,*) 'set xlabel "RMSD Between Candidate '//&
+        'and Target Frame (A)" font ",32"'
+write(gnuplotchannel,*) 'xmax = ', 0.05d0
+write(gnuplotchannel,*) 'set xrange [0:xmax]'
+write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//&
+                                '" u 1:2:3 w image palette'
+
+write(gnuplotchannel,*) 'unset colorbox'
+write(gnuplotchannel,*) 'set xlabel "CMD Between Candidate '//&
+        'and Target Frame (1/A)" font ",32"'
+write(gnuplotchannel,*) 'xmax = ', 0.08d0
+write(gnuplotchannel,*) 'set xrange [0:xmax]'
+write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile2//&
+                                '" u 1:2:3 w image palette'
+
+deallocate(RMSDvsError_heatmap,CMDvsError_heatmap)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 end subroutine getRMSDErrorPlots
 
