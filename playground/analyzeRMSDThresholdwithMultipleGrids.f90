@@ -1457,10 +1457,12 @@ integer, dimension(comparison_number,3) :: counters
 
 integer,allocatable :: RMSDvsError_heatmap(:,:)
 integer,allocatable :: CMDvsError_heatmap(:,:)
+integer :: population_max
 integer :: maxRMSDvsError_heatmap, maxCMDvsError_heatmap
 integer :: RMSDbins, CMDbins, Errorbins
 integer :: RMSDbin, CMDbin, Errorbin
 real(dp) :: RMSDbinwidth, CMDbinwidth, Errorbinwidth
+real(dp) :: RMSDlimit, CMDlimit, Errorlimit
 
 !I/O HANDLING
 integer :: iostate
@@ -1760,13 +1762,19 @@ RMSDbins = 30
 CMDbins = 30
 Errorbins = 30
 
-RMSDbinwidth = 0.05d0 / RMSDbins
-CMDbinwidth = 0.08d0 / CMDbins
-Errorbinwidth = 0.1d0 / Errorbins
+RMSDlimit = 0.05d0
+CMDlimit = 0.05d0
+Errorlimit = 0.1d0
+
+RMSDbinwidth = RMSDlimit / RMSDbins
+CMDbinwidth = CMDlimit / CMDbins
+Errorbinwidth = Errorlimit / Errorbins
 
 allocate(RMSDvsError_heatmap(RMSDbins,Errorbins),&
           CMDvsError_heatmap(CMDbins,Errorbins))
 
+RMSDvsError_heatmap = 0
+CMDvsError_heatmap = 0
 open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
 do
     read(filechannel1,iostat=iostate,FMT=*) n, rsv
@@ -1796,8 +1804,8 @@ open(filechannel1,file=gridpath5//temporaryfile1)
 do RMSDbin = 1, RMSDbins
     do Errorbin = 1, Errorbins
         write(filechannel1,FMT=*) &
-            RMSDbinwidth * RMSDbin,&
-            Errorbinwidth * Errorbin,&
+            RMSDbinwidth * (RMSDbin-0.5d0),&
+            Errorbinwidth * (Errorbin-0.5d0),&
             RMSDvsError_heatmap(RMSDbin,Errorbin)
         maxRMSDvsError_heatmap = max(&
             maxRMSDvsError_heatmap,&
@@ -1812,8 +1820,8 @@ open(filechannel1,file=gridpath5//temporaryfile2)
 do CMDbin = 1, CMDbins
     do Errorbin = 1, Errorbins
         write(filechannel1,FMT=*) &
-            CMDbinwidth * CMDbin,&
-            Errorbinwidth * Errorbin,&
+            CMDbinwidth * (CMDbin-0.5d0),&
+            Errorbinwidth * (Errorbin-0.5d0),&
             CMDvsError_heatmap(CMDbin,Errorbin)
         maxCMDvsError_heatmap = max(&
             maxCMDvsError_heatmap,&
@@ -1823,49 +1831,53 @@ do CMDbin = 1, CMDbins
 end do
 close(filechannel1)
 
+population_max = 30000
+!population_max = max(maxRMSDvsError_heatmap,maxCMDvsError_heatmap)
+
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 2400,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_linear_heatmap.png"'
-write(gnuplotchannel,*) 'set tmargin 0'
-write(gnuplotchannel,*) 'set bmargin 0'
-write(gnuplotchannel,*) 'set lmargin 1'
-write(gnuplotchannel,*) 'set rmargin 1'
 write(gnuplotchannel,*) 'set multiplot layout 1,2 '//&
-        'margins screen 0.1,0.9,0.1,0.95 spacing 0,0.1 '//&
+        'margins screen 0.10,0.85,0.12,0.93 spacing 0,0.1 '//&
         'title "Error Convergence As Candidates Get Closer" '//&
-        'font ",32" offset 0,-3'
+        'font ",32" offset 0,-5'
 write(gnuplotchannel,*) 'set pm3d map'
 write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xtics font ",24"'
+write(gnuplotchannel,*) 'set ytics font ",24"'
+write(gnuplotchannel,*) 'set cbtics font ",24"'
 
-write(gnuplotchannel,*) 'set colorbox user origin screen 0, screen 0.05 '//&
-        'size screen 0.1, screen 0.9'
-write(gnuplotchannel,*) 'population_max = ', &
-        max(maxRMSDvsError_heatmap,maxCMDvsError_heatmap)
+write(gnuplotchannel,*) 'set colorbox user origin screen 0.87, screen 0.12 '//&
+        'size screen 0.02, screen 0.81'
+write(gnuplotchannel,*) 'population_max = ', population_max
 write(gnuplotchannel,*) 'set palette defined ('//&
          '0 "white",'//&
          '0.5 "white",'//&
          '0.5 "yellow",'//&
-         'population_max/2 "orange",'//&
+         'population_max/5 "orange",'//&
          'population_max "red")'
 write(gnuplotchannel,*) 'set cbrange [0:population_max]'
-write(gnuplotchannel,*) 'set cblabel "Number of Candidate Frames"'
+write(gnuplotchannel,*) 'set cblabel "Number of Candidate Frames"'//&
+        ' font ",32" offset 6,0'
 
 write(gnuplotchannel,*) 'set ylabel "Error Between Candidate '//&
-        'and Target Gradient (Hartree/Bohr)" font ",32"'
-write(gnuplotchannel,*) 'ymax = ', 0.1d0
+        'and\nTarget Gradient (Hartree/Bohr)" font ",32" offset -5,0'
+write(gnuplotchannel,*) 'ymax = ', Errorlimit
 write(gnuplotchannel,*) 'set yrange [0:ymax]'
 
 write(gnuplotchannel,*) 'set xlabel "RMSD Between Candidate '//&
-        'and Target Frame (A)" font ",32"'
-write(gnuplotchannel,*) 'xmax = ', 0.05d0
+        'and\nTarget Frame (A)" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'xmax = ', RMSDlimit
 write(gnuplotchannel,*) 'set xrange [0:xmax]'
 write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//&
                                 '" u 1:2:3 w image palette'
 
 write(gnuplotchannel,*) 'unset colorbox'
+write(gnuplotchannel,*) 'unset ylabel'
+write(gnuplotchannel,*) 'unset ytics'
 write(gnuplotchannel,*) 'set xlabel "CMD Between Candidate '//&
-        'and Target Frame (1/A)" font ",32"'
-write(gnuplotchannel,*) 'xmax = ', 0.08d0
+        'and\nTarget Frame (1/A)" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'xmax = ', CMDlimit
 write(gnuplotchannel,*) 'set xrange [0:xmax]'
 write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile2//&
                                 '" u 1:2:3 w image palette'
