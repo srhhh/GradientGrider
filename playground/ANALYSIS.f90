@@ -88,7 +88,7 @@ logical,parameter :: testtraj_flag = .true.
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 00, 00 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 12, 00 /)
    integer,dimension(ssm_length) :: ssm2 = (/ 08, 00 /)
 
    !Set .true. to generate a frequency plot of the percentage
@@ -107,7 +107,7 @@ logical,parameter :: testtraj_flag = .true.
       !real(dp),parameter :: !threshold_rmsd! = !.200100d0
       real(dp),parameter :: outer_threshold_SI = .00100d0
       real(dp),parameter :: inner_threshold_SI = 0.0d0
-      integer,parameter :: Nsort = 1
+      integer :: Nsort = 1
 
       !Set .true. to generate trajectories using md-calculated gradients
       !Otherwise, the program will use the above threshold as a rejection
@@ -163,8 +163,8 @@ logical,parameter :: testtraj_flag = .true.
 
             real(dp) :: alpha_ratio = 1.0d0
 
-            integer,parameter :: Ninterpolation_max = 30
-            integer,parameter :: Ninterpolation_cap = 30
+            integer,parameter :: Ninterpolation_max = 40
+            integer,parameter :: Ninterpolation_cap = 40
 
             integer,parameter :: Naccept_max = 20
             real(dp),allocatable :: trajRMSDbuffer(:,:)
@@ -172,6 +172,15 @@ logical,parameter :: testtraj_flag = .true.
             integer,parameter :: Nalpha_tries_max = 3
             real(dp),dimension(Nalpha_tries_max),parameter :: alpha_ratio_list = &
                     (/ 10.0d-2, 10.0d-1, 10.0d0 /)
+
+            !We can also make what I like to call
+            !"consolidated" dropoffs that do an interpolation
+            !for every N points up until N*M
+            logical,parameter :: dropoff_flag = .true.
+            character(11),parameter :: dropofffile = "dropoff.dat"
+            integer,parameter :: dropoff_Npacket = 5
+            integer,parameter :: dropoff_Mpacket = 6
+            integer,parameter :: dropoff_NM = dropoff_Npacket*dropoff_Mpacket
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

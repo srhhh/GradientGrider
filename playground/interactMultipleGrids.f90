@@ -106,6 +106,7 @@ implicit none
 real(dp),allocatable :: valsbuffer1(:,:)
 real(dp),allocatable :: coordsbuffer1(:,:,:)
 real(dp),allocatable :: gradientbuffer1(:,:,:)
+real(dp),allocatable :: potEbuffer1(:)
 
 real(dp),allocatable :: Ubuffer1(:,:,:)
 !real(dp),allocatable :: RMSDbuffer1(:)
@@ -125,12 +126,14 @@ real(dp),allocatable :: valsbuffer2(:,:,:)
 integer,allocatable :: Ntrajbuffer2(:,:)
 real(dp),allocatable :: coordsbuffer2(:,:,:,:)
 real(dp),allocatable :: gradientbuffer2(:,:,:,:)
+real(dp),allocatable :: potEbuffer2(:,:)
 
 integer,allocatable :: temppopulationbuffer2(:)
 real(dp),allocatable :: tempvalsbuffer2(:,:,:)
 integer,allocatable :: tempNtrajbuffer2(:,:)
 real(dp),allocatable :: tempcoordsbuffer2(:,:,:,:)
 real(dp),allocatable :: tempgradientbuffer2(:,:,:,:)
+real(dp),allocatable :: temppotEbuffer2(:,:)
 
 !Arrays for interpolation
 
@@ -642,6 +645,7 @@ integer,intent(out) :: population
 !Stores values temporarily
 real(dp),dimension(Nvar) :: current_vals
 integer :: current_Ntraj
+real(dp) :: current_potE
 real(dp),dimension(3,Natoms) :: temp_coords
 real(dp),dimension(3,Natoms) :: current_coords,current_gradient
 logical :: rejectNtraj_flag
@@ -718,6 +722,10 @@ if (population < 0) then
             !The next line is trajectory number
             read(var_filechannel) &
                    Ntrajbuffer2(population,single_index)
+
+            !The next line is the potential energy
+            read(var_filechannel) &
+                   potEbuffer2(population,single_index)
 
             !The next line is the coordinates
             read(var_filechannel) &
@@ -812,15 +820,7 @@ if (population < 0) then
                 if (Ninterpolation < Ninterpolation_max) &
                     Ninterpolation = Ninterpolation + 1
         
-                do j = index_switch, i+1, -1
-                    valsbuffer1(:,j) = valsbuffer1(:,j-1)
-                    Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
-                    coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
-                    gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
-                    Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
-                    SIbuffer1(:,j) = SIbuffer1(:,j-1)
-                    inputCLS(:,j) = inputCLS(:,j-1)
-                end do
+                call shiftBuffer(i+1,index_switch)
         
                 do j = 1, Natoms
                     coordsbuffer1(:,j,i) = &
@@ -829,6 +829,7 @@ if (population < 0) then
                         gradientbuffer2(:,BOND_LABELLING_DATA(j),population,single_index)
                 end do
         
+                potEbuffer1(i) = potEbuffer2(population,single_index)
                 valsbuffer1(:,i) = valsbuffer2(:,population,single_index)
                 Ntrajbuffer1(i) = Ntrajbuffer2(population,single_index)
                 Ubuffer1(:,:,i) = new_U
@@ -924,15 +925,7 @@ else if (population < buffer2_size) then
                 if (Ninterpolation < Ninterpolation_max) &
                     Ninterpolation = Ninterpolation + 1
         
-                do j = index_switch, i+1, -1
-                    valsbuffer1(:,j) = valsbuffer1(:,j-1)
-                    Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
-                    coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
-                    gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
-                    Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
-                    SIbuffer1(:,j) = SIbuffer1(:,j-1)
-                    inputCLS(:,j) = inputCLS(:,j-1)
-                end do
+                call shiftBuffer(i+1,index_switch)
         
                 do j = 1, Natoms
                     coordsbuffer1(:,j,i) = &
@@ -941,6 +934,7 @@ else if (population < buffer2_size) then
                         gradientbuffer2(:,BOND_LABELLING_DATA(j),k,single_index)
                 end do
         
+                potEbuffer1(i) = potEbuffer2(k,single_index)
                 valsbuffer1(:,i) = valsbuffer2(:,k,single_index)
                 Ntrajbuffer1(i) = Ntrajbuffer2(k,single_index)
                 Ubuffer1(:,:,i) = new_U
@@ -995,6 +989,10 @@ do
         !The next line is trajectory number
         read(var_filechannel) &
                current_Ntraj
+
+        !The next line is the potential energy
+        read(var_filechannel) &
+               current_potE
 
         !The next line is the coordinates
         read(var_filechannel) &
@@ -1088,15 +1086,7 @@ do
             if (Ninterpolation < Ninterpolation_max) &
                 Ninterpolation = Ninterpolation + 1
     
-            do j = index_switch, i+1, -1
-                valsbuffer1(:,j) = valsbuffer1(:,j-1)
-                Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
-                coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
-                gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
-                Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
-                SIbuffer1(:,j) = SIbuffer1(:,j-1)
-                inputCLS(:,j) = inputCLS(:,j-1)
-            end do
+            call shiftBuffer(i+1,index_switch)
     
             do j = 1, Natoms
                 coordsbuffer1(:,j,i) = &
@@ -1105,6 +1095,7 @@ do
                     current_gradient(:,BOND_LABELLING_DATA(j))
             end do
     
+            potEbuffer1(i) = current_potE
             valsbuffer1(:,i) = current_vals
             Ntrajbuffer1(i) = current_Ntraj
             Ubuffer1(:,:,i) = new_U
@@ -1144,6 +1135,7 @@ integer,intent(out) :: population
 real(dp),dimension(Nvar) :: dummy_vals
 real(dp),dimension(3,Natoms) :: dummy_coords
 integer :: dummy_Ntraj
+real(dp) :: dummy_potE
 
 !Incremental integers and iostate checking
 integer :: i,j,k,iostate
@@ -1201,6 +1193,10 @@ do
         !The next line is the trajectory number
         read(var_filechannel) &
                dummy_Ntraj
+
+        !The next line is the potential energy
+        read(var_filechannel) &
+               dummy_potE
 
         !The next line is the coordinates
         read(var_filechannel) &
@@ -1355,15 +1351,16 @@ end subroutine getRMSD_2
 
 
 
-subroutine addState_new(vals,coords,gradient)
+subroutine addState_new(vals,coords,gradient,potE)
 use PHYSICS
 use PARAMETERS
 implicit none
 
 !Inputs for the file
-real(dp),dimension(Nvar) :: vals
-real(dp),dimension(3,Natoms) :: coords
-real(dp),dimension(3,Natoms) :: gradient
+real(dp),dimension(Nvar),intent(in) :: vals
+real(dp),dimension(3,Natoms),intent(in) :: coords
+real(dp),dimension(3,Natoms),intent(in) :: gradient
+real(dp),intent(in) :: potE
 
 !Keeps track of how many frames are in a cell
 integer :: population
@@ -1396,6 +1393,7 @@ do l = 1, Norder_max+1
     if (population == var_overcrowd(Norder+1)) then
 
         call frameAddition(vals,coords,gradient,&
+                           potE,&
                            var_index(:,Norder+1))
 
         valsbuffer1(:,population+1) = vals
@@ -1425,6 +1423,7 @@ do l = 1, Norder_max+1
         end if
 
         call frameAddition(vals,coords,gradient,&
+                           potE,&
                            var_index(:,Norder+1))
 
         exit
@@ -1438,7 +1437,9 @@ end do
 end subroutine addState_new
 
 
-subroutine frameAddition(vals,coords,gradient,var_index,nolabel_flag)
+subroutine frameAddition(vals,coords,gradient,&
+                         potE,&
+                         var_index,nolabel_flag)
 use PARAMETERS
 use PHYSICS
 implicit none
@@ -1446,6 +1447,7 @@ implicit none
 !Inputs for file writing
 real(dp),dimension(Nvar),intent(in) :: vals
 real(dp),dimension(3,Natoms),intent(in) :: coords,gradient
+real(dp),intent(in) :: potE
 integer,dimension(Nvar),intent(in) :: var_index
 
 !Character strings used to identify the file
@@ -1466,11 +1468,13 @@ if (unreadable_flag) then
     if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
         write(filechannel1) (vals(j),j=1,Nvar)
         write(filechannel1) Ntraj
+        write(filechannel1) potE
         write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
         write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
     else
         write(filechannel1) (vals(j),j=1,Nvar)
         write(filechannel1) Ntraj
+        write(filechannel1) potE
         write(filechannel1) ((coords(i,j),i=1,3),j=1,Natoms)
         write(filechannel1) ((gradient(i,j),i=1,3),j=1,Natoms)
     end if
@@ -1518,6 +1522,7 @@ do i = 1, frames
     call frameAddition(valsbuffer1(:,i),&
                        coordsbuffer1(:,:,i),&
                        gradientbuffer1(:,:,i),&
+                       potEbuffer1(i),&
                        var_index,nolabel_flag)
 end do
 
@@ -1535,6 +1540,7 @@ subroutine setAllocations()
     allocate(valsbuffer1(Nvar,buffer1_size),&
              coordsbuffer1(3,Natoms,buffer1_size),&
              gradientbuffer1(3,Natoms,buffer1_size),&
+             potEbuffer1(buffer1_size),&
              Ubuffer1(3,3,buffer1_size),&
              SIbuffer1(NSIs,buffer1_size))
 
@@ -1560,6 +1566,9 @@ subroutine setAllocations()
                     single_index_max+1),&
                  gradientbuffer2(3,Natoms,&
                     buffer2_size,&
+                    single_index_max+1),&
+                 potEbuffer2(&
+                    buffer2_size,&
                     single_index_max+1))
 
         allocate(temppopulationbuffer2(&
@@ -1574,6 +1583,9 @@ subroutine setAllocations()
                     buffer2_size,&
                     single_index_max+1),&
                  tempgradientbuffer2(3,Natoms,&
+                    buffer2_size,&
+                    single_index_max+1),&
+                 temppotEbuffer2(&
                     buffer2_size,&
                     single_index_max+1))
     end if
@@ -1591,6 +1603,7 @@ subroutine unsetAllocations()
     deallocate(valsbuffer1,&
                coordsbuffer1,&
                gradientbuffer1,&
+               potEbuffer1,&
                Ubuffer1,&
                SIbuffer1)
 
@@ -1607,18 +1620,45 @@ subroutine unsetAllocations()
                    valsbuffer2,&
                    Ntrajbuffer2,&
                    coordsbuffer2,&
-                   gradientbuffer2)
+                   gradientbuffer2,&
+                   potEbuffer2)
 
         deallocate(temppopulationbuffer2,&
                    tempvalsbuffer2,&
                    tempNtrajbuffer2,&
                    tempcoordsbuffer2,&
-                   tempgradientbuffer2)
+                   tempgradientbuffer2,&
+                   temppotEbuffer2)
     end if
 
     return
 
 end subroutine unsetAllocations
+
+subroutine shiftBuffer(first_index,last_index)
+    use PARAMETERS
+    use ANALYSIS
+    use SIMILARITY
+    use FUNCTIONS
+    implicit none
+    integer,intent(in) :: first_index,last_index
+    integer :: j
+ 
+!   do j = index_switch, i+1, -1
+    do j = last_index, first_index, -1
+        valsbuffer1(:,j) = valsbuffer1(:,j-1)
+        Ntrajbuffer1(j) = Ntrajbuffer1(j-1)
+        coordsbuffer1(:,:,j) = coordsbuffer1(:,:,j-1)
+        gradientbuffer1(:,:,j) = gradientbuffer1(:,:,j-1)
+        potEbuffer1(j) = potEbuffer1(j-1)
+        Ubuffer1(:,:,j) = Ubuffer1(:,:,j-1)
+        SIbuffer1(:,j) = SIbuffer1(:,j-1)
+        inputCLS(:,j) = inputCLS(:,j-1)
+    end do
+
+    return
+        
+end subroutine shiftBuffer
 
 subroutine shiftMemory(delta_var_index)
     use PARAMETERS
@@ -1637,6 +1677,7 @@ subroutine shiftMemory(delta_var_index)
     tempNtrajbuffer2 = Ntrajbuffer2
     tempcoordsbuffer2 = coordsbuffer2
     tempgradientbuffer2 = gradientbuffer2
+    temppotEbuffer2 = potEbuffer2
 
     populationbuffer2 = -1
 
@@ -1658,6 +1699,8 @@ subroutine shiftMemory(delta_var_index)
                 tempcoordsbuffer2(:,:,1:population,single_index)
             gradientbuffer2(:,:,1:population,xflattened) = &
                 tempgradientbuffer2(:,:,1:population,single_index)
+            potEbuffer2(1:population,xflattened) = &
+                temppotEbuffer2(1:population,single_index)
         end if
 
     end do

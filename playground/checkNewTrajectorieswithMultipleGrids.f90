@@ -819,6 +819,20 @@ if (.not.comparison_flag) then
 
 
 
+!If we have some dropoff data, plot it!
+!The dropoff N and M values are not stored on a
+!file so this data must be processed immediately
+if (dropoff_flag) then
+
+    call itime(now)
+    write(6,FMT=FMTnow) now
+    print *, "   Making plot: ", "ConsolidatedDropoff"
+    print *, ""
+
+    call plotDropoff(dropoff_Npacket,dropoff_Mpacket)
+
+end if
+
 if (testtrajDetailedRMSD_flag) then
     call getRMSDDifferences1(&
     gridpath4//"BinaryRMSDCheck")

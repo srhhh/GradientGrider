@@ -3524,6 +3524,238 @@ call system(path_to_gnuplot//"gnuplot -c "//&
 
 end subroutine getInterpolationplot
 
+subroutine plotDropoff(dropoff_spacing,dropoff_spaces)
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+!character(*), intent(in) :: PNGfilename
+
+integer,intent(in) :: dropoff_spacing,dropoff_spaces
+real(dp) :: max_error, min_error, max_RE, min_RE
+real(dp),dimension(2*dropoff_spaces) :: dropoffErrors
+integer,dimension(2*dropoff_spaces) :: dropoffErrorBins
+integer :: Nbins
+integer,allocatable :: dropoffErrorBinning(:,:)
+real(dp),dimension(2*dropoff_spaces) :: dropoffErrorBinwidth
+integer :: error_counter
+integer :: iostate
+integer :: i
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+max_error = 4.1198d0
+min_error = 1.0712d-3
+
+max_RE = 50.0
+min_RE = 0.02
+
+Nbins  = 30
+allocate(dropoffErrorBinning(2*dropoff_spaces,Nbins))
+dropoffErrorBinwidth(1:dropoff_spaces) = &
+        log10(max_error/min_error)/Nbins
+dropoffErrorBinwidth(dropoff_spaces+1:dropoff_spaces*2) = &
+        log10(max_RE/min_RE)/Nbins
+
+dropoffErrorBinning = 0
+error_counter = 0
+open(filechannel1,file=gridpath5//dropofffile)
+open(filechannel2,file=gridpath5//"log"//dropofffile)
+do
+    read(filechannel1,iostat=iostate,FMT=*)&
+        dropoffErrors
+    if (iostate /= 0) exit
+
+    write(filechannel2,FMT=*) log10(dropoffErrors)
+
+    do i = 1, dropoff_spaces
+        dropoffErrorBins(i) = floor(&
+            log10(dropoffErrors(i) / min_error) / &
+            dropoffErrorBinwidth(i))
+    end do
+
+    do i = dropoff_spaces+1, dropoff_spaces*2
+        dropoffErrorBins(i) = floor(&
+            log10(dropoffErrors(i) / min_RE) / &
+            dropoffErrorBinwidth(i))
+    end do
+
+    do i = 1, dropoff_spaces * 2
+        if (dropoffErrorBins(i) < 1) &
+                dropoffErrorBins(i) = 1
+        if (dropoffErrorBins(i) > Nbins) &
+                dropoffErrorBins(i) = Nbins
+
+        dropoffErrorBinning(i,dropoffErrorBins(i)) =&
+                dropoffErrorBinning(i,dropoffErrorBins(i)) + 1
+    end do
+
+    error_counter = error_counter + 1
+end do
+close(filechannel1)
+close(filechannel2)
+
+open(filechannel1,file=gridpath5//temporaryfile1)
+do i = 1, Nbins
+    write(filechannel1,FMT=*) &
+            (i-0.5) * dropoffErrorBinwidth(1) + log10(min_error), &
+            dropoffErrorBinning(1:dropoff_spaces,i), &
+            (i-0.5) * dropoffErrorBinwidth(dropoff_spaces+1) + log10(min_RE), &
+            dropoffErrorBinning(dropoff_spaces+1:dropoff_spaces*2,i)
+end do
+close(filechannel1)
+deallocate(dropoffErrorBinning)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,FMT="(A)") 'set encoding utf8'
+write(gnuplotchannel,FMT="(A)") 'set output "'//gridpath4//&
+                                'ConsolidatedDropoff_IED.png"'
+write(gnuplotchannel,FMT="(A)") "set title 'Consolidated Dropoff' font ',48'"
+write(gnuplotchannel,FMT="(A)") "set xlabel 'Ninterpolation' font ',32'"
+write(gnuplotchannel,FMT="(A)") "set ylabel 'Error Between Target and "//&
+                                "Interpolated Energy Gradient' font ',32'"
+!write(gnuplotchannel,FMT="(A)") "set logscale y"
+write(gnuplotchannel,FMT="(A)") "unset key"
+write(gnuplotchannel,FMT="(A,I5)") "spacing = ", dropoff_spacing
+write(gnuplotchannel,FMT="(A,I5)") "spaces = ", dropoff_spaces
+write(gnuplotchannel,FMT=*) "min_y = ", min_error
+write(gnuplotchannel,FMT=*) "max_y = ", max_error
+write(gnuplotchannel,FMT="(A)") "set xrange [0:spaces+0.5]"
+write(gnuplotchannel,FMT="(A)") "set yrange [log10(min_y):log10(max_y)]"
+
+write(gnuplotchannel,FMT="(A)") "set style fill solid 0.25 border -1"
+write(gnuplotchannel,FMT="(A)") "set style boxplot outliers pointtype 7"
+write(gnuplotchannel,FMT="(A)") "set style data boxplot"
+write(gnuplotchannel,FMT="(A)") "unset xtics"
+do i = 1, dropoff_spaces
+    write(gnuplotchannel,FMT="(A,I2,A,I2,A)")&
+            "set xtics add ('", i*dropoff_spacing, "' ", i, ")"
+end do
+write(gnuplotchannel,FMT="(A)") "plot for [i=1:spaces] '"//&
+                                gridpath5//"log"//dropofffile//&
+                                "' using (i):i"
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//&
+        gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,FMT="(A)") 'set encoding utf8'
+write(gnuplotchannel,FMT="(A)") 'set output "'//gridpath4//&
+                                'ConsolidatedDropoff_RED.png"'
+write(gnuplotchannel,FMT="(A)") "set title 'Consolidated Dropoff' font ',48'"
+write(gnuplotchannel,FMT="(A)") "set xlabel 'Ninterpolation' font ',32'"
+write(gnuplotchannel,FMT="(A)") "set ylabel 'Relative Error Between Target and "//&
+                                "Interpolated Energy Gradient' font ',32'"
+!write(gnuplotchannel,FMT="(A)") "set logscale y"
+write(gnuplotchannel,FMT="(A)") "unset key"
+write(gnuplotchannel,FMT="(A,I5)") "spacing = ", dropoff_spacing
+write(gnuplotchannel,FMT="(A,I5)") "spaces = ", dropoff_spaces
+write(gnuplotchannel,FMT=*) "min_y = ", min_RE
+write(gnuplotchannel,FMT=*) "max_y = ", max_RE
+write(gnuplotchannel,FMT="(A)") "set xrange [0:spaces+0.5]"
+write(gnuplotchannel,FMT="(A)") "set yrange [log10(min_y):log10(max_y)]"
+
+write(gnuplotchannel,FMT="(A)") "set style fill solid 0.25 border -1"
+write(gnuplotchannel,FMT="(A)") "set style boxplot outliers pointtype 7"
+write(gnuplotchannel,FMT="(A)") "set style data boxplot"
+write(gnuplotchannel,FMT="(A)") "unset xtics"
+do i = 1, dropoff_spaces
+    write(gnuplotchannel,FMT="(A,I2,A,I2,A)")&
+            "set xtics add ('", i*dropoff_spacing, "' ", i, ")"
+end do
+write(gnuplotchannel,FMT="(A)") "plot for [i=spaces+1:2*spaces] '"//&
+                                gridpath5//"log"//dropofffile//&
+                                "' using (i-spaces):i"
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//&
+        gridpath5//gnuplotfile)
+
+!Now, for histograms
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 1200,2400'
+write(gnuplotchannel,FMT="(A)") 'set encoding utf8'
+write(gnuplotchannel,FMT="(A)") 'set output "'//gridpath4//&
+                                'ConsolidatedDropoff_IED_Hist.png"'
+write(gnuplotchannel,FMT="(A,I5)") "spacing = ", dropoff_spacing
+write(gnuplotchannel,FMT="(A,I5)") "spaces = ", dropoff_spaces
+write(gnuplotchannel,FMT="(A)") "set multiplot layout spaces,1 columnsfirst "//&
+                        "margins 0.1,0.95,.1,.9 spacing 0.1,0 "//&
+                        "title 'Consolidated Dropoff' font ',48'"
+write(gnuplotchannel,FMT="(A)") 'set style fill solid 1.0 noborder'
+write(gnuplotchannel,FMT="(A)") "set ylabel 'Occurence' font ',32'"
+write(gnuplotchannel,FMT="(A)") "unset xlabel"
+write(gnuplotchannel,FMT="(A)") "unset xtics"
+write(gnuplotchannel,FMT="(A)") "unset key"
+write(gnuplotchannel,FMT=*) "min_x = ", min_error
+write(gnuplotchannel,FMT=*) "max_x = ", max_error
+write(gnuplotchannel,FMT="(A)") "set xrange [log10(min_x):log10(max_x)]"
+write(gnuplotchannel,FMT="(A)") "set yrange [0:]"
+
+do i = 1, dropoff_spaces
+    if (i == dropoff_spaces) then
+        write(gnuplotchannel,FMT="(A)") "set xtics"
+        write(gnuplotchannel,FMT="(A)") &
+            "set xlabel 'Error Between Target and "//&
+            "Interpolated Energy Gradient' font ',32'"
+    end if
+    write(gnuplotchannel,FMT="(A,I0.2,A,I0.2,A)") &
+            "plot '"//gridpath5//temporaryfile1//&
+            "' u ($", 1, "):($", i+1, ") w boxes"
+end do
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//&
+        gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 1200,2400'
+write(gnuplotchannel,FMT="(A)") 'set encoding utf8'
+write(gnuplotchannel,FMT="(A)") 'set output "'//gridpath4//&
+                                'ConsolidatedDropoff_RED_Hist.png"'
+write(gnuplotchannel,FMT="(A,I5)") "spacing = ", dropoff_spacing
+write(gnuplotchannel,FMT="(A,I5)") "spaces = ", dropoff_spaces
+write(gnuplotchannel,FMT="(A)") "set multiplot layout spaces,1 columnsfirst "//&
+                        "margins 0.1,0.95,.1,.9 spacing 0.1,0 "//&
+                        "title 'Consolidated Dropoff' font ',48'"
+write(gnuplotchannel,FMT="(A)") 'set style fill solid 1.0 noborder'
+write(gnuplotchannel,FMT="(A)") "set ylabel 'Occurence' font ',32'"
+write(gnuplotchannel,FMT="(A)") "unset xlabel"
+write(gnuplotchannel,FMT="(A)") "unset xtics"
+write(gnuplotchannel,FMT="(A)") "unset key"
+write(gnuplotchannel,FMT=*) "min_x = ", min_RE
+write(gnuplotchannel,FMT=*) "max_x = ", max_RE
+write(gnuplotchannel,FMT="(A)") "set xrange [log10(min_x):log10(max_x)]"
+write(gnuplotchannel,FMT="(A)") "set yrange [0:]"
+
+do i = 1, dropoff_spaces
+    if (i == dropoff_spaces) then
+        write(gnuplotchannel,FMT="(A)") "set xtics"
+        write(gnuplotchannel,FMT="(A)") &
+            "set xlabel 'Relative Error Between Target and "//&
+            "Interpolated Energy Gradient' font ',32'"
+    end if
+    write(gnuplotchannel,FMT="(A,I2,A,I2,A)") &
+            "plot '"//gridpath5//temporaryfile1//&
+            "' u ($", dropoff_spaces+2, "):($", dropoff_spaces+i+2, ") w boxes"
+end do
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//&
+        gridpath5//gnuplotfile)
+
+return
+
+end subroutine plotDropoff
+
 subroutine processCheckstateFile()
 use PARAMETERS
 use FUNCTIONS

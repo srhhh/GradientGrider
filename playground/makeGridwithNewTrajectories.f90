@@ -359,6 +359,10 @@ end if
                     open(inputchannel,file=gridpath4//&
                         readtrajectoryfolder//&
                         traj_index_text,form="unformatted")
+
+!                   call errorCheck2_readonly(inputchannel)
+!                   call errorCheck2_processedread()
+
                     call readTrajectory(&
                             inputchannel,filechannels,&
                             coords_initial,velocities_initial,&
