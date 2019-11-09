@@ -677,6 +677,8 @@ if (population < 0) then
     
     !Construct the subcell filename
     subcell = gridpath3//trim(var_filename)
+
+!   print *, "cell:", trim(var_filename)
     
     !See whether this subcell exists
     inquire(file=trim(subcell),exist=subcell_existence)
@@ -748,9 +750,12 @@ if (population < 0) then
             population = population + 1
 
             valsbuffer2(:,population,single_index) = current_vals
+
+            read(var_filechannel,FMT="(I5)",advance="no") Ntrajbuffer2(population,single_index)
+            read(var_filechannel,FMT="(ES10.2)",advance="no") potEbuffer2(population,single_index)
     
             !In formatted files, FMT3 reads the coordinates
-            read(var_filechannel,FMT=FMT7,advance="no") &
+            read(var_filechannel,FMT=FMT3,advance="no") &
                    ((coordsbuffer2(i,j,population,single_index),i=1,3),j=1,Natoms)
     
             !In formatted files, FMT3 reads the gradient as well
@@ -784,23 +789,28 @@ if (population < 0) then
                 (new_SI(Nsort) >= inner_threshold_SI)) then
 
             !For diversity, accept best
-            rejectNtraj_flag = .false.
-            index_switch = 1
-            do
-                if (index_switch > Ninterpolation) exit
-                if (Ntrajbuffer2(population,single_index) == Ntrajbuffer1(index_switch)) then
-                    if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
-                        rejectNtraj_flag = .true.
-                    else
-                        Ninterpolation = Ninterpolation - 1
+            if (diversity_flag) then
+                rejectNtraj_flag = .false.
+                index_switch = 1
+                do
+                    if (index_switch > Ninterpolation) exit
+                    if (Ntrajbuffer2(population,single_index) &
+                            == Ntrajbuffer1(index_switch)) then
+                        if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
+                            rejectNtraj_flag = .true.
+                        else
+                            Ninterpolation = Ninterpolation - 1
+                        end if
+        
+!                       index_switch = index_switch + 1
+                        exit
                     end if
-    
-!                   index_switch = index_switch + 1
-                    exit
-                end if
-                index_switch = index_switch + 1
-            end do
-            if (rejectNtraj_flag) cycle
+                    index_switch = index_switch + 1
+                end do
+                if (rejectNtraj_flag) cycle
+            else
+                index_switch = Ninterpolation + 1
+            end if
 !           index_switch = index_switch - 1
         
                 if (accept_first) iostate = 1
@@ -889,23 +899,28 @@ else if (population < buffer2_size) then
                 (new_SI(Nsort) >= inner_threshold_SI)) then
 
             !For diversity, accept best
-            rejectNtraj_flag = .false.
-            index_switch = 1
-            do
-                if (index_switch > Ninterpolation) exit
-                if (Ntrajbuffer2(k,single_index) == Ntrajbuffer1(index_switch)) then
-                    if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
-                        rejectNtraj_flag = .true.
-                    else
-                        Ninterpolation = Ninterpolation - 1
+            if (diversity_flag) then
+                rejectNtraj_flag = .false.
+                index_switch = 1
+                do
+                    if (index_switch > Ninterpolation) exit
+                    if (Ntrajbuffer2(k,single_index) == &
+                            Ntrajbuffer1(index_switch)) then
+                        if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
+                            rejectNtraj_flag = .true.
+                        else
+                            Ninterpolation = Ninterpolation - 1
+                        end if
+        
+    !                   index_switch = index_switch + 1
+                        exit
                     end if
-    
-!                   index_switch = index_switch + 1
-                    exit
-                end if
-                index_switch = index_switch + 1
-            end do
-            if (rejectNtraj_flag) cycle
+                    index_switch = index_switch + 1
+                end do
+                if (rejectNtraj_flag) cycle
+            else
+                index_switch = Ninterpolation + 1
+            end if
 !           index_switch = index_switch - 1
         
                 if (accept_first) iostate = 1
@@ -1014,8 +1029,11 @@ do
 
         population = population + 1
 
+        read(var_filechannel,FMT="(I5)",advance="no") current_Ntraj
+        read(var_filechannel,FMT="(ES10.2)",advance="no") current_potE
+
         !In formatted files, FMT3 reads the coordinates
-        read(var_filechannel,FMT=FMT7,advance="no") &
+        read(var_filechannel,FMT=FMT3,advance="no") &
                ((current_coords(i,j),i=1,3),j=1,Natoms)
 
         !In formatted files, FMT3 reads the gradient as well
@@ -1050,23 +1068,27 @@ do
             (new_SI(Nsort) >= inner_threshold_SI)) then
 
         !For diversity, accept best
-        rejectNtraj_flag = .false.
-        index_switch = 1
-        do
-            if (index_switch > Ninterpolation) exit
-            if (current_Ntraj == Ntrajbuffer1(index_switch)) then
-                if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
-                    rejectNtraj_flag = .true.
-                else
-                    Ninterpolation = Ninterpolation - 1
+        if (diversity_flag) then
+            rejectNtraj_flag = .false.
+            index_switch = 1
+            do
+                if (index_switch > Ninterpolation) exit
+                if (current_Ntraj == Ntrajbuffer1(index_switch)) then
+                    if (new_SI(Nsort) >= SIbuffer1(Nsort,index_switch)) then
+                        rejectNtraj_flag = .true.
+                    else
+                        Ninterpolation = Ninterpolation - 1
+                    end if
+    
+!                   index_switch = index_switch + 1
+                    exit
                 end if
-
-!               index_switch = index_switch + 1
-                exit
-            end if
-            index_switch = index_switch + 1
-        end do
-        if (rejectNtraj_flag) cycle
+                index_switch = index_switch + 1
+            end do
+            if (rejectNtraj_flag) cycle
+        else
+            index_switch = Ninterpolation + 1
+        end if
 !       index_switch = index_switch - 1
     
             if (accept_first) iostate = 1
@@ -1219,8 +1241,11 @@ do
             exit
         end if
 
+        read(var_filechannel,FMT="(I5)",advance="no") dummy_Ntraj
+        read(var_filechannel,FMT="(ES10.2)",advance="no") dummy_potE
+
         !In formatted files, FMT3 reads the coordinates
-        read(var_filechannel,FMT=FMT7,advance="no") &
+        read(var_filechannel,FMT=FMT3,advance="no") &
                ((dummy_coords(i,j),i=1,3),j=1,Natoms)
 
         !In formatted files, FMT3 reads the gradient as well
@@ -1482,10 +1507,14 @@ else
     open(filechannel1,file=gridpath2//trim(var_filename),position="append")
     if ((force_NoLabels).or.(present(nolabel_flag).and.(nolabel_flag))) then
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT="(I5)",advance="no") Ntraj
+        write(filechannel1,FMT="(ES10.2)",advance="no") potE
         write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
         write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
     else
         write(filechannel1,FMT=FMT1,advance="no") (vals(j),j=1,Nvar)
+        write(filechannel1,FMT="(I5)",advance="no") Ntraj
+        write(filechannel1,FMT="(ES10.2)",advance="no") potE
         write(filechannel1,FMT=FMT3,advance="no") ((coords(i,j),i=1,3),j=1,Natoms)
         write(filechannel1,FMT=FMT3) ((gradient(i,j),i=1,3),j=1,Natoms)
     end if
@@ -1635,6 +1664,56 @@ subroutine unsetAllocations()
 
 end subroutine unsetAllocations
 
+subroutine setSubcellSearchMax()
+use PARAMETERS
+use ANALYSIS
+use FUNCTIONS
+implicit none
+
+integer :: i,j
+integer :: single_index
+integer,dimension(Nvar) :: var_index
+
+do i = 1, min(Norder_max+1,ssm_length)
+    subcellsearch_max(i) = ssm1(i)
+    subcellsearch_max1(i) = ssm1(i)
+    subcellsearch_max2(i) = ssm2(i)
+end do
+
+if (memory_flag) then
+
+    !Initialize the memory buffer assuming
+    !only subcellsearch_max1 and the first
+    !order search are used
+    j = subcellsearch_max(&
+            Norder_order(1)+1)
+    single_index_max = 0
+
+    do i = 1, Nvar
+
+        var_index = 0
+
+        var_index(i) = j
+        call getFlattened(Nvar,var_index,&
+                single_index)
+        single_index_max = max(single_index,&
+                single_index_max)
+
+        var_index(i) = -j
+        call getFlattened(Nvar,var_index,&
+                single_index)
+        single_index_max = max(single_index,&
+                single_index_max)
+
+    end do
+
+end if
+
+return
+
+end subroutine setSubcellSearchMax
+
+
 subroutine shiftBuffer(first_index,last_index)
     use PARAMETERS
     use ANALYSIS
@@ -1705,7 +1784,10 @@ subroutine shiftMemory(delta_var_index)
 
     end do
 
-    populationbuffer2 = -1
+!   Comment this line out if you do not want
+!   a memory buffer working (the memory buffer
+!   in this case ALWAYS increases performance)
+!   populationbuffer2 = -1
 
     return
 

@@ -26,6 +26,8 @@ integer,parameter :: Norder_cap = 1
 
 !Set .true. to generate top-level heat maps for each complete grid
 logical,parameter :: heatmap_flag = .true.
+character(14),parameter :: populationfile = "population.dat"
+character(12),parameter :: covarmapfile = "covarmap.dat"
 
 !Set .true. to generate the scattering angle plots of the trajectories
 !that were generated with molecular dynamics for each grid
@@ -88,8 +90,8 @@ logical,parameter :: testtraj_flag = .true.
    !is determined here
    !The default (if none of these are set) is all zeros
    integer,parameter :: ssm_length = 2
-   integer,dimension(ssm_length) :: ssm1 = (/ 12, 00 /)
-   integer,dimension(ssm_length) :: ssm2 = (/ 08, 00 /)
+   integer,dimension(ssm_length) :: ssm1 = (/ 24, 00 /)
+   integer,dimension(ssm_length) :: ssm2 = (/ 00, 00 /)
 
    !Set .true. to generate a frequency plot of the percentage
    !of frames in each trajectory that were below some threshold RMSD
@@ -105,9 +107,14 @@ logical,parameter :: testtraj_flag = .true.
 
       !Set the threshold RMSD to be used for any rejection method
       !real(dp),parameter :: !threshold_rmsd! = !.200100d0
-      real(dp),parameter :: outer_threshold_SI = .00100d0
-      real(dp),parameter :: inner_threshold_SI = 0.0d0
+      real(dp) :: outer_threshold_SI = .00100d0
+      real(dp) :: inner_threshold_SI = 0.0d0
+      real(dp),parameter :: R1_threshold_SI = 0.10d0
+      real(dp),parameter :: R2_threshold_SI = 0.10d0
       integer :: Nsort = 1
+
+      !The flag for diversity
+      logical :: diversity_flag = .true.
 
       !Set .true. to generate trajectories using md-calculated gradients
       !Otherwise, the program will use the above threshold as a rejection
@@ -164,7 +171,7 @@ logical,parameter :: testtraj_flag = .true.
             real(dp) :: alpha_ratio = 1.0d0
 
             integer,parameter :: Ninterpolation_max = 40
-            integer,parameter :: Ninterpolation_cap = 40
+            integer,parameter :: Ninterpolation_cap = 20
 
             integer,parameter :: Naccept_max = 20
             real(dp),allocatable :: trajRMSDbuffer(:,:)
@@ -178,9 +185,20 @@ logical,parameter :: testtraj_flag = .true.
             !for every N points up until N*M
             logical,parameter :: dropoff_flag = .true.
             character(11),parameter :: dropofffile = "dropoff.dat"
-            integer,parameter :: dropoff_Npacket = 5
-            integer,parameter :: dropoff_Mpacket = 6
+            integer,parameter :: dropoff_Npacket = 4
+            integer,parameter :: dropoff_Mpacket = 5
             integer,parameter :: dropoff_NM = dropoff_Npacket*dropoff_Mpacket
+
+            !For errorCheck11
+            logical :: errorCheck11_flag = .false.
+            character(8),parameter :: errorCheck11file = "tcut.dat"
+            integer,parameter :: Ntcut = 6
+            real(dp),parameter :: inner_start = 0.0000d0
+            real(dp),parameter :: outer_start = 0.1000d0
+            real(dp),parameter :: tcut_interval = 0.1000d0
+
+            !For FCCheck
+            logical :: FCCheck_flag = .true.
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid

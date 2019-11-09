@@ -101,7 +101,7 @@ integer,parameter :: gnuplotchannel = 77
 
 !If true, the grid has unformatted files; thus, keep this constant
 !The processed files and check trajectory files are still formatted though
-logical,parameter :: unreadable_flag = .true.
+logical,parameter :: unreadable_flag = .false.
 
 character(14),parameter :: FMT1 = "(2(1x,F14.10))"          !For two variables
 character(22) :: FMT2         !For six atoms, coords and gradient

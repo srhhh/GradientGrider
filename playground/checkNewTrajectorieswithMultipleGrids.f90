@@ -405,7 +405,6 @@ print *, "Deciding on using ", Ngrid_total, " grids"
 print *, "Deciding on using ", Nthreads, " threads"
 print *, ""
 
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !       PRE-CREATION LIBRARY ANALYSIS
@@ -425,6 +424,8 @@ if (heatmap_flag) then
 
     call analyzeTopLevelHeatMaps("TopLevel_HeatMap")
 end if
+
+!call plotCovarianceHeatmap()
 
 !!$OMP END SINGLE
 !!$OMP BARRIER
@@ -826,10 +827,29 @@ if (dropoff_flag) then
 
     call itime(now)
     write(6,FMT=FMTnow) now
+    print *, "   Making plot: ", "AlphaIntervals_Hist"
+    print *, ""
+
+    call plotAlphaIntervals()
+
+    call itime(now)
+    write(6,FMT=FMTnow) now
     print *, "   Making plot: ", "ConsolidatedDropoff"
     print *, ""
 
     call plotDropoff(dropoff_Npacket,dropoff_Mpacket)
+
+end if
+
+!If we have some errorCheck11 (tcut) data, plot it!
+if (errorCheck11_flag) then
+
+    call itime(now)
+    write(6,FMT=FMTnow) now
+    print *, "   Making plot: ", "tcut"
+    print *, ""
+
+    call getErrorCheck11Plot()
 
 end if
 
@@ -901,7 +921,9 @@ end if
 !compare only a single experiment)
 else
 
-!call getRMSDErrorPlots("RMSDvsError")
+call getRMSDErrorPlots("RMSDvsError")
+
+call plotPseudoContinuous()
 
 !If this truly is an interpolation analysis then
 !the word "interpolation" should be in the input

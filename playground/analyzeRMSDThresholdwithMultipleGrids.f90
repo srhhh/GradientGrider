@@ -888,6 +888,154 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 end subroutine getAlphaErrorDistribution
 
 
+subroutine getErrorCheck11Plot()
+use PARAMETERS
+use ANALYSIS
+implicit none
+
+!FORMAT OF PNG FILES TO BE MADE
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+character(8) :: PNGfilename = "tcut.png"
+
+real(dp),dimension(2*Ntcut) :: errorlist
+real(dp),dimension(2*Ntcut) :: mean_errorlist,var_errorlist
+integer :: frames
+
+!I/O HANDLING
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: i, j, n
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+mean_errorlist = 0.0d0
+var_errorlist = 0.0d0
+frames = 0
+
+open(6666,file=gridpath5//errorCheck11file)
+do
+    read(6666,FMT=*,iostat=iostate)&
+            (errorlist(n),n=1,2*Ntcut)
+    if (iostate /= 0) exit
+    mean_errorlist = errorlist + &
+                mean_errorlist
+    frames = frames + 1
+end do
+close(6666)
+mean_errorlist = mean_errorlist/frames
+
+open(6666,file=gridpath5//errorCheck11file)
+do i = 1, frames
+    read(6666,FMT=*,iostat=iostate)&
+            (errorlist(n),n=1,2*Ntcut)
+    if (iostate /= 0) exit
+    var_errorlist = var_errorlist + &
+        (errorlist - mean_errorlist)**2
+end do
+close(6666)
+var_errorlist = sqrt(var_errorlist/(frames-1))
+
+open(6666,file=gridpath5//temporaryfile1)
+do i = 1, Ntcut
+    write(6666,FMT=*) &
+        mean_errorlist(i), var_errorlist(i),&
+        mean_errorlist(i+Ntcut), var_errorlist(i+Ntcut)
+end do
+close(6666)
+
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'"'
+write(gnuplotchannel,*) 'set title "Error vs Tcut"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'Ntcut = ', Ntcut
+write(gnuplotchannel,*) 'tcut_start = ', outer_start
+write(gnuplotchannel,*) 'tcut_interval = ', tcut_interval
+
+!write(gnuplotchannel,FMT="(A)") &
+!     'set xrange [tcut_start:(Ntcut+1)*tcut_interval+tcut_start]'
+write(gnuplotchannel,FMT="(A)") &
+     'set xrange [0.5:Ntcut+0.5]'
+
+write(gnuplotchannel,*) 'set xlabel "Tcut"'
+write(gnuplotchannel,*) 'set ylabel "Error (Hartree/Bohr)"'
+
+write(gnuplotchannel,FMT="(A)") "set style fill solid 0.25 border -1"
+write(gnuplotchannel,FMT="(A)") "set style boxplot outliers pointtype 7"
+write(gnuplotchannel,FMT="(A)") "set style data boxplot"
+write(gnuplotchannel,FMT="(A)") "unset xtics"
+do i = 1, Ntcut
+    write(gnuplotchannel,FMT="(A,ES10.2,A,I2,A)")&
+            "set xtics add ('", &
+            (i-1)*tcut_interval + outer_start, "' ", i, ")"
+end do
+write(gnuplotchannel,FMT="(A)") "plot for [i=1:Ntcut] '"//&
+                                gridpath5//errorCheck11file//&
+                                "' using (i):i"
+
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath4//"Simple"//PNGfilename//'"'
+write(gnuplotchannel,*) 'set title "Error vs Tcut" font ",48"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set tmargin 10'
+write(gnuplotchannel,*) 'set bmargin 10'
+write(gnuplotchannel,*) 'set lmargin 20'
+
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'Ntcut = ', Ntcut
+write(gnuplotchannel,*) 'tcut_start = ', outer_start
+write(gnuplotchannel,*) 'tcut_interval = ', tcut_interval
+
+!write(gnuplotchannel,FMT="(A)") &
+!     'set xrange [tcut_start:(Ntcut+1)*tcut_interval+tcut_start]'
+write(gnuplotchannel,FMT="(A)") &
+     'set xrange [-0.5:Ntcut-0.5]'
+
+write(gnuplotchannel,*) 'set xlabel "Tcut (Angstrom)" '//&
+                        'font ",32" offset 0,-2'
+write(gnuplotchannel,*) 'set ylabel "Error (Hartree/Bohr)" '//&
+                        'font ",32" offset -3,0'
+
+write(gnuplotchannel,FMT="(A)") "unset xtics"
+do i = 1, Ntcut
+    write(gnuplotchannel,FMT="(A,ES10.1,A,I2,A)")&
+            "set xtics add ('", &
+            (i-1)*tcut_interval + outer_start, "' ", i-1, ")"
+end do
+write(gnuplotchannel,FMT="(A)") "set xtics font ',24'"
+write(gnuplotchannel,FMT="(A)") "set ytics font ',24'"
+
+write(gnuplotchannel,FMT="(A)") "plot '"//&
+                                gridpath5//temporaryfile1//&
+                                "' using 0:1:2 w yerrorbars lc 'green',\"
+write(gnuplotchannel,FMT="(A)") "     '"//&
+                                gridpath5//temporaryfile1//&
+                                "' using 0:1 w lp lc 'green' lw 3,\"
+write(gnuplotchannel,FMT="(A)") "     '"//&
+                                gridpath5//temporaryfile1//&
+                                "' using 0:3:4 w yerrorbars lc 'red',\"
+write(gnuplotchannel,FMT="(A)") "     '"//&
+                                gridpath5//temporaryfile1//&
+                                "' using 0:3 w lp lc 'red' lw 3"
+
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+end subroutine getErrorCheck11Plot
+
+
+
 
 subroutine getRMSDinterpolation(vals,delta_vals,PNGfilename)
 use PARAMETERS
@@ -1464,6 +1612,13 @@ integer :: RMSDbin, CMDbin, Errorbin
 real(dp) :: RMSDbinwidth, CMDbinwidth, Errorbinwidth
 real(dp) :: RMSDlimit, CMDlimit, Errorlimit
 
+real(dp) :: R1max,R2max,deltaR1,deltaR2
+integer :: R1bin,R2bin,Nbins
+integer :: totalBinning,totalNonBinning
+integer,allocatable :: occurenceBinning(:,:)
+real(dp),allocatable :: meanErrorBinning(:,:)
+real(dp),allocatable :: maxErrorBinning(:,:)
+
 !I/O HANDLING
 integer :: iostate
 
@@ -1755,6 +1910,226 @@ close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
+! Now to look at the CMD
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_ICMD.png"'
+write(gnuplotchannel,*) 'set title "Error Convergence as Interpolations Get Closer" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set logscale x'
+write(gnuplotchannel,*) 'set logscale y'
+write(gnuplotchannel,*) 'set xlabel "CMD (1/A) Between Target and Interpolated Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" .00000001, '//&
+                                         '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set ytics ('//&
+!                                        '"1e-8" .00000001, '//&
+!                                        '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '10:7 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_ICMD_linear.png"'
+write(gnuplotchannel,*) 'set title "Error Convergence as Interpolations Get Closer" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "CMD (1/A) Between Target and Interpolated Frame" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xrange [0:]'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '10:7 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+
+! Now to look at the RSV
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_RSV1.png"'
+write(gnuplotchannel,*) 'set title "RSV1 vs Interpolated Error" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set logscale x'
+write(gnuplotchannel,*) 'set logscale y'
+write(gnuplotchannel,*) 'set xlabel "RSV1 (A) of the Interpolation" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" .00000001, '//&
+                                         '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set ytics ('//&
+!                                        '"1e-8" .00000001, '//&
+!                                        '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '4:7 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_RSV1_linear.png"'
+write(gnuplotchannel,*) 'set title "RSV1 vs Interpolated Error" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "RSV1 (A) of the Interpolation" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xrange [0:]'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '4:7 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_RSV2.png"'
+write(gnuplotchannel,*) 'set title "RSV2 vs Interpolated Error" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set logscale x'
+write(gnuplotchannel,*) 'set logscale y'
+write(gnuplotchannel,*) 'set xlabel "RSV2 (A) of the Interpolation" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'set xtics ('//&
+                                         '"1e-8" .00000001, '//&
+                                         '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'set ytics ('//&
+!                                        '"1e-8" .00000001, '//&
+!                                        '"5e-8" .00000005, '//&
+                                          '"1e-7" .0000001, '//&
+                                          '"5e-7" .0000005, '//&
+                                           '"1e-6" .000001, '//&
+                                           '"5e-6" .000005, '//&
+                                           '"1e-5"  .00001, '//&
+                                           '"5e-5"  .00005, '//&
+                                           '"1e-4"   .0001, '//&
+                                           '"5e-4"   .0005, '//&
+                                           '"1e-3"    .001, '//&
+                                           '"5e-3"    .005, '//&
+                                           '"1e-2"     .01, '//&
+                                           '"5e-2"     .05, '//&
+                                           '"1e-1"      .1, '//&
+                                           '"5e-1"      .5, '//&
+                                           ' "1e0"       1, '//&
+                                   ')'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '5:7 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//PNGfilename//'_RSV2_linear.png"'
+write(gnuplotchannel,*) 'set title "RSV2 vs Interpolated Error" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "RSV2 (A) of the Interpolation" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "Error (A/fs) Between Target and Interpolated Gradient" font ",24"'
+write(gnuplotchannel,*) 'set xrange [0:]'
+write(gnuplotchannel,*) 'set yrange [0:]'
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,*) 'plot "'//gridpath5//"tmp"//interpolationfile//'" u '//&
+                               '5:7 w p'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 
 !Now let's make a good old fashioned heatmap
@@ -1881,10 +2256,255 @@ write(gnuplotchannel,*) 'xmax = ', CMDlimit
 write(gnuplotchannel,*) 'set xrange [0:xmax]'
 write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile2//&
                                 '" u 1:2:3 w image palette'
+close(gnuplotchannel)
 
 deallocate(RMSDvsError_heatmap,CMDvsError_heatmap)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+!Now let's make ANOTHER heatmap (Nov 7)
+
+R1max = 5.0d-6
+R2max = 5.0d-3
+Nbins = 100
+
+deltaR1 = R1max/Nbins
+deltaR2 = R2max/Nbins
+
+allocate(occurenceBinning(Nbins,Nbins),&
+         meanErrorBinning(Nbins,Nbins),&
+         maxErrorBinning(Nbins,Nbins))
+
+totalBinning = 0
+totalNonBinning = 0
+
+occurenceBinning = 0
+meanErrorBinning = 0
+maxErrorBinning = 0
+open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
+do
+    read(filechannel1,iostat=iostate,FMT=*) n, rsv
+    if (iostate /= 0) exit
+
+    R1bin = floor(rsv(2) / deltaR1)
+    R2bin = floor(rsv(3) / deltaR2)
+
+    if (R1bin == 0) R1bin = 1
+    if (R2bin == 0) R2bin = 1
+
+    if ((n >= 20).and.&
+        (R1bin <= Nbins).and.&
+        (R2bin <= Nbins)) then
+        totalBinning = totalBinning + 1
+
+        occurenceBinning(R1bin,R2bin) = &
+            occurenceBinning(R1bin,R2bin) + 1
+        meanErrorBinning(R1bin,R2bin) = &
+            meanErrorBinning(R1bin,R2bin) + rsv(6)
+        maxErrorBinning(R1bin,R2bin) = max(&
+            maxErrorBinning(R1bin,R2bin),rsv(6))
+    else
+        totalNonBinning = totalNonBinning + 1
+    end if
+end do
+close(filechannel1)
+
+open(filechannel1,file=gridpath5//temporaryfile1)
+do R1bin = 1, Nbins
+    do R2bin = 1, Nbins
+        meanErrorBinning(R1bin,R2bin) = &
+            meanErrorBinning(R1bin,R2bin) / &
+                occurenceBinning(R1bin,R2bin)
+        write(filechannel1,FMT="(5(ES10.3,1x))")&
+            deltaR1 * (R1bin-0.5),&
+            deltaR2 * (R2bin-0.5),&
+            occurenceBinning(R1bin,R2bin) * &
+                1.0d0 / totalBinning,&
+            meanErrorBinning(R1bin,R2bin), &
+            maxErrorBinning(R1bin,R2bin)
+    end do
+    write(filechannel1,FMT=*) ""
+end do
+close(filechannel1)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'R1R2_heatmap1.png"'
+write(gnuplotchannel,*) 'set title "R1,R2 '//&
+        'Occurences" font ",48" offset 0,2'
+
+!write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set tmargin 10'
+write(gnuplotchannel,*) 'set bmargin 10'
+write(gnuplotchannel,*) 'set rmargin 10'
+write(gnuplotchannel,*) 'set lmargin 20'
+
+write(gnuplotchannel,*) 'set xtics font ",24"'
+write(gnuplotchannel,*) 'set ytics font ",24"'
+write(gnuplotchannel,*) 'set cbtics font ",24"'
+
+write(gnuplotchannel,FMT="(A,F6.2,A)") &
+        'set label "Efficiency:', &
+        totalBinning * 1.0d2 / &
+        (totalBinning + totalNonBinning),&
+        '\%" at screen 0.65,0.05 '//&
+        'font ",32"'
+
+write(gnuplotchannel,*) 'xmax = ', R1max
+write(gnuplotchannel,*) 'ymax = ', R2max
+write(gnuplotchannel,*) 'cbmax = ', &
+        maxval(occurenceBinning) * 1.0 / totalBinning
+
+write(gnuplotchannel,*) 'set xrange [0:xmax]'
+write(gnuplotchannel,*) 'set yrange [0:ymax]'
+write(gnuplotchannel,*) 'set cbrange [0:cbmax]'
+
+!write(gnuplotchannel,*) 'set palette defined ('//&
+!         '0 "white",'//&
+!         '0.5 "white",'//&
+!         '0.5 "yellow",'//&
+!         'cbmax/5 "orange",'//&
+!         'cbmax "red")'
+
+write(gnuplotchannel,*) 'set format x "%.1te%2T"'
+write(gnuplotchannel,*) 'set format y "%.1te%2T"'
+write(gnuplotchannel,*) 'set format cb "%.1te%2T"'
+
+write(gnuplotchannel,*) 'set xlabel "R1 (A)'//&
+        '" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'set ylabel "R2 (A^2)'//&
+        '" font ",32" offset -7,0'
+write(gnuplotchannel,*) 'set cblabel "Occurence"'//&
+        ' font ",32" offset 6,0'
+
+write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                                '" u 1:2:3 w image'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1400,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'R1R2_heatmap2.png"'
+write(gnuplotchannel,*) 'set title "R1,R2 '//&
+        'Mean Error" font ",48" offset 0,2'
+
+!write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set tmargin 10'
+write(gnuplotchannel,*) 'set bmargin 10'
+write(gnuplotchannel,*) 'set rmargin 10'
+write(gnuplotchannel,*) 'set lmargin 20'
+
+write(gnuplotchannel,*) 'set xtics font ",24"'
+write(gnuplotchannel,*) 'set ytics font ",24"'
+write(gnuplotchannel,*) 'set cbtics font ",24"'
+
+write(gnuplotchannel,FMT="(A,F6.2,A)") &
+        'set label "Efficiency:', &
+        totalBinning * 1.0d2 / &
+        (totalBinning + totalNonBinning),&
+        '\%" at screen 0.70,0.05 '//&
+        'font ",32"'
+
+write(gnuplotchannel,*) 'xmax = ', R1max
+write(gnuplotchannel,*) 'ymax = ', R2max
+write(gnuplotchannel,*) 'cbmax = ', &
+        maxval(meanErrorBinning)
+
+write(gnuplotchannel,*) 'set xrange [0:xmax]'
+write(gnuplotchannel,*) 'set yrange [0:ymax]'
+write(gnuplotchannel,*) 'set cbrange [0:cbmax/2]'
+
+!write(gnuplotchannel,*) 'set palette defined ('//&
+!         '0 "white",'//&
+!         '0.5 "white",'//&
+!         '0.5 "yellow",'//&
+!         'cbmax/5 "orange",'//&
+!         'cbmax "red")'
+
+write(gnuplotchannel,*) 'set format x "%.1te%2T"'
+write(gnuplotchannel,*) 'set format y "%.1te%2T"'
+write(gnuplotchannel,*) 'set format cb "%.1te%2T"'
+
+write(gnuplotchannel,*) 'set xlabel "R1 (A)'//&
+        '" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'set ylabel "R2 (A^2)'//&
+        '" font ",32" offset -7,0'
+write(gnuplotchannel,*) 'set cblabel "Mean Error (Hartree/Bohr)"'//&
+        ' font ",32" offset 6,0'
+
+!write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                                '" u 1:2:4 w image'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 1400,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'R1R2_heatmap3.png"'
+write(gnuplotchannel,*) 'set title "R1,R2 '//&
+        'Max Error" font ",48" offset 0,2'
+
+!write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set tmargin 10'
+write(gnuplotchannel,*) 'set bmargin 10'
+write(gnuplotchannel,*) 'set rmargin 10'
+write(gnuplotchannel,*) 'set lmargin 20'
+
+write(gnuplotchannel,*) 'set xtics font ",24"'
+write(gnuplotchannel,*) 'set ytics font ",24"'
+write(gnuplotchannel,*) 'set cbtics font ",24"'
+
+write(gnuplotchannel,FMT="(A,F6.2,A)") &
+        'set label "Efficiency:', &
+        totalBinning * 1.0d2 / &
+        (totalBinning + totalNonBinning),&
+        '\%" at screen 0.70,0.05 '//&
+        'font ",32"'
+
+write(gnuplotchannel,*) 'xmax = ', R1max
+write(gnuplotchannel,*) 'ymax = ', R2max
+write(gnuplotchannel,*) 'cbmax = ', &
+        maxval(maxErrorBinning)
+
+write(gnuplotchannel,*) 'set xrange [0:xmax]'
+write(gnuplotchannel,*) 'set yrange [0:ymax]'
+write(gnuplotchannel,*) 'set cbrange [0:cbmax]'
+
+!write(gnuplotchannel,*) 'set palette defined ('//&
+!         '0 "white",'//&
+!         '0.5 "white",'//&
+!         '0.5 "yellow",'//&
+!         'cbmax/5 "orange",'//&
+!         'cbmax "red")'
+
+write(gnuplotchannel,*) 'set format x "%.1te%2T"'
+write(gnuplotchannel,*) 'set format y "%.1te%2T"'
+write(gnuplotchannel,*) 'set format cb "%.1te%2T"'
+
+write(gnuplotchannel,*) 'set xlabel "R1 (A)'//&
+        '" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'set ylabel "R2 (A^2)'//&
+        '" font ",32" offset -7,0'
+write(gnuplotchannel,*) 'set cblabel "Max Error (Hartree/Bohr)"'//&
+        ' font ",32" offset 6,0'
+
+!write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                                '" u 1:2:5 w image'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+
+deallocate(occurenceBinning,&
+           meanErrorBinning,&
+           maxErrorBinning)
+
 
 end subroutine getRMSDErrorPlots
 
@@ -2358,6 +2978,482 @@ call system("sed -i '1i\"//firstliner//"' '"//&
         interpolationfile//"'")
 
 end subroutine processInterpolationFile2
+
+
+subroutine plotPseudoContinuous()
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+!Gridpath
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+
+!File firstliner
+integer, dimension(comparison_number,3) :: counters
+integer :: posinfinity_counter, neginfinity_counter, frames
+integer :: min_Ninterpolation, max_Ninterpolation
+real(dp),dimension(9) :: min_rsv, max_rsv
+
+!File output
+integer :: Ninterpolation
+real(dp),dimension(9) :: rsv
+integer :: iostate
+
+!Binning
+integer :: Nbins
+integer,allocatable :: frame_count_Ninterpolation(:)
+integer,allocatable :: frame_count_rsv(:,:)
+real(dp),allocatable :: maximum_Ninterpolation(:)
+real(dp),allocatable :: arithmetic_mean_Ninterpolation(:)
+real(dp),allocatable :: geometric_mean_Ninterpolation(:)
+real(dp),allocatable :: maximum_rsv(:,:)
+real(dp),allocatable :: arithmetic_mean_rsv(:,:)
+real(dp),allocatable :: geometric_mean_rsv(:,:)
+
+real(dp),allocatable :: arithmetic_var_Ninterpolation(:)
+real(dp),allocatable :: geometric_var_Ninterpolation(:)
+real(dp),allocatable :: arithmetic_var_rsv(:,:)
+real(dp),allocatable :: geometric_var_rsv(:,:)
+
+integer :: Ninterpolation_bin
+integer,dimension(9) :: rsv_bin
+real(dp) :: Ninterpolation_binwidth
+real(dp),dimension(9) :: rsv_binwidth
+
+logical :: cumulative_flag
+
+!INTEGER INCREMENTALS
+integer :: n,m,l
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+call processMultipleInterpolationFiles(counters)
+
+open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
+!read(filechannel1,FMT="(1x,3(I9,1x),2(I6,1x),"//&
+!        "2(9(E16.6,1x)))") &
+!        posinfinity_counter,&
+!        neginfinity_counter, frames, &
+!        min_Ninterpolation, max_Ninterpolation,&
+!        min_rsv, max_rsv
+
+Nbins = 40
+allocate(frame_count_Ninterpolation(Nbins),&
+         frame_count_rsv(9,Nbins))
+allocate(maximum_Ninterpolation(Nbins),&
+         arithmetic_mean_Ninterpolation(Nbins),&
+         geometric_mean_Ninterpolation(Nbins),&
+         maximum_rsv(9,Nbins),&
+         arithmetic_mean_rsv(9,Nbins),&
+         geometric_mean_rsv(9,Nbins))
+allocate(arithmetic_var_Ninterpolation(Nbins),&
+         geometric_var_Ninterpolation(Nbins),&
+         arithmetic_var_rsv(9,Nbins),&
+         geometric_var_rsv(9,Nbins))
+
+!The binwidths assume the lower limit is always zero
+!Choice of the upper limits require intuition
+!(otherwise it looks too zoomed out/in)
+
+!Ninterpolation
+Ninterpolation_binwidth = 40.0d0 / Nbins
+
+!Accept Best RMSD (A)
+rsv_binwidth(1) = 0.15d0 / Nbins
+
+!Interpolation RMSD (A)
+!rsv_binwidth(2) = 0.15d0 / Nbins
+rsv_binwidth(2) = 5.0d-6 / Nbins
+
+!RSV1 (A)
+rsv_binwidth(3) = 5.0d-3 / Nbins
+
+!RSV2 (A)
+rsv_binwidth(4) = 5.0d-2 / Nbins
+
+!Accept Best Error (units depend)
+rsv_binwidth(5) = 0.15d0 / Nbins
+
+!Interpolation Error (units depend)
+rsv_binwidth(6) = 0.03d0 / Nbins
+
+!Relative Error
+rsv_binwidth(7) = 10.0d0 / Nbins
+
+!Accept Best CMD (1/A)
+rsv_binwidth(8) = 1.5d-4 / Nbins
+
+!Interpolation CMD (1/A)
+rsv_binwidth(9) = 1.5d-4 / Nbins
+
+
+frame_count_Ninterpolation = 0
+frame_count_rsv = 0
+
+maximum_Ninterpolation = 0.0d0
+arithmetic_mean_Ninterpolation = 0.0d0
+geometric_mean_Ninterpolation = 0.0d0
+
+maximum_rsv = 0.0d0
+arithmetic_mean_rsv = 0.0d0
+geometric_mean_rsv = 0.0d0
+do
+    read(filechannel1,iostat=iostate,FMT=*) Ninterpolation,rsv
+    if (iostate /= 0) exit
+
+    if (rsv(6) == 0.0d0) then
+        print *, "what!? this is rare!"
+        cycle
+    end if
+
+    ! For Nov 6 data
+    if (Ninterpolation < 20) cycle
+ 
+    Ninterpolation_bin = floor(Ninterpolation &
+            / Ninterpolation_binwidth) + 1
+    if (Ninterpolation_bin < 1) Ninterpolation_bin = 1
+    if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
+
+    do l = 1, 9
+        rsv_bin(l) = floor(rsv(l)/rsv_binwidth(l)) + 1
+        if (rsv_bin(l) < 1) rsv_bin(l) = 1
+        if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
+    end do
+
+    maximum_Ninterpolation(Ninterpolation_bin) = &
+        max(maximum_Ninterpolation(Ninterpolation_bin), rsv(6))
+    arithmetic_mean_Ninterpolation(Ninterpolation_bin) = &
+        arithmetic_mean_Ninterpolation(Ninterpolation_bin) + rsv(6)
+    geometric_mean_Ninterpolation(Ninterpolation_bin) = &
+        geometric_mean_Ninterpolation(Ninterpolation_bin) + log10(rsv(6))
+
+    frame_count_Ninterpolation(Ninterpolation_bin) = &
+        frame_count_Ninterpolation(Ninterpolation_bin) + 1
+
+    do l = 1, 9
+        maximum_rsv(l,rsv_bin(l)) = &
+            max(maximum_rsv(l,rsv_bin(l)), rsv(6))
+        arithmetic_mean_rsv(l,rsv_bin(l)) = &
+            arithmetic_mean_rsv(l,rsv_bin(l)) + rsv(6)
+        geometric_mean_rsv(l,rsv_bin(l)) = &
+            geometric_mean_rsv(l,rsv_bin(l)) + log10(rsv(6))
+
+        frame_count_rsv(l,rsv_bin(l)) = &
+            frame_count_rsv(l,rsv_bin(l)) + 1
+    end do
+
+end do
+close(filechannel1)
+
+! Set false if you want a "probability" graph
+! Set true if you want a "cumulative" graph
+cumulative_flag = .false.
+
+if (cumulative_flag) then
+
+    ! Most of the ordinary thresholds are an
+    ! upper bound, so we take the summation
+    ! from largest to smallest
+    do n = Nbins, 1, -1
+    
+        do l = 1, 9
+            maximum_rsv(l,n) = &
+                maxval(maximum_rsv(l,1:n))
+            arithmetic_mean_rsv(l,n) = &
+                sum(arithmetic_mean_rsv(l,1:n))
+            geometric_mean_rsv(l,n) = &
+                sum(geometric_mean_rsv(l,1:n))
+        
+            frame_count_rsv(l,n) = &
+                sum(frame_count_rsv(l,1:n))
+        end do
+    
+    end do
+    
+    ! The Ninterpolation threshold is a
+    ! lower bound, so we take the summation
+    ! from smallest to largest
+    do n = 1, Nbins
+    
+        maximum_Ninterpolation(n) = &
+            maxval(maximum_Ninterpolation(n:Nbins))
+        arithmetic_mean_Ninterpolation(n) = &
+            sum(arithmetic_mean_Ninterpolation(n:Nbins))
+        geometric_mean_Ninterpolation(n) = &
+            sum(geometric_mean_Ninterpolation(n:Nbins))
+    
+        frame_count_Ninterpolation(n) = &
+            sum(frame_count_Ninterpolation(n:Nbins))
+    
+    end do
+
+    frames = frame_count_Ninterpolation(1)
+
+else
+
+    frames = sum(frame_count_Ninterpolation(1:Nbins))
+
+end if
+
+! Divide by the number of samples to get means
+do n = 1, Nbins
+    arithmetic_mean_Ninterpolation(n) = &
+        arithmetic_mean_Ninterpolation(n) / &
+        frame_count_Ninterpolation(n)
+    geometric_mean_Ninterpolation(n) = (&
+        geometric_mean_Ninterpolation(n) / &
+        frame_count_Ninterpolation(n))
+    
+    do l = 1, 9
+        arithmetic_mean_rsv(l,n) = &
+            arithmetic_mean_rsv(l,n) / &
+            frame_count_rsv(l,n)
+        geometric_mean_rsv(l,n) = (&
+            geometric_mean_rsv(l,n) / &
+            frame_count_rsv(l,n))
+    end do
+end do
+
+
+!Now, let's get variances
+arithmetic_var_Ninterpolation = 0.0d0
+geometric_var_Ninterpolation = 0.0d0
+
+arithmetic_var_rsv = 0.0d0
+geometric_var_rsv = 0.0d0
+open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
+do
+    read(filechannel1,iostat=iostate,FMT=*) Ninterpolation,rsv
+    if (iostate /= 0) exit
+
+    if (rsv(6) == 0.0d0) then
+        print *, "what!? this is rare!"
+        cycle
+    end if
+
+    ! For Nov 6 data
+    if (Ninterpolation < 20) cycle
+ 
+    Ninterpolation_bin = floor(Ninterpolation &
+            / Ninterpolation_binwidth) + 1
+    if (Ninterpolation_bin < 1) Ninterpolation_bin = 1
+    if (Ninterpolation_bin > Nbins) Ninterpolation_bin = Nbins
+
+    do l = 1, 9
+        rsv_bin(l) = floor(rsv(l)/rsv_binwidth(l)) + 1
+        if (rsv_bin(l) < 1) rsv_bin(l) = 1
+        if (rsv_bin(l) > Nbins) rsv_bin(l) = Nbins
+    end do
+
+    arithmetic_var_Ninterpolation(Ninterpolation_bin) = &
+        arithmetic_var_Ninterpolation(Ninterpolation_bin) + &
+        (arithmetic_mean_Ninterpolation(Ninterpolation_bin) - rsv(6))**2
+    geometric_var_Ninterpolation(Ninterpolation_bin) = &
+        geometric_var_Ninterpolation(Ninterpolation_bin) + &
+        (geometric_mean_Ninterpolation(Ninterpolation_bin) - log10(rsv(6)))**2
+
+    do l = 1, 9
+        arithmetic_var_rsv(l,rsv_bin(l)) = &
+            arithmetic_var_rsv(l,rsv_bin(l)) + &
+            (arithmetic_mean_rsv(l,rsv_bin(l)) - rsv(6))**2
+        geometric_var_rsv(l,rsv_bin(l)) = &
+            geometric_var_rsv(l,rsv_bin(l)) + &
+            (geometric_mean_rsv(l,rsv_bin(l)) - log10(rsv(6)))**2
+    end do
+
+end do
+close(filechannel1)
+
+if (cumulative_flag) then
+
+    ! Most of the ordinary thresholds are an
+    ! upper bound, so we take the summation
+    ! from largest to smallest
+    do n = Nbins, 1, -1
+        do l = 1, 9
+            arithmetic_var_rsv(l,n) = &
+                sum(arithmetic_var_rsv(l,1:n))
+            geometric_var_rsv(l,n) = &
+                sum(geometric_var_rsv(l,1:n))
+        end do
+    end do
+    
+    ! The Ninterpolation threshold is a
+    ! lower bound, so we take the summation
+    ! from smallest to largest
+    do n = 1, Nbins
+        arithmetic_var_Ninterpolation(n) = &
+            sum(arithmetic_var_Ninterpolation(n:Nbins))
+        geometric_var_Ninterpolation(n) = &
+            sum(geometric_var_Ninterpolation(n:Nbins))
+    end do
+
+end if
+
+! Square root and divide by the number of samples
+! to get the variances
+do n = 1, Nbins
+    arithmetic_var_Ninterpolation(n) = &
+        sqrt(arithmetic_var_Ninterpolation(n) / &
+        frame_count_Ninterpolation(n))
+    geometric_var_Ninterpolation(n) = &
+        sqrt(geometric_var_Ninterpolation(n) / &
+        frame_count_Ninterpolation(n))
+    
+    do l = 1, 9
+        arithmetic_var_rsv(l,n) = &
+            sqrt(arithmetic_var_rsv(l,n) / &
+            frame_count_rsv(l,n))
+        geometric_var_rsv(l,n) = &
+            sqrt(geometric_var_rsv(l,n) / &
+            frame_count_rsv(l,n))
+    end do
+end do
+
+! Raise the geometric means and variances to the tenth
+! power
+do n = 1, Nbins
+    geometric_mean_Ninterpolation(n) = 10.0d0 ** (&
+        geometric_mean_Ninterpolation(n))
+    geometric_var_Ninterpolation(n) = 10.0d0 ** (&
+        geometric_var_Ninterpolation(n))
+    
+    do l = 1, 9
+        geometric_mean_rsv(l,n) = 10.0d0 ** (&
+            geometric_mean_rsv(l,n))
+        geometric_var_rsv(l,n) = 10.0d0 ** (&
+            geometric_var_rsv(l,n))
+    end do
+end do
+
+
+
+! Finally, just write to the file
+open(filechannel1,file=gridpath5//"contError.dat")
+do n = 1, Nbins
+    write(filechannel1,FMT=*) &
+        (n) * Ninterpolation_binwidth,&
+        (n) * rsv_binwidth,&
+            maximum_Ninterpolation(n),&
+            maximum_rsv(:,n),&
+            arithmetic_mean_Ninterpolation(n),&
+            arithmetic_mean_rsv(:,n),&
+            geometric_mean_Ninterpolation(n),&
+            geometric_mean_rsv(:,n),&
+            frame_count_Ninterpolation(n) * 1.0d2 / frames,&
+            frame_count_rsv(:,n) * 1.0d2 / frames
+end do
+close(filechannel1)
+
+! There's another file with error bars too
+open(filechannel1,file=gridpath5//"contError_EB.dat")
+do n = 1, Nbins
+    write(filechannel1,FMT=*) &
+        (n) * Ninterpolation_binwidth,&
+        (n) * rsv_binwidth,&
+            maximum_Ninterpolation(n),&
+            maximum_rsv(:,n),&
+            arithmetic_mean_Ninterpolation(n),&
+            arithmetic_mean_rsv(:,n),&
+            arithmetic_var_Ninterpolation(n),&
+            arithmetic_var_rsv(:,n),&
+            geometric_mean_Ninterpolation(n),&
+            geometric_mean_rsv(:,n),&
+            geometric_mean_Ninterpolation(n)/&
+            geometric_var_Ninterpolation(n),&
+            geometric_mean_rsv(:,n)/&
+            geometric_var_rsv(:,n),&
+            geometric_mean_Ninterpolation(n)*&
+            geometric_var_Ninterpolation(n),&
+            geometric_mean_rsv(:,n)*&
+            geometric_var_rsv(:,n),&
+            frame_count_Ninterpolation(n) * 1.0d2 / frames,&
+            frame_count_rsv(:,n) * 1.0d2 / frames
+end do
+close(filechannel1)
+
+deallocate(frame_count_Ninterpolation,&
+           frame_count_rsv)
+deallocate(maximum_Ninterpolation,&
+           arithmetic_mean_Ninterpolation,&
+           geometric_mean_Ninterpolation,&
+           arithmetic_var_Ninterpolation,&
+           geometric_var_Ninterpolation,&
+           maximum_rsv,&
+           arithmetic_mean_rsv,&
+           geometric_mean_rsv,&
+           arithmetic_var_rsv,&
+           geometric_var_rsv)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set encoding utf8'
+write(gnuplotchannel,*) 'PL=strlen(ARG1)'
+
+write(gnuplotchannel,FMT="(A)") 'set xrange [0:]'
+write(gnuplotchannel,FMT="(A)") 'set yrange [0:]'
+write(gnuplotchannel,FMT="(A)") 'set y2range [0:105]'
+
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '# Edit to customize this plot'
+write(gnuplotchannel,FMT="(A)") 'Ncol = 1'
+write(gnuplotchannel,FMT="(A)") 'set title "Title" font ",36"'
+write(gnuplotchannel,FMT="(A)") 'set xlabel "Threshold" font ",24"'
+write(gnuplotchannel,FMT="(A)") 'set ylabel "Interpolation Error" font ",24"'
+write(gnuplotchannel,FMT="(A)") 'set y2label "Efficiency (% frames accepted)" font ",24"'
+write(gnuplotchannel,FMT="(A)") '#set xrange [0:]'
+write(gnuplotchannel,FMT="(A)") '#set yrange [0:0.1]'
+write(gnuplotchannel,FMT="(A)") '#set y2range [0:105]'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+write(gnuplotchannel,FMT="(A)") '#'
+
+!write(gnuplotchannel,*) 'set output ARG1."/../contError.png"'
+write(gnuplotchannel,*) 'set output sprintf(ARG1."/../contError_%i.png",Ncol)'
+
+write(gnuplotchannel,*) 'set ytics nomirror font ",16"'
+write(gnuplotchannel,*) 'set y2tics nomirror font ",16"'
+write(gnuplotchannel,*) 'set xtics out nomirror font ",16"'
+write(gnuplotchannel,*) 'set grid xtics lw 2'
+
+write(gnuplotchannel,FMT="(A)") &
+        'plot ARG1."/".'//&
+        'ARG0[PL+14:]."contError_EB.dat" u (column(Ncol)):(column(Ncol+10)) '//&
+        'axes x1y1 w linesp lc "red" lw 2 t "MAX",\'
+write(gnuplotchannel,FMT="(A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."contError_EB.dat" u (column(Ncol)):(column(Ncol+20)) '//&
+        'axes x1y1 w linesp lc "green" lw 2 t "MAE",\'
+write(gnuplotchannel,FMT="(A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."contError_EB.dat" u (column(Ncol)):(column(Ncol+20)):(column(Ncol+30)) '//&
+        'axes x1y1 w yerrorbars lc "green" lw 2 notitle,\'
+write(gnuplotchannel,FMT="(A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."contError_EB.dat" u (column(Ncol)):(column(Ncol+40)) '//&
+        'axes x1y1 w linesp lc "blue" lw 2 t "GMAE",\'
+write(gnuplotchannel,FMT="(A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."contError_EB.dat" u '//&
+        '(column(Ncol)):(column(Ncol+40)):(column(Ncol+50)):(column(Ncol+60)) '//&
+        'axes x1y1 w yerrorbars lc "blue" lw 2 notitle,\'
+write(gnuplotchannel,FMT="(A)") &
+        '     ARG1."/".'//&
+        'ARG0[PL+14:]."contError_EB.dat" u (column(Ncol)):(column(Ncol+70)) '//&
+        'axes x1y2 w linesp lc "black" lw 2 t "Efficiency"'
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot -c "//&
+        gridpath5//gnuplotfile//&
+        ' "'//gridpath5(1:gridpath_length+expfolder_length+5-1)//'"')
+
+return
+
+end subroutine plotPseudoContinuous
 
 
 
@@ -3064,6 +4160,562 @@ end subroutine plotInterpolationOccurenceHeatmap
 
 
 
+subroutine plotCovarianceHeatmap()
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+use ls_rmsd_original
+use SIMILARITY
+use interactMultipleGrids
+implicit none
+
+real,dimension(Nvar) :: var_minvar, var_temp
+integer,dimension(Nvar) :: min_val_bin,max_val_bin
+integer,dimension(Nvar) :: var_index,var_index_diff
+real,dimension(Nvar) :: tmp_minvar, tmp_maxvar
+
+integer :: population_min,population_max
+real(dp),dimension(NSIs) :: covar_min,covar_max
+real(dp),dimension(NSIs) :: covarSIs,pearsonSIs
+
+real(dp),dimension(NSIs) :: covarSIthreshold
+
+real(dp),allocatable :: deltavals(:)
+real(dp),allocatable :: deltaSIs(:,:)
+
+real(dp) :: meanDeltaVals, varDeltaVals
+real(dp),dimension(NSIs) :: meanDeltaSIs,varDeltaSIs
+
+integer :: population,temppopulation
+integer :: single_index
+
+real(dp),dimension(3,Natoms) :: tempcoords
+real(dp),dimension(3,3) :: tempU
+
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+character(5) :: variable_length_text
+character(Ngrid_text_length) :: Ngrid_text
+character(50) :: var_filename
+
+logical :: stop_flag, file_existence
+logical :: time_saving = .true.
+
+!I/O HANDLING
+integer :: iostate
+
+!INTEGER INCREMENTALS
+integer :: n,i,j,k,l
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+write(variable_length_text,FMT=FMT5_variable)&
+        Ngrid_text_length
+write(Ngrid_text,FMT="(I0."//&
+        trim(adjustl(variable_length_text))//&
+        ")") 1
+gridpath3 = gridpath0//Ngrid_text//"/grid/"
+
+Norder = 0
+
+var_minvar = (/ 2.0, 2.0 /)
+
+tmp_minvar = (/ 1.0, 1.0/)
+tmp_maxvar = (/ 9.0, 9.0/)
+
+min_val_bin = int(tmp_minvar/var_spacing)
+max_val_bin = int(tmp_maxvar/var_spacing)
+
+Nsort = 1
+covarSIthreshold(1) = 0.200d0
+covarSIthreshold(2) = 0.200d0
+
+covar_min = 1.0d9
+covar_max = -1.0d9
+
+population_min = 1.0d9
+population_max = 0
+
+buffer1_size = 100
+buffer2_size = 200
+call setSubcellSearchMax()
+call setAllocations()
+
+previous_var_index = min_val_bin
+populationbuffer2 = -1
+
+
+inquire(file=gridpath5//covarmapfile,&
+        exist=file_existence)
+
+if (.not. file_existence) then
+
+open(filechannel1,file=gridpath5//covarmapfile)
+open(filechannel2,file=gridpath5//populationfile)
+do i = min_val_bin(1), max_val_bin(1)
+
+    write(6,FMT="(A,I5,A,I5,A,F10.4)") "On line ",&
+            i, " of ", max_val_bin(1),&
+            " which is value:", var_spacing(1) * i
+    
+    do j = min_val_bin(2), max_val_bin(2)
+
+        var_index = (/ i, j /)
+        call shiftMemory((var_index -&
+                 previous_var_index))
+        previous_var_index = var_index
+
+        tempcoords = 0.0d0
+        call setTarget(tempcoords)
+
+        do k = 1, subcellsearch_max(Norder+1)
+
+            var_index_diff = 0
+    
+            call getRelativeIndex_PCM(1,var_index,k,&
+                                  var_index_diff,stop_flag)
+
+        end do
+
+        call getRMSD_1_PCM(var_index,population)
+
+        covarSIs = 0.0d0
+        pearsonSIs = 0.0d0
+
+!       if (population > 0) print *, "pop:", population
+
+        do n = 1, population
+
+            call getFlattened(Nvar,&
+                    (/ 0, 0 /),&
+                    single_index)
+
+            if (time_saving) then
+                call setTarget(coordsbuffer2(:,:,max(1,population/2),single_index))
+            else
+                call setTarget(coordsbuffer2(:,:,n,single_index))
+            end if
+
+            population_max = sum(populationbuffer2(1:single_index_max)) &
+                             + single_index_max + 1
+            allocate(deltavals(population_max),&
+                     deltaSIs(population_max,NSIs))
+
+            population_max = 0
+
+            do single_index = 1, single_index_max
+
+                temppopulation = populationbuffer2(single_index)
+                if (temppopulation <= 0) cycle
+
+                do l = 1, Nvar
+                    var_index_diff(l) = var_index(l) - &
+                        int(valsbuffer2(l,1,single_index) * divisor(l,1))
+                end do
+
+                do k = 1, temppopulation
+
+                    call getSIs(coordsbuffer2(:,:,k,single_index),&
+                            tempcoords,tempU,&
+                            meanDeltaSIs(:))
+            
+                    meanDeltaVals = sum(abs(var_index_diff))
+            
+                    write(filechannel1,FMT=*) &
+                            meanDeltaVals, meanDeltaSIs
+            
+                    if (meanDeltaSIs(Nsort) > covarSIthreshold(Nsort)) cycle
+            
+                    population_max = population_max + 1
+            
+                    deltavals(population_max) = meanDeltaVals
+                    deltaSIs(population_max,:) = meanDeltaSIs
+
+                    ! To make things go faster, only read
+                    ! the first frame in a cell
+                    if (time_saving) exit
+
+                end do
+
+!               population_max = population_max + temppopulation
+
+            end do
+
+            if (population_max > 1) then
+
+                meanDeltaVals = sum(deltavals(1:population_max))*&
+                                    1.0d0/population_max
+                varDeltaVals = sum((deltavals(1:population_max)-&
+                                    meanDeltaVals)**2)*&
+                                    1.0d0/(population_max-1)
+
+                do k = 1, NSIs
+                    meanDeltaSIs(k) = sum(deltaSIs(1:population_max,k))*&
+                                   1.0d0/population_max
+                    varDeltaSIs(k) = sum((deltaSIs(1:population_max,k)-&
+                                     meanDeltaSIs(k))**2)*&
+                                    1.0d0/(population_max-1)
+                    covarSIs(k) = covarSIs(k) + &
+                                  sum((deltaSIs(1:population_max,k)-&
+                                       meanDeltaSIs(k))*&
+                                      (deltavals(1:population_max)-&
+                                       meanDeltaVals))*&
+                                    1.0d0/(population_max-1)
+                    pearsonSIs(k) = pearsonSIs(k) + &
+                                    covarSIs(k)/sqrt(varDeltaSIs(k)*varDeltaVals)
+                end do
+
+            end if
+
+            deallocate(deltavals,deltaSIs)
+
+            ! To save time, exit out early
+            if (time_saving) exit
+
+        end do
+
+        if (population > 0) then
+            ! If we exited out early then we would
+            ! only "average" over one frame, so we
+            ! can just skip the averaging
+            if (.not.(time_saving)) then
+                covarSIs = covarSIs / population
+                pearsonSIs = pearsonSIs / population
+            end if
+
+            do k = 1, NSIs
+                covar_min(k) = min(covar_min(k),covarSIs(k))
+                covar_max(k) = max(covar_max(k),covarSIs(k))
+            end do
+        else
+            covarSIs = -1.0d9
+            pearsonSIs = -1.0d9
+        end if
+
+        population_min = min(population_min,population)
+        population_max = max(population_max,population)
+        
+        write(filechannel1,FMT=*) &
+                var_spacing * &
+                (var_index - (/ 0.5d0, 0.5d0 /)), &
+                covarSIs, pearsonSIs
+        write(filechannel2,FMT=*) &
+                var_spacing * &
+                (var_index - (/ 0.5d0, 0.5d0 /)), &
+                population
+    end do
+    
+    write(filechannel1,FMT=*) "" 
+    write(filechannel2,FMT=*) "" 
+end do
+close(filechannel1)
+close(filechannel2)
+
+else
+
+open(filechannel1,file=gridpath5//covarmapfile,action="read")
+open(filechannel2,file=gridpath5//populationfile,action="read")
+do i = min_val_bin(1), max_val_bin(1)
+    do j = min_val_bin(2), max_val_bin(2)
+        read(filechannel1,FMT=*) var_temp, &
+               covarSIs, pearsonSIs
+        read(filechannel2,FMT=*) var_temp, &
+               population
+
+        do k = 1, NSIs
+            if (covarSIs(k) > -1.0d9) then
+                covar_min(k) = min(covar_min(k),covarSIs(k))
+                covar_max(k) = max(covar_max(k),covarSIs(k))
+            end if
+        end do
+
+        population_min = min(population_min,population)
+        population_max = max(population_max,population)
+    end do
+    read(filechannel1,FMT=*)
+    read(filechannel2,FMT=*)
+end do
+close(filechannel1)
+close(filechannel2)
+end if
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set terminal pngcairo size 1800,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'PopulationHeatMap.png"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'absolute_min = ', -1.0d9
+write(gnuplotchannel,*) 'pop_min = ', 1
+write(gnuplotchannel,*) 'pop_max = ', population_max
+write(gnuplotchannel,*) 'set palette defined ('//&
+!        'pop_min "white",'//&
+!        'pop_min "yellow",'//&
+!        'pop_min+(pop_max-pop_min)/20 "red",'//&
+!        'pop_max "red")'
+         'pop_min "white",'//&
+         'pop_min "blue",'//&
+         'pop_min+(pop_max-pop_min)/6 "violet",'//&
+         'pop_min+(pop_max-pop_min)/2 "red")'
+!        'pop_min+(pop_max-pop_min)/20 "red",'//&
+!        'pop_max "red")'
+!        'absolute_min "white",'//&
+write(gnuplotchannel,*) 'set cbrange [pop_min:pop_min+(pop_max-pop_min)/2]'
+write(gnuplotchannel,*) 'set cblabel "Population of Cell"'//&
+        ' font ",32" offset 6,0'
+
+write(gnuplotchannel,*) 'set title "Population Heatmap of an HBr - CO_2 System"'//&
+                        ' font ",32" offset 0,3'
+write(gnuplotchannel,*) 'set xlabel "Var1 (A)" font ",28" offset 0,-2'
+write(gnuplotchannel,*) 'set xtics 1 font ",24"'
+write(gnuplotchannel,*) 'set xrange [', tmp_minvar(1), ':', tmp_maxvar(1),']'
+write(gnuplotchannel,*) 'set ylabel "Var2 (A)" font ",28" offset -5,0'
+write(gnuplotchannel,*) 'set ytics 1 font ",24"'
+write(gnuplotchannel,*) 'set yrange [', tmp_minvar(2), ':',tmp_maxvar(2),']'
+write(gnuplotchannel,*) 'set cbtics'
+write(gnuplotchannel,*) 'set view map'
+write(gnuplotchannel,*) 'set pm3d interpolate 1,1'
+write(gnuplotchannel,*) 'splot "'//gridpath5//populationfile//'" u 1:2:3 w pm3d'
+close(gnuplotchannel)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set terminal pngcairo size 1800,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'CovarianceHeatMap.png"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'absolute_min = ', -1.0d9
+write(gnuplotchannel,*) 'covar_min = ', covar_min(1)
+write(gnuplotchannel,*) 'covar_max = ', covar_max(1)
+write(gnuplotchannel,*) 'set palette defined ('//&
+!        'covar_min "white",'//&
+!        'covar_min "yellow",'//&
+!        'covar_min+(covar_max-covar_min)/20 "red",'//&
+!        'covar_max "red")'
+         'covar_min "white",'//&
+         'covar_min "blue",'//&
+         '0.0 "blue",'//&
+         '0.0 "violet",'//&
+         'covar_max/3 "red")'
+!        'covar_min+(covar_max-covar_min)/20 "red",'//&
+!        'covar_max "red")'
+!        'absolute_min "white",'//&
+write(gnuplotchannel,*) 'set cbrange [covar_min:covar_max/3]'
+write(gnuplotchannel,*) 'set cblabel "CV - RMSD Covariance"'//&
+        ' font ",32" offset 6,0'
+
+write(gnuplotchannel,*) 'set title "Covariance Heatmap of an HBr - CO_2 System"'//&
+                        ' font ",32" offset 0,3'
+write(gnuplotchannel,*) 'set xlabel "Var1 (A)" font ",28" offset 0,-2'
+write(gnuplotchannel,*) 'set xtics 1 font ",24"'
+write(gnuplotchannel,*) 'set xrange [', tmp_minvar(1), ':', tmp_maxvar(1),']'
+write(gnuplotchannel,*) 'set ylabel "Var2 (A)" font ",28" offset -5,0'
+write(gnuplotchannel,*) 'set ytics 1 font ",24"'
+write(gnuplotchannel,*) 'set yrange [', tmp_minvar(2), ':',tmp_maxvar(2),']'
+write(gnuplotchannel,*) 'set cbtics'
+write(gnuplotchannel,*) 'set view map'
+write(gnuplotchannel,*) 'set pm3d interpolate 1,1'
+write(gnuplotchannel,*) 'splot "'//gridpath5//covarmapfile//'" u 1:2:3 w pm3d'
+close(gnuplotchannel)
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! Now to make the individual covariance plot
+
+var_temp = (/ 3.0, 3.0 /)
+
+previous_var_index = min_val_bin
+populationbuffer2 = -1
+
+var_index = int(var_temp/var_spacing)
+call shiftMemory((var_index -&
+         previous_var_index))
+previous_var_index = var_index
+
+tempcoords = 0.0d0
+call setTarget(tempcoords)
+
+do k = 1, subcellsearch_max(Norder+1)
+
+    var_index_diff = 0
+    
+    call getRelativeIndex_PCM(1,var_index,k,&
+                          var_index_diff,stop_flag)
+
+end do
+
+call getRMSD_1_PCM(var_index,population)
+
+covarSIs = 0.0d0
+pearsonSIs = 0.0d0
+
+open(filechannel1,file=gridpath5//temporaryfile1)
+
+! Here we can pick which of the frames to
+! use as a target
+n = population / 2
+n = max(1,n)
+n = min(population,n)
+
+call getFlattened(Nvar,&
+        (/ 0, 0 /),&
+        single_index)
+
+call setTarget(coordsbuffer2(:,:,n,single_index))
+
+population_max = sum(populationbuffer2(1:single_index_max)) &
+                 + single_index_max + 1
+allocate(deltavals(population_max),&
+         deltaSIs(population_max,NSIs))
+
+population_max = 0
+
+do single_index = 1, single_index_max
+
+    temppopulation = populationbuffer2(single_index)
+    if (temppopulation <= 0) cycle
+
+    do l = 1, Nvar
+        var_index_diff(l) = var_index(l) - &
+            int(valsbuffer2(l,1,single_index) * divisor(l,1))
+    end do
+
+    do k = 1, temppopulation
+
+        call getSIs(coordsbuffer2(:,:,k,single_index),&
+                tempcoords,tempU,&
+                meanDeltaSIs(:))
+
+        meanDeltaVals = sum(abs(var_index_diff))
+
+        write(filechannel1,FMT=*) &
+                meanDeltaVals, meanDeltaSIs
+
+        if (meanDeltaSIs(Nsort) > covarSIthreshold(Nsort)) cycle
+
+        population_max = population_max + 1
+
+        deltavals(population_max) = meanDeltaVals
+        deltaSIs(population_max,:) = meanDeltaSIs
+
+    end do
+
+!   population_max = population_max + temppopulation
+
+end do
+
+if (population_max > 1) then
+
+    meanDeltaVals = sum(deltavals(1:population_max))*&
+                        1.0d0/population_max
+    varDeltaVals = sum((deltavals(1:population_max)-&
+                        meanDeltaVals)**2)*&
+                        1.0d0/(population_max-1)
+
+    do k = 1, NSIs
+        meanDeltaSIs(k) = sum(deltaSIs(1:population_max,k))*&
+                       1.0d0/population_max
+        varDeltaSIs(k) = sum((deltaSIs(1:population_max,k)-&
+                         meanDeltaSIs(k))**2)*&
+                        1.0d0/(population_max-1)
+        covarSIs(k) = covarSIs(k) + &
+                      sum((deltaSIs(1:population_max,k)-&
+                           meanDeltaSIs(k))*&
+                          (deltavals(1:population_max)-&
+                           meanDeltaVals))*&
+                        1.0d0/(population_max-1)
+        pearsonSIs(k) = pearsonSIs(k) + &
+                        covarSIs(k)/sqrt(varDeltaSIs(k)*varDeltaVals)
+    end do
+
+end if
+
+deallocate(deltavals,deltaSIs)
+
+close(filechannel1)
+
+write(var_filename,FMT=var_multipleFMT&
+      (1+Norder*multipleFMT_length:(Norder+1)*multipleFMT_length) )&
+        var_index * multiplier(:,Norder+1)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'RMSDCovar_'//trim(var_filename)//'.png"'
+write(gnuplotchannel,*) 'set title "RMSD vs Delta CV" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "Collective Variables Difference" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "RMSD (A) Between Target and Library Frame" font ",24"'
+write(gnuplotchannel,*) 'covarRMSDthreshold = ', covarSIthreshold(1)
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,FMT="(A,F8.5,A)") &
+          'set label 1 "Covariance: ', covarSIs(1),&
+          '" at screen 0.05,0.94 font ",16"'
+write(gnuplotchannel,FMT="(A,F8.5,A)") &
+          'set label 2 "   Pearson: ', pearsonSIs(1),&
+          '" at screen 0.18,0.94 font ",16"'
+!write(gnuplotchannel,FMT="(A,F8.5,A)") &
+!          'set label 1 "Covariance: ', covarSIs(1),&
+!          '" at screen 0.80,0.94 font ",16"'
+!write(gnuplotchannel,FMT="(A,F8.5,A)") &
+!          'set label 2 "   Pearson: ', pearsonSIs(1),&
+!          '" at screen 0.93,0.94 font ",16"'
+if ((Nsort == 1).and.(covarSIthreshold(1) < 100.0d0)) then
+    write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                            '" u 1:2 w p pt 5, '//&
+                            'covarRMSDthreshold w l lw 3 lc "black"'
+else
+    write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                            '" u 1:2 w p pt 5'
+end if
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2400,1800'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'CMDCovar_'//trim(var_filename)//'.png"'
+write(gnuplotchannel,*) 'set title "CMD vs Delta CV" font ",32"'
+write(gnuplotchannel,*) 'unset key'
+write(gnuplotchannel,*) 'set xlabel "Collective Variables Difference" font ",24"'
+write(gnuplotchannel,*) 'set ylabel "CMD (1/A) Between Target and Library Frame" font ",24"'
+write(gnuplotchannel,*) 'covarCMDthreshold = ', covarSIthreshold(2)
+write(gnuplotchannel,*) 'set xtics font ",16"'
+write(gnuplotchannel,*) 'set ytics font ",16"'
+write(gnuplotchannel,FMT="(A,F8.5,A)") &
+          'set label 1 "Covariance: ', covarSIs(2),&
+          '" at screen 0.05,0.94 font ",16"'
+write(gnuplotchannel,FMT="(A,F8.5,A)") &
+          'set label 2 "   Pearson: ', pearsonSIs(2),&
+          '" at screen 0.18,0.94 font ",16"'
+!write(gnuplotchannel,FMT="(A,F8.5,A)") &
+!          'set label 1 "Covariance: ', covarSIs(1),&
+!          '" at screen 0.80,0.94 font ",16"'
+!write(gnuplotchannel,FMT="(A,F8.5,A)") &
+!          'set label 2 "   Pearson: ', pearsonSIs(1),&
+!          '" at screen 0.93,0.94 font ",16"'
+if ((Nsort == 2).and.(covarSIthreshold(2) < 100.0d0)) then
+    write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                            '" u 1:3 w p pt 5, '//&
+                            'covarCMDthreshold w l lw 3 lc "black"'
+else
+    write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                            '" u 1:3 w p pt 5'
+end if
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+
+
+call unsetAllocations()
+
+return
+
+end subroutine plotCovarianceHeatmap
+
+
+
+
 subroutine getRMSDinterpolation2(PNGfilename)
 use PARAMETERS
 use FUNCTIONS
@@ -3536,11 +5188,11 @@ character(gridpath_length+expfolder_length+5) :: gridpath5
 
 integer,intent(in) :: dropoff_spacing,dropoff_spaces
 real(dp) :: max_error, min_error, max_RE, min_RE
-real(dp),dimension(2*dropoff_spaces) :: dropoffErrors
-integer,dimension(2*dropoff_spaces) :: dropoffErrorBins
+real(dp),dimension(4*dropoff_spaces) :: dropoffErrors
+integer,dimension(4*dropoff_spaces) :: dropoffErrorBins
 integer :: Nbins
 integer,allocatable :: dropoffErrorBinning(:,:)
-real(dp),dimension(2*dropoff_spaces) :: dropoffErrorBinwidth
+real(dp),dimension(4*dropoff_spaces) :: dropoffErrorBinwidth
 integer :: error_counter
 integer :: iostate
 integer :: i
@@ -3555,10 +5207,10 @@ max_RE = 50.0
 min_RE = 0.02
 
 Nbins  = 30
-allocate(dropoffErrorBinning(2*dropoff_spaces,Nbins))
+allocate(dropoffErrorBinning(4*dropoff_spaces,Nbins))
 dropoffErrorBinwidth(1:dropoff_spaces) = &
         log10(max_error/min_error)/Nbins
-dropoffErrorBinwidth(dropoff_spaces+1:dropoff_spaces*2) = &
+dropoffErrorBinwidth(dropoff_spaces+1:dropoff_spaces*4) = &
         log10(max_RE/min_RE)/Nbins
 
 dropoffErrorBinning = 0
@@ -3584,7 +5236,7 @@ do
             dropoffErrorBinwidth(i))
     end do
 
-    do i = 1, dropoff_spaces * 2
+    do i = 1, dropoff_spaces * 4
         if (dropoffErrorBins(i) < 1) &
                 dropoffErrorBins(i) = 1
         if (dropoffErrorBins(i) > Nbins) &
@@ -3605,7 +5257,7 @@ do i = 1, Nbins
             (i-0.5) * dropoffErrorBinwidth(1) + log10(min_error), &
             dropoffErrorBinning(1:dropoff_spaces,i), &
             (i-0.5) * dropoffErrorBinwidth(dropoff_spaces+1) + log10(min_RE), &
-            dropoffErrorBinning(dropoff_spaces+1:dropoff_spaces*2,i)
+            dropoffErrorBinning(dropoff_spaces+1:dropoff_spaces*4,i)
 end do
 close(filechannel1)
 deallocate(dropoffErrorBinning)
@@ -3752,9 +5404,476 @@ close(gnuplotchannel)
 call system(path_to_gnuplot//"gnuplot < "//&
         gridpath5//gnuplotfile)
 
+
+
+! Diverse vs Nondiverse
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,FMT="(A)") 'set encoding utf8'
+write(gnuplotchannel,FMT="(A)") 'set output "'//gridpath4//&
+                                'ConsolidatedDropoff_IED_DvsND.png"'
+write(gnuplotchannel,FMT="(A)") "set multiplot layout 2,1 "//&
+                        "margins 0.1,0.95,.1,.9 spacing 0.1,0 "//&
+                        "title 'Consolidated Dropoff' font ',48'"
+write(gnuplotchannel,FMT="(A)") "set xlabel 'Ninterpolation' font ',32'"
+write(gnuplotchannel,FMT="(A)") "set ylabel 'Error Between Target and "//&
+                                "Interpolated Energy Gradient' font ',32'"
+!write(gnuplotchannel,FMT="(A)") "set logscale y"
+write(gnuplotchannel,FMT="(A)") "unset key"
+write(gnuplotchannel,FMT="(A,I5)") "spacing = ", dropoff_spacing
+write(gnuplotchannel,FMT="(A,I5)") "spaces = ", dropoff_spaces
+write(gnuplotchannel,FMT=*) "min_y = ", min_error
+write(gnuplotchannel,FMT=*) "max_y = ", max_error
+write(gnuplotchannel,FMT="(A)") "set xrange [0:spaces+0.5]"
+write(gnuplotchannel,FMT="(A)") "set yrange [log10(min_y):log10(max_y)]"
+
+write(gnuplotchannel,FMT="(A)") "set style fill solid 0.25 border -1"
+write(gnuplotchannel,FMT="(A)") "set style boxplot outliers pointtype 7"
+write(gnuplotchannel,FMT="(A)") "set style data boxplot"
+write(gnuplotchannel,FMT="(A)") "unset xtics"
+do i = 1, dropoff_spaces
+    write(gnuplotchannel,FMT="(A,I2,A,I2,A)")&
+            "set xtics add ('", i*dropoff_spacing, "' ", i, ")"
+end do
+write(gnuplotchannel,FMT="(A)") "plot for [i=1:spaces] '"//&
+                                gridpath5//"log"//dropofffile//&
+                                "' using (i):i"
+write(gnuplotchannel,FMT="(A)") "plot for [i=1:spaces] '"//&
+                                gridpath5//"log"//dropofffile//&
+                                "' using (i):(column(i+2*spaces))"
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//&
+        gridpath5//gnuplotfile)
+
+
+
 return
 
 end subroutine plotDropoff
+
+subroutine plotAlphaIntervals()
+use PARAMETERS
+use FUNCTIONS
+use ANALYSIS
+implicit none
+
+character(gridpath_length+expfolder_length) :: gridpath4
+character(gridpath_length+expfolder_length+5) :: gridpath5
+
+real(dp),dimension(Nalpha) :: alpha_array
+
+integer,dimension(4,Nalpha) :: alphaIntervalBinning
+integer,dimension(4) :: alphaIntervalBin
+real(dp) :: alphaMean1, alphaMean2
+integer :: totalAlphaInterval, totalAlphaInterval2
+
+real(dp) :: meanAlphaMean1, meanAlphaMean2
+real(dp),dimension(Nalpha) :: alphaErrors, meanErrors, varErrors
+
+real(dp) :: minError, maxError, deltaError
+real(dp) :: minError2, maxError2, deltaError2
+integer,parameter :: NerrorBins = 100
+integer :: errorBin
+integer,dimension(3,NerrorBins) :: errorBinning
+
+real(dp) :: percentage12,percentage13,percentage23
+
+integer :: iostate
+integer :: i
+
+gridpath4 = gridpath0//expfolder
+gridpath5 = gridpath4//intermediatefolder
+
+do i = 1, Nalpha-1
+    alpha_array(i) = alpha_start + &
+        (i-1)*(alpha_end-alpha_start)/&
+        (1.0d0*(Nalpha-1))
+end do
+alpha_array(Nalpha) = alpha_end
+
+!if (logarithmic_alpha_flag) then
+!    do i = 1, Nalpha
+!        alpha_array(i) = &
+!            10.0d0 ** alpha_array(i)
+!    end do
+!end if
+
+! Get the first graph ready
+
+minError = 1.0d9
+maxError = 0.0d0
+alphaIntervalBinning = 0
+totalAlphaInterval = 0
+open(filechannel1,file=gridpath5//"alpharange.dat")
+do
+    read(filechannel1,iostat=iostate,FMT=*)&
+        alphaIntervalBin(1),&
+        alphaIntervalBin(2),&
+        alphaMean1,&
+        alphaIntervalBin(3),&
+        alphaIntervalBin(4),&
+        alphaMean2
+    if (iostate /= 0) exit
+
+    do i = 1,4
+        alphaIntervalBinning(i,&
+                alphaIntervalBin(i)) = &
+           alphaIntervalBinning(i,&
+                    alphaIntervalBin(i)) + 1
+    end do
+
+    minError = min(minError,alphaMean1,alphaMean2)
+    maxError = max(maxError,alphaMean1,alphaMean2)
+
+    totalAlphaInterval = totalAlphaInterval + 1
+end do
+close(filechannel1)
+
+open(filechannel1,file=gridpath5//temporaryfile1)
+do i = 1, Nalpha
+    write(filechannel1,FMT=*) alpha_array(i), &
+            alphaIntervalBinning(:,i) * 1.0d0 /&
+            totalAlphaInterval
+end do
+close(filechannel1)
+
+! Get the second graph ready
+
+deltaError = (maxError - minError) / NerrorBins
+meanAlphaMean1 = 0.0d0
+meanAlphaMean2 = 0.0d0
+errorBinning = 0
+open(filechannel1,file=gridpath5//"alpharange.dat")
+do
+    read(filechannel1,iostat=iostate,FMT=*)&
+        alphaIntervalBin(1),&
+        alphaIntervalBin(2),&
+        alphaMean1,&
+        alphaIntervalBin(3),&
+        alphaIntervalBin(4),&
+        alphaMean2
+    if (iostate /= 0) exit
+
+    errorBin = floor((alphaMean1-minError)/deltaError)
+    if (errorBin == 0) errorBin = 1
+    if (errorBin > NerrorBins) errorBin = NerrorBins
+
+    errorBinning(1,errorBin) = 1 + &
+            errorBinning(1,errorBin)
+
+    errorBin = floor((alphaMean2-minError)/deltaError)
+    if (errorBin == 0) errorBin = 1
+    if (errorBin > NerrorBins) errorBin = NerrorBins
+
+    errorBinning(2,errorBin) = 1 + &
+            errorBinning(2,errorBin)
+
+    meanAlphaMean1 = meanAlphaMean1 + alphaMean1
+    meanAlphaMean2 = meanAlphaMean2 + alphaMean2
+end do
+close(filechannel1)
+
+meanAlphaMean1 = meanAlphaMean1 / totalAlphaInterval
+meanAlphaMean2 = meanAlphaMean2 / totalAlphaInterval
+
+open(filechannel1,file=gridpath5//temporaryfile2)
+do i = 1, NerrorBins
+    write(filechannel1,FMT=*) &
+            minError + (i-0.5)*deltaError, &
+            errorBinning(1:2,i) * 1.0d0 / &
+            totalAlphaInterval
+end do
+close(filechannel1)
+
+! Get the third graph ready
+totalAlphaInterval = 0
+meanErrors = 0.0d0
+open(filechannel1,file=gridpath5//"alphashape.dat")
+do
+    read(filechannel1,iostat=iostate,FMT=*) &
+        (alphaErrors(i),i=1,Nalpha)
+    if (iostate /= 0) exit
+
+    meanErrors = meanErrors + alphaErrors
+
+    totalAlphaInterval = totalAlphaInterval + 1
+end do
+close(filechannel1)
+
+meanErrors = meanErrors / totalAlphaInterval
+
+varErrors = 0.0d0
+open(filechannel1,file=gridpath5//"alphashape.dat")
+do
+    read(filechannel1,iostat=iostate,FMT=*) &
+        (alphaErrors(i),i=1,Nalpha)
+    if (iostate /= 0) exit
+
+    varErrors = varErrors + (alphaErrors-meanErrors)**2
+
+    totalAlphaInterval = totalAlphaInterval + 1
+end do
+close(filechannel1)
+
+varErrors = sqrt(varErrors / totalAlphaInterval)
+
+open(filechannel1,file=gridpath5//temporaryfile3)
+do i = 1, Nalpha
+    write(filechannel1,FMT=*) &
+        alpha_array(i), meanErrors(i), varErrors(i)
+end do
+close(filechannel1)
+
+! Get the fourth graph ready
+maxError2 = maxError
+minError2 = minError
+totalAlphaInterval2 = 0
+open(filechannel1,file=gridpath5//"alphatransition.dat")
+do
+    read(filechannel1,iostat=iostate,FMT=*)&
+        alphaMean1
+    if (iostate /= 0) exit
+
+    totalAlphaInterval2 = totalAlphaInterval2 + 1
+
+    maxError2 = max(maxError2,alphaMean1)
+    minError2 = min(minError2,alphaMean1)
+end do
+close(filechannel1)
+
+errorBinning = 0
+deltaError2 = (maxError2 - minError2) / NerrorBins
+open(filechannel1,file=gridpath5//"alphatransition.dat")
+do i = 1, totalAlphaInterval2
+    read(filechannel1,FMT=*) alphaMean1
+
+    errorBin = floor((alphaMean1-minError2)/deltaError2)
+    if (errorBin == 0) errorBin = 1
+    if (errorBin > NerrorBins) errorBin = NerrorBins
+
+    errorBinning(2,errorBin) = 1 + &
+            errorBinning(2,errorBin)
+end do
+close(filechannel1)
+
+totalAlphaInterval = 0
+open(filechannel1,file=gridpath5//"alpharange.dat")
+do
+    read(filechannel1,iostat=iostate,FMT=*)&
+        alphaIntervalBin(1),&
+        alphaIntervalBin(2),&
+        alphaMean1,&
+        alphaIntervalBin(3),&
+        alphaIntervalBin(4),&
+        alphaMean2
+    if (iostate /= 0) exit
+
+    totalAlphaInterval = totalAlphaInterval + 1
+
+    errorBin = floor((alphaMean1-minError2)/deltaError2)
+    if (errorBin == 0) errorBin = 1
+    if (errorBin > NerrorBins) errorBin = NerrorBins
+
+    errorBinning(1,errorBin) = 1 + &
+            errorBinning(1,errorBin)
+
+    errorBin = floor((alphaMean2-minError2)/deltaError2)
+    if (errorBin == 0) errorBin = 1
+    if (errorBin > NerrorBins) errorBin = NerrorBins
+
+    errorBinning(3,errorBin) = 1 + &
+            errorBinning(3,errorBin)
+end do
+close(filechannel1)
+
+percentage12 = 0.0
+percentage13 = 0.0
+percentage23 = 0.0
+open(filechannel1,file=gridpath5//&
+        "BINNEDalphatransition.dat")
+do i = 1, NerrorBins
+    write(filechannel1,FMT=*) &
+            minError2 + (i-0.5)*deltaError2, &
+            errorBinning(1,i) * 1.0d0 / &
+            totalAlphaInterval, &
+            errorBinning(2,i) * 1.0d0 / &
+            totalAlphaInterval2, &
+            errorBinning(3,i) * 1.0d0 / &
+            totalAlphaInterval
+
+    percentage12 = percentage12 + &
+        min(errorBinning(1,i)*1.0d0/totalAlphaInterval,&
+            errorBinning(2,i)*1.0d0/totalAlphaInterval2)
+    percentage13 = percentage13 + &
+        min(errorBinning(1,i)*1.0d0/totalAlphaInterval,&
+            errorBinning(3,i)*1.0d0/totalAlphaInterval)
+    percentage23 = percentage23 + &
+        min(errorBinning(2,i)*1.0d0/totalAlphaInterval2,&
+            errorBinning(3,i)*1.0d0/totalAlphaInterval)
+end do
+close(filechannel1)
+
+if (.false.) then
+print *, " red-green percent:", percentage12*100
+print *, "  red-blue percent:", percentage13*100
+print *, "green-blue percent:", percentage23*100
+end if
+
+
+!Now, for histograms
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 2400,1200'
+write(gnuplotchannel,FMT="(A)") 'set encoding utf8'
+write(gnuplotchannel,FMT="(A)") 'set output "'//gridpath4//&
+                                'AlphaIntervals_Hist.png"'
+write(gnuplotchannel,FMT="(A)") "set multiplot layout 1,2 "//&
+                        "margins 0.1,0.95,.1,.9 spacing 0.1,0 "//&
+                        "title 'Alpha Interval Ranges and Means' "//&
+                        "font ',48'"
+write(gnuplotchannel,FMT="(A)") "set title offset 0,-2"
+write(gnuplotchannel,FMT="(A)") 'set style fill solid 1.0 noborder'
+
+write(gnuplotchannel,FMT="(A)") "set yrange [0:]"
+write(gnuplotchannel,FMT="(A)") "set ylabel 'Occurence' font ',36' offset -3,0"
+write(gnuplotchannel,FMT="(A)") 'set ytics font ",24"'
+
+write(gnuplotchannel,FMT=*) "minx = ", alpha_start
+write(gnuplotchannel,FMT=*) "maxx = ", alpha_end
+write(gnuplotchannel,FMT="(A)") "set xrange [minx:maxx]"
+write(gnuplotchannel,FMT="(A)") 'set xtics font ",24" offset 0,-1 out nomirror'
+write(gnuplotchannel,FMT="(A)") 'set format x "10^{%+.1f}'
+write(gnuplotchannel,FMT="(A)") 'set xlabel "Hyperparameter Alpha"'//&
+                                ' font ",36" offset 0,-2'
+write(gnuplotchannel,FMT="(A)") &
+        "plot '"//gridpath5//temporaryfile1//&
+        "' u 1:2 w boxes lc 'blue' t 'Chain 1',\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//temporaryfile1//&
+        "' u 1:3 w boxes lc 'blue' notitle,\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//temporaryfile1//&
+        "' u 1:4 w boxes lc 'red' t 'Chain 2',\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//temporaryfile1//&
+        "' u 1:5 w boxes lc 'red' notitle"
+
+write(gnuplotchannel,FMT=*) "minx = ", minError
+write(gnuplotchannel,FMT=*) "maxx = ", maxError
+write(gnuplotchannel,FMT="(A)") "set xrange [minx:maxx]"
+write(gnuplotchannel,FMT="(A)") 'set format x "%.2f'
+!write(gnuplotchannel,FMT="(A)") 'set format x "%.1te%+01T'
+!write(gnuplotchannel,FMT="(A)") 'set format x "10^{%+01T}'
+write(gnuplotchannel,FMT="(A)") 'set xlabel "Error (Hartree/Bohr)"'//&
+                                ' font ",36" offset 0,-2'
+write(gnuplotchannel,FMT="(A)") &
+        "plot '"//gridpath5//temporaryfile2//&
+        "' u 1:2 w boxes lc 'blue' t 'Chain 1',\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//temporaryfile2//&
+        "' u 1:3 w boxes lc 'red' t 'Chain 2'"
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//&
+        gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 2400,1200'
+write(gnuplotchannel,FMT="(A)") 'set encoding utf8'
+write(gnuplotchannel,FMT="(A)") 'set output "'//gridpath4//&
+                                'AlphaShape.png"'
+write(gnuplotchannel,FMT="(A)") "set title 'Error vs Alpha Shape' "//&
+                                "font ',48' offset 0,-2"
+write(gnuplotchannel,FMT="(A)") "set tmargin 10"
+write(gnuplotchannel,FMT="(A)") "set bmargin 10"
+write(gnuplotchannel,FMT="(A)") "set rmargin 10"
+write(gnuplotchannel,FMT="(A)") "set lmargin 20"
+
+!write(gnuplotchannel,FMT="(A)") "set yrange [0:]"
+write(gnuplotchannel,FMT="(A)") "set ylabel 'Relative Error' font ',36' offset -3,0"
+write(gnuplotchannel,FMT="(A)") 'set ytics font ",24"'
+write(gnuplotchannel,FMT="(A)") "unset key"
+
+!write(gnuplotchannel,FMT="(A)") "set xrange [minx:maxx]"
+write(gnuplotchannel,FMT="(A)") 'set xtics font ",24" offset 0,-1 out nomirror'
+write(gnuplotchannel,FMT="(A)") 'set format x "10^{%+.1f}'
+write(gnuplotchannel,FMT="(A)") 'set xlabel "Hyperparameter Alpha"'//&
+                                ' font ",36" offset 0,-2'
+write(gnuplotchannel,FMT="(A)") &
+        "plot '"//gridpath5//temporaryfile3//&
+        "' u 1:2:3 w yerrorbars lc 'blue',\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//temporaryfile3//&
+        "' u 1:2 w lp lw 2 lc 'blue'"
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//&
+        gridpath5//gnuplotfile)
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,FMT="(A)") 'set term pngcairo size 2400,1200'
+write(gnuplotchannel,FMT="(A)") 'set encoding utf8'
+write(gnuplotchannel,FMT="(A)") 'set output "'//gridpath4//&
+                                'AlphaIntervals_Hist_Transition.png"'
+write(gnuplotchannel,FMT="(A)") "set multiplot layout 1,2 "//&
+                        "margins 0.1,0.95,.1,.9 spacing 0.1,0 "//&
+                        "title 'Alpha Interval Ranges and Means' "//&
+                        "font ',48'"
+write(gnuplotchannel,FMT="(A)") "set title offset 0,-2"
+write(gnuplotchannel,FMT="(A)") 'set style fill solid 1.0 noborder'
+
+write(gnuplotchannel,FMT="(A)") "set yrange [0:]"
+write(gnuplotchannel,FMT="(A)") "set ylabel 'Occurence' font ',36' offset -3,0"
+write(gnuplotchannel,FMT="(A)") 'set ytics font ",24"'
+
+write(gnuplotchannel,FMT=*) "minx = ", alpha_start
+write(gnuplotchannel,FMT=*) "maxx = ", alpha_end
+write(gnuplotchannel,FMT="(A)") "set xrange [minx:maxx]"
+write(gnuplotchannel,FMT="(A)") 'set xtics font ",24" offset 0,-1 out nomirror'
+write(gnuplotchannel,FMT="(A)") 'set format x "10^{%+.1f}'
+write(gnuplotchannel,FMT="(A)") 'set xlabel "Hyperparameter Alpha"'//&
+                                ' font ",36" offset 0,-2'
+write(gnuplotchannel,FMT="(A)") &
+        "plot '"//gridpath5//temporaryfile1//&
+        "' u 1:2 w boxes lc 'red' t 'Chain 1',\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//temporaryfile1//&
+        "' u 1:3 w boxes lc 'red' notitle,\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//temporaryfile1//&
+        "' u 1:4 w boxes lc 'blue' t 'Chain 2',\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//temporaryfile1//&
+        "' u 1:5 w boxes lc 'blue' notitle"
+
+write(gnuplotchannel,FMT=*) "minx = ", minError2
+write(gnuplotchannel,FMT=*) "maxx = ", maxError2
+write(gnuplotchannel,FMT="(A)") "set xrange [minx:maxx]"
+write(gnuplotchannel,FMT="(A)") 'set format x "%.2f'
+!write(gnuplotchannel,FMT="(A)") 'set format x "%.1te%+01T'
+!write(gnuplotchannel,FMT="(A)") 'set format x "10^{%+01T}'
+write(gnuplotchannel,FMT="(A)") 'set xlabel "Error (Hartree/Bohr)"'//&
+                                ' font ",36" offset 0,-2'
+write(gnuplotchannel,FMT="(A)") &
+        "plot '"//gridpath5//"BINNEDalphatransition.dat"//&
+        "' u 1:2 w boxes lc 'red' t 'Chain 1',\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//"BINNEDalphatransition.dat"//&
+        "' u 1:4 w boxes lc 'blue' t 'Chain 2',\"
+write(gnuplotchannel,FMT="(A)") &
+        "     '"//gridpath5//"BINNEDalphatransition.dat"//&
+        "' u 1:3 w boxes lc 'green' t 'Transition'"
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//&
+        gridpath5//gnuplotfile)
+
+
+return
+
+end subroutine plotAlphaIntervals
 
 subroutine processCheckstateFile()
 use PARAMETERS
