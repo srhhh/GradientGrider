@@ -1619,6 +1619,21 @@ integer,allocatable :: occurenceBinning(:,:)
 real(dp),allocatable :: meanErrorBinning(:,:)
 real(dp),allocatable :: maxErrorBinning(:,:)
 
+real(dp) :: R1R2total, R1R1total
+integer :: Abin
+real(dp) :: Amax, deltaA, A
+real(dp),dimension(2) :: Ahat
+integer,allocatable :: AoccurenceBinning(:)
+real(dp),allocatable :: AmeanErrorBinning(:)
+
+integer :: Ninterpolation_minimum
+real(dp) :: R1total,R2total,R2R2total
+real(dp) :: Etotal,ER1total,ER2total
+real(dp),dimension(3,3) :: M,Q,R
+real(dp),dimension(3,1) :: E
+real(dp),dimension(3) :: Ecoefficients
+real(dp) :: meanError, varError, covarError
+
 !I/O HANDLING
 integer :: iostate
 
@@ -2264,8 +2279,9 @@ call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 !Now let's make ANOTHER heatmap (Nov 7)
 
-R1max = 5.0d-6
-R2max = 5.0d-3
+Ninterpolation_minimum = 20
+R1max = min(R1_threshold_SI,1.0d0)
+R2max = min(R2_threshold_SI,1.0d0)
 Nbins = 100
 
 deltaR1 = R1max/Nbins
@@ -2277,6 +2293,16 @@ allocate(occurenceBinning(Nbins,Nbins),&
 
 totalBinning = 0
 totalNonBinning = 0
+
+R1total = 0.0d0
+R2total = 0.0d0
+R1R1total = 0.0d0
+R1R2total = 0.0d0
+R2R2total = 0.0d0
+
+Etotal = 0.0d0
+ER1total = 0.0d0
+ER2total = 0.0d0
 
 occurenceBinning = 0
 meanErrorBinning = 0
@@ -2292,7 +2318,7 @@ do
     if (R1bin == 0) R1bin = 1
     if (R2bin == 0) R2bin = 1
 
-    if ((n >= 20).and.&
+    if ((n >= Ninterpolation_minimum).and.&
         (R1bin <= Nbins).and.&
         (R2bin <= Nbins)) then
         totalBinning = totalBinning + 1
@@ -2303,18 +2329,91 @@ do
             meanErrorBinning(R1bin,R2bin) + rsv(6)
         maxErrorBinning(R1bin,R2bin) = max(&
             maxErrorBinning(R1bin,R2bin),rsv(6))
+
+        R1total = R1total + rsv(2)
+        R2total = R2total + rsv(3)
+        R1R1total = R1R1total + rsv(2)**2
+        R1R2total = R1R2total + rsv(2)*rsv(3)
+        R2R2total = R2R2total + rsv(3)**2
+
+        Etotal = Etotal + rsv(6)
+        ER1total = ER1total + rsv(6)*rsv(2)
+        ER2total = ER2total + rsv(6)*rsv(3)
     else
         totalNonBinning = totalNonBinning + 1
     end if
 end do
 close(filechannel1)
 
+M(1,1) = totalBinning*1.0d0
+M(1,2) = R1total
+M(1,3) = R2total
+
+M(2,1) = R1total
+M(2,2) = R1R1total
+M(2,3) = R1R2total
+
+M(3,1) = R2total
+M(3,2) = R2R2total
+M(3,3) = R2R2total
+
+E(1,1) = Etotal
+E(2,1) = ER1total
+E(3,1) = ER2total
+
+call QRDECOMP(M,3,3,Q,R)
+!call QRDECOMP(M(2:3,2:3),2,2,Q(2:3,2:3),R(2:3,2:3))
+call ForwardSubstitute(R,3,3,Ecoefficients,&
+        reshape(matmul(transpose(Q),&
+                E),(/ 3 /)) )
+!call ForwardSubstitute(R(2:3,2:3),2,2,Ecoefficients(2:3),&
+!        reshape(matmul(transpose(Q(2:3,2:3)),&
+!                E(2:3,1)),(/ 2 /)) )
+
+!Ecoefficients(1) = 0.0d0
+
+!print *, Ecoefficients(1),&
+!         Ecoefficients(2),&
+!         Ecoefficients(3)
+!print *, "Error Term 1:",  &
+!        Ecoefficients(1) * M(1,1) + &
+!        Ecoefficients(2) * M(1,2) + &
+!        Ecoefficients(3) * M(1,3) - E(1,1)
+!print *, "Error Term 2:",  &
+!        Ecoefficients(1) * M(2,1) + &
+!        Ecoefficients(2) * M(2,2) + &
+!        Ecoefficients(3) * M(2,3) - E(2,1)
+!print *, "Error Term 3:",  &
+!        Ecoefficients(1) * M(3,1) + &
+!        Ecoefficients(2) * M(3,2) + &
+!        Ecoefficients(3) * M(3,3) - E(3,1)
+!
+!print *, 0.0d0, 5.0d0, -10.0d0
+!print *, "Error Term 1:",  &
+!        0.0d0 * M(1,1) + &
+!        5.0d0 * M(1,2) + &
+!        -10.0d0 * M(1,3) - E(1,1)
+!print *, "Error Term 2:",  &
+!        0.0d0 * M(2,1) + &
+!        5.0d0 * M(2,2) + &
+!        -10.0d0 * M(2,3) - E(2,1)
+!print *, "Error Term 3:",  &
+!        0.0d0 * M(3,1) + &
+!        5.0d0 * M(3,2) + &
+!        -10.0d0 * M(3,3) - E(3,1)
+
+meanError = Etotal / totalBinning
+
 open(filechannel1,file=gridpath5//temporaryfile1)
 do R1bin = 1, Nbins
     do R2bin = 1, Nbins
-        meanErrorBinning(R1bin,R2bin) = &
-            meanErrorBinning(R1bin,R2bin) / &
-                occurenceBinning(R1bin,R2bin)
+        if (occurenceBinning(R1bin,R2bin) == 0) then
+            meanErrorBinning(R1bin,R2bin) = 0.0d0
+        else
+            meanErrorBinning(R1bin,R2bin) = &
+                meanErrorBinning(R1bin,R2bin) / &
+                    occurenceBinning(R1bin,R2bin)
+        end if
         write(filechannel1,FMT="(5(ES10.3,1x))")&
             deltaR1 * (R1bin-0.5),&
             deltaR2 * (R2bin-0.5),&
@@ -2327,25 +2426,143 @@ do R1bin = 1, Nbins
 end do
 close(filechannel1)
 
+varError = 0.0d0
+covarError = 0.0d0
+
+A = R1R2total / R1R1total
+Ahat = (/ 1.0d0, A /) / sqrt(1.0d0 + A**2)
+
+Amax = 0.0d0
+open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
+do
+    read(filechannel1,iostat=iostate,FMT=*) n, rsv
+    if (iostate /= 0) exit
+
+    R1bin = floor(rsv(2) / deltaR1)
+    R2bin = floor(rsv(3) / deltaR2)
+
+    if (R1bin == 0) R1bin = 1
+    if (R2bin == 0) R2bin = 1
+
+    if ((n >= Ninterpolation_minimum).and.&
+        (R1bin <= Nbins).and.&
+        (R2bin <= Nbins)) then
+
+        A = rsv(2) * Ahat(1) + rsv(3) * Ahat(2)
+        Amax = max(Amax,A)
+
+        varError = varError + &
+                (meanError - rsv(6))**2
+        covarError = covarError + &
+                (Ecoefficients(1)+&
+                 Ecoefficients(2)*rsv(2)+&
+                 Ecoefficients(3)*rsv(3) - rsv(6))**2
+
+    end if
+end do
+close(filechannel1)
+
+allocate(AoccurenceBinning(Nbins),&
+         AmeanErrorBinning(Nbins))
+
+deltaA = Amax / Nbins
+AoccurenceBinning = 0
+AmeanErrorBinning = 0.0d0
+open(filechannel1,file=gridpath5//"tmp"//interpolationfile)
+do
+    read(filechannel1,iostat=iostate,FMT=*) n, rsv
+    if (iostate /= 0) exit
+
+    R1bin = floor(rsv(2) / deltaR1)
+    R2bin = floor(rsv(3) / deltaR2)
+
+    if (R1bin == 0) R1bin = 1
+    if (R2bin == 0) R2bin = 1
+
+    if ((n >= Ninterpolation_minimum).and.&
+        (R1bin <= Nbins).and.&
+        (R2bin <= Nbins)) then
+
+        A = rsv(2) * Ahat(1) + rsv(3) * Ahat(2)
+        Abin = floor(A / deltaA)
+        if (Abin == 0) Abin = 1
+        if (Abin > Nbins) Abin = Nbins
+
+        AoccurenceBinning(Abin) = &
+            AoccurenceBinning(Abin) + 1
+        AmeanErrorBinning(Abin) = &
+            AmeanErrorBinning(Abin) + rsv(6)
+
+    end if
+end do
+close(filechannel1)
+
+A = R1R2total / R1R1total
+open(filechannel1,file=gridpath5//temporaryfile2)
+do Abin = 1, Nbins
+    if (AoccurenceBinning(Abin) == 0) then
+        AmeanErrorBinning(Abin) = 0.0d0
+    else
+        AmeanErrorBinning(Abin) = &
+            AmeanErrorBinning(Abin) / &
+                AoccurenceBinning(Abin)
+    end if
+    write(filechannel1,FMT="(5(ES10.3,1x))")&
+        deltaA * (Abin-0.5) * 1.0d0 / sqrt(1.0d0+A**2),&
+        deltaA * (Abin-0.5) * A / sqrt(1.0d0+A**2),&
+        deltaA * (Abin-0.5),&
+        AoccurenceBinning(Abin) * &
+            1.0d0 / totalBinning,&
+        AmeanErrorBinning(Abin)
+end do
+close(filechannel1)
+
+open(filechannel1,file=gridpath5//temporaryfile3)
+do R1bin = 1, Nbins
+    do R2bin = 1, Nbins
+        if (occurenceBinning(R1bin,R2bin) == 0) then
+            write(filechannel1,FMT="(5(ES10.3,1x))")&
+                deltaR1 * (R1bin-0.5),&
+                deltaR2 * (R2bin-0.5), 0.0d0
+        else
+            write(filechannel1,FMT="(5(ES10.3,1x))")&
+                deltaR1 * (R1bin-0.5),&
+                deltaR2 * (R2bin-0.5),&
+                    Ecoefficients(1) + &
+                    Ecoefficients(2)*deltaR1*(R1bin-0.5) + &
+                    Ecoefficients(3)*deltaR2*(R2bin-0.5)
+!                   0.0d0 + &
+!                   5.0d0*deltaR1*(R1bin-0.5) + &
+!                   -10.0d0*deltaR2*(R2bin-0.5)
+        end if
+    end do
+    write(filechannel1,FMT=*) ""
+end do
+close(filechannel1)
+
+
+
+
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
-write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
+write(gnuplotchannel,*) 'set term pngcairo size 2200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath4//'R1R2_heatmap1.png"'
-write(gnuplotchannel,*) 'set title "R1,R2 '//&
+write(gnuplotchannel,*) 'set multiplot layout 1,2 '//&
+        'margins .1,.95,.15,.90 spacing .20 title "R1,R2 '//&
         'Occurences" font ",48" offset 0,2'
 
 !write(gnuplotchannel,*) 'set pm3d map'
 write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'set tmargin 10'
-write(gnuplotchannel,*) 'set bmargin 10'
-write(gnuplotchannel,*) 'set rmargin 10'
-write(gnuplotchannel,*) 'set lmargin 20'
+!write(gnuplotchannel,*) 'set tmargin 10'
+!write(gnuplotchannel,*) 'set bmargin 10'
+!write(gnuplotchannel,*) 'set rmargin 10'
+!write(gnuplotchannel,*) 'set lmargin 20'
 
 write(gnuplotchannel,*) 'set xtics font ",24"'
 write(gnuplotchannel,*) 'set ytics font ",24"'
 write(gnuplotchannel,*) 'set cbtics font ",24"'
 
 write(gnuplotchannel,FMT="(A,F6.2,A)") &
-        'set label "Efficiency:', &
+        'set label 1 "Efficiency:', &
         totalBinning * 1.0d2 / &
         (totalBinning + totalNonBinning),&
         '\%" at screen 0.65,0.05 '//&
@@ -2379,34 +2596,67 @@ write(gnuplotchannel,*) 'set cblabel "Occurence"'//&
         ' font ",32" offset 6,0'
 
 write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
-                                '" u 1:2:3 w image'
+                                '" u 1:2:3 w image, \'
+write(gnuplotchannel,*) '     "'//gridpath5//temporaryfile2//&
+                                '" u 1:2 w lines lw 2 lc "black"'
+
+write(gnuplotchannel,*) 'unset colorbox'
+
+write(gnuplotchannel,*) 'cbmax = ', &
+        maxval(AoccurenceBinning) * 1.0 / totalBinning
+write(gnuplotchannel,*) 'Amax = ', Amax
+
+write(gnuplotchannel,*) 'set xrange [0:Amax]'
+write(gnuplotchannel,*) 'set yrange [0:cbmax*1.1]'
+write(gnuplotchannel,*) 'set xlabel "Difference Quotient'//&
+        '" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'set ylabel "Occurence'//&
+        '" font ",32" offset -7,0'
+write(gnuplotchannel,*) 'unset ylabel'
+write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                                '" u 1:2:(cbmax/2) w image, \'
+write(gnuplotchannel,*) '     "'//gridpath5//temporaryfile2//&
+                                '" u 3:4 w lines lw 2 lc "black"'
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 open(gnuplotchannel,file=gridpath5//gnuplotfile)
-write(gnuplotchannel,*) 'set term pngcairo size 1400,1200'
+write(gnuplotchannel,*) 'set term pngcairo enhanced size 2200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath4//'R1R2_heatmap2.png"'
-write(gnuplotchannel,*) 'set title "R1,R2 '//&
+write(gnuplotchannel,*) 'set multiplot layout 1,2 '//&
+        'margins .1,.95,.15,.90 spacing .20 title "R1,R2 '//&
         'Mean Error" font ",48" offset 0,2'
 
 !write(gnuplotchannel,*) 'set pm3d map'
 write(gnuplotchannel,*) 'unset key'
-write(gnuplotchannel,*) 'set tmargin 10'
-write(gnuplotchannel,*) 'set bmargin 10'
-write(gnuplotchannel,*) 'set rmargin 10'
-write(gnuplotchannel,*) 'set lmargin 20'
+!write(gnuplotchannel,*) 'set tmargin 10'
+!write(gnuplotchannel,*) 'set bmargin 10'
+!write(gnuplotchannel,*) 'set rmargin 10'
+!write(gnuplotchannel,*) 'set lmargin 20'
 
 write(gnuplotchannel,*) 'set xtics font ",24"'
 write(gnuplotchannel,*) 'set ytics font ",24"'
 write(gnuplotchannel,*) 'set cbtics font ",24"'
 
 write(gnuplotchannel,FMT="(A,F6.2,A)") &
-        'set label "Efficiency:', &
+        'set label 1 "Efficiency:', &
         totalBinning * 1.0d2 / &
         (totalBinning + totalNonBinning),&
         '\%" at screen 0.70,0.05 '//&
         'font ",32"'
+
+!write(gnuplotchannel,FMT="(A,F8.4,A,F8.2,A,F8.2,A,F7.4,A)") &
+write(gnuplotchannel,FMT="(A,F8.4,A,F8.2,A,F8.2,A,F8.5,A)") &
+        'set label 2 "E = ', Ecoefficients(1),&
+        ' + ',Ecoefficients(2),&
+        'R1 + ',Ecoefficients(3),&
+        'R2     {/Symbol s}=',sqrt(covarError/totalBinning),&
+        '" at screen 0.02,0.05 '//&
+        'font ",32"'
+!       'R2     R^2=',1.0d0-covarError/varError,&
+!       '" at screen 0.02,0.05 '//&
+!       'font ",32"'
 
 write(gnuplotchannel,*) 'xmax = ', R1max
 write(gnuplotchannel,*) 'ymax = ', R2max
@@ -2437,7 +2687,28 @@ write(gnuplotchannel,*) 'set cblabel "Mean Error (Hartree/Bohr)"'//&
 
 !write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//&
 write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
-                                '" u 1:2:4 w image'
+                                '" u 1:2:4 w image, \'
+write(gnuplotchannel,*) '     "'//gridpath5//temporaryfile2//&
+                                '" u 1:2 w lines lw 2 lc "black"'
+
+write(gnuplotchannel,*) 'unset colorbox'
+
+write(gnuplotchannel,*) 'Amax = ', Amax
+write(gnuplotchannel,*) 'cbmax = ', &
+        maxval(AmeanErrorBinning)
+
+write(gnuplotchannel,*) 'set xrange [0:Amax]'
+write(gnuplotchannel,*) 'set yrange [0:cbmax*1.1]'
+write(gnuplotchannel,*) 'set xlabel "Difference Quotient'//&
+        '" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'set ylabel "Mean Error (Hartree/Bohr)'//&
+        '" font ",32" offset -7,0'
+write(gnuplotchannel,*) 'unset ylabel'
+write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile1//&
+                                '" u 1:2:(cbmax/2) w image, \'
+write(gnuplotchannel,*) '     "'//gridpath5//temporaryfile2//&
+                                '" u 3:5 w lines lw 2 lc "black"'
+
 close(gnuplotchannel)
 
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
@@ -2501,10 +2772,106 @@ close(gnuplotchannel)
 call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
 
 
+
+
+
+
+open(gnuplotchannel,file=gridpath5//gnuplotfile)
+write(gnuplotchannel,*) 'set term pngcairo size 2200,1200'
+write(gnuplotchannel,*) 'set output "'//gridpath4//'R1R2_heatmap2_theory.png"'
+write(gnuplotchannel,*) 'set multiplot layout 1,2 '//&
+        'margins .1,.95,.15,.90 spacing .20 title "R1,R2 '//&
+        'Mean Error" font ",48" offset 0,2'
+
+!write(gnuplotchannel,*) 'set pm3d map'
+write(gnuplotchannel,*) 'unset key'
+!write(gnuplotchannel,*) 'set tmargin 10'
+!write(gnuplotchannel,*) 'set bmargin 10'
+!write(gnuplotchannel,*) 'set rmargin 10'
+!write(gnuplotchannel,*) 'set lmargin 20'
+
+write(gnuplotchannel,*) 'set xtics font ",24"'
+write(gnuplotchannel,*) 'set ytics font ",24"'
+write(gnuplotchannel,*) 'set cbtics font ",24"'
+
+write(gnuplotchannel,FMT="(A,F6.2,A)") &
+        'set label 1 "Efficiency:', &
+        totalBinning * 1.0d2 / &
+        (totalBinning + totalNonBinning),&
+        '\%" at screen 0.70,0.05 '//&
+        'font ",32"'
+
+write(gnuplotchannel,FMT="(A,F8.4,A,F8.2,A,F8.2,A,F7.4,A)") &
+        'set label 2 "E = ', Ecoefficients(1),&
+        ' + ',Ecoefficients(2),&
+        'R1 + ',Ecoefficients(3),&
+        'R2     R^2=',1.0d0-covarError/varError,&
+        '" at screen 0.02,0.05 '//&
+        'font ",32"'
+
+write(gnuplotchannel,*) 'xmax = ', R1max
+write(gnuplotchannel,*) 'ymax = ', R2max
+write(gnuplotchannel,*) 'cbmax = ', &
+        maxval(meanErrorBinning)
+
+write(gnuplotchannel,*) 'set xrange [0:xmax]'
+write(gnuplotchannel,*) 'set yrange [0:ymax]'
+write(gnuplotchannel,*) 'set cbrange [0:cbmax/2]'
+
+!write(gnuplotchannel,*) 'set palette defined ('//&
+!         '0 "white",'//&
+!         '0.5 "white",'//&
+!         '0.5 "yellow",'//&
+!         'cbmax/5 "orange",'//&
+!         'cbmax "red")'
+
+write(gnuplotchannel,*) 'set format x "%.1te%2T"'
+write(gnuplotchannel,*) 'set format y "%.1te%2T"'
+write(gnuplotchannel,*) 'set format cb "%.1te%2T"'
+
+write(gnuplotchannel,*) 'set xlabel "R1 (A)'//&
+        '" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'set ylabel "R2 (A^2)'//&
+        '" font ",32" offset -7,0'
+write(gnuplotchannel,*) 'set cblabel "Mean Error (Hartree/Bohr)"'//&
+        ' font ",32" offset 6,0'
+
+!write(gnuplotchannel,*) 'splot "'//gridpath5//temporaryfile1//&
+write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile3//&
+                                '" u 1:2:3 w image, \'
+write(gnuplotchannel,*) '     "'//gridpath5//temporaryfile2//&
+                                '" u 1:2 w lines lw 2 lc "black"'
+
+write(gnuplotchannel,*) 'unset colorbox'
+
+write(gnuplotchannel,*) 'Amax = ', Amax
+write(gnuplotchannel,*) 'cbmax = ', &
+        maxval(AmeanErrorBinning)
+
+write(gnuplotchannel,*) 'set xrange [0:Amax]'
+write(gnuplotchannel,*) 'set yrange [0:cbmax*1.1]'
+write(gnuplotchannel,*) 'set xlabel "Difference Quotient'//&
+        '" font ",32" offset 0,-1'
+write(gnuplotchannel,*) 'set ylabel "Mean Error (Hartree/Bohr)'//&
+        '" font ",32" offset -7,0'
+write(gnuplotchannel,*) 'unset ylabel'
+write(gnuplotchannel,*) 'plot "'//gridpath5//temporaryfile3//&
+                                '" u 1:2:(cbmax/2) w image, \'
+write(gnuplotchannel,*) '     "'//gridpath5//temporaryfile2//&
+                                '" u 3:5 w lines lw 2 lc "black"'
+
+close(gnuplotchannel)
+
+call system(path_to_gnuplot//"gnuplot < "//gridpath5//gnuplotfile)
+
+
+
 deallocate(occurenceBinning,&
            meanErrorBinning,&
            maxErrorBinning)
 
+deallocate(AoccurenceBinning,&
+           AmeanErrorBinning)
 
 end subroutine getRMSDErrorPlots
 

@@ -1422,6 +1422,9 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     integer,intent(in) :: filechannel_input
     integer :: iostate
 
+    character(150) :: name_of_file
+    logical :: openedq
+
     !Energy
     real(dp) :: U, KE
     real(dp) :: DE, E, E_prior, E_baseline
@@ -1469,6 +1472,28 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     call setAllocations()
     allocate(trajRMSDbuffer(Ngrid_max,Naccept_max+1))
 
+!   inquire(unit=filechannel_input,opened=openedq,name=name_of_file)
+!   i = index(name_of_file,readtrajectoryfolder)
+!   if (name_of_file(i+5:i+10) == "006517") then
+!       n = 942
+!   else if (name_of_file(i+5:i+10) == "006518") then
+!       n = 150
+!   else if (name_of_file(i+5:i+10) == "006525") then
+!       n = 250
+!   else if (name_of_file(i+5:i+10) == "006531") then
+!       n = 251
+!   else if (name_of_file(i+5:i+10) == "006532") then
+!       n = 293
+!   else if (name_of_file(i+5:i+10) == "006534") then
+!       n = 223
+!   else if (name_of_file(i+5:i+10) == "006536") then
+!       n = 210
+!   else
+!       n = 1
+!   end if
+
+    steps = 1
+!   do i = 1, n
     read(filechannel_input,iostat=iostate) coords
     if (iostate /= 0) then
         print *, "uh oh: bad input"
@@ -1476,6 +1501,8 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     end if
     read(filechannel_input) KE, U, E
     read(filechannel_input) gradient
+    steps = steps + 1
+!   end do
 
     !Output the initial coordinates and velocities
     coords_initial = coords
@@ -1490,9 +1517,10 @@ subroutine readTrajectory(filechannel_input,filechannels,&
     end do 
 
     !Start the main loop
-    steps = 2
     Naccept = 0
     do
+
+!       if (steps > 6000) exit
 
         if (Naccept == 0) then
             coords_prior = coords
@@ -2457,12 +2485,10 @@ subroutine errorCheck1(filechannels)
     allocate(valsbuffer1(Nvar,buffer1_size),&
              coordsbuffer1(3,Natoms,buffer1_size),&
              gradientbuffer1(3,Natoms,buffer1_size),&
-             Ubuffer1(3,3,buffer1_size),&
-             approximation_index(buffer1_size))
+             Ubuffer1(3,3,buffer1_size))
 
     if (interpolation_flag) then
-            allocate(acceptable_frame_mask(buffer1_size),&
-                     inputCLS(Ncoords+buffer1_size,buffer1_size))
+            allocate(inputCLS(Ncoords+buffer1_size,buffer1_size))
             interpolation_counter = 0
     end if
 
@@ -2721,10 +2747,9 @@ subroutine errorCheck1(filechannels)
 
     end do
 
-    deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1,&
-               approximation_index)
+    deallocate(valsbuffer1,coordsbuffer1,gradientbuffer1,Ubuffer1)
     if (interpolation_flag)&
-            deallocate(acceptable_frame_mask,inputCLS)
+            deallocate(inputCLS)
 
     deallocate(rmsd_x_interpolated,rmsd_fx,&
                rmsd_fx_interpolated,rmsd_x,&

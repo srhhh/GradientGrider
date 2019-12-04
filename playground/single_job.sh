@@ -93,8 +93,8 @@ percentthreshold_flag=.true.
 testtrajSA_flag=.false.
 testtrajSAheatmap_flag=.false.
 Nsort=1
-outer_threshold=.150000d0
-outer_threshold1=.150000d0
+outer_threshold=.100000d0
+outer_threshold1=.100000d0
 outer_threshold2=.100000d0
 outer_threshold3=.100000d0
 outer_threshold4=.100000d0
@@ -105,16 +105,16 @@ inner_threshold2="0.00000d0"
 inner_threshold3="0.00000d0"
 inner_threshold4="0.00000d0"
 inner_threshold5="0.00000d0"
-alpha_ratio="1.0d-2"
+alpha_ratio="1.0d0"
 alpha_ratio1="1.0d-2"
 alpha_ratio2="1.0d0"
 alpha_ratio3="1.0d-2"
 alpha_ratio4="1.0d0"
 alpha_ratio5="1.0d-2"
-R1_threshold=.01000d0
-R2_threshold=.50000d0
+R1_threshold="3.0000d-6"
+R2_threshold="1.0000d-3"
 force_Permutations=.true.
-interpolation_flag=.false.
+interpolation_flag=.true.
 gather_interpolation_flag=.true.
 reject_flag=.true.
 accept_first=.false.
@@ -123,12 +123,12 @@ grid_addition=0
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
-Ntrajectories=1
+Ntrajectories=7
 Naccept_max=05
 Nthreads=1
 
 #Names of the experiments
-exp1name=exp_nov6
+exp1name=RMSD100_7trajtest_DEC02_empirical
 exp2name=exp101
 exp3name=exp312
 exp4name=exp013
@@ -151,7 +151,8 @@ readtrajectoryfolder="processed_traj"
 
 #readtrajectoryfile1="readtrajectories_single.txt"
 #readtrajectoryfolder1="traj_single"
-readtrajectoryfile1="readtrajectories_somePT.txt"
+readtrajectoryfile1="readtrajectories_fewlongPT.txt"
+#readtrajectoryfile1="readtrajectories_somePT.txt"
 readtrajectoryfolder1="some_processed_traj"
 readtrajectoryfile2="readtrajectories2.txt"
 readtrajectoryfolder2="traj2"
@@ -415,8 +416,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
      s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold/
      s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold/
-     s/R1_threshold = .*/R1_threshold = $R1_threshold/
-     s/R2_threshold = .*/R2_threshold = $R2_threshold/
+     s/R1_threshold_SI = .*/R1_threshold_SI = $R1_threshold/
+     s/R2_threshold_SI = .*/R2_threshold_SI = $R2_threshold/
      s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
@@ -531,8 +532,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/percentthreshold_flag = .*/percentthreshold_flag = .false./
      s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold/
      s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold/
-     s/R1_threshold = .*/R1_threshold = $R1_threshold/
-     s/R2_threshold = .*/R2_threshold = $R2_threshold/
+     s/R1_threshold_SI = .*/R1_threshold_SI = $R1_threshold/
+     s/R2_threshold_SI = .*/R2_threshold_SI = $R2_threshold/
      s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio/
      s/interpolation_flag = .*/interpolation_flag = $interpolation_flag/
@@ -659,8 +660,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold1/
      s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold1/
-     s/R1_threshold = .*/R1_threshold = $R1_threshold/
-     s/R2_threshold = .*/R2_threshold = $R2_threshold/
+     s/R1_threshold_SI = .*/R1_threshold_SI = $R1_threshold/
+     s/R2_threshold_SI = .*/R2_threshold_SI = $R2_threshold/
      s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio1/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
@@ -741,8 +742,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold2/
      s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold2/
-     s/R1_threshold = .*/R1_threshold = $R1_threshold/
-     s/R2_threshold = .*/R2_threshold = $R2_threshold/
+     s/R1_threshold_SI = .*/R1_threshold_SI = $R1_threshold/
+     s/R2_threshold_SI = .*/R2_threshold_SI = $R2_threshold/
      s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio2/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
@@ -821,8 +822,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold3/
      s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold3/
-     s/R1_threshold = .*/R1_threshold = $R1_threshold/
-     s/R2_threshold = .*/R2_threshold = $R2_threshold/
+     s/R1_threshold_SI = .*/R1_threshold_SI = $R1_threshold/
+     s/R2_threshold_SI = .*/R2_threshold_SI = $R2_threshold/
      s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio3/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
@@ -901,8 +902,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold4/
      s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold4/
-     s/R1_threshold = .*/R1_threshold = $R1_threshold/
-     s/R2_threshold = .*/R2_threshold = $R2_threshold/
+     s/R1_threshold_SI = .*/R1_threshold_SI = $R1_threshold/
+     s/R2_threshold_SI = .*/R2_threshold_SI = $R2_threshold/
      s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio4/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|
@@ -981,8 +982,8 @@ sed "s/Ngrid_cap = [0-9]*/Ngrid_cap = $Ngrid_cap/
      s/percentthreshold_flag = .*/percentthreshold_flag = $percentthreshold_flag/
      s/outer_threshold_SI = .*/outer_threshold_SI = $outer_threshold5/
      s/inner_threshold_SI = .*/inner_threshold_SI = $inner_threshold5/
-     s/R1_threshold = .*/R1_threshold = $R1_threshold/
-     s/R2_threshold = .*/R2_threshold = $R2_threshold/
+     s/R1_threshold_SI = .*/R1_threshold_SI = $R1_threshold/
+     s/R2_threshold_SI = .*/R2_threshold_SI = $R2_threshold/
      s/Nsort = .*/Nsort = $Nsort/
      s/alpha_ratio = .*/alpha_ratio = $alpha_ratio5/
      s|force_Permutations = .*|force_Permutations = $force_Permutations|

@@ -24,12 +24,15 @@ integer :: population, population_max
 integer :: iostate
 logical :: exists
 real,dimension(Nvar) :: vals
+real(dp) :: U
 real(dp),dimension(3,Natoms) :: coords, gradient
 character(50) :: var_filename
 
+integer :: totalFrames,totalCells
 integer,allocatable :: POPheatmap(:,:)
+integer,allocatable :: populationBinning(:)
 
-integer :: i, j
+integer :: i, j, k
 
 gridpath4 = gridpath0//expfolder
 gridpath5 = gridpath4//intermediatefolder
@@ -51,6 +54,8 @@ do Ngrid = 1, Ngrid_max
     
     open(filechannel2,file=gridpath5//temporaryfile1)
     do i = 1, Nbin_max(1)
+    if (mod(i*10,Nbin_max(1)) == 0) &
+            print *, "        ",int(i*100.0/Nbin_max(1)),"% Complete"
     do j = 1, Nbin_max(2)
     
         var_index = Nbin_offset + (/i, j/)
@@ -71,6 +76,8 @@ do Ngrid = 1, Ngrid_max
             do
                 read(filechannel1,iostat=iostate) vals
                 if (iostate /= 0) exit
+                read(filechannel1) k
+                read(filechannel1) U
                 read(filechannel1) coords
                 read(filechannel1) gradient
             
@@ -89,8 +96,35 @@ do Ngrid = 1, Ngrid_max
     
     write(filechannel2,FMT=*) ""
     end do
-    
     close(filechannel2)
+
+
+    allocate(populationBinning(population_max))
+    populationBinning = 0
+    totalFrames = 0
+    totalCells = 0
+    do i = 1, Nbin_max(1)
+    do j = 1, Nbin_max(2)
+        population = POPheatmap(i,j)
+        if (population > 0) then
+            populationBinning(population) = &
+                populationBinning(population) + 1
+            totalFrames = totalFrames + population
+            totalCells = totalCells + 1
+        end if
+    end do
+    end do
+    
+    open(filechannel2,file=gridpath5//"BINNEDpopulation.dat")
+    write(filechannel2,FMT="(A,I8)") "# totalFrames:", totalFrames
+    write(filechannel2,FMT="(A,I8)") "# totalCells:", totalCells
+    do population = 1, population_max
+        write(filechannel2,FMT=*) &
+            population,populationBinning(population)
+    end do
+    close(filechannel2)
+
+    deallocate(populationBinning)
     deallocate(POPheatmap)
     
     open(gnuplotchannel,file=gridpath5//gnuplotfile)

@@ -209,7 +209,7 @@ end subroutine qsort2
 !       grid4 = 1,1,    2,    3,3,        
 !
 !           A = | | 1.1 | 2.7 | | 4.1 4.2 | | | | 8.9 | 9.6 |
-!       grid1 = 4,4,    4,    4,4,        5,5,5,5     6    
+!       grid5 = 4,4,    4,    4,4,        5,5,5,5     6    
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine grider(grid,A,gridline_spacing,gridline_start,max_gridlines,&
@@ -295,6 +295,20 @@ randomIntegers = randomIntegers + lowerBound
 
 end subroutine chooseINT
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      QRDECOMP FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  matrix A, dim (m,n)      
+!
+!      OUTPUT:  matrix Q, dim (m,m)
+!               matrix R, dim (m,n)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for matrices Q and R such that:
+!           1. QR = A
+!           2. Q is orthogonal (Q(Q^T)) = I
+!           3. R is lower right triangular
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine QRDECOMP(A,m,n,Q,R)
     implicit none
     integer,intent(in) :: m,n
@@ -308,6 +322,8 @@ subroutine QRDECOMP(A,m,n,Q,R)
     real(dp) :: u, xnorm, tau
     integer :: i, j, t
 
+    ! Initialize by setting Q = I
+
     do i = 1, m
         do j = 1, m
             if (i == j) then
@@ -318,9 +334,17 @@ subroutine QRDECOMP(A,m,n,Q,R)
         end do
     end do
 
+    ! And R = A
+
     Rn = A
 
+    ! Here we will follow the Householder
+    ! algorithm which works on Q and R
+    ! by increasingly larger submatrices
+
     do t = 1, min(m-1,n)
+
+        ! Initialize a dummy Qn = I
 
         do i = 1, m
             do j = 1, m
@@ -331,6 +355,9 @@ subroutine QRDECOMP(A,m,n,Q,R)
                 end if
             end do
         end do
+
+        ! Choose the t-th column to be the
+        ! vector we will reflect about
 
         x = Rn(:,t)
         xnorm = sqrt(sum(x(t:m)**2,dim=1))
@@ -344,13 +371,24 @@ subroutine QRDECOMP(A,m,n,Q,R)
 
         Rn = matmul(transpose(Qn),Rn)
 
+        ! Yep, so this works because
+        ! of math
+
         Q = matmul(Q,transpose(Qn))
 
     end do
 
+    ! Ta-da!
+
     R = matmul(transpose(Q),A)
 
 end subroutine QRDECOMP
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      testQRDECOMP
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      A test for QRDECOMP
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine testQRDECOMP()
     implicit none
@@ -433,6 +471,12 @@ subroutine testQRDECOMP()
     end do
 
 end subroutine testQRDECOMP
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      CLS FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      Deprecated. Do not use.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine CLS(A,m,n,C,p,d,b,x)
     implicit none
@@ -739,6 +783,21 @@ subroutine CLS(A,m,n,C,p,d,b,x)
 
 end subroutine CLS
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      CLS2 FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  matrix A, dim (m,n)      
+!               matrix C, dim (p,n)      
+!               vector d, dim (p)      
+!               vector b, dim (m)      
+!
+!      OUTPUT:  vector x, dim (n)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for vector x such that:
+!           1. Cx = d
+!           2. Minimizes ||Ax-b||^2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine CLS2(A,m,n,C,p,d,b,x)
     implicit none
     integer,intent(in) :: m, n, p
@@ -961,6 +1020,18 @@ subroutine CLS2(A,m,n,C,p,d,b,x)
 
 end subroutine CLS2
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      LS FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  matrix A, dim (m,n)      
+!               vector b, dim (m)      
+!
+!      OUTPUT:  vector x, dim (n)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for vector x such that:
+!           1. Minimizes ||Ax-b||^2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine LS(A,m,n,b,x)
     implicit none
     integer,intent(in) :: m, n
@@ -995,6 +1066,12 @@ subroutine LS(A,m,n,b,x)
     x = u(1:n)
 
 end subroutine LS
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      testCLS FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      A test for CLS2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine testCLS()
     implicit none
@@ -1078,8 +1155,20 @@ subroutine testCLS()
 
 end subroutine testCLS
 
-!This is for LOWER (LEFT) TRIANGULAR matrix A
-!with equation of form Ax = b
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      BackSubstitute FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  matrix A, dim (m,n)      
+!               vector b, dim (m)      
+!
+!      OUTPUT:  vector x, dim (n)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for vector x such that:
+!           1. Ax = b
+!       Assumes that:
+!           1. A is lower-left-triangular 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine BackSubstitute(A,m,n,x,b)
     implicit none
     integer,intent(in) :: m, n
@@ -1116,8 +1205,20 @@ subroutine BackSubstitute(A,m,n,x,b)
 
 end subroutine BackSubstitute
 
-!This is for UPPER (RIGHT) TRIANGULAR matrix A
-!with equation of form Ax = b
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      ForwardSubstitute FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  matrix A, dim (m,n)      
+!               vector b, dim (m)      
+!
+!      OUTPUT:  vector x, dim (n)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for vector x such that:
+!           1. Ax = b
+!       Assumes that:
+!           1. A is upper-right-triangular 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine ForwardSubstitute(A,m,n,x,b)
     implicit none
     integer,intent(in) :: m, n
@@ -1175,6 +1276,19 @@ end subroutine ForwardSubstitute
 
 
 
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      getFlooredSqrt FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  integer i1
+!
+!      OUTPUT:  integer i2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for integer i2 such that:
+!           1. (i2)**2 <= i1 < (i2+1)**2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine getFlooredSqrt(i1,i2)
     implicit none
     integer,intent(in) :: i1
@@ -1194,6 +1308,18 @@ subroutine getFlooredSqrt(i1,i2)
 
 end subroutine getFlooredSqrt
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      ZtoN FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  integer z
+!
+!      OUTPUT:  integer n
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for integer n such that:
+!           1. ZtoN: Z -> N
+!                is bijective
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine ZtoN(z,n)
     implicit none
     integer,intent(in) :: z
@@ -1209,6 +1335,19 @@ subroutine ZtoN(z,n)
 
 end subroutine ZtoN
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      NNtoN FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  integer n1
+!               integer n2
+!
+!      OUTPUT:  integer n
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for integer n such that:
+!           1. NNtoN: Z -> N
+!                is bijective
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 subroutine NNtoN(n1,n2,n)
     implicit none
     integer,intent(in) :: n1,n2
@@ -1222,6 +1361,16 @@ subroutine NNtoN(n1,n2,n)
     return
 
 end subroutine NNtoN
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      NtoZ FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  integer n
+!
+!      OUTPUT:  integer z
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Inverse of ZtoN
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine NtoZ(n,z)
     implicit none
@@ -1237,6 +1386,17 @@ subroutine NtoZ(n,z)
     return
 
 end subroutine NtoZ
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      NtoNN FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  integer n
+!
+!      OUTPUT:  integer n1
+!               integer n2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Inverse of NNtoN
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine NtoNN(n,n1,n2)
     implicit none
@@ -1254,6 +1414,18 @@ subroutine NtoNN(n,n1,n2)
 
 end subroutine NtoNN
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      getFlattened FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  integer, dim(Nvar) x
+!
+!      OUTPUT:  integer xflat
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Solve for integer xflat such that:
+!           1. getFlattened: Z**Nvar -> N
+!                is bijective
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine getFlattened(Nvar,x,xflat)
     implicit none
@@ -1279,6 +1451,16 @@ subroutine getFlattened(Nvar,x,xflat)
     return
 
 end subroutine getFlattened
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      getExpanded FUNCTION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       INPUT:  integer x
+!
+!      OUTPUT:  integer, dim(Nvar) xexpanded
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!       Inverse of getFlattened
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 subroutine getExpanded(Nvar,x,xexpanded)
     implicit none

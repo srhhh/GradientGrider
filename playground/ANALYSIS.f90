@@ -179,11 +179,12 @@ logical,parameter :: testtraj_flag = .true.
             integer,parameter :: Nalpha_tries_max = 3
             real(dp),dimension(Nalpha_tries_max),parameter :: alpha_ratio_list = &
                     (/ 10.0d-2, 10.0d-1, 10.0d0 /)
+!                   (/ 10.0d0, 10.0d-1, 10.0d0 /)
 
             !We can also make what I like to call
             !"consolidated" dropoffs that do an interpolation
             !for every N points up until N*M
-            logical,parameter :: dropoff_flag = .true.
+            logical,parameter :: dropoff_flag = .false.
             character(11),parameter :: dropofffile = "dropoff.dat"
             integer,parameter :: dropoff_Npacket = 4
             integer,parameter :: dropoff_Mpacket = 5
@@ -198,7 +199,7 @@ logical,parameter :: testtraj_flag = .true.
             real(dp),parameter :: tcut_interval = 0.1000d0
 
             !For FCCheck
-            logical :: FCCheck_flag = .true.
+            logical :: FCCheck_flag = .false.
 
    !Set .true. to generate the scattering angle plots of
    !the trajectories for each grid
