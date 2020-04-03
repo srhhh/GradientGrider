@@ -28,10 +28,10 @@ var2 = j * multiplier2
         indexer = indexN + scaling2*(i-1) + j
         population = counterN(indexer)
 
-	write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
+        write(filechannel1,FMT="(F5.2,1x,F5.2,1x,I8)") var1, var2, population
 
 end do
-	write(filechannel1,*) ""
+        write(filechannel1,*) ""
 end do
 close(filechannel1)
 
@@ -51,10 +51,7 @@ write(filechannel1,*) 'set view map'
 write(filechannel1,*) 'set pm3d interpolate 1,1'
 write(filechannel1,*) 'splot "'//path_to_grid//temporaryfile3//'" u 1:2:3 w pm3d'
 close(filechannel1)
-call system("gnuplot < "//path_to_grid//gnuplotfile)
-
-!Then call gnuplot to make the image
-call system("gnuplot < makeHeatMap")
+call system(path_to_gnuplot//"gnuplot < "//path_to_grid//gnuplotfile)
 
 end subroutine mapCell
 
