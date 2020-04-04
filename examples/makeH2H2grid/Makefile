@@ -2,7 +2,7 @@ a.out : DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rm
 	$(FC) -o a.out -O3 -fcheck="bound" DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rmsd_original.o SIMILARITY.o interactMultipleGrids.o mapCellData.o analyzeScatteringAngleswithMultipleGrids.o analyzeRMSDThresholdwithMultipleGrids.o analyzeHeatMapswithMultipleGrids.o runTrajectory.o makeGridwithNewTrajectories.o
 
 FC = gfortran
-STEM = /home/kazuumi/Desktop/
+STEM = $(shell pwd)
 SOURCE = $(STEM)GradientGrider/grid1/src/
 EXPSOURCE = $(STEM)GradientGrider/grid1/startup/
 

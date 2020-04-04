@@ -1,102 +1,281 @@
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       MODULE
-!               VARIABLES
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       PURPOSE
-!               This modules defines the collective variables used to
-!               grid the library
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       FILECHANNELS                    ACTION
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       SUBROUTINES                     ARGUMENTS               KIND
-!
-!               getVarsMaxMin                   coords                  intent(in),real(dp),dim(3,Natoms)
-!                                               Natoms                  intent(in),integer
-!                                               vals                    intent(out),real(dp),dim(Nvar)
-!                                               Nvar                    intent(in),integer
-!                                               labelling               intent(out),integer,dim(Natoms)
-!
-!               getDistanceSquared              coord1                  intent(in),real(dp),dim(3)
-!                                               coord2                  intent(in),real(dp),dim(3)
-!                                               d                       intent(out),real(dp)
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       CALLS                           MODULE
-!
-!               getDistanceSquared            VARIABLES
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       FILES                             FILETYPE                      DESCRIPTION
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-module VARIABLES
-use DOUBLE
+module ANALYSIS
+use PHYSICS
 implicit none
-integer,dimension(4,2),parameter :: BOND_LABELS_TENTATIVE = reshape((/ 1, 2, 1, 2, &
-                                                                       3, 4, 4, 3 /),    (/ 4, 2 /))
+
+!This module is inteded to be changed according to what the user
+!wants to analyze from a grid that was made.
+!Analysis is done in roughly the order they appear here
+
+!The name of this experiment
+integer,parameter :: expfolder_length = 8
+character(expfolder_length),parameter :: expfolder = "startup/"
+
+!Set the number of grids to be analyzed; will start at 001 and increment
+!If this number is larger than the number of grids in the folder,
+!then it will default to the number of grids in the folder
+integer,parameter :: Ngrid_cap = 1
+!The number of grids we will end up using (never more than Ngrid_cap)
+integer :: Ngrid_total
+!$OMP THREADPRIVATE(Ngrid_total)
+
+!The number of threads to use
+integer, parameter :: Nthreads = 1
+
+!Set the number of children cells to be checked
+integer,parameter :: Norder_cap = 1
+
+!Set .true. to generate top-level heat maps for each complete grid
+logical,parameter :: heatmap_flag = .true.
+character(14),parameter :: populationfile = "population.dat"
+character(12),parameter :: covarmapfile = "covarmap.dat"
+
+!Set .true. to generate the scattering angle plots of the trajectories
+!that were generated with molecular dynamics for each grid
+logical,parameter :: trueSA_flag = .false.
+logical,parameter :: trueED_flag = .false.
+integer,parameter :: SA_Nbins = 50
+integer,parameter :: TRV_Nbins = 50
+
+!Set .true. to generate trajectories with molecular dynamics
+!and test them against the grid
+!Note: if you ALREADY made these trajectories (stored in I0.6 files)
+!then you can set this .false. to proceed with analysis and save computation
+logical,parameter :: testtraj_flag = .true.
+
+   !Set .true. if you are generating new trajectories and you want them
+   !to be stored in new files (don't overwrite old files)
+   !Only set .true. if, essentially, you are alright using old
+   !data and want to save computation
+   logical,parameter :: useolddata_flag = .false.
+
+   !Set .true. if you want to use the initial conditions of a
+   !previous test; specify which one in the variable that follows
+   logical,parameter :: useoldinitialbonddata_flag = .false.
+   integer,parameter :: initialbondfolder_length = 40
+   character(initialbondfolder_length),parameter :: initialbondfolder = ""
+
+   !Set how many trajectories will be generated for the test
+   !If old data is being used, this number will be decreased internally
+   integer,parameter :: Ntesttraj = 1000
+
+   !Set .true. to generate the RMSD frequency plots for each
+   !trajectory tested for each grid
+   !(Not recommended for large Ntesttraj or Ngrid_total_cap)
+   logical,parameter :: testtrajRMSD_flag = .false.
+
+   !Set .true. to generate the checkTrajectory plots for each
+   !trajectory tested for each grid
+   !(Not recommended for large Ntesttraj or Ngrid_total_cap)
+   logical :: testtrajDetailedRMSD_flag = .false.
+
+
+       !Various variables if we are tracking the interpolation
+       !at various alpha ratios for this detailed trajectory
+       integer,parameter :: Nalpha = 61
+       real(dp) :: alpha_start = -7.0d0
+       real(dp) :: alpha_end = 5.0d0
+       logical :: logarithmic_alpha_flag = .true.
+       character(9) :: alphafile = "alpha.dat"
+
+   !This takes much more time but you can force the checkState subroutine
+   !to also check the rmsd of frames in adjacent cells
+   logical :: force_Neighbors = .true.
+
+   logical :: force_Permutations = .false.
+
+   logical :: memory_flag = .true.
+   integer :: single_index_max
+
+   !The point at which checkState stops checking neighbors
+   !is determined here
+   !The default (if none of these are set) is all zeros
+   integer,parameter :: ssm_length = 2
+   integer,dimension(ssm_length) :: ssm1 = (/ 24, 00 /)
+   integer,dimension(ssm_length) :: ssm2 = (/ 00, 00 /)
+
+   !Set .true. to generate a frequency plot of the percentage
+   !of frames in each trajectory that were below some threshold RMSD
+   logical,parameter :: percentthreshold_flag = .true.
+   integer,parameter :: RMSD_Nbins = 50
+
+   !One plot will be produced per grid if percentthrshold_key = 0
+   !Otherwise, percentthreshold_key is translated into binary
+   !The string of 1s and 0s dictate which number of grids will be
+   !plotted and which won't
+   ! ex. 27 = 11011 = 1, 2, 4, and 5 grids will be plotted
+   integer,parameter :: percentthreshold_key = 0
+
+      !Set the threshold RMSD to be used for any rejection method
+      !real(dp),parameter :: !threshold_rmsd! = !.200100d0
+      real(dp) :: outer_threshold_SI = .00100d0
+      real(dp) :: inner_threshold_SI = 0.0d0
+      real(dp),parameter :: R1_threshold_SI = 0.10d0
+      real(dp),parameter :: R2_threshold_SI = 0.10d0
+      integer :: Nsort = 1
+
+      !The flag for diversity
+      logical :: diversity_flag = .true.
+
+      !Set .true. to generate trajectories using md-calculated gradients
+      !Otherwise, the program will use the above threshold as a rejection
+      !method
+      logical :: reject_flag = .true.
+      logical :: readtrajectory_flag = .false.
+
+      !If reject_flag is false (and we are accepting frames) then
+      !accept_first controls whether we use the first frame accepted
+      !or use the frame that is closest in RMSD
+      logical :: accept_first = .true.
+
+      !If reject_flag is false (and we are accepting frames) then
+      !accept_worst indicates to accept the frame with the
+      !maximum RMSD (instead of the minimum RMSD)
+      logical :: accept_worst = .false.
+
+      !Set .true. if the real force calculations we do should be
+      !added to the grid
+      integer :: grid_addition = 1
+
+      !Set .true. if you are continuing a previous analysis
+      logical,parameter :: continue_analysis = .false.
+
+      !$OMP THREADPRIVATE(reject_flag,accept_first,accept_worst)
+
+         !Set .true. if interpolation should be used; that is to say
+         !a weighted combination of acceptable frames are used to
+         !calculate an approximate gradient
+         logical :: interpolation_flag = .true.
+
+         !Interpolation requires a scaling parameter for the weights
+         !This is a positive, nonzero real number
+         !(Now deprecated from introduction of 2nd order LS minimization)
+         real(dp) :: interpolation_alpha1 = 2.0d0
+
+         !For persistent data collection and analysis, a new file
+         !is dedicated to interpolation results
+         !Whether we record or not to this file is governed by the
+         !gather_interpolation_flag
+         logical :: gather_interpolation_flag = .true.
+         character(17),parameter :: interpolationfile = "interpolation.dat"
+         character(14),parameter :: interpolationfolder = "interpolation/"
+
+            !Interpolation data can be checked at any point
+            !whenever the interpolation counter reaches the
+            !interpolation check, the data is checked
+            !If the visual flag is true, then a visual is also
+            !made when the data is checked
+            integer :: interpolation_check = 50000
+            integer :: interpolation_counter
+            logical :: interpolation_check_visual = .false.
+
+            real(dp) :: alpha_ratio = 1.0d0
+
+            integer,parameter :: Ninterpolation_max = 40
+            integer,parameter :: Ninterpolation_cap = 20
+
+            integer,parameter :: Naccept_max = 20
+            real(dp),allocatable :: trajRMSDbuffer(:,:)
+
+            integer,parameter :: Nalpha_tries_max = 3
+            real(dp),dimension(Nalpha_tries_max),parameter :: alpha_ratio_list = &
+                    (/ 10.0d-2, 10.0d-1, 10.0d0 /)
+!                   (/ 10.0d0, 10.0d-1, 10.0d0 /)
+
+            !We can also make what I like to call
+            !"consolidated" dropoffs that do an interpolation
+            !for every N points up until N*M
+            logical,parameter :: dropoff_flag = .false.
+            character(11),parameter :: dropofffile = "dropoff.dat"
+            integer,parameter :: dropoff_Npacket = 4
+            integer,parameter :: dropoff_Mpacket = 5
+            integer,parameter :: dropoff_NM = dropoff_Npacket*dropoff_Mpacket
+
+            !For errorCheck11
+            logical :: errorCheck11_flag = .false.
+            character(8),parameter :: errorCheck11file = "tcut.dat"
+            integer,parameter :: Ntcut = 6
+            real(dp),parameter :: inner_start = 0.0000d0
+            real(dp),parameter :: outer_start = 0.1000d0
+            real(dp),parameter :: tcut_interval = 0.1000d0
+
+            !For FCCheck
+            logical :: FCCheck_flag = .false.
+
+   !Set .true. to generate the scattering angle plots of
+   !the trajectories for each grid
+   logical,parameter :: testtrajSA_flag = .true.
+
+   !Set .true. to generate the scattering angle plots of
+   !the trajectories for each grid
+   logical,parameter :: testheatmapSA_flag = .true.
+
+   !Set .true. to generate the energy decomposition plots of
+   !the trajectories for each grid
+   logical,parameter :: testtrajTRV_flag = .true.
+
+!Set .true. to ask the program to do a comparison of multiple
+!trajectory sets (mostly for consistency checking)
+logical,parameter :: comparison_flag = .false.
+character(69),parameter :: comparison_file = ""
+character(40),parameter :: comparison_SATRVname = ""
+integer :: comparison_SATRVcolumn
+real,parameter :: comparison_lowerlimit = 0.0d0
+real,parameter :: comparison_upperlimit = 0.0d0
+
+!Some variables used to calculate the KRP
+!Useful to be global so that the convergence can
+!communicate with the comparison
+real :: lambda_penalty
+real :: minsd_penalty
+
+integer,parameter :: comparison_number = 1
+character(expfolder_length),parameter :: allprefixes = expfolder
+integer,dimension(comparison_number),parameter :: alllengths = (/ expfolder_length /)
+
+character(11),parameter :: analysisfile = "placeholder"
+
+
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       SUBROUTINE
-!               getVarsMaxMin
+!               getPrefixText
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
+! 
 !       PURPOSE
-!               This subroutine gets the collective variables of a frame
-!
-!               This subroutine assumes this is a TWO variable griding
-!
-!               Currently, there are two main segments, one for if this is a H-H2
-!               system and one for if this is a H2-H2 system; to switch back and
-!               forth, you must manually comment and uncomment the respective
-!               segments
+!               This subroutine uniquely describes an approximation method with a string
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       INPUT                           KIND                            DESCRIPTION
 !
-!               coords                          REAL(DP),DIM(3,Natoms)          The coordinates of the frame
-!               Natoms                          INTEGER                         The number of atoms in the system
-!               Nvar                            INTEGER                         The number of variables in the grid
-!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       OUTPUT                          KIND                            DESCRIPTION
 !
-!               vals                            REAL(DP),DIM(Nvals)             The variables defining the frame
-!               labelling                       INTEGER,DIM(Natoms)             The labeling scheme used to account for atom
-!                                                                               indistinguishability
+!               prefix_text                     CHAR(12)                        The string that uniquely describes
+!                                                                               the approximation method
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !       IMPORTANT VARIABLES             KIND                            DESCRIPTION
 !
-!               length1                         REAL(DP)                        USED IN THE  H - H2 SYSTEM
-!               length2                         REAL(DP)                        USED IN THE  H - H2 SYSTEM
+!               reject_flag                     LOGICAL                         If true, then reject all approximations;
+!                                                                               otherwise, use approximations
+!               accept_first                    LOGICAL                         If true, then approximations use the first candidate;
+!                                                                               otherwise, they use the best candidate
+!               accept_worst                    LOGICAL                         If true, then approximations use the worst candidate;
+!                                                                               otherwise, they use the best candidate
 !
-!               lengths                         REAL(DP),DIM(4)                 USED IN THE H2 - H2 SYSTEM
-!               min1_length                     INTEGER                         USED IN THE H2 - H2 SYSTEM
-!               min2_length                     INTEGER                         USED IN THE H2 - H2 SYSTEM
-!               max_length                      INTEGER                         USED IN THE H2 - H2 SYSTEM
+!               threshold_rmsd                  REAL(DP)                        The RMSD threshold which differentiates candidates
+!                                                                               for approximation from others
+!
+!               reject_text                     CHAR(6)                         A string desribing the approximation method
+!               Nthreshold_text                 CHAR(6)                         A string desribing the threshold of acceptance
+!                                                                               for the approximation method
+
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -104,370 +283,40 @@ contains
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-subroutine getVarsMaxMin(coords,Natoms,vals,Nvar,labelling)
+subroutine getPrefixText(prefix_text)
+use PARAMETERS
 implicit none
-integer,intent(in) :: Natoms, Nvar
-real(dp),dimension(3,Natoms),intent(in) :: coords
-real(dp),dimension(Nvar),intent(out) :: vals
-integer,dimension(Natoms),intent(inout) :: labelling
-!real(dp) :: length1,length2
-real(dp),dimension(4) :: lengths
-integer :: min1_length, min2_length, max_length
-integer :: i, start_label
 
+!Grid Directory/File Formatting Strings
+character(6) :: reject_text
+character(6) :: Nthreshold_text
+character(12),intent(out) :: prefix_text
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! H - H2  (test)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!call getDistanceSquared(coords(:,1),coords(:,2),length1)
-!call getDistanceSquared(coords(:,1),coords(:,3),length2)
-!
-!if (length1 < length2) then
-!	labelling(2) = 2
-!	labelling(3) = 3
-!	vals(1) = sqrt(length1)
-!else
-!	labelling(2) = 3
-!	labelling(3) = 2
-!	vals(1) = sqrt(length2)
-!end if
-!
-!vals(2) = 1.0d0 + dot_product(coords(:,1)-coords(:,2),coords(:,1)-coords(:,3)) /&
-!                  sqrt(length1*length2)
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! H - H2  (normal)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!!In this labeling scheme, we implicitly assume the nonbonded hydrogen
-!!is the 1st atom (as it is when I define it in PHYSICS)
-!!Otherwise, make sure you label it as the first atom
-!
-!!Get the length between atoms 1 and 2
-!call getDistanceSquared(coords(:,1),coords(:,2),length1)
-!
-!!Get the length between atoms 1 and 3
-!call getDistanceSquared(coords(:,1),coords(:,3),length2)
-!
-!!If length1 < length2, then the 2nd atom must be closest to the
-!!nonbonded hydrogen, so it is labeled as 2nd
-!if (length1 < length2) then
-!	labelling(2) = 2
-!	labelling(3) = 3
-!	vals(1) = sqrt(length1)
-!	vals(2) = sqrt(length2)
-!
-!!Otherwise, the 2nd atom is the farthest from the
-!!nonbonded hydrogen, so it is labeled as 3rd
-!else
-!	labelling(2) = 3
-!	labelling(3) = 2
-!	vals(1) = sqrt(length2)
-!	vals(2) = sqrt(length1)
-!end if
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! H2 - H2 (normal)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-!First, get all lengths between nonbonded hydrogen
-!In PHYSICS, we define nonbonded hydrogen pairs by rows in the variable
-!BOND_LABELS_TENTATIVE; consequently, this variable must be 4x2 in dimension
-
-do i = 1, 4
-	call getDistanceSquared(coords(:,BOND_LABELS_TENTATIVE(i,1)),&
-				coords(:,BOND_LABELS_TENTATIVE(i,2)),lengths(i))
-end do
-
-!Next, locate the MIN, 2nd MIN, and MAX distance between nonbonded hydrogens
-!(Bear with me, this actually works)
-!Basically, because there are only 4 lengths, we can reduce this to
-!a psuedo-case statement that only checks whether the last two lengths
-!(between 1,4 and 3,2) are 1) lower, 2) in-between, or 3) greater
-!than the established MIN and MAX between the first two lengths
-
-min1_length = minloc(lengths(1:2),1)
-min2_length = 3 - min1_length
-max_length = min2_length
-do i = 3, 4
-	if (lengths(i) < lengths(min2_length)) then
-		if (lengths(i) < lengths(min1_length)) then
-			min2_length = min1_length
-			min1_length = i
-		else
-			min2_length = i
-		end if
-	else if (lengths(i) > lengths(max_length)) then
-		max_length = i
-	else
-	end if
-end do
-
-!Unfortunately, because of how we define the variable and grid, we
-!must take two square roots here
-
-vals(1) = sqrt(lengths(min1_length))
-vals(2) = sqrt(lengths(max_length))
-
-!Now, on to labeling
-!If the MIN AND MAX lengths both involve the same hydrogen then
-!we label that hydrogen as the first atom
-
-start_label = 0
-do i = 1, 4
-	if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
-	  (any(BOND_LABELS_TENTATIVE(max_length,:) == i, 1))) then
-		start_label = i
-	end if
-end do
-
-!If not, then we label the first hydrogen as the hydrogen involved
-!in both the MIN AND 2nd MIN lengths
-
-if (start_label == 0) then
-	do i = 1, 4
-		if (any(BOND_LABELS_TENTATIVE(min1_length,:) == i, 1) .and. &
-		  (any(BOND_LABELS_TENTATIVE(min2_length,:) == i, 1))) then
-			start_label = i
-		end if
-	end do
-end if
-
-!After deciding the first atom, we label the second atom
-!as the hydrogen not bonded to the first atom (using minimal length)
-
-labelling(1) = start_label
-if (BOND_LABELS_TENTATIVE(min1_length,1) == start_label) then
-	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,2)
+write(Nthreshold_text,FMT=FMT6_pos_real0) outer_threshold_SI
+if (reject_flag) then
+        reject_text = "reject"
 else
-	labelling(2) = BOND_LABELS_TENTATIVE(min1_length,1)
+        if (accept_first) then
+                 if (accept_worst) then
+                         reject_text = "alphaW"
+                 else
+                         reject_text = "alphaA"
+                 end if
+        else
+                 if (accept_worst) then
+                         reject_text = "omegaW"
+                 else
+                         reject_text = "omegaA"
+                 end if
+        end if
 end if
 
-!Then we label the third atom to be the hydrogen not bonded
-!to the first atom (using maximal length)
+prefix_text = reject_text//Nthreshold_text
 
-if (BOND_LABELS_TENTATIVE(max_length,1) == start_label) then
-	labelling(3) = BOND_LABELS_TENTATIVE(max_length,2)
-else
-	labelling(3) = BOND_LABELS_TENTATIVE(max_length,1)
-end if
-
-!And the fourth atom must be whichever index
-!we have not used yet, which is 4+3+2+1 - (x1+x2+x3)
-
-labelling(4) = 10 - sum(labelling(1:3))
-
-end subroutine getVarsMaxMin
+end subroutine getPrefixText
 
 
-subroutine getVarsHBrCO2(coords,Natoms,vals,Nvar,labelling)
-implicit none
-integer,intent(in) :: Natoms, Nvar
-real(dp),dimension(3,Natoms),intent(in) :: coords
-real(dp),dimension(Nvar),intent(out) :: vals
-integer,dimension(Natoms),intent(inout) :: labelling
-real(dp) :: length1,length2
-integer :: i
-
-!Var1 will be the distance between the
-!hydrogen (1) and the carbon (4)
-
-call getDistanceSquared(&
-    coords(:,1),coords(:,4),vals(1))
-
-vals(1) = sqrt(vals(1))
-
-
-!Var2 will be the minimum of the distances
-!between the bromine (2) and the two
-!oxygens (3,5)
-
-call getDistanceSquared(&
-    coords(:,2),coords(:,3),length1)
-call getDistanceSquared(&
-    coords(:,2),coords(:,5),length2)
-
-vals(2) = sqrt(min(length1,length2))
-
-!Who cares about labelling ... am I right?
-
-do i = 1, Natoms
-    labelling(i) = i
-end do
-
-end subroutine getVarsHBrCO2
+end module ANALYSIS
 
 
 
-!Variable one is the distance between the midpoints of two bonds (ONLY FOR H2 - H2)
-subroutine getVar1(coords,Natoms,var1)
-implicit none
-integer,intent(in) :: Natoms
-real(dp), dimension(3,Natoms),intent(in) :: coords
-real(dp), intent(out) :: var1
-real(dp) :: length1, length2, length3, length4
-
-!call getDistanceSquared(coords(:,1)+coords(:,2),coords(:,3)+coords(:,4),var1)
-!var1 = 0.5 * sqrt(var1)
-
-!call getDistanceSquared(coords(:,1),coords(:,3),length1)
-!call getDistanceSquared(coords(:,2),coords(:,4),length2)
-!call getDistanceSquared(coords(:,1),coords(:,4),length3)
-!call getDistanceSquared(coords(:,2),coords(:,3),length4)
-!var1 = sqrt(min(length1,length2,length3,length4))
-
-call getDistanceSquared(coords(:,1),coords(:,2),length1)
-call getDistanceSquared(coords(:,1),coords(:,3),length2)
-var1 = sqrt(min(length1,length2))
-
-end subroutine getVar1
-
-!Variable two is the cosine of the angle between the first H2 bond vector and
-!						 the second H2 bond vector
-!but shifted over by one, so that all values are positive
-subroutine getVar2(coords,Natoms,var2)
-implicit none
-integer, intent(in) :: Natoms
-real(dp), dimension(3,Natoms), intent(in) :: coords
-!real(dp), dimension(3) :: bond_vector1, bond_vector2, bond_CM_vector
-!real(dp) :: bond1_length, bond2_length, bond_CM_length
-!real(dp), dimension(4) :: bond_lengths       !NOTE: This is not generic yet
-!integer :: bond_pair
-real(dp) :: length1, length2, length3, length4
-real(dp), intent(out) :: var2
-
-call getDistanceSquared(coords(:,1),coords(:,2),length1)
-call getDistanceSquared(coords(:,1),coords(:,3),length2)
-var2 = sqrt(max(length1,length2))
-
-!call getDistanceSquared(coords(:,1),coords(:,3),length1)
-!call getDistanceSquared(coords(:,2),coords(:,4),length2)
-!call getDistanceSquared(coords(:,1),coords(:,4),length3)
-!call getDistanceSquared(coords(:,2),coords(:,3),length4)
-!var2 = sqrt(max(length1,length2,length3,length4))
-
-!call getDistanceSquared(coords(:,1),coords(:,3),bond_lengths(1))
-!call getDistanceSquared(coords(:,2),coords(:,4),bond_lengths(2))
-!call getDistanceSquared(coords(:,1),coords(:,4),bond_lengths(3))
-!call getDistanceSquared(coords(:,2),coords(:,3),bond_lengths(4))
-!bond_pair = minloc(bond_lengths,dim=1)
-!
-!if (bond_pair == 1) then
-!	bond_vector1 = coords(:,2) - coords(:,1)
-!	bond_vector2 = coords(:,4) - coords(:,3)
-!	bond1_length = sum(bond_vector1**2)
-!	bond2_length = sum(bond_vector2**2)
-!
-!else if (bond_pair == 2) then
-!	bond_vector1 = coords(:,1) - coords(:,2)
-!	bond_vector2 = coords(:,3) - coords(:,4)
-!	bond1_length = sum(bond_vector1**2)
-!	bond2_length = sum(bond_vector2**2)
-!
-!else if (bond_pair == 3) then
-!	bond_vector1 = coords(:,2) - coords(:,1)
-!	bond_vector2 = coords(:,3) - coords(:,4)
-!	bond1_length = sum(bond_vector1**2)
-!	bond2_length = sum(bond_vector2**2)
-!
-!else
-!	bond_vector1 = coords(:,1) - coords(:,2)
-!	bond_vector2 = coords(:,4) - coords(:,3)
-!	bond1_length = sum(bond_vector1**2)
-!	bond2_length = sum(bond_vector2**2)
-!
-!end if
-!
-!var2 = 1.0d0 + dot_product(bond_vector1,bond_vector2)/sqrt(bond1_length*bond2_length)
-
-end subroutine getVar2
-
-!Variables three and four are the distance between atoms 1 and 2 and 1 and 3, respectively
-subroutine getVar3(coords,Natoms,var3)
-implicit none
-integer, intent(in) :: Natoms
-real(dp), dimension(3,Natoms), intent(in) :: coords
-real(dp), intent(out) :: var3
-
-call getDistanceSquared(coords(:,1),coords(:,2),var3)
-var3 = sqrt(var3)
-end subroutine getVar3
-
-subroutine getVar4(coords,Natoms,var4)
-implicit none
-integer, intent(in) :: Natoms
-real(dp), dimension(3,Natoms), intent(in) :: coords
-real(dp), intent(out) :: var4
-
-call getDistanceSquared(coords(:,1),coords(:,3),var4)
-var4 = sqrt(var4)
-end subroutine getVar4
-
-!Variables five and six are the distance between atoms 1 and 3 and 2 and 4, respectively
-subroutine getVar5(coords,Natoms,var5)
-implicit none
-integer, intent(in) :: Natoms
-real(dp), dimension(3,Natoms), intent(in) :: coords
-real(dp), intent(out) :: var5
-
-call getDistanceSquared(coords(:,1),coords(:,3),var5)
-var5 = sqrt(var5)
-end subroutine getVar5
-
-subroutine getVar6(coords,Natoms,var6)
-implicit none
-integer, intent(in) :: Natoms
-real(dp), dimension(3,Natoms), intent(in) :: coords
-real(dp), intent(out) :: var6
-
-call getDistanceSquared(coords(:,2),coords(:,4),var6)
-var6 = sqrt(var6)
-end subroutine getVar6
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       SUBROUTINE
-!               getDistanceSquared
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       PURPOSE
-!               This subroutine gets the distance (squared) between two atoms
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       INPUT                           KIND                            DESCRIPTION
-!
-!               coord1                          REAL(DP),DIM(3)                 The coordinates of the first atom
-!               coord2                          REAL(DP),DIM(3)                 The coordinates of the second atom
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       OUTPUT                          KIND                            DESCRIPTION
-!
-!               d                               REAL(DP)                        The distance between the two atoms
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       IMPORTANT VARIABLES             KIND                            DESCRIPTION
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!       FILES                             FILETYPE                      DESCRIPTION
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-subroutine getDistanceSquared(coord1,coord2,d)
-implicit none
-real(dp), dimension(3), intent(in) :: coord1, coord2
-real(dp), intent(out) :: d
-
-d = (coord1(1)-coord2(1))**2 + (coord1(2)-coord2(2))**2 + &
-        (coord1(3)-coord2(3))**2
-
-end subroutine getDistanceSquared
-
-end module VARIABLES

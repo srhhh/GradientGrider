@@ -19,7 +19,7 @@ module PARAMETERS
 !Path to the f90s and bash scripts
 !character(44),parameter :: path2 = "/home/kazuumi/lus/B0/branch1/GradientGrider/"
 !character(37),parameter :: path2 = "/home/kazuumi/Desktop/GradientGrider/"
- character(48),parameter :: path_to_source = "/home/kazuumi/Desktop/GradientGrider/playground/"
+ character(5),parameter :: path_to_source = "/src/"
 !character(42),parameter :: path_to_gnuplot= "/lus/scratch/usr/ruisun/gnuplot-5.2.4/bin/"
  character(0),parameter :: path_to_gnuplot= ""
 
@@ -145,7 +145,7 @@ integer,parameter :: Ngrid_text_length = 3
 !Gridpath is one variable that must be supplied by the user and is changed
 !on the LOCAL version of a library; this is changed AUTOMATICALLY
 !But within the library itself it should stay constant
-integer,parameter :: gridpath_length = 68
+integer,parameter :: gridpath_length = 0
 character(gridpath_length),parameter :: gridpath0 = ""
 integer, parameter :: SAfiles_text_length = gridpath_length +&
                                                  4 + 12 + len(SAfile) + 1
@@ -190,7 +190,7 @@ integer,parameter :: Ngradientcoordsvals = Nvar+Ncoords*2
 !on the LOCAL version of alibrary; this is done AUTOMATICALLY
 
 !Norder_max controls how many children generation we will make
-integer,parameter :: Norder_max = 2
+integer,parameter :: Norder_max = 1
 
 
 !Some default values are good if we don't know at execution
@@ -299,7 +299,7 @@ logical,parameter :: force_Duplicates = .false.
 !for the frame to be added to have no relabelling
 !Note: this makes it so that two indistinguishable frames
 !      possibly do not have the same RMSD or even cell index
-logical,parameter :: force_NoLabels = .false.
+logical,parameter :: force_NoLabels = .true.
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -318,7 +318,7 @@ integer :: Ngrid_max = 1
 !$OMP THREADPRIVATE(Ngrid_max)
 
 !The number of trajectories to make before checking the grid-making progress
-integer,parameter :: Ngrid_check_min = 1
+integer,parameter :: Ngrid_check_min = 100
 integer,parameter :: Ngrid_check = max(Ntraj_max/10,Ngrid_check_min)
 
 

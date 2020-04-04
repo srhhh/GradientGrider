@@ -190,7 +190,7 @@ integer,parameter :: Ngradientcoordsvals = Nvar+Ncoords*2
 !on the LOCAL version of alibrary; this is done AUTOMATICALLY
 
 !Norder_max controls how many children generation we will make
-integer,parameter :: Norder_max = 2
+integer,parameter :: Norder_max = 1
 
 
 !Some default values are good if we don't know at execution
@@ -318,7 +318,7 @@ integer :: Ngrid_max = 1
 !$OMP THREADPRIVATE(Ngrid_max)
 
 !The number of trajectories to make before checking the grid-making progress
-integer,parameter :: Ngrid_check_min = 1
+integer,parameter :: Ngrid_check_min = 100
 integer,parameter :: Ngrid_check = max(Ntraj_max/10,Ngrid_check_min)
 
 

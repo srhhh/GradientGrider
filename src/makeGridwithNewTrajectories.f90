@@ -1068,7 +1068,7 @@ write(Ngrid_text,FMT="(I0."//trim(adjustl(variable_length_text))//")") Ngrid
 open(gnuplotchannel,file=gridpath1//gnuplotfile)
 write(gnuplotchannel,*) 'set term pngcairo size 1200,1200'
 write(gnuplotchannel,*) 'set output "'//gridpath0//expfolder//&
-                        'GridCreationGraph.png_'//Ngrid_text//'"'
+                        'GridCreationGraph_'//Ngrid_text//'.png"'
 write(gnuplotchannel,*) 'set style line 1 lc rgb "red" pt 5'
 write(gnuplotchannel,*) 'set style line 2 lc rgb "green" pt 7'
 write(gnuplotchannel,*) 'set style line 3 lc rgb "blue" pt 13'
