@@ -91,7 +91,7 @@ Whenever a frame submits a request for an energy gradient from Gradient Grider, 
 
 # Example Execution
 
-If you have Windows or Mac, pleae leave. You must have an alright version of gnuplot and fortran; only gfortran and ifort have been tested.
+If you have Windows or Mac, please leave. You must have an alright version of gnuplot and fortran; only gfortran and ifort have been tested.
 
 Clone the master branch from github into your desired workspace. You should have a directory called "GradientGrider" with subdirectories "src" and "examples".
 
@@ -105,16 +105,19 @@ mkdir grid1
 cd grid1
 ```
 
-Copy the source code into this grid and make another directory "startup" to keep track of metadata at the beginning.
+Copy the source code into this grid and make another directory "startup" to keep track of metadata at the beginning as well as a directory "exp001" to keep track of metadata for the first check.
 
 ```
 cp -r ../src/ .
 mkdir startup
+mkdir exp001
 ```
 
 Now, depending on which system you want to model, copy files from one of the following directories into the grid.
 
 For the prototype H - H2:
+
+(1)
 
 ```
 cp ../examples/makeHH2grid/*.f90 src/
@@ -125,7 +128,20 @@ make
 ./a.out
 ```
 
+(2)
+
+```
+cp ../examples/checkHH2grid/ANALYSIS.f90 exp001/
+cp ../examples/checkHH2grid/Makefile .
+make clean
+make
+./a.out
+```
+
+
 For the prototype H2 - H2:
+
+(1)
 
 ```
 cp ../examples/makeH2H2grid/*.f90 src/
@@ -136,7 +152,20 @@ make
 ./a.out
 ```
 
+(2)
+
+```
+cp ../examples/checkH2H2grid/ANALYSIS.f90 exp001/
+cp ../examples/checkH2H2grid/Makefile .
+make clean
+make
+./a.out
+```
+
+
 For the prototype HBr - CO2:
+
+(1)
 
 ```
 cp ../examples/makeHBrCO2grid/*.f90 src/
@@ -146,3 +175,15 @@ make clean
 make
 ./a.out
 ```
+
+(2)
+
+```
+cp ../examples/checkHBrCO2grid/ANALYSIS.f90 exp001/
+cp ../examples/checkHBrCO2grid/Makefile .
+make clean
+make
+./a.out
+```
+
+
