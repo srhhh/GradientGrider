@@ -41,6 +41,7 @@ In this case, it is easy to see where our frame should be; this is indicated by 
 
 Suppose that at the instance that frame was added, the number of frames exceeded the capacity allotted to the spot. This is natural and it prompts the execution of divyUp on 2.0_3.0. Suppose for this grid, we say we want var1 and var2 to both scale by 4 on their first subdivision. Then we will get a subgrid like this:
 
+```
   (A)  
       #########################
    3. #     #     #     #     #
@@ -56,6 +57,8 @@ Suppose that at the instance that frame was added, the number of frames exceeded
    00 #     #     #     #  x  #
       #########################
        2.00  2.25  2.50  2.75  (A)
+```
+
 We had var1 = 2.916677 A and var2 = 3.135552 A. And when we deposit them in a spot, we always truncate. Thus, we would have them in spot 2.75_3.00. However, when divyUp is called, all frames that were in 2.0_3.0 are deposited in the more granular spots, so not just 2.75_3.00 will get a frame
 
 # Data Retrieval
