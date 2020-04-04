@@ -70,7 +70,7 @@ overcrowd1=10000
 overcrowd2=01010
 
 #The number of trajectories simulated and added to a new grid
-Ntraj_max=0500
+Ntraj_max=0050
 
 #The number of grids to add to a new library
 Ngrid_max=1
@@ -119,7 +119,7 @@ gather_interpolation_flag=.true.
 reject_flag=.true.
 accept_first=.false.
 accept_worst=.false.
-grid_addition=0
+grid_addition=1
 Ngrid_cap=1
 Norder_cap=1
 #Ngrid_cap=${Ngrid_max}
@@ -152,8 +152,8 @@ readtrajectoryfolder="processed_traj"
 
 #readtrajectoryfile1="readtrajectories_single.txt"
 #readtrajectoryfolder1="traj_single"
-readtrajectoryfile1="readtrajectories_fewlongPT.txt"
-#readtrajectoryfile1="readtrajectories_somePT.txt"
+#readtrajectoryfile1="readtrajectories_fewlongPT.txt"
+readtrajectoryfile1="readtrajectories_somePT.txt"
 readtrajectoryfolder1="some_processed_traj"
 readtrajectoryfile2="readtrajectories2.txt"
 readtrajectoryfolder2="traj2"
@@ -211,7 +211,7 @@ readtrajectoryfolder6="traj5"
 newGRID="HBrCO2_Apr1"
 
 #If you want to make a new grid, set this to 1; otherwise, set it to zero
-newGRID_flag=1
+newGRID_flag=0
 
 #How often you want to check the progress of the new grid's creation
 #(has an intrinsic minimum of Ntraj_max/10)
@@ -220,18 +220,18 @@ newGRID_check_min=10000
 
 #The number of post-grid analyses you would like done
 #These are separate from the comparison and the post-grid-making analysis
-Nanalyses=0
+Nanalyses=1
 
 #The path that has the original source code
-currentPATH=$(pwd)
+currentPATH=$(pwd)/src
 
 #The file that keeps the times of the code
 bashout="timing.dat"
 
 #DO NOT TOUCH THESE
-gridPATH=$currentPATH/$newGRID
+gridPATH=$(pwd)/$newGRID
 newSOURCE=SOURCE
-newPATH=$(pwd)/$newGRID/$newSOURCE
+newPATH=$gridPATH/$newSOURCE
 
 ###############################################################################################################################################
 ###############################################################################################################################################
@@ -343,25 +343,25 @@ if [ $newGRID_flag -eq 1 ]
 then
 
 #If there is another folder of the same name delete that folder first
-rm -r $currentPATH/$newGRID
+rm -r $gridPATH/
 
 #Make the directories, copy all the original source code, etc.
-mkdir $currentPATH/$newGRID
+mkdir $gridPATH/
 mkdir $newPATH/
 cp $currentPATH/*.f90 $newPATH/
 cp $currentPATH/make_$(echo "*") $newPATH/
 
 #temporarily do this
-cp -r $currentPATH/dropoffs/ $currentPATH/$newGRID
+cp -r $(pwd)/dropoffs/ $gridPATH/
 
 mkdir $gridPATH/startup/
 
 if [ $readtrajectory_flag == ".true." ]
 then
 
-cp $currentPATH/$readtrajectoryfile $gridPATH/startup/readtrajectories.txt
+cp $readtrajectoryfile $gridPATH/startup/readtrajectories.txt
 mkdir $gridPATH/startup/traj/
-cp $currentPATH/$readtrajectoryfolder/* $gridPATH/startup/traj/
+cp $readtrajectoryfolder/* $gridPATH/startup/traj/
 
 fi
 
@@ -640,9 +640,9 @@ mkdir -p $gridPATH/$exp1name/
 if [ $readtrajectory_flag == ".true." ]
 then
 
-cp $currentPATH/$readtrajectoryfile1 $gridPATH/$exp1name/readtrajectories.txt
+cp $readtrajectoryfile1 $gridPATH/$exp1name/readtrajectories.txt
 mkdir $gridPATH/$exp1name/traj/
-cp $currentPATH/$readtrajectoryfolder1/* $gridPATH/$exp1name/traj/
+cp $readtrajectoryfolder1/* $gridPATH/$exp1name/traj/
 
 fi
 
@@ -722,9 +722,9 @@ mkdir -p $gridPATH/$exp2name/
 if [ $readtrajectory_flag == ".true." ]
 then
 
-cp $currentPATH/$readtrajectoryfile2 $gridPATH/$exp2name/readtrajectories.txt
+cp $readtrajectoryfile2 $gridPATH/$exp2name/readtrajectories.txt
 mkdir $gridPATH/$exp2name/traj/
-cp $currentPATH/$readtrajectoryfolder2/* $gridPATH/$exp2name/traj/
+cp $readtrajectoryfolder2/* $gridPATH/$exp2name/traj/
 
 fi
 
@@ -802,9 +802,9 @@ mkdir -p $gridPATH/$exp3name/
 if [ $readtrajectory_flag == ".true." ]
 then
 
-cp $currentPATH/$readtrajectoryfile3 $gridPATH/$exp3name/readtrajectories.txt
+cp $readtrajectoryfile3 $gridPATH/$exp3name/readtrajectories.txt
 mkdir $gridPATH/$exp3name/traj/
-cp $currentPATH/$readtrajectoryfolder3/* $gridPATH/$exp3name/traj/
+cp $readtrajectoryfolder3/* $gridPATH/$exp3name/traj/
 
 fi
 
@@ -882,9 +882,9 @@ mkdir -p $gridPATH/$exp4name/
 if [ $readtrajectory_flag == ".true." ]
 then
 
-cp $currentPATH/$readtrajectoryfile4 $gridPATH/$exp4name/readtrajectories.txt
+cp $readtrajectoryfile4 $gridPATH/$exp4name/readtrajectories.txt
 mkdir $gridPATH/$exp4name/traj/
-cp $currentPATH/$readtrajectoryfolder4/* $gridPATH/$exp4name/traj/
+cp $readtrajectoryfolder4/* $gridPATH/$exp4name/traj/
 
 fi
 
@@ -962,9 +962,9 @@ mkdir -p $gridPATH/$exp5name/
 if [ $readtrajectory_flag == ".true." ]
 then
 
-cp $currentPATH/$readtrajectoryfile5 $gridPATH/$exp5name/readtrajectories.txt
+cp $readtrajectoryfile5 $gridPATH/$exp5name/readtrajectories.txt
 mkdir $gridPATH/$exp5name/traj/
-cp $currentPATH/$readtrajectoryfolder5/* $gridPATH/$exp5name/traj/
+cp $readtrajectoryfolder5/* $gridPATH/$exp5name/traj/
 
 fi
 

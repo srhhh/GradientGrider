@@ -24,8 +24,9 @@
 MODULE ls_rmsd_original
 !-----------------------------------------------------------------------
 
+  use ANALYSIS
   implicit none
-  integer, parameter :: dp = kind(1.d0)
+!  integer, parameter :: dp = kind(1.d0)
 
 !-----------------------------------------------------------------------
 CONTAINS
