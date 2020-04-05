@@ -115,7 +115,9 @@ mkdir exp001
 
 Now, depending on which system you want to model, copy files from one of the following directories into the grid.
 
-For the prototype H - H2:
+## The H - H2 prototype:
+
+This prototype uses the classical mechanics module, simulating a bimolecular collision between atomic and molecular hydrogen at room temperature.
 
 (1)
 
@@ -139,7 +141,9 @@ make
 ```
 
 
-For the prototype H2 - H2:
+## The H2 - H2 prototype:
+
+This prototype uses the classical mechanics module, simulating a bimolecular collision between two hydrogen molecules at room temperature.
 
 (1)
 
@@ -163,7 +167,9 @@ make
 ```
 
 
-For the prototype HBr - CO2:
+## The HBr - CO2 prototype:
+
+This prototype reads in trajectory information (aimed for those from ab initio simulations); the sample trajectory information comes from the simulation of a bimolecular collision between a hydrogen bromine cation HBr+ and carbon dioxide CO2.
 
 (1)
 

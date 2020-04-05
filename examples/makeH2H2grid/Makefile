@@ -3,8 +3,8 @@ a.out : DOUBLE.o PARAMETERS.o FUNCTIONS.o PHYSICS.o VARIABLES.o ANALYSIS.o ls_rm
 
 FC = gfortran
 STEM = $(shell pwd)
-SOURCE = $(STEM)GradientGrider/grid1/src/
-EXPSOURCE = $(STEM)GradientGrider/grid1/startup/
+SOURCE = $(STEM)/src/
+EXPSOURCE = $(STEM)/startup/
 
 DOUBLE.o : $(SOURCE)DOUBLE.f90
 	$(FC) -c $(SOURCE)DOUBLE.f90

@@ -7,8 +7,8 @@ implicit none
 !Analysis is done in roughly the order they appear here
 
 !The name of this experiment
-integer,parameter :: expfolder_length = 8
-character(expfolder_length),parameter :: expfolder = "startup/"
+integer,parameter :: expfolder_length = 7
+character(expfolder_length),parameter :: expfolder = "exp001/"
 
 !Set the number of grids to be analyzed; will start at 001 and increment
 !If this number is larger than the number of grids in the folder,
@@ -25,7 +25,7 @@ integer, parameter :: Nthreads = 1
 integer,parameter :: Norder_cap = 1
 
 !Set .true. to generate top-level heat maps for each complete grid
-logical,parameter :: heatmap_flag = .true.
+logical,parameter :: heatmap_flag = .false.
 character(14),parameter :: populationfile = "population.dat"
 character(12),parameter :: covarmapfile = "covarmap.dat"
 
@@ -56,7 +56,7 @@ logical,parameter :: testtraj_flag = .true.
 
    !Set how many trajectories will be generated for the test
    !If old data is being used, this number will be decreased internally
-   integer,parameter :: Ntesttraj = 1000
+   integer,parameter :: Ntesttraj = 0003
 
    !Set .true. to generate the RMSD frequency plots for each
    !trajectory tested for each grid
@@ -134,7 +134,7 @@ logical,parameter :: testtraj_flag = .true.
 
       !Set .true. if the real force calculations we do should be
       !added to the grid
-      integer :: grid_addition = 1
+      integer :: grid_addition = 0
 
       !Set .true. if you are continuing a previous analysis
       logical,parameter :: continue_analysis = .false.
@@ -144,7 +144,7 @@ logical,parameter :: testtraj_flag = .true.
          !Set .true. if interpolation should be used; that is to say
          !a weighted combination of acceptable frames are used to
          !calculate an approximate gradient
-         logical :: interpolation_flag = .false.
+         logical :: interpolation_flag = .true.
 
          !Interpolation requires a scaling parameter for the weights
          !This is a positive, nonzero real number
@@ -155,7 +155,7 @@ logical,parameter :: testtraj_flag = .true.
          !is dedicated to interpolation results
          !Whether we record or not to this file is governed by the
          !gather_interpolation_flag
-         logical :: gather_interpolation_flag = .false.
+         logical :: gather_interpolation_flag = .true.
          character(17),parameter :: interpolationfile = "interpolation.dat"
          character(14),parameter :: interpolationfolder = "interpolation/"
 

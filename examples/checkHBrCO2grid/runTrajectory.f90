@@ -705,8 +705,8 @@ subroutine runTrajectoryRewind1(filechannels,&
     velocities_initial = velocities
 
     !Always calculate the variables before accelerating
-!   call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-    call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+    call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+!   call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
     !Accelerate the velcocities for a half step (verlet)
     call Acceleration(vals,coords,gradient)
@@ -749,8 +749,8 @@ subroutine runTrajectoryRewind1(filechannels,&
     E_baseline = 0.0d0
     do
         coords = coords + dt * velocities
-!       call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+        call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+!       call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
         call Acceleration(vals,coords,gradient)
 
         call getEnergies(Natoms,coords,velocities,U,KE)
@@ -770,10 +770,10 @@ subroutine runTrajectoryRewind1(filechannels,&
 
         steps = steps + 1
         if (steps == Nsteps_baseline) then
-!           call getVarsHBrCO2(coords,Natoms,vals,&
-!                   Nvar,BOND_LABELLING_DATA)
-            call getVarsMaxMin(coords,Natoms,vals,&
+            call getVarsHBrCO2(coords,Natoms,vals,&
                     Nvar,BOND_LABELLING_DATA)
+!           call getVarsMaxMin(coords,Natoms,vals,&
+!                   Nvar,BOND_LABELLING_DATA)
 
             coords = coords + dt * velocities
             velocities = velocities + gradient
@@ -801,8 +801,8 @@ subroutine runTrajectoryRewind1(filechannels,&
      
     do
         !Always calculate the variables before checking a frame or accelerating
-!       call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
-        call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+        call getVarsHBrCO2(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
+!       call getVarsMaxMin(coords,Natoms,vals,Nvar,BOND_LABELLING_DATA)
 
         subcellsearch_max = subcellsearch_max1
  

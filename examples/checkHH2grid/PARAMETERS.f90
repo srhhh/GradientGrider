@@ -157,7 +157,7 @@ integer, parameter :: SAfiles_text_length = gridpath_length +&
 !The number of atoms in the system
 !Natoms is another variable that must be supplied by the user and is changed
 !on the LOCAL version of a library; this must be changed MANUALLY
-integer,parameter :: Natoms = 4
+integer,parameter :: Natoms = 3
 integer,parameter :: Ncoords = Natoms*3
 
 !The charges and masses of each atom

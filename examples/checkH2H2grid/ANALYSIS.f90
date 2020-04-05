@@ -232,7 +232,7 @@ integer,parameter :: comparison_number = 1
 character(expfolder_length),parameter :: allprefixes = expfolder
 integer,dimension(comparison_number),parameter :: alllengths = (/ expfolder_length /)
 
-character(11),parameter :: analysisfile = "placeholder"
+character(12),parameter :: analysisfile = "ANALYSIS.f90"
 
 
 contains
