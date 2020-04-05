@@ -177,6 +177,8 @@ This prototype reads in trajectory information (aimed for those from ab initio s
 cp ../examples/makeHBrCO2grid/*.f90 src/
 cp ../examples/makeHBrCO2grid/ANALYSIS.f90 startup/
 cp ../examples/makeHBrCO2grid/Makefile .
+cp -r ../processed_traj/ startup/
+cp ../readtrajectories.txt startup/readtrajectories.txt
 make clean
 make
 ./a.out
@@ -187,6 +189,8 @@ make
 ```
 cp ../examples/checkHBrCO2grid/ANALYSIS.f90 exp001/
 cp ../examples/checkHBrCO2grid/Makefile .
+cp -r ../processed_traj/ exp001/
+cp ../readtrajectories_some.txt exp001/readtrajectories.txt
 make clean
 make
 ./a.out

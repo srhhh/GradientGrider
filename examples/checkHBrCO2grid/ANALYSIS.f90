@@ -7,8 +7,8 @@ implicit none
 !Analysis is done in roughly the order they appear here
 
 !The name of this experiment
-integer,parameter :: expfolder_length = 8
-character(expfolder_length),parameter :: expfolder = "startup/"
+integer,parameter :: expfolder_length = 7
+character(expfolder_length),parameter :: expfolder = "exp001/"
 
 !Set the number of grids to be analyzed; will start at 001 and increment
 !If this number is larger than the number of grids in the folder,
@@ -25,7 +25,7 @@ integer, parameter :: Nthreads = 1
 integer,parameter :: Norder_cap = 1
 
 !Set .true. to generate top-level heat maps for each complete grid
-logical,parameter :: heatmap_flag = .true.
+logical,parameter :: heatmap_flag = .false.
 character(14),parameter :: populationfile = "population.dat"
 character(12),parameter :: covarmapfile = "covarmap.dat"
 
@@ -40,7 +40,7 @@ integer,parameter :: TRV_Nbins = 50
 !and test them against the grid
 !Note: if you ALREADY made these trajectories (stored in I0.6 files)
 !then you can set this .false. to proceed with analysis and save computation
-logical,parameter :: testtraj_flag = .false.
+logical,parameter :: testtraj_flag = .true.
 
    !Set .true. if you are generating new trajectories and you want them
    !to be stored in new files (don't overwrite old files)
@@ -56,7 +56,7 @@ logical,parameter :: testtraj_flag = .false.
 
    !Set how many trajectories will be generated for the test
    !If old data is being used, this number will be decreased internally
-   integer,parameter :: Ntesttraj = 5
+   integer,parameter :: Ntesttraj = 3
 
    !Set .true. to generate the RMSD frequency plots for each
    !trajectory tested for each grid
@@ -134,7 +134,7 @@ logical,parameter :: testtraj_flag = .false.
 
       !Set .true. if the real force calculations we do should be
       !added to the grid
-      integer :: grid_addition = 1
+      integer :: grid_addition = 0
 
       !Set .true. if you are continuing a previous analysis
       logical,parameter :: continue_analysis = .true.
@@ -144,7 +144,7 @@ logical,parameter :: testtraj_flag = .false.
          !Set .true. if interpolation should be used; that is to say
          !a weighted combination of acceptable frames are used to
          !calculate an approximate gradient
-         logical :: interpolation_flag = .false.
+         logical :: interpolation_flag = .true.
 
          !Interpolation requires a scaling parameter for the weights
          !This is a positive, nonzero real number
@@ -155,7 +155,7 @@ logical,parameter :: testtraj_flag = .false.
          !is dedicated to interpolation results
          !Whether we record or not to this file is governed by the
          !gather_interpolation_flag
-         logical :: gather_interpolation_flag = .false.
+         logical :: gather_interpolation_flag = .true.
          character(17),parameter :: interpolationfile = "interpolation.dat"
          character(14),parameter :: interpolationfolder = "interpolation/"
 
@@ -216,8 +216,8 @@ logical,parameter :: testtraj_flag = .false.
 !Set .true. to ask the program to do a comparison of multiple
 !trajectory sets (mostly for consistency checking)
 logical,parameter :: comparison_flag = .false.
-character(69),parameter :: comparison_file = ""
-character(40),parameter :: comparison_SATRVname = ""
+character(14),parameter :: comparison_file = "comparison.txt"
+character(16),parameter :: comparison_SATRVname = "InterpolationTDD"
 integer :: comparison_SATRVcolumn
 real,parameter :: comparison_lowerlimit = 0.0d0
 real,parameter :: comparison_upperlimit = 0.0d0
